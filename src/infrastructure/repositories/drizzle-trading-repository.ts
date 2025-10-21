@@ -323,8 +323,14 @@ export class DrizzleTradingRepository implements TradingRepository {
       symbolName: trade.symbol,
       positionSizeUsdt: 100, // Default position size, would be calculated from orders
       confidenceScore: trade.confidenceScore || 0,
-      stopLossPercent: trade.stopLossPercent || 5,
-      takeProfitCustom: trade.takeProfitPercent,
+      stopLossPercent:
+        trade.stopLossPercent !== undefined && trade.stopLossPercent !== null
+          ? trade.stopLossPercent
+          : 15,
+      takeProfitCustom:
+        trade.takeProfitPercent !== undefined && trade.takeProfitPercent !== null
+          ? trade.takeProfitPercent
+          : 25,
       status: this.mapTradeStatusToDb(trade.status),
       priority: trade.isAutoSnipe ? 1 : 0,
       targetExecutionTime: trade.executionStartedAt,

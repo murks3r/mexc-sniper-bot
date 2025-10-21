@@ -16,6 +16,7 @@ export class MexcRequestCache {
   private maxSize: number;
   private hitCount = 0;
   private missCount = 0;
+  private cleanupInterval: NodeJS.Timeout | null = null;
   private logger = {
     info: (message: string, context?: any) =>
       console.info("[mexc-request-cache]", message, context || ""),
@@ -36,7 +37,7 @@ export class MexcRequestCache {
     this.maxSize = maxSize;
 
     // Cleanup expired entries every 5 minutes
-    setInterval(
+    this.cleanupInterval = setInterval(
       () => {
         this.cleanup();
       },
@@ -214,6 +215,19 @@ export class MexcRequestCache {
     const paramsStr = params ? JSON.stringify(params) : "";
     return `auth:${method}:${url}:${paramsStr}:${windowedTime}`;
   }
+
+  /**
+   * Cleanup resources and clear intervals
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
+    this.hitCount = 0;
+    this.missCount = 0;
+  }
 }
 
 // ============================================================================
@@ -237,6 +251,9 @@ export function getGlobalCache(): MexcRequestCache {
  * Reset global cache (for testing)
  */
 export function resetGlobalCache(): void {
+  if (globalCache) {
+    globalCache.destroy();
+  }
   globalCache = null;
   // Note: Global MEXC cache reset
 }

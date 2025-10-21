@@ -396,9 +396,10 @@ export class PatternToDatabaseBridge {
           takeProfitLevel:
             userPrefs?.defaultTakeProfitLevel ||
             this.config.defaultTakeProfitLevel,
-          takeProfitCustom: userPrefs?.takeProfitCustom ?? undefined, // Convert null to undefined
+          takeProfitCustom:
+            userPrefs?.takeProfitCustom ?? this.config.defaultTakeProfitPercent ?? 25,
           stopLossPercent:
-            userPrefs?.stopLossPercent || this.config.defaultStopLossPercent,
+            (userPrefs?.stopLossPercent ?? this.config.defaultStopLossPercent ?? 15),
           status: match.patternType === "ready_state" ? "ready" : "pending",
           priority,
           targetExecutionTime,

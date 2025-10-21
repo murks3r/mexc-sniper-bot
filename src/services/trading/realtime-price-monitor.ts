@@ -12,7 +12,7 @@
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
 import { toSafeError } from "@/src/lib/error-type-utils";
-import { getCompleteAutoSnipingService } from "./complete-auto-sniping-service";
+// Removed duplicate service import - using consolidated core trading service instead
 import {
   getPatternSnipeIntegration,
   type PatternDetectionEvent,
@@ -102,7 +102,12 @@ export class RealtimePriceMonitor extends EventEmitter {
   private volumeAverages: Map<string, number> = new Map();
 
   // Services
-  private autoSnipingService = getCompleteAutoSnipingService();
+  // Using consolidated core trading service instead of duplicate services
+  private async getAutoSnipingService() {
+    const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+    return getCoreTrading();
+  }
+  private autoSnipingService: any | null = null;
   private patternIntegration = getPatternSnipeIntegration();
 
   // Connection state
@@ -153,11 +158,21 @@ export class RealtimePriceMonitor extends EventEmitter {
       this.logger.info("Starting real-time price monitoring");
 
       // Initialize services if needed
-      if (!this.autoSnipingService.getStatus().isInitialized) {
+      if (!this.autoSnipingService) {
+        this.autoSnipingService = await this.getAutoSnipingService();
+      }
+      if (!this.autoSnipingService?.getStatus().isInitialized) {
         await this.autoSnipingService.initialize();
       }
 
-      if (!this.patternIntegration.getStatus().isActive) {
+      // Ensure pattern integration is running (idempotent start)
+      try {
+        const maybeStatus = (this.patternIntegration as any).getStatus?.();
+        if (!maybeStatus?.isActive) {
+          await this.patternIntegration.start();
+        }
+      } catch {
+        // Fallback: attempt to start without status check
         await this.patternIntegration.start();
       }
 

@@ -275,19 +275,126 @@ export class MexcCoreMarketClient {
 
     try {
       const config = this.httpClient.getConfig();
-      const url = `${config.baseUrl}/api/v3/ticker/24hr?symbol=${symbol}`;
-      const response = await this.httpClient.makeRequest(url, {
+      // 1) Primary: 24hr ticker (rich fields, sometimes slow to populate)
+      const url24h = `${config.baseUrl}/api/v3/ticker/24hr?symbol=${symbol}`;
+      const response = await this.httpClient.makeRequest(url24h, {
         method: "GET",
       });
 
+      if (response?.data) {
+        return {
+          success: true,
+          data: response.data,
+          timestamp: Date.now(),
+          executionTimeMs: Date.now() - startTime,
+          source: "mexc-core-market",
+        };
+      }
+
+      // 2) Fallback: simple last price ticker
+      const urlSimple = `${config.baseUrl}/api/v3/ticker/price?symbol=${symbol}`;
+      const simple = await this.httpClient.makeRequest(urlSimple, {
+        method: "GET",
+      });
+      if (simple?.data && simple.data.price) {
+        const mapped = {
+          symbol: simple.data.symbol || symbol,
+          price: simple.data.price,
+          lastPrice: simple.data.price,
+          priceChangePercent: "0",
+          volume: "0",
+        };
+        return {
+          success: true,
+          data: mapped,
+          timestamp: Date.now(),
+          executionTimeMs: Date.now() - startTime,
+          source: "mexc-core-market",
+        };
+      }
+
+      // 3) Fallback: bookTicker best bid/ask -> mid-price
+      const urlBook = `${config.baseUrl}/api/v3/ticker/bookTicker?symbol=${symbol}`;
+      const book = await this.httpClient.makeRequest(urlBook, { method: "GET" });
+      if (book?.data && book.data.bidPrice && book.data.askPrice) {
+        const bid = parseFloat(book.data.bidPrice);
+        const ask = parseFloat(book.data.askPrice);
+        if (bid > 0 && ask > 0) {
+          const mid = ((bid + ask) / 2).toString();
+          const mapped = {
+            symbol: book.data.symbol || symbol,
+            price: mid,
+            lastPrice: mid,
+            priceChangePercent: "0",
+            volume: "0",
+          };
+          return {
+            success: true,
+            data: mapped,
+            timestamp: Date.now(),
+            executionTimeMs: Date.now() - startTime,
+            source: "mexc-core-market",
+          };
+        }
+      }
+
       return {
-        success: true,
-        data: response.data,
+        success: false,
+        error: "No ticker data available from any endpoint",
         timestamp: Date.now(),
-        executionTimeMs: Date.now() - startTime,
         source: "mexc-core-market",
       };
     } catch (error) {
+      // Attempt fallbacks even if primary throws (network/format errors)
+      try {
+        const config = this.httpClient.getConfig();
+        const urlSimple = `${config.baseUrl}/api/v3/ticker/price?symbol=${symbol}`;
+        const simple = await this.httpClient.makeRequest(urlSimple, {
+          method: "GET",
+        });
+        if (simple?.data && simple.data.price) {
+          const mapped = {
+            symbol: simple.data.symbol || symbol,
+            price: simple.data.price,
+            lastPrice: simple.data.price,
+            priceChangePercent: "0",
+            volume: "0",
+          };
+          return {
+            success: true,
+            data: mapped,
+            timestamp: Date.now(),
+            executionTimeMs: Date.now() - startTime,
+            source: "mexc-core-market",
+          };
+        }
+
+        const urlBook = `${config.baseUrl}/api/v3/ticker/bookTicker?symbol=${symbol}`;
+        const book = await this.httpClient.makeRequest(urlBook, { method: "GET" });
+        if (book?.data && book.data.bidPrice && book.data.askPrice) {
+          const bid = parseFloat(book.data.bidPrice);
+          const ask = parseFloat(book.data.askPrice);
+          if (bid > 0 && ask > 0) {
+            const mid = ((bid + ask) / 2).toString();
+            const mapped = {
+              symbol: book.data.symbol || symbol,
+              price: mid,
+              lastPrice: mid,
+              priceChangePercent: "0",
+              volume: "0",
+            };
+            return {
+              success: true,
+              data: mapped,
+              timestamp: Date.now(),
+              executionTimeMs: Date.now() - startTime,
+              source: "mexc-core-market",
+            };
+          }
+        }
+      } catch (_fallbackError) {
+        // ignore and fall through to standard error handling
+      }
       return this.httpClient.handleError(error, "getTicker", startTime);
     }
   }

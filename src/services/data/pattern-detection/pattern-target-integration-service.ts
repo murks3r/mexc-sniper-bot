@@ -21,6 +21,7 @@ export interface PatternTargetConfig {
   // Risk management
   defaultStopLossPercent: number;
   takeProfitLevel: number; // Which level from user preferences
+  takeProfitCustom: number; // Custom take profit level
 
   // Execution settings
   defaultPriority: number;
@@ -63,8 +64,9 @@ export class PatternTargetIntegrationService {
     defaultUserId: "system", // Will be overridden
     preferredEntryStrategy: "market",
     defaultPositionSizeUsdt: 100, // $100 default position
-    defaultStopLossPercent: 5.0, // 5% stop loss
-    takeProfitLevel: 2, // Level 2 from user preferences
+    defaultStopLossPercent: 1, // 5% stop loss
+    takeProfitLevel: 1,
+    takeProfitCustom: 1, // Level 2 from user preferences
     defaultPriority: 1, // High priority
     maxRetries: 3,
     minConfidenceForTarget: 75, // Only create targets for 75%+ confidence
@@ -77,9 +79,12 @@ export class PatternTargetIntegrationService {
       this.config = { ...this.config, ...config };
     }
 
-    console.info("Pattern-Target Integration Service initialized", {
-      config: this.config,
-    });
+    if (!(globalThis as any).__pti_logged__) {
+      console.info("Pattern-Target Integration Service initialized", {
+        config: this.config,
+      });
+      (globalThis as any).__pti_logged__ = true;
+    }
   }
 
   static getInstance(
@@ -202,8 +207,14 @@ export class PatternTargetIntegrationService {
       entryPrice: null, // Market order for now
       positionSizeUsdt: positionSize,
       takeProfitLevel: config.takeProfitLevel,
-      takeProfitCustom: this.calculateTakeProfit(pattern),
-      stopLossPercent: config.defaultStopLossPercent,
+      takeProfitCustom:
+        config.takeProfitCustom !== undefined && config.takeProfitCustom !== null
+          ? config.takeProfitCustom
+          : 25,
+      stopLossPercent:
+        config.defaultStopLossPercent !== undefined && config.defaultStopLossPercent !== null
+          ? config.defaultStopLossPercent
+          : 15,
       status: this.determineInitialStatus(pattern),
       priority: this.calculatePriority(pattern),
       maxRetries: config.maxRetries,

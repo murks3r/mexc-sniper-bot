@@ -8,6 +8,8 @@
 import { EventEmitter } from "node:events";
 import { toSafeError } from "@/src/lib/error-type-utils";
 import { UnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
+import { MarketDataManager } from "@/src/services/data/websocket/market-data-manager";
+import { MexcWebSocketStreamService } from "@/src/services/data/websocket/stream-processor";
 import { ComprehensiveSafetyCoordinator } from "@/src/services/risk/comprehensive-safety-coordinator";
 import { AutoSnipingModule } from "./auto-sniping";
 // Import modules
@@ -107,6 +109,8 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
   // Integrated services
   private mexcService: UnifiedMexcServiceV2;
   private safetyCoordinator: ComprehensiveSafetyCoordinator | null = null;
+  private marketDataManager: MarketDataManager;
+  private websocketStream: MexcWebSocketStreamService;
 
   // Trading modules
   private manualTrading: ManualTradingModule;
@@ -138,6 +142,9 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       enableCaching: this.config.enableCaching,
       cacheTTL: this.config.cacheTTL,
     });
+
+    this.marketDataManager = MarketDataManager.getInstance();
+    this.websocketStream = MexcWebSocketStreamService.getInstance();
 
     // Create module context
     this.moduleContext = {
@@ -203,6 +210,11 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       marketDataService: {
         getCurrentPrice: async (_symbol) => ({ price: 0 }),
       },
+      marketData: {
+        getLatestPrice: (symbol: string) => {
+          return this.marketDataManager.getLatestPriceNumber(symbol);
+        },
+      },
     };
 
     // Initialize modules
@@ -211,6 +223,7 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
     this.performanceTracker = new PerformanceTracker(this.moduleContext);
     this.manualTrading = new ManualTradingModule(this.moduleContext);
     this.autoSniping = new AutoSnipingModule(this.moduleContext);
+    this.initializeMarketDataStreaming();
 
     this.logger.info("Core Trading Service initialized", {
       paperTrading: this.config.enablePaperTrading,
@@ -676,11 +689,23 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       await this.performanceTracker.getPerformanceMetrics();
 
     // Map base status to extended status with frontend-expected fields
-    const extendedStatus: ExtendedServiceStatus = {
+    const extendedStatus: ExtendedServiceStatus & {
+      lastSnipeCheck?: string;
+      processedTargets?: number;
+      successfulSnipes?: number;
+      failedSnipes?: number;
+    } = {
       ...baseStatus,
 
       // Frontend-specific fields with appropriate defaults/mappings
       status: baseStatus.isHealthy ? "active" : "idle",
+      // Auto-sniping loop visibility for diagnostics
+      lastSnipeCheck: autoSnipingStatus.lastSnipeCheck
+        ? autoSnipingStatus.lastSnipeCheck.toISOString()
+        : undefined,
+      processedTargets: autoSnipingStatus.processedTargets,
+      successfulSnipes: autoSnipingStatus.successfulSnipes,
+      failedSnipes: autoSnipingStatus.failedSnipes,
       targetCounts: {
         memory: 0, // Would need to get from auto-sniping service
         database: 0, // Would need to get from database
@@ -884,6 +909,41 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       success: true,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  private initializeMarketDataStreaming(): void {
+    try {
+      if (!this.marketDataManager || !this.websocketStream) {
+        this.logger.warn("Market data streaming components unavailable", {
+          component: "CoreTradingService",
+          operation: "initializeMarketDataStreaming",
+        });
+        return;
+      }
+
+      this.marketDataManager.setEventHandlers({
+        onPriceUpdate: (price) => {
+          this.emit("market_price_update", price);
+        },
+      });
+
+      void this.websocketStream
+        .initialize({ subscriptions: ["ticker"] })
+        .then(() => this.websocketStream.start())
+        .catch((error) => {
+          this.logger.warn("Failed to start websocket stream", {
+            component: "CoreTradingService",
+            operation: "initializeMarketDataStreaming",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    } catch (error) {
+      this.logger.warn("Error initializing market data streaming", {
+        component: "CoreTradingService",
+        operation: "initializeMarketDataStreaming",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // ============================================================================

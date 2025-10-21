@@ -44,6 +44,22 @@ interface Trade {
   sellTimestamp: string | null;
 }
 
+type RawExecution = Record<string, any> & {
+  id: number;
+  snipeTargetId: number | null;
+  symbolName: string;
+  action?: string;
+  orderSide?: string;
+  executedPrice?: number | string | null;
+  executedQuantity?: number | string | null;
+  requestedQuantity?: number | string | null;
+  totalCost?: number | string | null;
+  status?: string;
+  executedAt?: string | null;
+  requestedAt?: string | null;
+  createdAt?: string | null;
+};
+
 interface TradeRowsProps {
   trades: Trade[];
   getProfitLossIcon: (percentage: number | null) => ReactNode;
@@ -104,25 +120,135 @@ function TradeRows({
 }
 
 interface RecentTradesTableProps {
-  userId: string;
+  userId?: string;
 }
 
 export function RecentTradesTable({ userId }: RecentTradesTableProps) {
   const { data: trades, isLoading } = useQuery<Trade[]>({
-    queryKey: ["recent-trades", userId],
+    queryKey: ["recent-trades", "all", userId ?? "global"],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        userId,
-        limit: "10",
-        transactionType: "complete_trade",
+      const params = new URLSearchParams({ limit: "100" });
+      if (userId) params.set("userId", userId);
+      const response = await fetch(`/api/execution-history?${params.toString()}`);
+      if (!response.ok) return [];
+
+      const json = await response.json();
+      const executions: RawExecution[] = json?.data?.executions || [];
+      if (!Array.isArray(executions) || executions.length === 0) {
+        return [];
+      }
+
+      const grouped = new Map<number | string, RawExecution[]>();
+
+      for (const exec of executions) {
+        const key = exec.snipeTargetId ?? `${exec.symbolName}:${exec.id}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push(exec);
+      }
+
+      const results: Trade[] = [];
+
+      grouped.forEach((bucket, key) => {
+        if (!bucket.length) return;
+
+        let buy: RawExecution | undefined;
+        let sell: RawExecution | undefined;
+
+        for (const exec of bucket) {
+          const side = (exec.orderSide || exec.action || "buy").toLowerCase();
+          if (side === "buy" && !buy) {
+            buy = exec;
+          } else if (side === "sell" && !sell) {
+            sell = exec;
+          }
+        }
+
+        if (!buy) {
+          buy = bucket[0];
+        }
+
+        const normalizeNumber = (value: unknown): number | null => {
+          if (value == null) return null;
+          const n = typeof value === "string" ? Number(value) : (value as number);
+          return Number.isFinite(n) ? n : null;
+        };
+
+        const buyPrice =
+          normalizeNumber(buy.executedPrice) ?? normalizeNumber(buy.totalCost) ?? 0;
+        const buyQuantity =
+          normalizeNumber(buy.executedQuantity) ??
+          normalizeNumber(buy.requestedQuantity) ??
+          normalizeNumber(buy.totalCost) ??
+          0;
+        // Cost should be totalCost (price * quantity), or calculated from price * quantity
+        const buyTotalCost =
+          normalizeNumber(buy.totalCost) ?? 
+          (normalizeNumber(buy.executedPrice) && normalizeNumber(buy.executedQuantity)
+            ? normalizeNumber(buy.executedPrice)! * normalizeNumber(buy.executedQuantity)!
+            : 0);
+
+        const sellPrice = sell
+          ? normalizeNumber(sell.executedPrice) ?? normalizeNumber(sell.totalCost)
+          : null;
+        const sellQuantity = sell
+          ? normalizeNumber(sell.executedQuantity) ??
+            normalizeNumber(sell.requestedQuantity)
+          : null;
+        // Revenue should be totalCost (price * quantity for sell), or calculated from price * quantity
+        const sellTotalRevenue = sell
+          ? normalizeNumber(sell.totalCost) ?? 
+            (normalizeNumber(sell.executedPrice) && normalizeNumber(sell.executedQuantity)
+              ? normalizeNumber(sell.executedPrice)! * normalizeNumber(sell.executedQuantity)!
+              : null)
+          : null;
+
+        const profitLoss =
+          sellTotalRevenue !== null ? sellTotalRevenue - buyTotalCost : null;
+        const profitLossPercentage =
+          profitLoss !== null && buyTotalCost > 0
+            ? (profitLoss / buyTotalCost) * 100
+            : null;
+
+        const buyTimestamp =
+          buy.executedAt || buy.requestedAt || buy.createdAt || new Date().toISOString();
+        const sellTimestamp = sell
+          ? sell.executedAt || sell.requestedAt || sell.createdAt || null
+          : null;
+
+        let status: Trade["status"] = "pending";
+        if (sell && sell.status === "success" && buy.status === "success") {
+          status = "completed";
+        } else if (buy.status === "failed") {
+          status = "failed";
+        }
+
+        results.push({
+          id: typeof key === "number" ? key : buy.id,
+          symbolName: String(buy.symbolName || "-").toUpperCase(),
+          buyPrice: Number.isFinite(buyPrice) ? buyPrice : 0,
+          buyQuantity: Number.isFinite(buyQuantity) ? buyQuantity : 0,
+          buyTotalCost: Number.isFinite(buyTotalCost) ? buyTotalCost : 0,
+          sellPrice: sellPrice ?? null,
+          sellQuantity: sellQuantity ?? null,
+          sellTotalRevenue: sellTotalRevenue ?? null,
+          profitLoss,
+          profitLossPercentage,
+          status,
+          buyTimestamp: new Date(buyTimestamp).toISOString(),
+          sellTimestamp: sellTimestamp ? new Date(sellTimestamp).toISOString() : null,
+        });
       });
-      const response = await fetch(`/api/transactions?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch trades");
-      const result = await response.json();
-      return result.data?.transactions || [];
+
+      return results.sort((a, b) => {
+        const aTs = new Date(a.sellTimestamp || a.buyTimestamp).getTime();
+        const bTs = new Date(b.sellTimestamp || b.buyTimestamp).getTime();
+        return bTs - aTs;
+      });
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
-    enabled: !!userId, // Only run query if userId is provided
+    refetchInterval: 30000,
+    enabled: true,
   });
 
   const getProfitLossIcon = (percentage: number | null) => {

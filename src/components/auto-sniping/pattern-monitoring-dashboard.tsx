@@ -39,3 +39,6 @@ export function PatternMonitoringDashboard({
     </div>
   );
 }
+
+// Add default export for lazy loading compatibility
+export default PatternMonitoringDashboard;

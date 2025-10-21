@@ -95,8 +95,8 @@ export const CreateSnipeTargetRequestSchema = z.object({
   entryPrice: z.number().positive().optional(),
   positionSizeUsdt: z.number().positive("Position size must be positive"),
   takeProfitLevel: z.number().min(1).max(5).default(2),
-  takeProfitCustom: z.number().positive().optional(),
-  stopLossPercent: z.number().min(0.1).max(50).default(5.0),
+  takeProfitCustom: z.number().min(0).max(100).default(25.0),
+  stopLossPercent: z.number().min(0.1).max(50).default(15.0),
   status: z
     .enum(["pending", "ready", "executed", "failed", "completed"])
     .default("pending"),

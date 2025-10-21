@@ -39,7 +39,7 @@ export class BaseMexcService {
       maxRetries: config.maxRetries || 3,
       retryDelay: config.retryDelay || 1000,
       rateLimitDelay: config.rateLimitDelay || 100,
-      enablePaperTrading: config.enablePaperTrading ?? true,
+      enablePaperTrading: config.enablePaperTrading ?? false,
       passphrase: config.passphrase || "",
       enableTestMode: config.enableTestMode ?? false,
       enableMetrics: config.enableMetrics ?? false,
@@ -84,9 +84,14 @@ export class BaseMexcService {
       const separator = url.includes("?") ? "&" : "?";
       url += `${separator}timestamp=${timestamp}`;
 
-      // Add query parameters for GET requests
-      if (method === "GET" && params) {
-        const queryParams = new URLSearchParams(params).toString();
+      // Append request parameters to URL for BOTH GET and POST so signature includes them
+      if (params) {
+        const queryParams = new URLSearchParams(
+          Object.entries(params).reduce((acc: Record<string, string>, [k, v]) => {
+            if (v !== undefined && v !== null) acc[k] = String(v);
+            return acc;
+          }, {})
+        ).toString();
         if (queryParams) {
           url += `&${queryParams}`;
         }
@@ -96,9 +101,6 @@ export class BaseMexcService {
       const httpClient = this.coreClient.getHttpClient();
       const response = await httpClient.makeAuthenticatedRequest(url, {
         method,
-        ...(method === "POST" && params
-          ? { body: JSON.stringify(params) }
-          : {}),
       });
 
       this.logger.debug(

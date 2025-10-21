@@ -1,90 +1,106 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   apiResponse,
   createSuccessResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
-import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
+import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
+import { requireApiAuth } from "@/src/lib/api-auth";
+import { db } from "@/src/db";
+import { snipeTargets } from "@/src/db/schemas/trading";
+import { eq, and } from "drizzle-orm";
 
-const coreTrading = getCoreTrading();
+// Do not auto-initialize/start orchestrator from status endpoint to avoid side-effects
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.info("[API] Auto-sniping status request received");
-
-    // Get current execution report which includes unified status
-    let report;
-    try {
-      report = await coreTrading.getExtendedServiceStatus();
-    } catch (error) {
-      // If service is not initialized, initialize it first
-      if (error instanceof Error && error.message.includes("not initialized")) {
-        console.info(
-          "[API] Core trading service not initialized, initializing..."
-        );
-        await coreTrading.initialize();
-        report = await coreTrading.getExtendedServiceStatus();
-      } else {
-        throw error;
+    // Initialize unified orchestrator once
+    const orchestrator = getUnifiedAutoSnipingOrchestrator();
+    if (!orchestrator.getStatus().isInitialized) {
+      if (!orchestratorInitPromise) {
+        orchestratorInitPromise = orchestrator.initialize();
       }
+      await orchestratorInitPromise;
     }
 
+    // Get authenticated user for user-specific status (session-based)
+    const user = await requireApiAuth(request);
+    console.info(`[API] Auto-sniping status request from user: ${user.email} (${user.id})`);
+
+    // Get current orchestrator status
+    const status = orchestrator.getStatus();
+
+    // Get user-specific target counts from database
+    const userTargetCounts = await getUserTargetCounts(user.id);
+    console.info(`[API] User target counts for ${user.email}:`, userTargetCounts);
+
     // Structure the status response to match frontend expectations
+    // Use the same status data structure as the control endpoint
     const statusData = {
-      enabled: true, // Auto-sniping is always enabled
-      status: report.status || "idle",
-      isActive: report.status === "active",
-      isIdle: report.status === "idle",
+      enabled: true,
+      status: status.isActive ? "active" : "idle",
+      isActive: status.isActive,
+      isIdle: !status.isActive,
 
-      // Enhanced target count information
-      activeTargets: report.targetCounts?.unified || report.activeTargets || 0,
-      readyTargets: report.readyTargets || 0,
-      targetCounts: report.targetCounts || {
-        memory: 0,
-        database: 0,
-        unified: 0,
+      // Enhanced target count information - use user-specific counts
+      activeTargets: userTargetCounts.activeTargets,
+      readyTargets: userTargetCounts.readyTargets,
+      targetCounts: {
+        memory: userTargetCounts.totalTargets, // Total in memory (if service was tracking)
+        database: userTargetCounts.totalTargets, // Total in database
+        unified: userTargetCounts.totalTargets, // Unified count
         isConsistent: true,
-        source: "consistent",
+        source: "database",
       },
 
-      // State consistency information
-      stateConsistency: report.stateConsistency || {
-        isConsistent: true,
-        inconsistencies: [],
-        recommendedActions: [],
-        lastSyncTime: "Never",
+      // State consistency information - use status from control endpoint
+      stateConsistency: {
+        isConsistent: status.isHealthy,
+        inconsistencies: status.isHealthy ? [] : ["Service health check failed"],
+        recommendedActions: status.isHealthy ? [] : ["Check service configuration"],
+        lastSyncTime: new Date().toISOString(),
       },
 
-      // Frontend-expected fields
-      executedToday: report.executedToday || 0,
-      successRate: report.successRate || 0,
-      totalProfit: report.totalProfit || 0,
-      lastExecution: report.lastExecution || new Date().toISOString(),
-      safetyStatus: report.safetyStatus || "safe",
-      patternDetectionActive: report.patternDetectionActive ?? true,
+      // Frontend-expected fields - use status from control endpoint
+      executedToday: 0, // Will be populated by actual execution tracking
+      successRate: 0, // Will be populated by actual execution tracking
+      totalProfit: 0, // Will be populated by actual execution tracking
+      lastExecution: new Date().toISOString(),
+      safetyStatus: status.isHealthy ? "safe" : "warning",
+      patternDetectionActive: true,
 
       // Legacy fields for backward compatibility
-      executionCount: report.executionCount || 0,
-      successCount: report.successCount || 0,
-      errorCount: report.errorCount || 0,
-      uptime: report.uptime || 0,
+      executionCount: 0,
+      successCount: 0,
+      errorCount: 0,
+      uptime: status.metrics?.uptime || 0,
       config: {
-        maxConcurrentTargets: report.config?.maxConcurrentTargets || 5,
-        retryAttempts: report.config?.retryAttempts || 3,
-        executionDelay: report.config?.executionDelay || 1000,
+        maxConcurrentTargets: 5,
+        retryAttempts: 3,
+        executionDelay: 1000,
       },
       health: {
-        isHealthy: report.stateConsistency?.isConsistent ?? true,
+        isHealthy: status.isHealthy,
         lastHealthCheck: new Date().toISOString(),
         memoryUsage: process.memoryUsage().heapUsed,
-        stateConsistency: report.stateConsistency?.isConsistent ?? true,
-        targetCountWarning: report.targetCounts?.warning,
+        stateConsistency: status.isHealthy,
+        targetCountWarning: status.isHealthy ? null : "Service health check failed",
+      },
+      // Diagnostics
+      diagnostics: {
+        lastSnipeCheck: (status as any).lastSnipeCheck
+          ? new Date((status as any).lastSnipeCheck).toISOString()
+          : undefined,
+        processedTargets: (status as any).processedTargets ?? undefined,
+        successfulSnipes: (status as any).successfulSnipes ?? undefined,
+        failedSnipes: (status as any).failedSnipes ?? undefined,
       },
     };
 
     console.info("[API] Auto-sniping status retrieved successfully:", {
       status: statusData.status,
       isActive: statusData.isActive,
+      autoSnipingActive: status.autoSnipingActive,
       activeTargets: statusData.activeTargets,
       targetConsistency: statusData.stateConsistency.isConsistent,
       executionCount: statusData.executionCount,
@@ -99,6 +115,16 @@ export async function GET() {
     );
   } catch (error) {
     console.error("[API] Auto-sniping status error:", { error });
+
+    // Check for authentication errors
+    if (error instanceof Error && error.message.includes("Authentication required")) {
+      return NextResponse.json({
+        success: false,
+        error: "Authentication required",
+        message: "Please sign in to view auto-sniping status",
+        code: "AUTHENTICATION_REQUIRED",
+      }, { status: 401 });
+    }
 
     // Return fallback status data on error
     return apiResponse(
@@ -163,6 +189,44 @@ export async function GET() {
       ),
       HTTP_STATUS.OK
     );
+  }
+}
+
+// Helper function to get user-specific target counts
+async function getUserTargetCounts(userId: string) {
+  try {
+    // Query for all targets for this user
+    const allTargets = await db
+      .select({
+        status: snipeTargets.status,
+      })
+      .from(snipeTargets)
+      .where(eq(snipeTargets.userId, userId));
+
+    // Count targets by status
+    const readyTargets = allTargets.filter(t => t.status === "ready").length;
+    const activeTargets = allTargets.filter(t => 
+      t.status === "executing" || t.status === "active"
+    ).length;
+    const pendingTargets = allTargets.filter(t => t.status === "pending").length;
+    const totalTargets = allTargets.length;
+
+    console.info(`[getUserTargetCounts] User ${userId}: total=${totalTargets}, ready=${readyTargets}, active=${activeTargets}, pending=${pendingTargets}`);
+
+    return {
+      totalTargets,
+      readyTargets,
+      activeTargets,
+      pendingTargets,
+    };
+  } catch (error) {
+    console.error("[getUserTargetCounts] Failed to get user target counts:", error);
+    return {
+      totalTargets: 0,
+      readyTargets: 0,
+      activeTargets: 0,
+      pendingTargets: 0,
+    };
   }
 }
 

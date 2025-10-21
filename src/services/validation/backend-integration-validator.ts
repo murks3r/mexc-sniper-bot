@@ -16,8 +16,7 @@ import { toSafeError } from "@/src/lib/error-type-utils";
 import { getMexcMarketService } from "@/src/services/data/mexc-market-service";
 import { executionOrderService } from "@/src/services/execution/execution-order-service";
 import { getUnifiedMexcService } from "@/src/services/mexc-unified-exports";
-import { getCompleteAutoSnipingService } from "@/src/services/trading/complete-auto-sniping-service";
-import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
+// Removed duplicate service imports - using consolidated core trading service instead
 
 export interface ValidationResult {
   component: string;
@@ -369,10 +368,12 @@ export class BackendIntegrationValidator {
     try {
       this.logger.info("Validating auto-sniping services...");
 
-      const snipingService = getCompleteAutoSnipingService();
+      // Using consolidated core trading service instead of duplicate services
+      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const coreTrading = getCoreTrading();
 
       // Test service status
-      const status = snipingService.getStatus();
+      const status = await coreTrading.getServiceStatus();
       if (!status) {
         throw new Error("Auto-sniping service status unavailable");
       }
@@ -414,7 +415,9 @@ export class BackendIntegrationValidator {
     try {
       this.logger.info("Validating complete orchestration...");
 
-      const orchestrator = getUnifiedAutoSnipingOrchestrator();
+      // Using consolidated core trading service instead of duplicate orchestrator
+      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const orchestrator = getCoreTrading();
 
       // Test orchestrator status
       const status = orchestrator.getStatus();
@@ -505,10 +508,11 @@ export class BackendIntegrationValidator {
       // Test that all services can be instantiated without errors
       const mexcService = await getUnifiedMexcService();
       const marketService = getMexcMarketService();
-      const snipingService = getCompleteAutoSnipingService();
-      const orchestrator = getUnifiedAutoSnipingOrchestrator();
+      // Using consolidated core trading service instead of duplicate services
+      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const coreTrading = getCoreTrading();
 
-      if (!mexcService || !marketService || !snipingService || !orchestrator) {
+      if (!mexcService || !marketService || !coreTrading) {
         throw new Error("Failed to instantiate all required services");
       }
 

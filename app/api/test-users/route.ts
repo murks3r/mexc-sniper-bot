@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { db, users } from "@/src/db";
+import { db } from "@/src/db";
+import { user as authUser } from "@/src/db/schemas/auth";
 import { createSupabaseAdminClient } from "@/src/lib/supabase-auth";
 
 export async function POST(request: NextRequest) {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Create user record in our database
     if (authData.user) {
       try {
-        await db.insert(users).values({
+        await db.insert(authUser).values({
           id: authData.user.id,
           email: authData.user.email!,
           name: authData.user.email!,
@@ -183,7 +184,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from our database (in case there's a record)
     try {
-      await db.delete(users).where(eq(users.email, email));
+      await db.delete(authUser).where(eq(authUser.email, email));
     } catch (dbError) {
       console.error("Error deleting user from database:", dbError);
       // Continue - cleanup attempt

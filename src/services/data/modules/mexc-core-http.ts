@@ -92,7 +92,23 @@ export class MexcCoreHttpClient {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      return await response.json();
+      const parsed = await response.json();
+      // Normalize public API responses to a consistent shape with `.data`
+      // If response already includes `{ code, data, success }`, pass through
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        Object.prototype.hasOwnProperty.call(parsed, "data") &&
+        Object.prototype.hasOwnProperty.call(parsed, "code")
+      ) {
+        return parsed;
+      }
+      // Otherwise, wrap raw payload under `data` for callers expecting `.data`
+      return {
+        code: 200,
+        data: parsed,
+        success: true,
+      } as MexcApiResponse;
     } catch (error) {
       // Handle AbortError from timeout
       if (error instanceof Error && error.name === "AbortError") {
@@ -110,10 +126,7 @@ export class MexcCoreHttpClient {
     options: RequestInit = {}
   ): Promise<MexcApiResponse> {
     // Add authentication to URL and headers
-    const { authenticatedUrl, authHeaders } = this.generateAuthUrlAndHeaders(
-      url,
-      options
-    );
+    const { authenticatedUrl, authHeaders } = this.generateAuthUrlAndHeaders(url, options);
 
     return this.makeRequest(authenticatedUrl, {
       ...options,
@@ -218,10 +231,8 @@ export class MexcCoreHttpClient {
 
     // For GET requests, use JSON content type; for POST use form data
     const method = options.method?.toUpperCase() || "GET";
-    const contentType =
-      method === "POST"
-        ? "application/x-www-form-urlencoded"
-        : "application/json";
+    // For MEXC Spot v3, set JSON content-type for signed POSTs when sending params in URL (no body)
+    const contentType = method === "POST" ? "application/json" : "application/json";
 
     const authHeaders = {
       "X-MEXC-APIKEY": this.config.apiKey,

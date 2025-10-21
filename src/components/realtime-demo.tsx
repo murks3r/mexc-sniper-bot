@@ -23,13 +23,13 @@ import {
   Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import {
   useRealtimeBroadcast,
   useRealtimeConnection,
   useRealtimePrices,
   useRealtimeTradingData,
 } from "@/src/hooks/use-supabase-realtime";
-import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {

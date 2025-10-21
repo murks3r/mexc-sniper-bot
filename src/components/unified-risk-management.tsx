@@ -124,7 +124,7 @@ export function UnifiedRiskManagement({
               <Input
                 id="default-buy"
                 type="number"
-                min="10"
+                min="8"
                 max="10000"
                 step="10"
                 value={settings.defaultBuyAmount}

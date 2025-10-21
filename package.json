@@ -39,7 +39,6 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate"
-    
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^2.4.0",
@@ -121,6 +120,7 @@
     "testcontainers": "^11.1.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
+    "undici": "^7.16.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },

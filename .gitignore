@@ -19,6 +19,7 @@
 
 # production
 /build
+/logs
 
 # misc
 .DS_Store
@@ -131,6 +132,26 @@ test_mexc_sniper.db
 .pytest_cache/
 *.coverage
 coverage.xml
+
+# Local cookies/session
+cookies.txt
+
+# Local Postgres cluster
+pgdata/
+
+# Test artifacts
+playwright-report/
+test-results/
+test-results.json
+
+# Temp workspace
+tmp/
+
+# Local dev log directory
+.log/
+
+# Developer utility scripts (local tooling)
+devutils/
 
 # Security reports
 security-report.json

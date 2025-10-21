@@ -102,19 +102,7 @@ export function useSaveApiCredentials() {
 
       // Enhanced debugging for request (development only)
       const requestPayload = JSON.stringify(data);
-      if (process.env.NODE_ENV === "development") {
-        console.info("[DEBUG] Sending API credentials request:", {
-          url: "/api/api-credentials",
-          method: "POST",
-          contentType: "application/json",
-          userId: data.userId,
-          provider: data.provider || "mexc",
-          hasApiKey: !!data.apiKey,
-          hasSecretKey: !!data.secretKey,
-          payloadLength: requestPayload.length,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Redacted: avoid logging sensitive credential operations
 
       const response = await fetch("/api/api-credentials", {
         method: "POST",
@@ -125,36 +113,35 @@ export function useSaveApiCredentials() {
         body: requestPayload,
       });
 
-      if (process.env.NODE_ENV === "development") {
-        console.info("[DEBUG] API credentials response:", {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok,
-          headers: Object.fromEntries(response.headers.entries()),
-        });
-      }
+      // Redacted: avoid logging sensitive credential operations
 
       if (!response.ok) {
-        let errorDetails: any;
+        let errorDetails: any = null;
+        let fallback = `HTTP ${response.status}: ${response.statusText}`;
+
         try {
+          // Try to parse JSON error payload first
           errorDetails = await response.json();
-          console.error(
-            "[DEBUG] API credentials error response:",
-            errorDetails
-          );
+          // Redacted: avoid logging sensitive credential operations
         } catch (parseError) {
+          // If parsing fails, capture the raw text for clarity
           console.error("[DEBUG] Failed to parse error response:", parseError);
-          errorDetails = {
-            error: `HTTP ${response.status}: ${response.statusText}`,
-            details: "Failed to parse error response",
-          };
+          try {
+            const rawText = await response.text();
+            if (rawText) {
+              fallback = `${fallback} – ${rawText}`;
+            }
+          } catch (textError) {
+            console.error("[DEBUG] Failed to read error response text:", textError);
+          }
         }
 
-        throw new Error(
-          errorDetails.error ||
-            errorDetails.message ||
-            "Failed to save API credentials"
-        );
+        const extractedMessage = errorDetails?.error || errorDetails?.message;
+        const finalMessage = extractedMessage
+          ? `Failed to save API credentials: ${extractedMessage}`
+          : `Failed to save API credentials: ${fallback}`;
+
+        throw new Error(finalMessage);
       }
 
       return response.json();
@@ -250,13 +237,7 @@ export function useTestApiCredentials() {
         );
       }
 
-      if (process.env.NODE_ENV === "development") {
-        console.info("[DEBUG] Testing API credentials:", {
-          userId,
-          provider,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Redacted: avoid logging sensitive credential operations
 
       const response = await fetch("/api/api-credentials/test", {
         method: "POST",
@@ -267,17 +248,13 @@ export function useTestApiCredentials() {
         body: JSON.stringify({ userId, provider }),
       });
 
-      console.info("[DEBUG] API credentials test response:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
+      // Redacted: avoid logging sensitive credential operations
 
       if (!response.ok) {
         let errorDetails: any;
         try {
           errorDetails = await response.json();
-          console.error("[DEBUG] API credentials test error:", errorDetails);
+          // Redacted: avoid logging sensitive credential operations
         } catch (parseError) {
           console.error(
             "[DEBUG] Failed to parse test error response:",
@@ -297,7 +274,7 @@ export function useTestApiCredentials() {
       }
 
       const result = await response.json();
-      console.info("[DEBUG] API credentials test success:", result);
+      // Redacted: avoid logging sensitive credential operations
 
       return {
         success: true,
@@ -308,9 +285,7 @@ export function useTestApiCredentials() {
       };
     },
     onSuccess: (_data, variables) => {
-      console.info(
-        "[DEBUG] API credentials test succeeded, invalidating status caches"
-      );
+      // Redacted: avoid logging sensitive credential operations
 
       // Invalidate all related caches when credentials test succeeds
       // This fixes the status synchronization issue identified by the swarm
@@ -354,9 +329,7 @@ export function useTestApiCredentials() {
         ],
       });
 
-      console.info(
-        "[DEBUG] Cache invalidation completed - status should update immediately"
-      );
+      // Redacted: avoid logging sensitive credential operations
     },
   });
 }

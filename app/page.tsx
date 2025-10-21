@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useAuth } from "../src/components/auth/supabase-auth-provider";
 import {
   ClientSafeWrapper,
   useIsClient,
@@ -26,7 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../src/components/ui/card";
-import { useAuth } from "../src/components/auth/supabase-auth-provider";
 
 function AuthenticatedRedirect() {
   const { user, isLoading } = useAuth();

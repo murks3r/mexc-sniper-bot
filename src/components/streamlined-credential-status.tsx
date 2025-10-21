@@ -79,8 +79,8 @@ export function StreamlinedCredentialStatus({
       // Validate with Zod
       return UnifiedStatusSchema.parse(result.data);
     },
-    staleTime: 300000, // 5 minutes to dramatically reduce requests
-    refetchInterval: autoRefresh ? 300000 : false, // 5 minutes instead of 60 seconds
+    staleTime: 30000, // 30 seconds for responsive updates
+    refetchInterval: autoRefresh ? 60000 : false, // 1 minute for real-time trading status
     retry: (failureCount, _error) => failureCount < 2,
   });
 

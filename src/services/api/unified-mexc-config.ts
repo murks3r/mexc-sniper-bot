@@ -76,7 +76,11 @@ export const DEFAULT_CONFIG: Required<UnifiedMexcConfigV2> = {
 export function mergeConfig(
   userConfig: Partial<UnifiedMexcConfigV2> = {}
 ): Required<UnifiedMexcConfigV2> {
-  return { ...DEFAULT_CONFIG, ...userConfig };
+  // Avoid overriding defaults with undefined values
+  const sanitized = Object.fromEntries(
+    Object.entries(userConfig).filter(([, value]) => value !== undefined)
+  ) as Partial<UnifiedMexcConfigV2>;
+  return { ...DEFAULT_CONFIG, ...sanitized } as Required<UnifiedMexcConfigV2>;
 }
 
 /**

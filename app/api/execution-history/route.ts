@@ -15,18 +15,11 @@ export async function GET(request: NextRequest) {
     const fromDate = searchParams.get("fromDate"); // Unix timestamp
     const toDate = searchParams.get("toDate"); // Unix timestamp
 
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing required parameter: userId",
-        },
-        { status: 400 }
-      );
-    }
-
     // Build query conditions
-    const conditions = [eq(executionHistory.userId, userId)];
+    const conditions: any[] = [];
+    if (userId) {
+      conditions.push(eq(executionHistory.userId, userId));
+    }
 
     if (action) {
       conditions.push(eq(executionHistory.action, action));
@@ -55,11 +48,10 @@ export async function GET(request: NextRequest) {
     // Get execution history with pagination and error handling
     let executions;
     try {
+      const base = db.select().from(executionHistory);
+      const filtered = conditions.length ? base.where(and(...conditions)) : base;
       executions = await Promise.race([
-        db
-          .select()
-          .from(executionHistory)
-          .where(and(...conditions))
+        filtered
           .orderBy(desc(executionHistory.executedAt))
           .limit(limit)
           .offset(offset),

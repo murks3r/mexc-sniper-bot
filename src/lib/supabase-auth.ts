@@ -1,9 +1,8 @@
 import { type CookieOptions, createServerClient } from "@supabase/ssr";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { db, hasSupabaseConfig } from "../db";
+import { db } from "../db";
 import { user as originalUser } from "../db/schemas/auth";
-import { users as supabaseUsers } from "../db/schemas/supabase-auth";
 
 export interface SupabaseUser {
   id: string;
@@ -142,8 +141,8 @@ export async function isAuthenticated(): Promise<boolean> {
  */
 export async function syncUserWithDatabase(supabaseUser: SupabaseUser) {
   try {
-    const isSupabase = hasSupabaseConfig();
-    const userTable = isSupabase ? supabaseUsers : originalUser;
+    // Consolidated to always use auth.user
+    const userTable = originalUser;
 
     // Check if user exists in our database
     const existingUser = await db
@@ -161,15 +160,8 @@ export async function syncUserWithDatabase(supabaseUser: SupabaseUser) {
         username: supabaseUser.username,
         emailVerified: supabaseUser.emailVerified || false,
         image: supabaseUser.picture,
-        ...(isSupabase
-          ? {
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            }
-          : {
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            }),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       await db.insert(userTable).values(newUserData);
@@ -205,8 +197,8 @@ export async function syncUserWithDatabase(supabaseUser: SupabaseUser) {
  */
 export async function getUserFromDatabase(supabaseId: string) {
   try {
-    const isSupabase = hasSupabaseConfig();
-    const userTable = isSupabase ? supabaseUsers : originalUser;
+    // Consolidated to always use auth.user
+    const userTable = originalUser;
 
     const users = await db
       .select()

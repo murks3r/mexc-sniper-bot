@@ -87,12 +87,14 @@ export function useEnhancedPatterns(options?: {
   confidenceThreshold?: number;
   patternTypes?: string[];
   includeAdvanceDetection?: boolean;
+  enabled?: boolean;
 }) {
   const {
     enableAI = true,
     confidenceThreshold = 70,
     patternTypes = ["ready_state", "pre_ready"],
     includeAdvanceDetection = true,
+    enabled = true,
   } = options || {};
 
   return useQuery({
@@ -142,6 +144,7 @@ export function useEnhancedPatterns(options?: {
     retry: 2,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    enabled,
   });
 }
 

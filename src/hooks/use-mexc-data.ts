@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type { ApiResponse } from "@/src/lib/api-response";
 import { queryKeys } from "@/src/lib/query-client";
-import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type {
   CalendarEntry,
   SymbolEntry,
 } from "@/src/services/api/mexc-unified-exports";
 
 // MEXC Calendar Data Hook
-export function useMexcCalendar() {
+export function useMexcCalendar(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: queryKeys.mexcCalendar(),
     queryFn: async () => {
@@ -31,6 +32,7 @@ export function useMexcCalendar() {
     refetchInterval: false, // Disable automatic refetch to prevent storms
     refetchOnWindowFocus: false, // Don't refetch on window focus
     placeholderData: [], // Prevent loading flicker
+    enabled,
     retry: (_failureCount, error) => {
       // Don't retry auth errors
       const errorMessage = error?.message || "";
@@ -325,8 +327,9 @@ export function useUpcomingLaunches() {
 }
 
 // Hook for ready launches (upcoming coin launches within 4 hours)
-export function useReadyLaunches() {
-  const { data: calendar, ...rest } = useMexcCalendar();
+export function useReadyLaunches(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
+  const { data: calendar, ...rest } = useMexcCalendar({ enabled });
 
   const readyLaunches = Array.isArray(calendar)
     ? calendar.filter((entry: CalendarEntry) => {

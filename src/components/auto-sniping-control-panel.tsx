@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import { z } from "zod";
 import { queryKeys } from "../lib/query-client";
+import { useStatusRefresh } from "../hooks/use-status-refresh";
 import { StreamlinedCredentialStatus } from "./streamlined-credential-status";
 import { StreamlinedWorkflowStatus } from "./streamlined-workflow-status";
 import { Alert, AlertDescription } from "./ui/alert";
@@ -27,6 +28,7 @@ import {
 } from "./ui/card";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
+import { useToast } from "./ui/use-toast";
 
 // Zod schema for auto-sniping configuration
 const AutoSnipingConfigSchema = z.object({
@@ -65,9 +67,12 @@ export function AutoSnipingControlPanel({
   className = "",
 }: AutoSnipingControlPanelProps) {
   const queryClient = useQueryClient();
+  const { refreshAllStatus } = useStatusRefresh();
+  const { toast } = useToast();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [intendedEnabled, setIntendedEnabled] = useState<boolean | null>(null);
 
-  // Fetch sniping status - FIXED: Remove conflicting refetchInterval
+  // Fetch sniping status with responsive updates
   const {
     data: status,
     isLoading: statusLoading,
@@ -75,16 +80,27 @@ export function AutoSnipingControlPanel({
   } = useQuery({
     queryKey: queryKeys.autoSniping.status(),
     queryFn: async (): Promise<SnipingStatus> => {
-      const response = await fetch("/api/auto-sniping/status");
+      console.log("🔄 Fetching auto-sniping status...");
+      const response = await fetch("/api/auto-sniping/status", {
+        credentials: "include", // Include authentication cookies
+        cache: "no-store", // Disable browser cache
+      });
       const result = await response.json();
 
       if (!result.success) {
         throw new Error(result.error || "Failed to fetch sniping status");
       }
 
-      return SnipingStatusSchema.parse(result.data);
+      const parsedStatus = SnipingStatusSchema.parse(result.data);
+      console.log("✅ Status fetched:", { isActive: parsedStatus.isActive });
+      return parsedStatus;
     },
-    staleTime: 300000, // 5 minutes to reduce requests
+    staleTime: 0, // Always consider data stale to ensure fresh fetch on mount
+    gcTime: 0, // Don't keep data in cache after component unmounts (formerly cacheTime)
+    refetchInterval: 10000, // Auto-refresh every 10 seconds for real-time status
+    refetchOnMount: "always", // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnReconnect: true, // Refetch on network reconnection
     retry: 2,
   });
 
@@ -92,7 +108,9 @@ export function AutoSnipingControlPanel({
   const { data: config, isLoading: configLoading } = useQuery({
     queryKey: queryKeys.autoSniping.config(),
     queryFn: async (): Promise<AutoSnipingConfig> => {
-      const response = await fetch("/api/auto-sniping/config");
+      const response = await fetch("/api/auto-sniping/config", {
+        credentials: "include", // Include authentication cookies
+      });
       const result = await response.json();
 
       if (!result.success) {
@@ -109,24 +127,88 @@ export function AutoSnipingControlPanel({
     mutationFn: async (enabled: boolean) => {
       const response = await fetch("/api/auto-sniping/control", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        credentials: "include", // Include cookies for authentication
         body: JSON.stringify({ action: enabled ? "start" : "stop" }),
       });
+      
+      // Handle authentication errors specifically
+      if (response.status === 401) {
+        throw new Error("Please sign in to use auto-sniping functionality. Redirecting to login...");
+      }
+      
       const result = await response.json();
 
       if (!result.success) {
+        // Provide specific error messages for common issues
+        if (result.error?.includes("Authentication required")) {
+          throw new Error("Authentication required. Please refresh the page and sign in again.");
+        } else if (result.error?.includes("initialization")) {
+          throw new Error("Service initialization failed. Check your MEXC API credentials in environment settings.");
+        }
+        
         throw new Error(
           result.error || `Failed to ${enabled ? "start" : "stop"} auto-sniping`
         );
       }
 
-      return result.data;
+      // Return both the data and the enabled state for immediate UI update
+      return { ...result.data, enabled };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.autoSniping.status(),
+    onMutate: async (enabled: boolean) => {
+      // Cancel any outgoing refetches to avoid race conditions
+      await queryClient.cancelQueries({ queryKey: queryKeys.autoSniping.status() });
+      const prev = queryClient.getQueryData<SnipingStatus>(queryKeys.autoSniping.status());
+      // Optimistically update status
+      queryClient.setQueryData(queryKeys.autoSniping.status(), (old: any) => ({
+        ...(old || {}),
+        isActive: enabled,
+      }));
+      return { previousStatus: prev } as { previousStatus?: SnipingStatus };
+    },
+    onSuccess: async (data, enabled) => {
+      console.log(`✅ Auto-sniping ${enabled ? 'started' : 'stopped'} successfully`, data);
+      
+      // Immediately update the status query with the returned status from the control endpoint
+      const serverIsActive = data?.status?.isActive;
+      queryClient.setQueryData(queryKeys.autoSniping.status(), (old: any) => ({
+        ...(old || {}),
+        isActive: typeof serverIsActive === "boolean" ? serverIsActive : enabled,
+        ...(data.status ? {
+          activeTargets: data.status.activeTargets || old?.activeTargets || 0,
+          readyTargets: data.status.readyTargets || old?.readyTargets || 0,
+        } : {}),
+      }));
+      
+      // Invalidate to fetch fresh data in the background
+      await queryClient.invalidateQueries({ queryKey: queryKeys.autoSniping.status() });
+    },
+    onError: (error, _vars, context) => {
+      console.error("Auto-sniping control error:", error);
+      // Rollback optimistic update
+      if (context?.previousStatus) {
+        queryClient.setQueryData(queryKeys.autoSniping.status(), context.previousStatus);
+      }
+      toast({
+        title: "Auto-sniping action failed",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
       });
+      
+      // Handle authentication errors by redirecting to login
+      if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
+        // Redirect to auth page after a brief delay
+        setTimeout(() => {
+          window.location.href = "/auth?redirect_to=" + encodeURIComponent(window.location.pathname);
+        }, 2000);
+      }
     },
+    onSettled: async () => {
+      setIntendedEnabled(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.autoSniping.status() });
+    }
   });
 
   const updateConfigMutation = useMutation({
@@ -151,8 +233,58 @@ export function AutoSnipingControlPanel({
     },
   });
 
+  const createTargetsFromPatternsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/snipe-targets?fromPatterns=true", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        credentials: "include", // Include cookies for authentication
+      });
+      
+      // Handle authentication errors specifically
+      if (response.status === 401) {
+        throw new Error("Please sign in to create snipe targets. Redirecting to login...");
+      }
+      
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result.error || "Failed to create snipe targets from pattern detection"
+        );
+      }
+
+      return result.data;
+    },
+    onSuccess: async (data) => {
+      console.log(`✅ Created ${data.targetsCreated} snipe targets from pattern detection`, data);
+      
+      // Refresh all status and invalidate snipe targets queries
+      await refreshAllStatus();
+      queryClient.invalidateQueries({ queryKey: ["snipe-targets"] });
+    },
+    onError: (error) => {
+      console.error("Create targets from patterns error:", error);
+      
+      // Handle authentication errors by redirecting to login
+      if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
+        setTimeout(() => {
+          window.location.href = "/auth?redirect_to=" + encodeURIComponent(window.location.pathname);
+        }, 2000);
+      }
+    }
+  });
+
   const handleToggleSniping = () => {
-    toggleSnipingMutation.mutate(!status?.isActive);
+    const next = !status?.isActive;
+    setIntendedEnabled(next);
+    toggleSnipingMutation.mutate(next);
+  };
+
+  const handleCreateTargetsFromPatterns = () => {
+    createTargetsFromPatternsMutation.mutate();
   };
 
   const handleConfigUpdate = (key: keyof AutoSnipingConfig, value: any) => {
@@ -252,14 +384,19 @@ export function AutoSnipingControlPanel({
             <Button
               size="lg"
               onClick={handleToggleSniping}
-              disabled={toggleSnipingMutation.isPending}
+              disabled={toggleSnipingMutation.isPending || statusLoading}
               className={
                 status?.isActive
                   ? "bg-red-600 hover:bg-red-700"
                   : "bg-green-600 hover:bg-green-700"
               }
             >
-              {status?.isActive ? (
+              {toggleSnipingMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  {intendedEnabled ? "Starting..." : "Stopping..."}
+                </>
+              ) : status?.isActive ? (
                 <>
                   <Pause className="h-4 w-4 mr-2" />
                   Stop Sniping
@@ -271,6 +408,9 @@ export function AutoSnipingControlPanel({
                 </>
               )}
             </Button>
+          {/* Errors are now surfaced via toast; no inline error block to avoid layout shift */}
+            
+
           </div>
 
           {/* Status Metrics */}

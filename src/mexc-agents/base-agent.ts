@@ -64,8 +64,39 @@ export class BaseAgent {
   protected openai: OpenAI;
   protected config: AgentConfig;
   protected responseCache: Map<string, CachedResponse>;
-  private readonly defaultCacheTTL = CACHE_CONSTANTS.AGENT_CACHE_TTL_MS;
+  private readonly defaultCacheTTL = CACHE_CONSTANTS.DEFAULT_TTL;
   private cacheCleanupInterval?: NodeJS.Timeout;
+
+  // Global lightweight concurrency limiter for OpenAI calls
+  private static aiMaxConcurrency = Number(
+    process.env.AI_MAX_CONCURRENCY || 2
+  );
+  private static aiInFlight = 0;
+  private static aiQueue: Array<() => void> = [];
+
+  private static acquireAiSlot(): Promise<void> {
+    return new Promise((resolve) => {
+      if (BaseAgent.aiInFlight < BaseAgent.aiMaxConcurrency) {
+        BaseAgent.aiInFlight++;
+        resolve();
+      } else {
+        BaseAgent.aiQueue.push(() => {
+          BaseAgent.aiInFlight++;
+          resolve();
+        });
+      }
+    });
+  }
+
+  private static releaseAiSlot(): void {
+    BaseAgent.aiInFlight = Math.max(0, BaseAgent.aiInFlight - 1);
+    const next = BaseAgent.aiQueue.shift();
+    if (next) next();
+  }
+
+  private static sleep(ms: number): Promise<void> {
+    return new Promise((r) => setTimeout(r, ms));
+  }
 
   constructor(config: AgentConfig) {
     this.config = {
@@ -95,7 +126,10 @@ export class BaseAgent {
 
     // Initialize enhanced agent cache for this agent
     if (this.config.cacheEnabled) {
-      initializeAgentCache(this.config.name).catch((error) => {
+      initializeAgentCache({
+        maxSize: CACHE_CONSTANTS.MAX_SIZE,
+        defaultTtl: this.defaultCacheTTL,
+      }).catch((error) => {
         const safeError = toSafeError(error);
         this.logger.error(
           `[${this.config.name}] Failed to initialize enhanced cache:`,
@@ -235,6 +269,8 @@ export class BaseAgent {
       }
     }
 
+    // Acquire concurrency slot to avoid burst 429s
+    await BaseAgent.acquireAiSlot();
     try {
       // FIXED: Handle case where OpenAI API key is not available
       if (!this.openai) {
@@ -243,7 +279,14 @@ export class BaseAgent {
         );
       }
 
-      const response = await this.openai.chat.completions.create({
+      // Exponential backoff with jitter for 429/5xx
+      const maxAttempts = Number(process.env.AI_MAX_RETRIES || 3);
+      let attempt = 0;
+      let lastError: any;
+      let response: any;
+      while (attempt < maxAttempts) {
+        try {
+          response = await this.openai.chat.completions.create({
         model: this.config.model || "gpt-4o",
         messages: [
           {
@@ -255,7 +298,26 @@ export class BaseAgent {
         temperature: this.config.temperature || 0.7,
         max_tokens: this.config.maxTokens || 2000,
         ...options,
-      });
+          });
+          break;
+        } catch (err: any) {
+          lastError = err;
+          const status = err?.status ?? err?.code;
+          const retriable = status === 429 || (status >= 500 && status < 600);
+          attempt++;
+          if (!retriable || attempt >= maxAttempts) {
+            throw err;
+          }
+          // backoff: 500ms * 2^attempt + jitter
+          const base = 500 * Math.pow(2, attempt - 1);
+          const jitter = Math.floor(Math.random() * 250);
+          const delay = Math.min(base + jitter, 5000);
+          this.logger.warn(
+            `[${this.config.name}] OpenAI retry ${attempt}/${maxAttempts} after ${delay}ms due to ${status}`
+          );
+          await BaseAgent.sleep(delay);
+        }
+      }
 
       const content =
         "choices" in response
@@ -284,17 +346,17 @@ export class BaseAgent {
         const context = { options, agent: this.config.name };
 
         // Convert base-agent AgentResponse to common-interfaces AgentResponse
-        const commonAgentResponse: import("@/src/types/common-interfaces").AgentResponse =
-          {
-            success: true,
-            data: agentResponse.content,
-            timestamp: Date.now(),
-            processingTime:
-              agentResponse.metadata.executionTimeMs || executionTime,
-            confidence: 0.9, // Default confidence for AI responses
-            reasoning: `AI response from ${this.config.name}`,
-            metadata: agentResponse.metadata,
-          };
+        const commonAgentResponse: import("@/src/lib/enhanced-agent-cache").EnhancedAgentResponse = {
+          success: true,
+          data: agentResponse.content,
+          content: agentResponse.content,
+          timestamp: Date.now(),
+          processingTime:
+            agentResponse.metadata.executionTimeMs || executionTime,
+          confidence: 0.9,
+          reasoning: `AI response from ${this.config.name}`,
+          metadata: agentResponse.metadata as Record<string, any>,
+        };
 
         await globalEnhancedAgentCache.setAgentResponse(
           this.config.name,
@@ -321,12 +383,83 @@ export class BaseAgent {
       return agentResponse;
     } catch (error) {
       const safeError = toSafeError(error);
+      // Smart fallback: on 429 or 5xx, attempt to return cached response if available
+      try {
+        const status = (error as any)?.status ?? (error as any)?.code;
+        const retriable = status === 429 || (typeof status === "number" && status >= 500 && status < 600);
+        if (this.config.cacheEnabled && retriable) {
+          const input = JSON.stringify(messages);
+          const context = { options, agent: this.config.name };
+          const enhancedCached = await globalEnhancedAgentCache.getAgentResponse(
+            this.config.name,
+            input,
+            context
+          );
+          if (enhancedCached) {
+            this.logger.warn(
+              `[${this.config.name}] Using cached response due to OpenAI error ${status}`
+            );
+            // Map cached common AgentResponse to base agent response
+            return {
+              content: String(enhancedCached.data ?? ""),
+              data: enhancedCached.data,
+              metadata: {
+                agent: this.config.name,
+                timestamp: new Date(enhancedCached.timestamp).toISOString(),
+                fromCache: true,
+                cached: true,
+                executionTimeMs: enhancedCached.processingTime,
+                error: false,
+              },
+            } as AgentResponse;
+          }
+
+          // Check local cache as secondary fallback
+          const cacheKey = this.generateCacheKey(messages, options);
+          const cached = this.responseCache.get(cacheKey);
+          if (cached && this.isCacheValid(cached)) {
+            this.logger.warn(
+              `[${this.config.name}] Using local cached response due to OpenAI error ${status}`
+            );
+            return {
+              ...cached.response,
+              metadata: {
+                ...cached.response.metadata,
+                fromCache: true,
+              },
+            };
+          }
+        }
+      } catch {
+        // ignore fallback retrieval errors; continue to log and throw
+      }
+      // If retriable (e.g., 429) and no cache available, degrade gracefully
+      const status = (error as any)?.status ?? (error as any)?.code;
+      const retriable = status === 429 || (typeof status === "number" && status >= 500 && status < 600);
+      if (retriable) {
+        this.logger.warn(
+          `[${this.config.name}] OpenAI unavailable (${status}); returning degraded response`
+        );
+        const executionTime = performance.now() - startTime;
+        return {
+          content: "",
+          data: undefined,
+          metadata: {
+            agent: this.config.name,
+            timestamp: new Date().toISOString(),
+            fromCache: false,
+            executionTimeMs: executionTime,
+            error: true,
+            errorCode: String(status),
+          },
+        };
+      }
+
+      // Non-retriable: log and rethrow
       const errorLoggingService = ErrorLoggingService.getInstance();
       const agentError = new Error(
         `Agent ${this.config.name} failed to process request: ${safeError.message}`
       );
-
-      // Log with proper context
       await errorLoggingService.logError(agentError, {
         agent: this.config.name,
         operation: "processWithOpenAI",
@@ -334,8 +467,9 @@ export class BaseAgent {
         originalError: safeError.message,
         stackTrace: safeError.stack,
       });
-
       throw agentError;
+    } finally {
+      BaseAgent.releaseAiSlot();
     }
   }
 

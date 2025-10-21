@@ -132,7 +132,11 @@ export function usePortfolio(userId: string) {
 }
 
 // Hook to get snipe targets
-export function useSnipeTargets(userId: string, status?: string) {
+export function useSnipeTargets(
+  userId: string,
+  status?: string,
+  options?: { enabled?: boolean; allowSystem?: boolean }
+) {
   const { user, isAuthenticated } = useAuth();
 
   return useQuery({
@@ -186,11 +190,14 @@ export function useSnipeTargets(userId: string, status?: string) {
       // No retries to prevent storms
       return false;
     },
-    enabled:
-      !!userId &&
-      userId !== "anonymous" &&
-      isAuthenticated &&
-      user?.id === userId,
+    enabled: (() => {
+      const baseEnabled = options?.enabled ?? true;
+      if (!userId || userId === "anonymous") return false;
+      // Allow fetching system-owned targets when explicitly requested
+      if (userId === "system" && options?.allowSystem) return baseEnabled;
+      // Default: only allow when requesting own targets
+      return baseEnabled && isAuthenticated && user?.id === userId;
+    })(),
   });
 }
 
@@ -199,7 +206,7 @@ export function useCreateSnipeTarget() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (snipeTarget: {
+    mutationFn: async (_snipeTarget: {
       userId: string;
       vcoinId: string;
       symbolName: string;
@@ -215,34 +222,12 @@ export function useCreateSnipeTarget() {
       confidenceScore?: number;
       riskLevel?: string;
     }) => {
-      const response = await fetch("/api/snipe-targets", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Include authentication cookies
-        body: JSON.stringify(snipeTarget),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to create snipe target: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || "Failed to create snipe target");
-      }
-
-      return data.data;
+      throw new Error(
+        "Manual snipe target creation is disabled. Targets are created automatically."
+      );
     },
-    onSuccess: (data) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: ["snipeTargets", data.userId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["portfolio", data.userId] });
+    onSuccess: (_data) => {
+      // No-op; creation is disabled
     },
   });
 }

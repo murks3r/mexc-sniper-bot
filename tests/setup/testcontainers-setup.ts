@@ -61,12 +61,16 @@ async function startDockerContainer(): Promise<string> {
     
     console.log(`Starting Docker container: ${containerName} on port ${port}`);
     
-    execSync(`docker run -d --name ${containerName} \
-      -p ${port}:5432 \
-      -e POSTGRES_DB=test_db \
-      -e POSTGRES_USER=test_user \
-      -e POSTGRES_PASSWORD=test_password \
-      postgres:15-alpine`, { stdio: 'inherit' });
+    const dockerCommand = [
+      'docker', 'run', '-d', '--name', containerName,
+      '-p', `${port}:5432`,
+      '-e', 'POSTGRES_DB=test_db',
+      '-e', 'POSTGRES_USER=test_user', 
+      '-e', 'POSTGRES_PASSWORD=test_password',
+      'postgres:15-alpine'
+    ].join(' ');
+    
+    execSync(dockerCommand, { stdio: 'inherit' });
     
     await new Promise(resolve => setTimeout(resolve, 5000));
     

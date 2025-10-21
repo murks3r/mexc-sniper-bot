@@ -275,7 +275,8 @@ export class CalendarToDatabaseSyncService {
             vcoinId: launch.vcoinId,
             symbolName,
             positionSizeUsdt: 100, // Default position size
-            stopLossPercent: 5.0, // Default 5% stop loss
+            stopLossPercent: 15.0, // Default 15% stop loss
+            takeProfitCustom: 25.0, // Default 25% take profit
             targetExecutionTime: new Date(launch.firstOpenTime),
           });
           console.debug(`✅ Target inserted successfully:`, insertResult);

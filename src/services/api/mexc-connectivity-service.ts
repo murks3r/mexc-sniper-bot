@@ -252,11 +252,7 @@ export class MexcConnectivityService {
 
         if (hasUserCredentials) {
           credentialSource = "database";
-          console.info("[MexcConnectivityService] User credentials found", {
-            requestId: context?.requestId,
-            hasApiKey: !!userCredentials?.apiKey,
-            hasSecretKey: !!userCredentials?.secretKey,
-          });
+          // Redacted: avoid logging sensitive credential operations
         }
       } catch (error) {
         // Handle encryption service errors specifically
@@ -300,10 +296,7 @@ export class MexcConnectivityService {
     userCredentials?: any,
     context?: ConnectivityTestContext
   ) {
-    console.info("[MexcConnectivityService] Initializing MEXC service", {
-      requestId: context?.requestId,
-      hasUserCredentials: !!userCredentials,
-    });
+    // Redacted: avoid logging sensitive credential operations
 
     return getRecommendedMexcService(userCredentials);
   }

@@ -17,6 +17,17 @@ import { globalTimeoutMonitor } from '../utils/timeout-utilities'
 // Make React globally available for JSX without imports
 globalThis.React = React
 
+// Ensure fetch is available in test environment
+// Node.js 18+ has fetch built-in, but we need to ensure it's available globally
+if (typeof globalThis.fetch === 'undefined') {
+  // Import fetch from Node.js built-in modules
+  const { fetch, Headers, Request, Response } = require('undici')
+  globalThis.fetch = fetch
+  globalThis.Headers = Headers
+  globalThis.Request = Request
+  globalThis.Response = Response
+}
+
 // Type definitions for global test environment
 declare global {
   var __TEST_ENV__: boolean

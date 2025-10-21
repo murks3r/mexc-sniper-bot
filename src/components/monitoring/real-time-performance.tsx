@@ -160,6 +160,8 @@ export const RealTimePerformance = memo(function RealTimePerformance() {
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  // Prepare skeleton items outside of conditional branches to keep hook order stable
+  const skeletonItems = useSkeletonItems(4, "h-32 bg-gray-100 rounded animate-pulse");
 
   // Memoize utility functions to prevent recreation on every render
   const getTrendIcon = useCallback((trend: string, change: number) => {
@@ -278,11 +280,9 @@ export const RealTimePerformance = memo(function RealTimePerformance() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {useSkeletonItems(4, "h-32 bg-gray-100 rounded animate-pulse").map(
-              (item) => (
-                <div key={item.key} className={item.className} />
-              )
-            )}
+            {skeletonItems.map((item) => (
+              <div key={item.key} className={item.className} />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -454,36 +454,42 @@ export const RealTimePerformance = memo(function RealTimePerformance() {
                       </div>
                     }
                   >
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={chartMetrics}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="timestamp"
-                          tickFormatter={(time: number) =>
-                            new Date(time).toLocaleTimeString().slice(0, 5)
-                          }
-                        />
-                        <YAxis />
-                        <Tooltip
-                          labelFormatter={(time: number) =>
-                            new Date(time).toLocaleTimeString()
-                          }
-                          formatter={durationTooltipFormatter}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="responseTime"
-                          stroke="#8884d8"
-                          name="Response Time (ms)"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="throughput"
-                          stroke="#82ca9d"
-                          name="Throughput"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {chartMetrics.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartMetrics}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="timestamp"
+                            tickFormatter={(time: any) =>
+                              new Date(String(time)).toLocaleTimeString().slice(0, 5)
+                            }
+                          />
+                          <YAxis />
+                          <Tooltip
+                            labelFormatter={(time: any) =>
+                              new Date(String(time)).toLocaleTimeString()
+                            }
+                            formatter={durationTooltipFormatter}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="responseTime"
+                            stroke="#8884d8"
+                            name="Response Time (ms)"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="throughput"
+                            stroke="#82ca9d"
+                            name="Throughput"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground border rounded">
+                        No real-time data yet
+                      </div>
+                    )}
                   </Suspense>
                 </ErrorBoundary>
               </CardContent>
@@ -512,40 +518,46 @@ export const RealTimePerformance = memo(function RealTimePerformance() {
                       </div>
                     }
                   >
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={chartMetrics}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="timestamp"
-                          tickFormatter={(time: number) =>
-                            new Date(time).toLocaleTimeString().slice(0, 5)
-                          }
-                        />
-                        <YAxis domain={[0, 100]} />
-                        <Tooltip
-                          labelFormatter={(time: number) =>
-                            new Date(time).toLocaleTimeString()
-                          }
-                          formatter={percentageTooltipFormatter}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="cpuUsage"
-                          stackId="1"
-                          stroke="#8884d8"
-                          fill="#8884d8"
-                          name="CPU Usage"
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="memoryUsage"
-                          stackId="1"
-                          stroke="#82ca9d"
-                          fill="#82ca9d"
-                          name="Memory Usage"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {chartMetrics.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={chartMetrics}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="timestamp"
+                            tickFormatter={(time: any) =>
+                              new Date(String(time)).toLocaleTimeString().slice(0, 5)
+                            }
+                          />
+                          <YAxis domain={[0, 100]} />
+                          <Tooltip
+                            labelFormatter={(time: any) =>
+                              new Date(String(time)).toLocaleTimeString()
+                            }
+                            formatter={percentageTooltipFormatter}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="cpuUsage"
+                            stackId="1"
+                            stroke="#8884d8"
+                            fill="#8884d8"
+                            name="CPU Usage"
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="memoryUsage"
+                            stackId="1"
+                            stroke="#82ca9d"
+                            fill="#82ca9d"
+                            name="Memory Usage"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground border rounded">
+                        No real-time data yet
+                      </div>
+                    )}
                   </Suspense>
                 </ErrorBoundary>
               </CardContent>

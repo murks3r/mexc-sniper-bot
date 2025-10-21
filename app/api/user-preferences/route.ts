@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
-import { db, type NewUserPreferences, userPreferences, user } from "@/src/db";
+import { db, type NewUserPreferences, user, userPreferences } from "@/src/db";
 import {
   apiResponse,
   createSuccessResponse,
@@ -12,12 +12,17 @@ import {
   withApiErrorHandling,
   withDatabaseErrorHandling,
 } from "@/src/lib/central-api-error-handler";
-import { createSupabaseAdminClient } from "@/src/lib/supabase-auth";
+import { createSupabaseAdminClient, requireAuth } from "@/src/lib/supabase-auth";
 
 // GET /api/user-preferences?userId=xxx
 export const GET = withApiErrorHandling(async (request: NextRequest) => {
+  // Derive user from session; fallback to explicit param only if provided
+  const user = await requireAuth();
   const { searchParams } = new URL(request.url);
-  const userId = validateUserId(searchParams.get("userId"));
+  const paramUserId = searchParams.get("userId");
+  const userId = (paramUserId && typeof paramUserId === "string" && paramUserId.trim().length > 0)
+    ? paramUserId.trim()
+    : user.id;
 
   const result = (await withDatabaseErrorHandling(async () => {
     return await db
@@ -122,10 +127,13 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
 
 // POST /api/user-preferences
 export const POST = withApiErrorHandling(async (request: NextRequest) => {
+  const user = await requireAuth();
   const body = await request.json();
   const { userId, ...data } = body;
 
-  const validatedUserId = validateUserId(userId);
+  const validatedUserId = (userId && typeof userId === "string" && userId.trim().length > 0)
+    ? userId.trim()
+    : user.id;
 
   const updateData: Partial<NewUserPreferences> = {
     userId: validatedUserId,

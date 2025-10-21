@@ -14,10 +14,16 @@ import type { OrderParameters } from "@/src/services/api/mexc-client-types";
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 import { transactionLockService } from "@/src/services/data/transaction-lock-service";
 import { enhancedRiskManagementService } from "@/src/services/risk/enhanced-risk-management-service";
+import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 
 // Create logger at module level like other working routes
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = await requireAuthFromRequest(request);
+    const userId = user.id;
+    console.log(`[MEXC Trade] Request from user: ${user.email} (${userId})`);
+
     const body = await request.json();
     const {
       symbol,
@@ -25,17 +31,9 @@ export async function POST(request: NextRequest) {
       type,
       quantity,
       price,
-      userId,
       snipeTargetId,
       skipLock,
     } = body;
-
-    if (!userId) {
-      return apiResponse(
-        createErrorResponse("User ID required"),
-        HTTP_STATUS.BAD_REQUEST
-      );
-    }
 
     // Get API credentials - try database first, then fallback to environment
     let apiKey: string;
@@ -406,6 +404,17 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("Trading API Error:", { error: error });
+
+    // Check for authentication errors
+    if (error instanceof Error && error.message.includes("Authentication required")) {
+      return apiResponse(
+        createErrorResponse("Authentication required", {
+          message: "Please sign in to execute trades",
+          code: "AUTHENTICATION_REQUIRED",
+        }),
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
 
     return apiResponse(
       createErrorResponse(

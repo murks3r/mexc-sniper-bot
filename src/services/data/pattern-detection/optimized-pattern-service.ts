@@ -203,8 +203,8 @@ export class OptimizedPatternService {
         this.userPreferenceCache[pref.userId] = {
           defaultBuyAmountUsdt: pref.defaultBuyAmountUsdt || 100,
           defaultTakeProfitLevel: pref.defaultTakeProfitLevel || 2,
-          stopLossPercent: pref.stopLossPercent || 15,
-          takeProfitCustom: pref.takeProfitCustom,
+          stopLossPercent: pref.stopLossPercent ?? 15,
+          takeProfitCustom: pref.takeProfitCustom ?? 25,
         };
         this.cacheExpiry.set(`user_pref_${pref.userId}`, now + this.cacheTTL);
       }
@@ -216,6 +216,7 @@ export class OptimizedPatternService {
             defaultBuyAmountUsdt: 100,
             defaultTakeProfitLevel: 2,
             stopLossPercent: 15,
+            takeProfitCustom: 25,
           };
           this.cacheExpiry.set(`user_pref_${userId}`, now + this.cacheTTL);
         }

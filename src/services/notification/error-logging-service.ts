@@ -479,10 +479,11 @@ export class ErrorLoggingService {
    * Initialize logging strategies with fallbacks
    */
   private initializeLoggingStrategies(): void {
+    const enableDbLogging = process.env.ENABLE_DB_LOGS === "true";
     this.loggingStrategies = [
       {
         name: "database",
-        enabled: true,
+        enabled: enableDbLogging,
         priority: 1,
         execute: this.storeInDatabase.bind(this),
         fallback: this.storeInLocalFile.bind(this),

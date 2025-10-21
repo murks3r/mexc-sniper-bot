@@ -12,6 +12,7 @@
  */
 
 import { authenticatedHandler, publicHandler } from "@/src/lib/api-middleware";
+export const runtime = "nodejs";
 import { webSocketAgentBridge } from "@/src/mexc-agents/websocket-agent-bridge";
 import { mexcWebSocketStream } from "@/src/services/data/mexc-websocket-stream";
 import { webSocketServer } from "@/src/services/data/websocket-server";

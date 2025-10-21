@@ -13,10 +13,17 @@ import {
 } from "@/src/lib/api-response";
 import { instrumentedTradingRoute } from "@/src/lib/opentelemetry-api-middleware";
 // Using simple console logger to avoid webpack bundling issues
-import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
+import {
+  type CoreTradingService,
+  getInitializedCoreTrading,
+} from "@/src/services/trading/consolidated/core-trading/base-service";
 
-function getExecutionService() {
-  return getCoreTrading();
+let coreTradingPromise: Promise<CoreTradingService> | null = null;
+async function getExecutionService(): Promise<CoreTradingService> {
+  if (!coreTradingPromise) {
+    coreTradingPromise = getInitializedCoreTrading();
+  }
+  return coreTradingPromise;
 }
 
 /**
@@ -43,8 +50,9 @@ export const GET = instrumentedTradingRoute(
       const includeHistory = searchParams.get("include_history") === "true";
       const includeAlerts = searchParams.get("include_alerts") === "true";
 
-      // Get execution report
-      const report = await getExecutionService().getExecutionReport();
+      // Get execution report (ensure service initialized)
+      const service = await getExecutionService();
+      const report = await service.getExecutionReport();
 
       const responseData = {
         report: {
@@ -106,7 +114,8 @@ export const POST = instrumentedTradingRoute(
       switch (action) {
         case "start_execution":
           try {
-            await getExecutionService().startExecution();
+            const service = await getExecutionService();
+            await service.startExecution();
             return NextResponse.json(
               createSuccessResponse(
                 { status: "started" },
@@ -124,7 +133,7 @@ export const POST = instrumentedTradingRoute(
           }
 
         case "stop_execution":
-          getExecutionService().stopExecution();
+          (await getExecutionService()).stopExecution();
           return NextResponse.json(
             createSuccessResponse(
               { status: "stopped" },
@@ -133,7 +142,7 @@ export const POST = instrumentedTradingRoute(
           );
 
         case "pause_execution":
-          getExecutionService().pauseExecution();
+          (await getExecutionService()).pauseExecution();
           return NextResponse.json(
             createSuccessResponse(
               { status: "paused" },
@@ -143,7 +152,8 @@ export const POST = instrumentedTradingRoute(
 
         case "resume_execution":
           try {
-            await getExecutionService().resumeExecution();
+            const service = await getExecutionService();
+            await service.resumeExecution();
             return NextResponse.json(
               createSuccessResponse(
                 { status: "resumed" },
@@ -160,6 +170,8 @@ export const POST = instrumentedTradingRoute(
             );
           }
 
+        // execute_target action removed to restore previous behavior
+
         case "close_position":
           if (!positionId) {
             return NextResponse.json(
@@ -171,8 +183,8 @@ export const POST = instrumentedTradingRoute(
           }
 
           try {
-            const success =
-              await getExecutionService().closePosition(positionId);
+            const service = await getExecutionService();
+            const success = await service.closePosition(positionId);
             if (!success) {
               return NextResponse.json(
                 createErrorResponse("Failed to close position", {
@@ -200,7 +212,8 @@ export const POST = instrumentedTradingRoute(
 
         case "emergency_close_all":
           try {
-            const closedCount = await getExecutionService().emergencyCloseAll();
+            const service = await getExecutionService();
+            const closedCount = await service.emergencyCloseAll();
             return NextResponse.json(
               createSuccessResponse(
                 { closedCount },
@@ -221,7 +234,7 @@ export const POST = instrumentedTradingRoute(
 
         case "get_active_positions": {
           const activePositions =
-            await getExecutionService().getActivePositions();
+            await (await getExecutionService()).getActivePositions();
           return NextResponse.json(
             createSuccessResponse(
               { positions: activePositions },
@@ -242,7 +255,7 @@ export const POST = instrumentedTradingRoute(
             );
           }
 
-          const acknowledged = getExecutionService().acknowledgeAlert(
+          const acknowledged = (await getExecutionService()).acknowledgeAlert(
             body.alertId
           );
           if (!acknowledged) {
@@ -263,7 +276,7 @@ export const POST = instrumentedTradingRoute(
         }
 
         case "clear_acknowledged_alerts": {
-          const clearedCount = getExecutionService().clearAcknowledgedAlerts();
+          const clearedCount = (await getExecutionService()).clearAcknowledgedAlerts();
           return NextResponse.json(
             createSuccessResponse(
               { clearedCount },
@@ -284,7 +297,8 @@ export const POST = instrumentedTradingRoute(
           }
 
           try {
-            getExecutionService().updateConfig(config);
+            const service = await getExecutionService();
+            service.updateConfig(config);
             return NextResponse.json(
               createSuccessResponse(
                 { updated: true, configKeys: Object.keys(config) },
@@ -302,7 +316,7 @@ export const POST = instrumentedTradingRoute(
           }
 
         case "get_execution_status": {
-          const report = await getExecutionService().getExecutionReport();
+          const report = await (await getExecutionService()).getExecutionReport();
           return NextResponse.json(
             createSuccessResponse(
               {
@@ -400,7 +414,8 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
     }
 
     try {
-      getExecutionService().updateConfig(config);
+      const service = await getExecutionService();
+      service.updateConfig(config);
 
       return NextResponse.json(
         createSuccessResponse(
@@ -438,11 +453,11 @@ export const DELETE = instrumentedTradingRoute(
       console.info("[API] Emergency shutdown requested");
 
       // Stop execution
-      await getExecutionService().stopAutoSniping();
+      const service = await getExecutionService();
+      await service.stopExecution();
 
       // Close all positions
-      const emergencyResult = await getExecutionService().emergencyCloseAll();
-      const closedCount = emergencyResult.data?.closedCount || 0;
+      const closedCount = await service.emergencyCloseAll();
 
       return NextResponse.json(
         createSuccessResponse(

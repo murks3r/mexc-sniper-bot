@@ -79,7 +79,7 @@ export const UnifiedMexcConfigSchema = z.object({
   circuitBreakerResetTime: z.number().default(60000),
 
   // Trading Configuration
-  enablePaperTrading: z.boolean().default(true),
+  enablePaperTrading: z.boolean().default(false),
 
   // Additional Configuration Properties
   enableMetrics: z.boolean().default(true),

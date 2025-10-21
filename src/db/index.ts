@@ -10,11 +10,11 @@ import {
   instrumentDatabaseQuery,
 } from "../lib/opentelemetry-database-instrumentation";
 import * as originalSchema from "./schemas";
-import { supabaseSchema } from "./schemas/supabase-schema";
 // Import specific tables for test container simplified schema
-import { user, session, account, userPreferences } from "./schemas/auth";
-import { snipeTargets, executionHistory, transactions, balanceSnapshots, portfolioSummary } from "./schemas/trading";
+import { account, session, user, userPreferences } from "./schemas/auth";
 import { monitoredListings } from "./schemas/patterns";
+import { supabaseSchema } from "./schemas/supabase-schema";
+import { balanceSnapshots, executionHistory, portfolioSummary, snipeTargets, transactions } from "./schemas/trading";
 
 // Supabase client configuration
 export const supabase = createClient(
@@ -449,7 +449,6 @@ import { databaseOptimizationManager } from "../lib/database-optimization-manage
 import { queryPerformanceMonitor } from "../services/query-performance-monitor";
 // Import necessary schema elements for user preferences (conditional based on database type)
 import { userPreferences as originalUserPreferences } from "./schemas/auth";
-import { userPreferences as supabaseUserPreferences } from "./schemas/supabase-auth";
 
 // Database utilities with retry logic
 export async function initializeDatabase() {

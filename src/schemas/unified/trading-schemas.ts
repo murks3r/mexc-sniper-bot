@@ -20,7 +20,7 @@ import { z } from "zod";
 
 export const TradingConfigSchema = z.object({
   // Trading Settings
-  enablePaperTrading: z.boolean().default(true),
+  enablePaperTrading: z.boolean().default(false),
   maxConcurrentPositions: z
     .number()
     .positive("Max concurrent positions must be positive")

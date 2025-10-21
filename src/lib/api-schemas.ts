@@ -142,9 +142,10 @@ export const SnipeTargetCreateSchema: ValidationSchema = {
     }
     return level;
   },
-  takeProfitCustom: "number",
+  takeProfitCustom: (value: any) =>
+    value !== undefined && value !== null ? Number(value) : 25.0,
   stopLossPercent: (value: any) =>
-    value !== undefined ? Validators.stopLossPercent(Number(value)) : 5.0,
+    value !== undefined ? Validators.stopLossPercent(Number(value)) : 15.0,
   priority: (value: any) => {
     const priority = Number(value) || 1;
     if (priority < 1 || priority > 10) {

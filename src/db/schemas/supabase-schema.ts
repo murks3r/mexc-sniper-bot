@@ -33,8 +33,7 @@ export {
   workflowSystemStatus,
   // Exclude CoinActivity and NewCoinActivity types as patterns.ts has the comprehensive version
 } from "./supabase-auth";
-// Export all Supabase trading schemas
-export * from "./supabase-trading";
+// Supabase trading schemas removed to avoid redundancy
 
 import * as alerts from "./alerts";
 import * as patterns from "./patterns";
@@ -50,7 +49,6 @@ import {
   workflowSystemStatus,
 } from "./supabase-auth";
 // Schema aggregation for Drizzle ORM
-import * as supabaseTrading from "./supabase-trading";
 
 export const supabaseSchema = {
   // Selective supabase-auth exports (excluding conflicting coinActivities)
@@ -61,7 +59,6 @@ export const supabaseSchema = {
   snipeTargets,
   userPreferences,
   // All other schemas
-  ...supabaseTrading,
   ...patterns,
   ...strategies,
   ...performance,

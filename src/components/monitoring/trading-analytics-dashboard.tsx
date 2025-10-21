@@ -22,6 +22,7 @@ export const TradingAnalyticsDashboard = memo(
     const [data, setData] = useState<TradingAnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const skeletonItems = useSkeletonItems(5, "h-32 bg-gray-100 rounded animate-pulse");
 
     // Memoize utility functions to prevent recreation on every render
     const formatCurrency = useCallback((value: number) => {
@@ -48,7 +49,8 @@ export const TradingAnalyticsDashboard = memo(
           throw new Error("Failed to fetch trading analytics");
         }
         const result = await response.json();
-        setData(result);
+        const normalized = result?.data ?? result; // support wrapped responses
+        setData(normalized);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -74,10 +76,7 @@ export const TradingAnalyticsDashboard = memo(
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {useSkeletonItems(
-                5,
-                "h-32 bg-gray-100 rounded animate-pulse"
-              ).map((item) => (
+              {skeletonItems.map((item) => (
                 <div key={item.key} className={item.className} />
               ))}
             </div>

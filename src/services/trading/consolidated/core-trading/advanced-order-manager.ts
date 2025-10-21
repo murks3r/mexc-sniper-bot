@@ -582,10 +582,12 @@ export class AdvancedOrderManager {
       try {
         // Check status of both orders
         const limitStatus = await this.context.mexcService.getOrderStatus(
+          params.symbol,
           orderIds.limitOrderId
         );
 
         const stopStatus = await this.context.mexcService.getOrderStatus(
+          params.symbol,
           orderIds.stopOrderId
         );
 
@@ -798,10 +800,12 @@ class BracketOrderMonitor {
     try {
       // Check if take profit or stop loss orders are filled
       const tpStatus = await this.context.mexcService.getOrderStatus(
+        this.symbol,
         this.orderIds.takeProfitOrderId
       );
 
       const slStatus = await this.context.mexcService.getOrderStatus(
+        this.symbol,
         this.orderIds.stopLossOrderId
       );
 

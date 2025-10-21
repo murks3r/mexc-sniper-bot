@@ -109,6 +109,72 @@ class ParameterManager {
     }
   }
 
+  // Missing methods that are called in API routes
+  getParametersByCategory(category: string): Record<string, any> {
+    const group = this.groups.get(category);
+    if (group) {
+      return group.parameters;
+    }
+    return {};
+  }
+
+  getCurrentParameters(): Record<string, any> {
+    return this.getAllParameters();
+  }
+
+  async resetAllParameters(): Promise<void> {
+    this.resetToDefaults();
+  }
+
+  resetParameter(name: string): void {
+    const parameter = this.parameters.get(name);
+    if (parameter && parameter.default !== undefined) {
+      parameter.value = parameter.default;
+    }
+  }
+
+  async updateParameters(updates: Record<string, any>): Promise<void> {
+    this.importParameters(updates);
+  }
+
+  async validateParameters(params: Record<string, any>): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    for (const [name, value] of Object.entries(params)) {
+      if (!this.validateParameter(name, value)) {
+        errors.push(`Invalid value for parameter ${name}`);
+      }
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  getSnapshots(): any[] {
+    // Return empty array for now - implement snapshot functionality later
+    return [];
+  }
+
+  getParameterDefinitions(): Record<string, Parameter> {
+    const result: Record<string, Parameter> = {};
+    for (const [name, parameter] of this.parameters) {
+      result[name] = parameter;
+    }
+    return result;
+  }
+
+  getChangeHistory(): any[] {
+    // Return empty array for now - implement change history later
+    return [];
+  }
+
+  async createSnapshot(description?: string): Promise<void> {
+    // Implement snapshot creation later
+    console.log(`Creating snapshot: ${description || 'Unnamed snapshot'}`);
+  }
+
+  async restoreFromSnapshot(snapshotId: string): Promise<void> {
+    // Implement snapshot restoration later
+    console.log(`Restoring from snapshot: ${snapshotId}`);
+  }
+
   exportParameters(): Record<string, any> {
     return this.getAllParameters();
   }

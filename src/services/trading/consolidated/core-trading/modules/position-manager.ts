@@ -468,10 +468,30 @@ export class PositionManager {
    */
   private async getCurrentMarketPrice(symbol: string): Promise<number | null> {
     try {
+      // Normalize symbol (append USDT if needed)
+      const normalized = (() => {
+        const upper = (symbol || "").toUpperCase().trim();
+        const knownQuotes = ["USDT", "USDC", "BTC", "ETH"];
+        const hasKnown = knownQuotes.some((q) => upper.endsWith(q));
+        return hasKnown ? upper : `${upper}USDT`;
+      })();
+
       // Use market data service to get current price
       const marketData =
-        await this.context.marketDataService.getCurrentPrice(symbol);
-      return marketData?.price || null;
+        await this.context.marketDataService.getCurrentPrice(normalized);
+      if (marketData?.price && marketData.price > 0) return marketData.price;
+
+      // Fallback to order book mid-price from mexcService if available
+      if (typeof this.context.mexcService.getOrderBook === "function") {
+        const ob = await this.context.mexcService.getOrderBook(normalized, 5);
+        if (ob.success && ob.data?.bids?.length && ob.data?.asks?.length) {
+          const bid = parseFloat(ob.data.bids[0][0]);
+          const ask = parseFloat(ob.data.asks[0][0]);
+          if (bid > 0 && ask > 0) return (bid + ask) / 2;
+        }
+      }
+
+      return null;
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Failed to get current market price", {

@@ -6,8 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { startTestDatabase, stopTestDatabase } from "../setup/testcontainers-setup";
-import { db } from "../../src/db";
+import { startTestDatabase, stopTestDatabase, getTestDatabase } from "../setup/testcontainers-setup";
 import { user, userPreferences } from "../../src/db";
 import { eq } from "drizzle-orm";
 import type { NewUser, NewUserPreferences } from "../../src/db";
@@ -52,12 +51,14 @@ describe("User Preferences API Integration Tests", () => {
   const testUserId = `integration-test-user-${Date.now()}`;
   const testCleanupIds: string[] = [];
   let databaseSetup: any;
+  let testDb: any;
 
   beforeAll(async () => {
     console.log("🔗 Starting user preferences API integration tests...");
     
     // Set up TestContainer database
     databaseSetup = await startTestDatabase();
+    testDb = getTestDatabase();
     console.log("✅ Database setup complete");
     
     // Track cleanup IDs
@@ -70,8 +71,8 @@ describe("User Preferences API Integration Tests", () => {
     // Clean up test data
     for (const userId of testCleanupIds) {
       try {
-        await db.delete(userPreferences).where(eq(userPreferences.userId, userId));
-        await db.delete(user).where(eq(user.id, userId));
+        await testDb.delete(userPreferences).where(eq(userPreferences.userId, userId));
+        await testDb.delete(user).where(eq(user.id, userId));
       } catch (error) {
         console.warn(`Cleanup warning for user ${userId}:`, error);
       }
@@ -84,8 +85,8 @@ describe("User Preferences API Integration Tests", () => {
   beforeEach(async () => {
     // Clean up any existing test data before each test
     try {
-      await db.delete(userPreferences).where(eq(userPreferences.userId, testUserId));
-      await db.delete(user).where(eq(user.id, testUserId));
+      await testDb.delete(userPreferences).where(eq(userPreferences.userId, testUserId));
+      await testDb.delete(user).where(eq(user.id, testUserId));
     } catch (error) {
       // Ignore cleanup errors
     }
@@ -103,7 +104,7 @@ describe("User Preferences API Integration Tests", () => {
         updatedAt: new Date(),
       };
 
-      const createdUsers = await db.insert(user).values(testUser).returning();
+      const createdUsers = await testDb.insert(user).values(testUser).returning();
       expect(createdUsers).toHaveLength(1);
       expect(createdUsers[0].id).toBe(testUserId);
 
@@ -131,7 +132,7 @@ describe("User Preferences API Integration Tests", () => {
         autoSnipeEnabled: false,
       };
 
-      const createdPreferences = await db.insert(userPreferences)
+      const createdPreferences = await testDb.insert(userPreferences)
         .values(testPreferences)
         .returning();
 
@@ -185,7 +186,7 @@ describe("User Preferences API Integration Tests", () => {
         updatedAt: new Date(),
       };
 
-      await db.insert(user).values(testUser);
+        await testDb.insert(user).values(testUser);
     });
 
     it("should handle POST request with auto-user creation for test users", async () => {
@@ -207,7 +208,7 @@ describe("User Preferences API Integration Tests", () => {
       expect(responseData.success).toBe(true);
       
       // Verify preferences were created/updated in database
-      const savedPreferences = await db.select()
+      const savedPreferences = await testDb.select()
         .from(userPreferences)
         .where(eq(userPreferences.userId, testUserId));
 
@@ -241,7 +242,7 @@ describe("User Preferences API Integration Tests", () => {
         autoSnipeEnabled: true,
       };
 
-      await db.insert(userPreferences).values(testPreferences);
+        await testDb.insert(userPreferences).values(testPreferences);
 
       // Import the API route handler
       const { GET } = await import("../../app/api/user-preferences/route");
@@ -303,7 +304,7 @@ describe("User Preferences API Integration Tests", () => {
           expect(responseData.error).toBeTruthy();
         } else {
           // If it accepts the data, verify sanitization occurred
-          const savedPreferences = await db.select()
+          const savedPreferences = await testDb.select()
             .from(userPreferences)
             .where(eq(userPreferences.userId, testUserId));
           
@@ -333,7 +334,7 @@ describe("User Preferences API Integration Tests", () => {
       expect(firstResponse.status).toBe(200);
 
       // Verify first insert
-      let savedPreferences = await db.select()
+      let savedPreferences = await testDb.select()
         .from(userPreferences)
         .where(eq(userPreferences.userId, testUserId));
 
@@ -353,7 +354,7 @@ describe("User Preferences API Integration Tests", () => {
       expect(secondResponse.status).toBe(200);
 
       // Verify update (still only one record)
-      savedPreferences = await db.select()
+      savedPreferences = await testDb.select()
         .from(userPreferences)
         .where(eq(userPreferences.userId, testUserId));
 
@@ -431,7 +432,7 @@ describe("User Preferences API Integration Tests", () => {
         updatedAt: new Date(),
       };
 
-      await db.insert(user).values(testUser);
+        await testDb.insert(user).values(testUser);
 
       const { POST } = await import("../../app/api/user-preferences/route");
 
@@ -456,7 +457,7 @@ describe("User Preferences API Integration Tests", () => {
       });
 
       // Verify final state (should have one of the values)
-      const finalPreferences = await db.select()
+      const finalPreferences = await testDb.select()
         .from(userPreferences)
         .where(eq(userPreferences.userId, testUserId));
 
@@ -483,7 +484,7 @@ describe("User Preferences API Integration Tests", () => {
         updatedAt: new Date(),
       }));
 
-      await db.insert(user).values(testUsers);
+        await testDb.insert(user).values(testUsers);
 
       const { POST } = await import("../../app/api/user-preferences/route");
 
@@ -508,7 +509,7 @@ describe("User Preferences API Integration Tests", () => {
 
       // Verify all preferences were created
       for (const userId of stressTestUserIds) {
-        const userPrefs = await db.select()
+        const userPrefs = await testDb.select()
           .from(userPreferences)
           .where(eq(userPreferences.userId, userId));
 

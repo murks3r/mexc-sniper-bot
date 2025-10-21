@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type { ApiResponse } from "@/src/lib/api-response";
 import { queryKeys } from "@/src/lib/query-client";
-import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type { ExitStrategy } from "../types/exit-strategies";
 
 export interface TakeProfitLevels {

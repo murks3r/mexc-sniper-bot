@@ -107,8 +107,8 @@ export class TargetProcessor {
         confidence: target.confidence,
       });
 
-      // Update target status to processing
-      await this.updateSnipeTargetStatus(target.id.toString(), "processing");
+      // Update target status to executing
+      await this.updateSnipeTargetStatus(target.id.toString(), "executing");
 
       // Execute the snipe
       const result = await this.executeSnipeTarget(target);
@@ -172,11 +172,10 @@ export class TargetProcessor {
       // Map database fields to trading parameters
       const symbol = target.symbol || target.symbolName;
       const side = (target.side || "buy").toUpperCase() as "BUY" | "SELL";
-      const orderType =
-        target.orderType ||
-        (target.entryStrategy === "limit" ? "LIMIT" : "MARKET");
+      // Auto-sniping always uses MARKET orders for immediate execution
+      const orderType = "MARKET";
       const quantity = target.quantity || target.positionSizeUsdt;
-      const price = target.targetPrice || target.entryPrice || undefined;
+      const price = undefined; // MARKET orders don't use price
 
       // Calculate stop loss and take profit prices if needed
       const stopLoss =
@@ -199,7 +198,9 @@ export class TargetProcessor {
         price,
         stopLoss,
         takeProfit,
-        timeInForce: target.timeInForce || "GTC",
+        timeInForce: "IOC", // Immediate or Cancel for auto-sniping MARKET orders
+        isAutoSnipe: true,
+        strategy: target.entryStrategy || "normal",
       };
 
       // Choose execution method based on configuration

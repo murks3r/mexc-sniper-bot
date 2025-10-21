@@ -188,11 +188,7 @@ export class EnhancedMexcConfig {
         if (!validation.isValid) {
           throw new Error(`Credential validation failed: ${validation.error}`);
         }
-        this.logger.info("MEXC credentials validated successfully", {
-          canTrade: validation.canTrade,
-          accountType: validation.accountType,
-          balanceUSDT: validation.balanceUSDT,
-        });
+        // Redacted: avoid logging credential validation details
       }
 
       // Load trading limits for common symbols

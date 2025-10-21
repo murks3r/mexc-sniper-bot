@@ -117,6 +117,7 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
   private isInitialized = false;
   private isActive = false;
   private config: OrchestratorConfig;
+  private currentUserId: string | null = null;
 
   // Component services
   private snipingService = getCompleteAutoSnipingService();
@@ -142,9 +143,9 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
     super();
 
     this.config = {
-      enabled: true,
+      enabled: false,
       paperTradingMode: process.env.MEXC_PAPER_TRADING === "true",
-      autoInitialize: true,
+      autoInitialize: false,
 
       snipeConfig: {
         paperTradingMode: process.env.MEXC_PAPER_TRADING === "true",
@@ -185,7 +186,7 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
 
     this.setupEventListeners();
 
-    // Auto-initialize if requested
+    // Auto-initialize only when explicitly enabled
     if (this.config.autoInitialize) {
       this.initialize().catch((error) => {
         this.logger.error("Auto-initialization failed", error);
@@ -234,6 +235,23 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
       this.logger.info("Step 2/5: Initializing core trading service");
       await this.coreTrading.initialize();
 
+      // If we already have a session user, set it on the consolidated module immediately
+      if (this.currentUserId) {
+        try {
+          const autoSnipingModule = (this.coreTrading as any).autoSniping;
+          if (autoSnipingModule && typeof autoSnipingModule.setCurrentUser === "function") {
+            autoSnipingModule.setCurrentUser(this.currentUserId);
+            this.logger.info("Applied session user to auto-sniping module after core init", {
+              userId: this.currentUserId,
+            });
+          }
+        } catch (e) {
+          this.logger.warn("Failed to apply session user after core init", {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
       // Initialize complete auto-sniping service
       this.logger.info("Step 3/5: Initializing auto-sniping service");
       this.snipingService.updateConfig(this.config.snipeConfig);
@@ -256,7 +274,7 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
         "Unified Auto-Sniping Orchestrator initialized successfully"
       );
 
-      // Auto-start if enabled
+      // Auto-start only when explicitly enabled
       if (this.config.enabled) {
         await this.start();
       }
@@ -295,6 +313,23 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
         await this.performSafetyChecks();
       }
 
+      // Ensure the consolidated auto-sniping module has the current session user before starting
+      if (this.currentUserId) {
+        try {
+          const autoSnipingModule = (this.coreTrading as any).autoSniping;
+          if (autoSnipingModule && typeof autoSnipingModule.setCurrentUser === "function") {
+            autoSnipingModule.setCurrentUser(this.currentUserId);
+            this.logger.info("Applied session user to auto-sniping module before start", {
+              userId: this.currentUserId,
+            });
+          }
+        } catch (e) {
+          this.logger.warn("Failed to apply session user before start", {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
       // Start auto-sniping service
       const snipeResult = await this.snipingService.start();
       if (!snipeResult.success) {
@@ -312,6 +347,27 @@ export class UnifiedAutoSnipingOrchestrator extends EventEmitter {
       this.logger.error("Failed to start orchestrator", safeError);
       this.handleError("Start failed", safeError);
       throw safeError;
+    }
+  }
+
+  /**
+   * Set the current authenticated user for downstream modules (preferences lookup, etc.)
+   */
+  setCurrentUser(userId: string): void {
+    this.currentUserId = userId;
+    this.logger.info("Session user set on orchestrator", { userId });
+
+    // Best-effort: immediately propagate to consolidated module if available
+    try {
+      const autoSnipingModule = (this.coreTrading as any).autoSniping;
+      if (autoSnipingModule && typeof autoSnipingModule.setCurrentUser === "function") {
+        autoSnipingModule.setCurrentUser(userId);
+        this.logger.info("Session user applied to auto-sniping module", { userId });
+      }
+    } catch (e) {
+      this.logger.warn("Failed to apply session user immediately", {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 

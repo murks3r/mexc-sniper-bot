@@ -44,10 +44,26 @@ export class MexcCoreAccountClient {
         method: "GET",
       });
 
-      // MEXC API returns account data directly in response, not nested under 'data'
-      const responseData = response as any; // Cast to any for direct MEXC API access
-      if (responseData.balances && Array.isArray(responseData.balances)) {
-        const balances = responseData.balances
+      // MEXC API response is wrapped by makeRequest: { code, data, success }
+      // The actual account data is in response.data
+      const responseData = response as any;
+      
+      // Check if response has the expected structure
+      if (!responseData || typeof responseData !== 'object') {
+        return {
+          success: false,
+          error: "Invalid response format - response is not an object",
+          timestamp: Date.now(),
+          source: "mexc-core-account",
+        };
+      }
+
+      // Extract the actual account data from the wrapped response
+      const accountData = responseData.data || responseData;
+      
+      // Check if account data has balances array
+      if (accountData && accountData.balances && Array.isArray(accountData.balances)) {
+        const balances = accountData.balances
           .filter(
             (balance: any) =>
               Number.parseFloat(balance.free) > 0 ||
@@ -67,9 +83,18 @@ export class MexcCoreAccountClient {
         };
       }
 
+      // Log the actual response structure for debugging
+      console.warn("[MexcCoreAccountClient] Unexpected response format:", {
+        hasData: !!responseData.data,
+        hasBalances: !!(responseData.data?.balances || responseData.balances),
+        responseKeys: Object.keys(responseData),
+        dataKeys: responseData.data ? Object.keys(responseData.data) : [],
+        responseStructure: JSON.stringify(responseData, null, 2).substring(0, 500)
+      });
+
       return {
         success: false,
-        error: "Invalid balance response format",
+        error: `Invalid balance response format - expected balances array but got: ${JSON.stringify(accountData).substring(0, 200)}`,
         timestamp: Date.now(),
         source: "mexc-core-account",
       };

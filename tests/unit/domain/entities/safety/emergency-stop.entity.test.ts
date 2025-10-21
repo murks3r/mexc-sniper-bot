@@ -209,8 +209,8 @@ describe('EmergencyStop Domain Entity', () => {
       expect(() => EmergencyStop.create(invalidProps)).toThrow(DomainValidationError);
     });
 
-    it('should reject duplicate action priorities', () => {
-      const invalidProps = {
+    it('should allow duplicate action priorities for parallel execution', () => {
+      const validProps = {
         ...validEmergencyStopProps,
         emergencyActions: [
           {
@@ -219,18 +219,21 @@ describe('EmergencyStop Domain Entity', () => {
             description: 'Action 1',
             timeout: 5000,
             retryCount: 3,
+            canRunInParallel: false,
           },
           {
             type: 'cancel_all_orders' as EmergencyActionType,
-            priority: 1, // Duplicate priority
+            priority: 1, // Same priority - allowed for parallel execution
             description: 'Action 2',
             timeout: 3000,
             retryCount: 2,
+            canRunInParallel: true,
           },
         ],
       };
 
-      expect(() => EmergencyStop.create(invalidProps)).toThrow(DomainValidationError);
+      // Should not throw - duplicate priorities are allowed
+      expect(() => EmergencyStop.create(validProps)).not.toThrow();
     });
 
     it('should reject actions with negative timeouts', () => {
@@ -616,7 +619,7 @@ describe('EmergencyStop Domain Entity', () => {
       expect(plan.parallelGroups[0]).toHaveLength(2); // cancel_all_orders and notify_admin
       expect(plan.sequentialSteps).toHaveLength(2); // close_all_positions and send_alert
       expect(plan.totalEstimatedTime).toBe(10000); // 5000 + max(3000, 1000) + 2000
-      expect(plan.criticalPath).toHaveLength(2); // Priority 1 and 2 actions
+      expect(plan.criticalPath).toHaveLength(3); // Priority 1, 2, and 3 actions
     });
 
     it('should prioritize actions correctly in coordination plan', () => {

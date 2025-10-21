@@ -14,7 +14,7 @@ export function ApiCredentialsForm({ userId }: ApiCredentialsFormProps) {
   const [secretKey, setSecretKey] = useState("");
 
   const handleSave = () => {
-    console.log("Save credentials for user:", userId);
+  // Redacted: avoid logging sensitive credential operations
   };
 
   return (

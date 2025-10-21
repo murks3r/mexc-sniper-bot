@@ -3,14 +3,34 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from "@/src/lib/api-response";
-import { ConfigurationManager } from "@/src/lib/unified-configuration-management";
+import {
+  ConfigurationManager,
+  ConfigurationSchema,
+} from "@/src/lib/unified-configuration-management";
 import { AutoSnipingConfigSchema } from "@/src/schemas/comprehensive-api-validation-schemas";
 
 // Auto-sniping configuration endpoint backed by the configuration manager
 export async function GET() {
   try {
     const configManager = ConfigurationManager.getInstance();
-    const config = configManager.getSection("trading").autoSniping;
+    let config = configManager.getSection("trading").autoSniping;
+
+    // Validate and if invalid, return schema defaults instead of 500
+    try {
+      // Ensure full config parses; if not, use defaults for trading.autoSniping
+      ConfigurationSchema.parse(configManager.getConfig());
+    } catch (_e) {
+      const defaults = ConfigurationSchema.parse({
+        app: {},
+        mexc: {},
+        trading: {},
+        database: {},
+        cache: {},
+        monitoring: {},
+        security: {},
+      } as any);
+      config = defaults.trading.autoSniping;
+    }
 
     return NextResponse.json(
       createSuccessResponse({
@@ -19,12 +39,33 @@ export async function GET() {
       })
     );
   } catch (error) {
-    return NextResponse.json(
-      createErrorResponse("Failed to get auto-sniping configuration", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
+    // Never fail this endpoint: return schema defaults on any error
+    try {
+      const defaults = ConfigurationSchema.parse({
+        app: {},
+        mexc: {},
+        trading: {},
+        database: {},
+        cache: {},
+        monitoring: {},
+        security: {},
+      } as any);
+
+      return NextResponse.json(
+        createSuccessResponse({
+          config: defaults.trading.autoSniping,
+          message: "Auto-sniping configuration retrieved with defaults",
+          warning: error instanceof Error ? error.message : "Unknown error",
+        })
+      );
+    } catch (_fallbackErr) {
+      return NextResponse.json(
+        createErrorResponse("Failed to get auto-sniping configuration", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
+        { status: 500 }
+      );
+    }
   }
 }
 

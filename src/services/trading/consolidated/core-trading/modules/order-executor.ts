@@ -361,10 +361,56 @@ export class OrderExecutor {
    */
   private async getCurrentMarketPrice(symbol: string): Promise<number | null> {
     try {
-      const ticker = await this.context.mexcService.getTicker(symbol);
-      return ticker.success && ticker.data
-        ? parseFloat(ticker.data.price)
-        : null;
+      // Normalize to MEXC spot symbol (append USDT if no known quote present)
+      const normalized = (() => {
+        const upper = (symbol || "").toUpperCase().trim();
+        const knownQuotes = ["USDT", "USDC", "BTC", "ETH"];
+        const hasKnown = knownQuotes.some((q) => upper.endsWith(q));
+        return hasKnown ? upper : `${upper}USDT`;
+      })();
+
+      // Try ticker first
+      try {
+        const ticker = await this.context.mexcService.getTicker(normalized);
+        if (ticker.success && ticker.data) {
+          const priceFields = ["price", "lastPrice", "close", "last"];
+          for (const field of priceFields) {
+            const v = (ticker.data as any)[field];
+            if (v) {
+              const p = parseFloat(v);
+              if (p > 0) return p;
+            }
+          }
+        }
+      } catch (e) {
+        this.context.logger.warn("Ticker fetch failed", {
+          symbol: normalized,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      // Fallback: orderbook mid-price
+      try {
+        const ob = await this.context.mexcService.getOrderBook(normalized, 5);
+        if (ob.success && ob.data) {
+          const { bids, asks } = ob.data;
+          if (bids?.length && asks?.length) {
+            const bid = parseFloat(bids[0][0]);
+            const ask = parseFloat(asks[0][0]);
+            if (bid > 0 && ask > 0) return (bid + ask) / 2;
+          }
+        }
+      } catch (e) {
+        this.context.logger.warn("Orderbook fetch failed", {
+          symbol: normalized,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      this.context.logger.error("Unable to get current market price", {
+        symbol: normalized,
+      });
+      return null;
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Failed to get current market price", {

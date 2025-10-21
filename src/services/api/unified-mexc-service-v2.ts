@@ -169,7 +169,7 @@ export class UnifiedMexcServiceV2
     return result as any;
   }
 
-  async getOrderStatus(orderId: string): Promise<{
+  async getOrderStatus(symbolOrOrderId: string, maybeOrderId?: string): Promise<{
     success: boolean;
     data?: {
       orderId: string;
@@ -188,8 +188,14 @@ export class UnifiedMexcServiceV2
   }> {
     // Implement getOrderStatus using available trading methods
     try {
+      // Support both getOrderStatus(orderId) and getOrderStatus(symbol, orderId)
+      const symbol = maybeOrderId ? String(symbolOrOrderId || "") : "";
+      const orderId = maybeOrderId ? String(maybeOrderId) : String(symbolOrOrderId);
+
+      const normalizedSymbol = symbol ? symbol.toUpperCase() : symbol;
+
       const result = await this.coreClient.getOrderStatus(
-        "",
+        normalizedSymbol,
         parseInt(orderId) || 0
       );
       return {

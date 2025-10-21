@@ -107,6 +107,7 @@ export async function updateSession(request: NextRequest) {
     const protectedPaths = [
       "/dashboard",
       "/settings",
+      "/strategies",
       "/api/trading",
       "/api/user",
     ];

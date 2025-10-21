@@ -100,13 +100,26 @@ export function WorkflowManager() {
     queryFn: async () => {
       try {
         const response = await fetch(
-          "/api/workflow-status?format=workflows&includeMetrics=true"
+          "/api/workflow-status?format=workflows&includeMetrics=true",
+          { credentials: "include" }
         );
         if (!response.ok) {
           throw new Error("Failed to fetch workflow status");
         }
         const result = await response.json();
-        return result.success ? result.data : [];
+        // Normalize possible shapes: { success, data }, {workflows: []}, plain array, etc.
+        let data: any = Array.isArray(result)
+          ? result
+          : Array.isArray(result?.data)
+            ? result.data
+            : Array.isArray(result?.workflows)
+              ? result.workflows
+              : Array.isArray(result?.data?.workflows)
+                ? result.data.workflows
+                : result?.success && Array.isArray(result?.data)
+                  ? result.data
+                  : [];
+        return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Failed to fetch workflow status:", error);
         throw error;
@@ -129,7 +142,9 @@ export function WorkflowManager() {
         offset: "0",
       });
 
-      const response = await fetch(`/api/workflow-executions?${params}`);
+      const response = await fetch(`/api/workflow-executions?${params}`, {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch workflow executions");
       }
@@ -174,6 +189,7 @@ export function WorkflowManager() {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(
           workflowId === "scheduled-intensive-analysis"
             ? { action: "force_analysis" }
@@ -195,6 +211,7 @@ export function WorkflowManager() {
         await fetch("/api/workflow-executions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             workflowId,
             type: "manual_trigger",
@@ -222,12 +239,13 @@ export function WorkflowManager() {
   const controlScheduledWorkflows = useMutation({
     mutationFn: async (action: "start" | "stop") => {
       // Update all scheduled workflows status
-      const scheduledWorkflows =
-        workflows?.filter((w) => w.type === "scheduled") || [];
+      const workflowsArray = Array.isArray(workflows) ? workflows : [];
+      const scheduledWorkflows = workflowsArray.filter((w) => w.type === "scheduled");
       const promises = scheduledWorkflows.map((workflow) =>
         fetch("/api/workflow-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             action,
             workflowId: workflow.id,
@@ -302,9 +320,9 @@ export function WorkflowManager() {
     );
   }
 
-  const eventWorkflows = workflows?.filter((w) => w.type === "event") || [];
-  const scheduledWorkflows =
-    workflows?.filter((w) => w.type === "scheduled") || [];
+  const workflowsArray = Array.isArray(workflows) ? workflows : [];
+  const eventWorkflows = workflowsArray.filter((w) => w.type === "event");
+  const scheduledWorkflows = workflowsArray.filter((w) => w.type === "scheduled");
 
   return (
     <div className="space-y-6">

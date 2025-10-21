@@ -32,15 +32,19 @@ export function SimpleAutoSnipingControl({
   // Fetch current status
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch("/api/auto-sniping/control");
+      // Use the control endpoint to get status instead of the separate status endpoint
+      const response = await fetch("/api/auto-sniping/control", {
+        credentials: "include", // Include authentication cookies
+      });
       const result = await response.json();
 
       if (result.success) {
+        const responseData = result.data?.data || result.data;
         setStatus({
-          isActive: result.data.status.autoSnipingEnabled || false,
-          autoSnipingEnabled: result.data.status.autoSnipingEnabled || false,
-          activePositions: result.data.status.activePositions || 0,
-          isHealthy: result.data.status.isHealthy || false,
+          isActive: responseData?.status?.autoSnipingEnabled || false,
+          autoSnipingEnabled: responseData?.status?.autoSnipingEnabled || false,
+          activePositions: responseData?.status?.activePositions || 0,
+          isHealthy: responseData?.status?.isHealthy || false,
         });
         setError(null);
       } else {
@@ -68,21 +72,26 @@ export function SimpleAutoSnipingControl({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include authentication cookies
         body: JSON.stringify({ action }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // Update status based on action
-        setStatus((prev) => ({
-          ...prev,
-          isActive: action === "start",
-          autoSnipingEnabled: action === "start",
-        }));
+        // Update status strictly based on server truth
+        const responseData = result.data?.data || result.data;
+        const serverEnabled = !!responseData?.status?.autoSnipingEnabled;
+        const newStatus = {
+          isActive: serverEnabled,
+          autoSnipingEnabled: serverEnabled,
+          activePositions: responseData?.status?.activePositions || 0,
+          isHealthy: responseData?.status?.isHealthy ?? true,
+        };
 
-        // Refresh full status after a short delay
-        setTimeout(fetchStatus, 1000);
+        setStatus(newStatus);
+        // Immediately re-fetch to ensure UI reflects latest backend state
+        await fetchStatus();
       } else {
         throw new Error(result.error || `Failed to ${action} auto-sniping`);
       }
@@ -104,6 +113,7 @@ export function SimpleAutoSnipingControl({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include authentication cookies
         body: JSON.stringify({
           action: "emergency_stop",
           reason: "User requested emergency stop",
@@ -113,15 +123,17 @@ export function SimpleAutoSnipingControl({
       const result = await response.json();
 
       if (result.success) {
-        setStatus((prev) => ({
-          ...prev,
+        const newStatus = {
           isActive: false,
           autoSnipingEnabled: false,
           activePositions: 0,
-        }));
+          isHealthy: true,
+        };
+        
+        setStatus(newStatus);
+        console.log("✅ Emergency stop successful:", newStatus);
 
-        // Refresh status
-        setTimeout(fetchStatus, 1000);
+        // Don't refresh status immediately to avoid overriding our update
       } else {
         throw new Error(result.error || "Failed to execute emergency stop");
       }

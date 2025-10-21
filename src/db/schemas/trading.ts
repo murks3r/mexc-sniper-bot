@@ -27,7 +27,7 @@ export const apiCredentials = pgTable(
     encryptedSecretKey: text("encrypted_secret_key").notNull(),
     encryptedPassphrase: text("encrypted_passphrase"), // For some exchanges
 
-    // Status
+    // Status and validation
     isActive: boolean("is_active").notNull().default(true),
     lastUsed: timestamp("last_used"),
 

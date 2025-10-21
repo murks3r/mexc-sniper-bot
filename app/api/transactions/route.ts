@@ -38,7 +38,7 @@ const createTransactionSchema = z.object({
 });
 
 const querySchema = z.object({
-  userId: z.string().min(1),
+  userId: z.string().min(1).optional(),
   status: z
     .enum(["pending", "completed", "failed", "cancelled"])
     .nullable()
@@ -97,7 +97,10 @@ export async function GET(request: NextRequest) {
     } = parsed.data;
 
     // Build query conditions
-    const conditions = [eq(transactions.userId, userId)];
+    const conditions: any[] = [];
+    if (userId) {
+      conditions.push(eq(transactions.userId, userId));
+    }
 
     if (status) {
       conditions.push(eq(transactions.status, status));
@@ -158,11 +161,10 @@ export async function GET(request: NextRequest) {
     // Execute query with database error handling
     let userTransactions;
     try {
+      const base = db.select().from(transactions);
+      const filtered = conditions.length ? base.where(and(...conditions)) : base;
       userTransactions = await Promise.race([
-        db
-          .select()
-          .from(transactions)
-          .where(and(...conditions))
+        filtered
           .orderBy(desc(transactions.transactionTime))
           .limit(limit)
           .offset(offset),

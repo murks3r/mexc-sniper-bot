@@ -1,22 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import { AutoSnipingControlPanel } from "@/src/components/auto-sniping-control-panel";
 import { AIEnhancedPatternDisplay } from "@/src/components/dashboard/ai-intelligence/ai-enhanced-pattern-display";
 import { DashboardLayout } from "@/src/components/dashboard-layout";
 import {
   CoinListingsBoard,
-  LazyChartWrapper,
-  LazyDashboardWrapper,
-  LazyTableWrapper,
   MetricCard,
   OptimizedAccountBalance,
   OptimizedActivityFeed,
   OptimizedTradingTargets,
-  preloadDashboardComponents,
   RecentTradesTable,
   TradingChart,
   UpcomingCoinsSection,
@@ -35,14 +31,15 @@ import { useEnhancedPatterns } from "@/src/hooks/use-enhanced-patterns";
 import { useMexcCalendar, useReadyLaunches } from "@/src/hooks/use-mexc-data";
 import {
   useDeleteSnipeTarget,
-  usePortfolio,
   useSnipeTargets,
 } from "@/src/hooks/use-portfolio";
+import { queryKeys } from "@/src/lib/query-client";
 
 export default function DashboardPage() {
   const { user, isLoading: userLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Use authenticated user ID
   const userId = user?.id;
@@ -50,65 +47,42 @@ export default function DashboardPage() {
   // Hooks for trading operations
   const deleteSnipeTarget = useDeleteSnipeTarget();
 
-  // PHASE 6: Intelligent preloading for 70% faster dashboard loading
-  useEffect(() => {
-    // Preload dashboard components after initial render
-    const timer = setTimeout(() => {
-      preloadDashboardComponents().catch(console.error);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Tab hover preloading for instant switching
-  const handleTabHover = (tabValue: string) => {
-    switch (tabValue) {
-      case "listings":
-        import("@/src/components/dashboard/coin-listings-board").catch(
-          console.error
-        );
-        break;
-      case "ai-performance":
-        Promise.all([
-          import(
-            "@/src/components/dashboard/ai-intelligence/ai-service-status-panel"
-          ),
-          import(
-            "@/src/components/dashboard/ai-intelligence/ai-enhanced-pattern-display"
-          ),
-          import(
-            "@/src/components/dashboard/cache-warming/cache-warming-control-panel"
-          ),
-          import("@/src/components/dashboard/performance-monitoring-dashboard"),
-          import(
-            "@/src/components/dashboard/phase3-config/phase3-configuration-panel"
-          ),
-          import("@/src/components/dashboard/phase3-integration-summary"),
-        ]).catch(console.error);
-        break;
-      case "trades":
-        import("@/src/components/dashboard/recent-trades-table").catch(
-          console.error
-        );
-        break;
-    }
-  };
   const { data: accountBalance, isLoading: balanceLoading } = useAccountBalance(
     {
-      userId: userId || "system", // Always provide a userId fallback
-      enabled: true, // Always enable the query
+      userId: userId || "system",
+      enabled: activeTab === "overview",
     }
   );
-  const { data: portfolio } = usePortfolio(userId || "");
-  const { data: calendarData } = useMexcCalendar();
-  const { data: readyLaunches } = useReadyLaunches();
-  const { data: snipeTargets, isLoading: snipeTargetsLoading } =
-    useSnipeTargets(userId || "");
+  const { data: calendarData } = useMexcCalendar({ enabled: true });
+  const { data: readyLaunches } = useReadyLaunches({ enabled: true });
+  // Show both user-owned and system-owned targets (read-only) in overview
+  const { data: userSnipeTargets, isLoading: userSnipeLoading } =
+    useSnipeTargets(userId || "", undefined, { enabled: activeTab === "overview" });
+  // Also fetch all visible targets (user + system) from the unified API semantics
+  const {
+    data: allSnipeTargets,
+    isLoading: allSnipeLoading,
+  } = useQuery({
+    queryKey: ["snipeTargets", userId, "all"],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("includeAll", "true");
+      const res = await fetch(`/api/snipe-targets?${params.toString()}`, {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!json.success) return [];
+      return json.data || [];
+    },
+    enabled: true,
+    staleTime: 10_000,
+  });
   const { data: enhancedPatterns, isLoading: patternsLoading } =
     useEnhancedPatterns({
       enableAI: true,
       confidenceThreshold: 70,
       includeAdvanceDetection: true,
+      enabled: true,
     });
 
   // Handler functions for trading targets
@@ -124,14 +98,7 @@ export default function DashboardPage() {
         },
         credentials: "include",
         body: JSON.stringify({
-          action: "execute_single_target",
-          targetId: target.id,
-          symbol: target.symbolName,
-          positionSizeUsdt: target.positionSizeUsdt,
-          confidenceScore: target.confidenceScore,
-          strategy: target.entryStrategy || "normal",
-          stopLossPercent: target.stopLossPercent,
-          takeProfitPercent: target.takeProfitCustom,
+          action: "start_execution",
         }),
       });
 
@@ -139,13 +106,20 @@ export default function DashboardPage() {
 
       if (result.success) {
         toast({
-          title: "Snipe Executed Successfully",
-          description: `Target ${target.symbolName} executed successfully`,
+          title: "Execution Started",
+          description: `Auto-sniping started. Target ${target.symbolName} will execute when conditions are met.`,
           variant: "default",
         });
 
-        // Refresh portfolio and balance data
-        window.location.reload();
+        // Refresh relevant data without full reload
+        try {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.snipeTargets(userId || "") }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.executionHistory(userId || "") }),
+            queryClient.invalidateQueries({ queryKey: ["status", "unified"] }),
+            queryClient.invalidateQueries({ queryKey: ["mexc", "unified-status"] }),
+          ]);
+        } catch {}
       } else {
         throw new Error(result.error || "Failed to execute snipe");
       }
@@ -249,6 +223,7 @@ export default function DashboardPage() {
         return [];
       }
     },
+    enabled: true,
     staleTime: 10 * 60 * 1000, // 10 minute cache
     placeholderData: [],
   });
@@ -274,40 +249,77 @@ export default function DashboardPage() {
         return [];
       }
     },
+    enabled: true,
     staleTime: 10 * 60 * 1000, // 10 minute cache
     placeholderData: [],
   });
 
   // Transform snipe targets for display
   const transformedReadyTargets = useMemo(() => {
-    if (!Array.isArray(snipeTargets)) return [];
+    const combined = Array.isArray(allSnipeTargets) && allSnipeTargets.length > 0
+      ? allSnipeTargets
+      : (Array.isArray(userSnipeTargets) ? userSnipeTargets : []);
 
-    return snipeTargets
-      .filter(
-        (target: any) =>
-          target.status === "pending" || target.status === "ready"
-      )
-      .map((target: any) => ({
-        vcoinId: target.vcoinId || target.id?.toString(),
-        symbol: target.symbolName || target.symbol,
-        projectName:
-          target.projectName || target.symbolName || "Unknown Project",
-        launchTime: target.targetExecutionTime
-          ? new Date(target.targetExecutionTime * 1000)
-          : new Date(),
-        hoursAdvanceNotice: target.hoursAdvanceNotice || 1,
-        priceDecimalPlaces: target.priceDecimalPlaces || 8,
-        quantityDecimalPlaces: target.quantityDecimalPlaces || 8,
-        confidence: target.confidenceScore ? target.confidenceScore / 100 : 0.5,
-        status: target.status === "ready" ? "ready" : "monitoring",
-        // Include additional fields for execution
-        id: target.id,
-        positionSizeUsdt: target.positionSizeUsdt,
-        entryStrategy: target.entryStrategy,
-        stopLossPercent: target.stopLossPercent,
-        takeProfitCustom: target.takeProfitCustom,
-      }));
-  }, [snipeTargets]);
+    if (combined.length === 0) return [];
+
+    // Filter to pending/ready and sort logically:
+    // 1) ready first, 2) earlier execution time first, 3) higher confidence, 4) higher priority (lower number) first
+    const filtered = combined.filter(
+      (target: any) => target.status === "pending" || target.status === "ready"
+    );
+
+    const getExecMs = (te: any): number => {
+      if (typeof te === "number") return te < 1e12 ? te * 1000 : te;
+      if (typeof te === "string") {
+        const parsed = Date.parse(te);
+        return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+      }
+      return Number.POSITIVE_INFINITY;
+    };
+
+    filtered.sort((a: any, b: any) => {
+      const aReady = a.status === "ready" ? 0 : 1;
+      const bReady = b.status === "ready" ? 0 : 1;
+      if (aReady !== bReady) return aReady - bReady; // ready first
+
+      const aMs = getExecMs(a.targetExecutionTime);
+      const bMs = getExecMs(b.targetExecutionTime);
+      if (aMs !== bMs) return aMs - bMs; // earlier first
+
+      const aConf = typeof a.confidenceScore === "number" ? a.confidenceScore : -1;
+      const bConf = typeof b.confidenceScore === "number" ? b.confidenceScore : -1;
+      if (aConf !== bConf) return bConf - aConf; // higher first
+
+      const aPri = typeof a.priority === "number" ? a.priority : 999;
+      const bPri = typeof b.priority === "number" ? b.priority : 999;
+      return aPri - bPri; // lower number first
+    });
+
+    return filtered.map((target: any) => ({
+      vcoinId: target.vcoinId || target.id?.toString(),
+      symbol: target.symbolName || target.symbol,
+      projectName: target.projectName || target.symbolName || "Unknown Project",
+      launchTime: (() => {
+        const ms = getExecMs(target.targetExecutionTime);
+        return Number.isFinite(ms) ? new Date(ms) : new Date();
+      })(),
+      hoursAdvanceNotice: (() => {
+        const ms = getExecMs(target.targetExecutionTime);
+        const diffH = Number.isFinite(ms) ? (ms - Date.now()) / (1000 * 60 * 60) : NaN;
+        return Number.isFinite(diffH) ? diffH : 1;
+      })(),
+      priceDecimalPlaces: target.priceDecimalPlaces || 8,
+      quantityDecimalPlaces: target.quantityDecimalPlaces || 8,
+      confidence: target.confidenceScore ? target.confidenceScore / 100 : 0.5,
+      status: target.status === "ready" ? "ready" : "monitoring",
+      // Include additional fields for execution
+      id: target.id,
+      positionSizeUsdt: target.positionSizeUsdt,
+      entryStrategy: target.entryStrategy,
+      stopLossPercent: target.stopLossPercent,
+      takeProfitCustom: target.takeProfitCustom,
+    }));
+  }, [userSnipeTargets, allSnipeTargets]);
 
   // Transform calendar data for pending targets
   const transformedCalendarTargets = useMemo(() => {
@@ -440,13 +452,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Chart Section */}
-        <LazyChartWrapper>
-          <TradingChart />
-        </LazyChartWrapper>
+        <TradingChart />
 
         {/* Tabbed Content Section - Optimized for Auto-Sniping */}
         <Tabs
-          defaultValue="auto-sniping"
+          defaultValue="overview"
           value={activeTab}
           onValueChange={setActiveTab}
           className="space-y-4"
@@ -459,7 +469,6 @@ export default function DashboardPage() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger
                 value="patterns"
-                onMouseEnter={() => handleTabHover("patterns")}
               >
                 Pattern Detection
                 <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
@@ -468,13 +477,11 @@ export default function DashboardPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="trades"
-                onMouseEnter={() => handleTabHover("trades")}
               >
                 Trading History
               </TabsTrigger>
               <TabsTrigger
                 value="listings"
-                onMouseEnter={() => handleTabHover("listings")}
               >
                 New Listings
                 <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
@@ -507,46 +514,39 @@ export default function DashboardPage() {
                   readyTargets={transformedReadyTargets}
                   pendingDetection={transformedReadyTargets
                     .filter((t) => t.status === "monitoring")
-                    .map((t) => t.vcoinId)}
+                    .map((t) => t.vcoinId)
+                    .filter(Boolean)}
                   calendarTargets={transformedCalendarTargets}
                   onExecuteSnipe={handleExecuteSnipe}
                   onRemoveTarget={handleRemoveTarget}
-                  isLoading={snipeTargetsLoading}
+                  isLoading={userSnipeLoading || allSnipeLoading}
                 />
               </div>
             </div>
-            <RecentTradesTable userId={userId || ""} />
+            <RecentTradesTable userId={userId || undefined} />
           </TabsContent>
 
           <TabsContent value="listings" className="space-y-4">
-            <LazyDashboardWrapper>
-              <CoinListingsBoard />
-            </LazyDashboardWrapper>
+            <CoinListingsBoard />
           </TabsContent>
 
           <TabsContent value="trades" className="space-y-4">
-            <LazyTableWrapper>
-              <RecentTradesTable userId={userId || ""} />
-            </LazyTableWrapper>
+            <RecentTradesTable userId={userId || undefined} />
           </TabsContent>
 
           <TabsContent value="manual-trading" className="space-y-4">
-            <LazyDashboardWrapper>
-              <ManualTradingPanel userId={userId || ""} />
-            </LazyDashboardWrapper>
+            <ManualTradingPanel userId={userId || ""} />
           </TabsContent>
 
           <TabsContent value="patterns" className="space-y-4">
-            <LazyDashboardWrapper>
-              <div className="grid gap-4">
-                <AIEnhancedPatternDisplay
-                  patterns={enhancedPatterns?.patterns || []}
-                  isLoading={patternsLoading}
-                  showAdvanceDetection={true}
-                />
-                <CoinListingsBoard />
-              </div>
-            </LazyDashboardWrapper>
+            <div className="grid gap-4">
+              <AIEnhancedPatternDisplay
+                patterns={enhancedPatterns?.patterns || []}
+                isLoading={patternsLoading}
+                showAdvanceDetection={true}
+              />
+              <CoinListingsBoard />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

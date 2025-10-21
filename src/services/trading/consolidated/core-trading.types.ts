@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { getPaperTradingDefault } from "@/src/lib/trading-config-helpers";
 
 // ============================================================================
 // Configuration Types
@@ -32,7 +33,7 @@ export const CoreTradingConfigSchema = z.object({
     .default(100),
 
   // Trading Settings
-  enablePaperTrading: z.boolean().default(true),
+  enablePaperTrading: z.boolean().default(getPaperTradingDefault()),
   maxConcurrentPositions: z
     .number()
     .positive("Max concurrent positions must be positive")

@@ -20,7 +20,7 @@ mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/sa
 mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/strategies.ts" > tests/unit/db/schemas/strategies.test.ts
 mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/supabase-auth.ts" > tests/unit/db/schemas/supabase-auth.test.ts
 mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/supabase-schema.ts" > tests/unit/db/schemas/supabase-schema.test.ts
-mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/supabase-trading.ts" > tests/unit/db/schemas/supabase-trading.test.ts
+# supabase-trading.ts removed
 mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/trading.ts" > tests/unit/db/schemas/trading.test.ts
 mkdir -p tests/unit/db/schemas && echo "// TODO: Add tests for src/db/schemas/workflows.ts" > tests/unit/db/schemas/workflows.test.ts
 mkdir -p tests/unit/domain/base && echo "// TODO: Add tests for src/domain/base/aggregate-root.ts" > tests/unit/domain/base/aggregate-root.test.ts

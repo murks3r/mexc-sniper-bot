@@ -666,9 +666,9 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                   No coin listings found
                 </div>
               ) : (
-                enrichedCalendarData.map((coin) => (
+                enrichedCalendarData.map((coin, index) => (
                   <CoinListingCard
-                    key={coin.vcoinId}
+                    key={coin.id || `${coin.vcoinId}-calendar-${index}`}
                     coin={coin}
                     onExecute={
                       coin.status === "ready"
@@ -692,9 +692,9 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                   No coins ready to snipe
                 </div>
               ) : (
-                readyTargetsEnriched.map((target) => (
+                readyTargetsEnriched.map((target, index) => (
                   <CoinListingCard
-                    key={target.vcoinId}
+                    key={target.id || `${target.vcoinId}-ready-${index}`}
                     coin={target}
                     onExecute={() => executeSnipe(target)}
                     onRemove={() => removeTarget(target.vcoinId)}
@@ -709,9 +709,9 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                   No coins being monitored
                 </div>
               ) : (
-                monitoringTargets.map((coin) => (
+                monitoringTargets.map((coin, index) => (
                   <CoinListingCard
-                    key={coin.vcoinId}
+                    key={coin.id || `${coin.vcoinId}-monitoring-${index}`}
                     coin={coin}
                     onRemove={() => removeTarget(coin.vcoinId)}
                   />
@@ -725,8 +725,8 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                   No upcoming listings
                 </div>
               ) : (
-                calendarTargets.map((coin) => (
-                  <CoinListingCard key={coin.vcoinId} coin={coin} />
+                calendarTargets.map((coin, index) => (
+                  <CoinListingCard key={coin.id || `${coin.vcoinId}-upcoming-${index}`} coin={coin} />
                 ))
               )}
             </TabsContent>
@@ -737,8 +737,8 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                   No executed trades
                 </div>
               ) : (
-                executedTargetsEnriched.map((target) => (
-                  <CoinListingCard key={target.vcoinId} coin={target} />
+                executedTargetsEnriched.map((target, index) => (
+                  <CoinListingCard key={target.id || `${target.vcoinId}-executed-${index}`} coin={target} />
                 ))
               )}
             </TabsContent>

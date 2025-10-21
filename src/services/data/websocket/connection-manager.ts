@@ -329,7 +329,7 @@ export class MexcConnectionManager extends EventEmitter {
 
     this.stopHeartbeat();
 
-    this.logger.warn("MEXC WebSocket connection closed", {
+    this.logger.debug("MEXC WebSocket connection closed", {
       code,
       reason: reason.toString(),
       connectionId: this.connectionId,
@@ -375,7 +375,7 @@ export class MexcConnectionManager extends EventEmitter {
   private scheduleReconnect(): void {
     this.reconnectAttempts++;
 
-    this.logger.info("Scheduling WebSocket reconnection", {
+    this.logger.debug("Scheduling WebSocket reconnection", {
       attempt: this.reconnectAttempts,
       maxAttempts: this.maxReconnectAttempts,
       delay: this.reconnectDelay,
@@ -421,9 +421,6 @@ export class MexcConnectionManager extends EventEmitter {
         try {
           this.lastPingTime = Date.now();
           this.ws.ping();
-          this.logger.debug("Heartbeat sent", {
-            connectionId: this.connectionId,
-          });
         } catch (error) {
           this.logger.error("Failed to send heartbeat", {
             error: error instanceof Error ? error.message : String(error),
@@ -478,7 +475,7 @@ export class MexcConnectionManager extends EventEmitter {
     // Update connection quality based on metrics
     if (timeSinceLastPong > this.heartbeatIntervalMs * 3) {
       this.metrics.connectionQuality = "critical";
-      this.logger.warn("Connection quality critical - no pong received", {
+      this.logger.debug("Connection quality critical - no pong received", {
         timeSinceLastPong,
         connectionId: this.connectionId,
       });

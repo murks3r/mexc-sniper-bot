@@ -54,7 +54,13 @@ const apiClient = {
       throw new Error(`Connectivity API failed: ${response.status}`);
     }
     const result = await response.json();
-    return result.connected;
+    const connected =
+      typeof result.connected === "boolean"
+        ? result.connected
+        : typeof result.connectivity === "boolean"
+          ? result.connectivity
+          : false;
+    return connected;
   },
 };
 
@@ -187,17 +193,34 @@ export const usePatternSniper = () => {
       symbol: SymbolV2Entry,
       calendar: CalendarEntry
     ): TradingTargetDisplay => {
-      if (!symbol.ot || !symbol.ca) {
+      if (!symbol.ca) {
         throw new Error(`Missing required symbol data for ${vcoinId}`);
       }
 
-      const launchTime = new Date(
-        typeof symbol.ot === "number" || typeof symbol.ot === "string"
-          ? symbol.ot
-          : Date.now()
-      );
-      const hoursAdvance =
-        (launchTime.getTime() - Date.now()) / (1000 * 60 * 60);
+      // Derive a robust launch time:
+      // 1) Prefer symbol.ot (number or numeric string). If seconds, convert to ms.
+      // 2) Fallback to calendar.firstOpenTime.
+      // 3) Fallback to now.
+      let launchMs: number | null = null;
+      if (typeof symbol.ot === "number") {
+        launchMs = symbol.ot < 1e12 ? symbol.ot * 1000 : symbol.ot;
+      } else if (typeof symbol.ot === "string") {
+        const n = Number(symbol.ot);
+        if (Number.isFinite(n)) {
+          launchMs = n < 1e12 ? n * 1000 : n;
+        }
+      }
+      if (!Number.isFinite(launchMs)) {
+        if (typeof calendar.firstOpenTime === "number") {
+          launchMs = calendar.firstOpenTime < 1e12 ? calendar.firstOpenTime * 1000 : calendar.firstOpenTime;
+        } else {
+          launchMs = Date.now();
+        }
+      }
+
+      const launchTime = new Date(launchMs!);
+      const hoursAdvanceRaw = (launchTime.getTime() - Date.now()) / (1000 * 60 * 60);
+      const hoursAdvance = Number.isFinite(hoursAdvanceRaw) ? hoursAdvanceRaw : 0;
 
       const orderParams: OrderParameters = {
         orderType: "market",
@@ -209,11 +232,11 @@ export const usePatternSniper = () => {
         vcoinId,
         symbol: String(symbol.ca),
         projectName: calendar.projectName || "Unknown Project",
-        priceDecimalPlaces: symbol.ps || 8,
-        quantityDecimalPlaces: symbol.qs || 6,
+        priceDecimalPlaces: Number.isFinite(Number(symbol.ps)) ? Number(symbol.ps) : 8,
+        quantityDecimalPlaces: Number.isFinite(Number(symbol.qs)) ? Number(symbol.qs) : 6,
         launchTime,
         discoveredAt: new Date(),
-        hoursAdvanceNotice: hoursAdvance,
+        hoursAdvanceNotice: Number.isFinite(hoursAdvance) ? hoursAdvance : 0,
         confidence: 0,
         orderParameters: orderParams,
       };

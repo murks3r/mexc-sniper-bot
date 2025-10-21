@@ -325,9 +325,9 @@ export const OptimizedTradingTargets = memo(
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {readyTargets.map((target) => (
+                {readyTargets.map((target, index) => (
                   <ReadyTargetItem
-                    key={target.vcoinId}
+                    key={target.id || `${target.vcoinId}-${index}`}
                     target={target}
                     formatTimeRemaining={formatTimeRemaining}
                     onExecute={() => handleExecuteSnipe(target)}
@@ -353,9 +353,9 @@ export const OptimizedTradingTargets = memo(
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {pendingTargetsWithData.map((target) => (
+                {pendingTargetsWithData.map((target, index) => (
                   <MonitoringTargetItem
-                    key={target.vcoinId}
+                    key={target.id || `${target.vcoinId}-pending-${index}`}
                     target={target}
                     formatTimeRemaining={formatTimeRemaining}
                   />

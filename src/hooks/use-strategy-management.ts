@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { useStatusRefresh } from "@/src/hooks/use-status-refresh";
 
 /**
  * Strategy Management Hook
@@ -76,7 +77,17 @@ export interface StrategyUpdateRequest {
  */
 export function useStrategyManagement() {
   const queryClient = useQueryClient();
+  const { refreshAllStatus } = useStatusRefresh();
   const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(true);
+  const [optimisticIsActive, setOptimisticIsActive] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const stored = window.sessionStorage.getItem("autosnipe-active");
+      return stored ? JSON.parse(stored) : false;
+    } catch {
+      return false;
+    }
+  });
 
   // Query for strategy data
   const {
@@ -92,6 +103,7 @@ export function useStrategyManagement() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -105,9 +117,71 @@ export function useStrategyManagement() {
       const result = await response.json();
       return result.data;
     },
+    placeholderData: (prev) => prev,
     refetchInterval: isRealTimeEnabled ? 5000 : false, // Refetch every 5 seconds for real-time updates
     staleTime: 2000, // Consider data stale after 2 seconds
     gcTime: 10000, // Keep in cache for 10 seconds
+  });
+
+  // Also poll authoritative auto-sniping status to keep button state consistent across pages
+  const { data: controlStatus } = useQuery<{
+    isActive?: boolean;
+    autoSnipingEnabled?: boolean;
+    tradingEnabled?: boolean;
+  }>({
+    queryKey: ["auto-sniping-control-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/auto-sniping/control", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) return {} as any;
+      const json = await res.json();
+      // The route returns { success, data: { status, ... } }
+      // status is ServiceStatus; we care about autoSnipingEnabled/tradingEnabled
+      const status = json?.data?.status ?? json?.data;
+      // Persist to session storage to survive navigation
+      try {
+        if (typeof window !== "undefined" && status) {
+          const activeVal =
+            typeof (status as any)?.autoSnipingEnabled === "boolean"
+              ? (status as any).autoSnipingEnabled
+              : typeof status?.isActive === "boolean"
+                ? status.isActive
+                : undefined;
+          if (typeof activeVal === "boolean") {
+            window.sessionStorage.setItem(
+              "autosnipe-active",
+              JSON.stringify(activeVal)
+            );
+          }
+        }
+      } catch {}
+      return status || {};
+    },
+    refetchInterval: isRealTimeEnabled ? 5000 : false,
+    staleTime: 2000,
+    placeholderData: (prev) => prev,
+  });
+
+  // Poll the same status endpoint the dashboard uses to avoid cross-page drift
+  const { data: dashboardStatus } = useQuery<{ isActive?: boolean } | undefined>({
+    queryKey: ["auto-sniping-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/auto-sniping/status", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) return undefined;
+      const json = await res.json();
+      // endpoint returns { success, data }
+      return json?.data as any;
+    },
+    refetchInterval: isRealTimeEnabled ? 5000 : false,
+    staleTime: 2000,
+    placeholderData: (prev) => prev,
   });
 
   // Mutation for strategy updates
@@ -118,6 +192,7 @@ export function useStrategyManagement() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(request),
       });
 
@@ -162,29 +237,68 @@ export function useStrategyManagement() {
   // Toggle trading function
   const toggleTrading = useCallback(
     async (enabled: boolean) => {
-      // This would integrate with the auto-sniping control endpoint
-      const response = await fetch("/api/auto-sniping/config", {
+      // Use the correct auto-sniping control endpoint
+      const response = await fetch("/api/auto-sniping/control", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include authentication cookies
         body: JSON.stringify({
           action: enabled ? "start" : "stop",
+          reason: `Trading ${enabled ? "started" : "stopped"} via dashboard`,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `Failed to ${enabled ? "start" : "stop"} trading`
-        );
+        // Extract error body if available
+        let serverMessage = `Failed to ${enabled ? "start" : "stop"} trading`;
+        let serverDetails: any = undefined;
+        try {
+          const errorData = await response.json();
+          serverMessage = errorData?.error || errorData?.message || serverMessage;
+          serverDetails = errorData?.details || errorData?.meta;
+        } catch {
+          // ignore json parse errors
+        }
+        // Special-case unauthorized to guide user
+        if (response.status === 401) {
+          throw new Error(
+            serverMessage ||
+              "Authentication required. Please sign in again and retry."
+          );
+        }
+        throw new Error(serverMessage);
       }
 
-      // Refetch strategy data to get updated status
+      // Persist optimistic state immediately so UI survives navigation
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(
+            "autosnipe-active",
+            JSON.stringify(!!enabled)
+          );
+          setOptimisticIsActive(!!enabled);
+        }
+      } catch {}
+
+      // Invalidate related queries for immediate UI updates
       refetch();
+      queryClient.invalidateQueries({ queryKey: ["auto-sniping-control-status"] });
+      queryClient.invalidateQueries({ queryKey: ["auto-sniping-status"] });
+      queryClient.invalidateQueries({ queryKey: ["autoSniping", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["strategies"] });
+      queryClient.invalidateQueries({ queryKey: ["status"] });
+      queryClient.invalidateQueries({ queryKey: ["mexc", "unified-status"] });
+      
+      // Force a cross-page status refresh so the Dashboard tab reflects changes immediately
+      try {
+        await refreshAllStatus();
+      } catch {}
+      
       return response.json();
     },
-    [refetch]
+    [refetch, refreshAllStatus, queryClient]
   );
 
   // Real-time control
@@ -227,12 +341,29 @@ export function useStrategyManagement() {
     availableStrategies: strategyData?.availableStrategies || [],
     strategyPerformance: strategyData?.strategyPerformance || {},
     activePositions: strategyData?.activePositions || [],
-    tradingStatus: strategyData?.tradingStatus || {
-      isActive: false,
-      tradingEnabled: false,
-      paperTradingMode: true,
-      healthStatus: false,
-    },
+    tradingStatus: (() => {
+      const base = strategyData?.tradingStatus || {
+        isActive: false,
+        tradingEnabled: false,
+        paperTradingMode: true,
+        healthStatus: false,
+      };
+      const mergedIsActive =
+        typeof (controlStatus as any)?.autoSnipingEnabled === "boolean"
+          ? (controlStatus as any).autoSnipingEnabled
+          : typeof controlStatus?.isActive === "boolean"
+            ? controlStatus.isActive
+            : typeof base.isActive === "boolean"
+              ? base.isActive
+              : typeof dashboardStatus?.isActive === "boolean"
+                ? dashboardStatus.isActive
+                : base.isActive;
+      const mergedTradingEnabled =
+        typeof controlStatus?.tradingEnabled === "boolean"
+          ? controlStatus.tradingEnabled
+          : base.tradingEnabled;
+      return { ...base, isActive: mergedIsActive, tradingEnabled: mergedTradingEnabled };
+    })(),
     metrics: strategyData?.metrics || {
       totalPnL: 0,
       totalTrades: 0,

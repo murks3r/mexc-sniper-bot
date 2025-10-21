@@ -209,6 +209,15 @@ export class DatabaseOperations {
     try {
       const newTarget = {
         ...targetData,
+        // Safe defaults only if values are absent
+        takeProfitCustom:
+          targetData.takeProfitCustom !== undefined && targetData.takeProfitCustom !== null
+            ? targetData.takeProfitCustom
+            : 25,
+        stopLossPercent:
+          targetData.stopLossPercent !== undefined && targetData.stopLossPercent !== null
+            ? targetData.stopLossPercent
+            : 15,
         createdAt: new Date(),
         updatedAt: new Date(),
         status: targetData.status || "pending",

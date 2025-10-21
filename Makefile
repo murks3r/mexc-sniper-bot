@@ -67,15 +67,16 @@ kill-ports: ## Kill processes on common development ports
 .PHONY: dev
 dev: kill-ports ## Start all development servers (Next.js + Inngest)
 	@echo -e "${BLUE}Starting all development servers...${NC}"
-	@trap 'kill %1 %2' SIGINT; \
-	$(MAKE) dev-next & \
-	$(MAKE) dev-inngest & \
+	@mkdir -p .log; \
+	trap 'kill %1 %2' SIGINT; \
+	( $(MAKE) dev-next 2>&1 | sed -u 's/^/[next] /' | tee -a .log/dev.log ) & \
+	( $(MAKE) dev-inngest 2>&1 | sed -u 's/^/[inngest] /' | tee -a .log/dev.log ) & \
 	wait
 
 .PHONY: dev-next
 dev-next: ## Start Next.js development server
 	@echo -e "${BLUE}Starting Next.js development server...${NC}"
-	@$(NODE) run dev
+	@WS_NO_BUFFER_UTIL=1 WS_NO_UTF_8_VALIDATE=1 $(NODE) run dev
 
 .PHONY: dev-inngest
 dev-inngest: ## Start Inngest dev server
@@ -449,7 +450,9 @@ env-check: ## Check environment variables
 .PHONY: logs
 logs: ## Show application logs
 	@echo -e "${BLUE}Showing recent logs...${NC}"
-	@tail -f -n 50 logs/*.log 2>/dev/null || echo "No log files found"
+	@mkdir -p .log; \
+	( [ -f .log/dev.log ] || echo "Creating .log/dev.log ..." && : ) ; \
+	tail -f -n 50 .log/dev.log 2>/dev/null || echo "No log file at .log/dev.log yet"
 
 .PHONY: status
 status: ## Show project status

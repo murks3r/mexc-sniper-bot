@@ -7,6 +7,7 @@
 
 import type { EventEmitter } from "node:events";
 import { z } from "zod";
+import { getPaperTradingDefault } from "@/src/lib/trading-config-helpers";
 import type { UnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
 import type { ComprehensiveSafetyCoordinator } from "@/src/services/risk/comprehensive-safety-coordinator";
 
@@ -63,13 +64,13 @@ export const CoreTradingConfigSchema = z.object({
   baseUrl: z.string().url().optional(),
   timeout: z.number().positive().optional(),
   maxRetries: z.number().positive().optional(),
-  enablePaperTrading: z.boolean().default(true),
+  enablePaperTrading: z.boolean().default(getPaperTradingDefault()),
   defaultStrategy: z.string().default("conservative"),
   maxConcurrentPositions: z.number().positive().default(5),
   enableCircuitBreaker: z.boolean().default(true),
   circuitBreakerThreshold: z.number().positive().default(5),
   circuitBreakerResetTime: z.number().positive().default(300000), // 5 minutes
-  paperTradingMode: z.boolean().default(true),
+  paperTradingMode: z.boolean().default(getPaperTradingDefault()),
   positionManagementEnabled: z.boolean().default(true),
   maxConcurrentSnipes: z.number().positive().default(10),
   autoSnipingEnabled: z.boolean().default(false),
@@ -115,6 +116,8 @@ export interface TradeParameters {
   takeProfit?: number;
   timeInForce?: "GTC" | "IOC" | "FOK";
   newClientOrderId?: string;
+  snipeTargetId?: number;
+  userId?: string;
 
   // Enhanced parameters
   strategy?: string;
@@ -134,6 +137,8 @@ export const TradeParametersSchema = z.object({
   stopPrice: z.number().positive().optional(),
   timeInForce: z.enum(["GTC", "IOC", "FOK"]).optional(),
   newClientOrderId: z.string().optional(),
+  snipeTargetId: z.number().positive().optional(),
+  userId: z.string().optional(),
   strategy: z.string().optional(),
   isAutoSnipe: z.boolean().optional(),
   confidenceScore: z.number().min(0).max(100).optional(),
@@ -180,6 +185,7 @@ export interface Position {
   side: "BUY" | "SELL" | "buy" | "sell";
   orderId: string;
   clientOrderId?: string;
+  snipeTargetId?: number;
   entryPrice: number;
   quantity: number;
   currentPrice?: number;
@@ -203,6 +209,7 @@ export interface Position {
   fees?: number;
   notes?: string;
   tags: string[];
+  userId?: string;
 
   // Enhanced risk metrics
   riskMetrics?: {

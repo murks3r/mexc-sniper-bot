@@ -313,15 +313,15 @@ export class EmergencyStop extends AggregateRoot<string> {
       }
     }
 
-    // Validate action priorities are unique
-    const priorities = props.emergencyActions.map((action) => action.priority);
-    const uniquePriorities = new Set(priorities);
-    if (priorities.length !== uniquePriorities.size) {
-      throw new DomainValidationError(
-        "emergencyActions.priority",
-        priorities,
-        "Emergency action priorities must be unique"
-      );
+    // Validate action priorities are positive integers
+    for (const action of props.emergencyActions) {
+      if (!Number.isInteger(action.priority) || action.priority <= 0) {
+        throw new DomainValidationError(
+          "emergencyActions.priority",
+          action.priority,
+          "Emergency action priority must be a positive integer"
+        );
+      }
     }
 
     // Validate action timeouts

@@ -26,8 +26,10 @@ export function useTimeFormatting() {
     const launch =
       typeof launchTime === "number" ? new Date(launchTime) : launchTime;
     const now = Date.now();
-    const hoursRemaining = (launch.getTime() - now) / (1000 * 60 * 60);
+    const diffMs = launch instanceof Date ? launch.getTime() - now : NaN;
+    const hoursRemaining = diffMs / (1000 * 60 * 60);
 
+    if (!Number.isFinite(hoursRemaining)) return "TBA";
     if (hoursRemaining < 0) return "Launched";
     if (hoursRemaining < 1) return `${Math.floor(hoursRemaining * 60)}m`;
     if (hoursRemaining < 24) return `${hoursRemaining.toFixed(1)}h`;

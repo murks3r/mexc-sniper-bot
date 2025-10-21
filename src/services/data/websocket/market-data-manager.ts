@@ -457,7 +457,15 @@ export class MarketDataManager {
    * Get cached price data
    */
   getPrice(symbol: string): TradingPriceMessage | undefined {
-    return this.priceCache.get(symbol);
+    return this.priceCache.get(symbol.toUpperCase());
+  }
+
+  getLatestPriceNumber(symbol: string): number | null {
+    const price = this.getPrice(symbol);
+    if (price && typeof price.price === "number" && price.price > 0) {
+      return price.price;
+    }
+    return null;
   }
 
   /**

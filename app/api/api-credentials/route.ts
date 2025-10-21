@@ -1,57 +1,91 @@
 /**
  * API Credentials Route
- * Minimal implementation to eliminate import errors
+ * Real implementation for storing and retrieving user MEXC API credentials
  */
 
-import { type NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/src/db";
+import { apiCredentials } from "@/src/db/schemas/trading";
+import { getEncryptionService } from "@/src/services/api/secure-encryption-service";
+import { createUnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
+import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 
-// Mock API credentials data
-const mockCredentials = {
-  mexc: {
-    hasCredentials: false,
-    credentialsValid: false,
-    lastValidated: null,
-    environment: "test",
-  },
-};
+// Cache API credentials status for 60 seconds
+let credentialsCache: Map<string, {
+  data: any;
+  timestamp: number;
+}> = new Map();
+
+const CACHE_DURATION = 60 * 1000; // 60 seconds
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const provider = searchParams.get("provider") || "mexc";
+    const skipCache = searchParams.get("skipCache") === "true";
 
-    console.info("[API-Credentials] GET request", {
-      userId: userId || "anonymous",
+    if (!userId) {
+      return NextResponse.json(
+        { error: "userId parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[API-Credentials] GET request`, {
+      userId,
       provider,
       timestamp: new Date().toISOString(),
     });
 
-    const response = {
+    // Check cache first (unless skipCache=true)
+    const cacheKey = `${userId}-${provider}`;
+    const now = Date.now();
+    const cached = credentialsCache.get(cacheKey);
+    
+    if (!skipCache && cached && (now - cached.timestamp) < CACHE_DURATION) {
+      return NextResponse.json(cached.data);
+    }
+
+    // Quick database query
+    const credentials = await db
+      .select({
+        id: apiCredentials.id,
+        updatedAt: apiCredentials.updatedAt,
+      })
+      .from(apiCredentials)
+      .where(
+        and(
+          eq(apiCredentials.userId, userId),
+          eq(apiCredentials.provider, provider)
+        )
+      )
+      .limit(1);
+
+    const hasCredentials = credentials.length > 0;
+    const lastValidated = hasCredentials ? credentials[0].updatedAt : null;
+
+    const result = {
       success: true,
       data: {
-        credentials:
-          mockCredentials[provider as keyof typeof mockCredentials] ||
-          mockCredentials.mexc,
-        provider,
-        userId: userId || null,
-        hasEnvironmentCredentials: !!(
-          process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY
-        ),
-        timestamp: new Date().toISOString(),
-      },
-      message: "Credentials retrieved successfully",
+        hasCredentials,
+        provider: "mexc",
+        userId,
+      }
     };
 
-    return NextResponse.json(response);
+    // Cache the result
+    credentialsCache.set(cacheKey, {
+      data: result,
+      timestamp: now
+    });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[API-Credentials] GET error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to retrieve credentials",
-        timestamp: new Date().toISOString(),
-      },
+      { error: "Failed to fetch API credentials status" },
       { status: 500 }
     );
   }
@@ -60,43 +94,108 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, provider = "mexc", credentials } = body;
+    const { userId, apiKey, secretKey, passphrase, provider = "mexc" } = body;
 
-    console.info("[API-Credentials] POST request", {
-      userId: userId || "anonymous",
+    if (!userId || !apiKey || !secretKey) {
+      return NextResponse.json(
+        { error: "userId, apiKey, and secretKey are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validation
+    if (apiKey.length < 10 || secretKey.length < 10) {
+      return NextResponse.json(
+        { error: "API key and secret must be at least 10 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (apiKey.includes(" ") || secretKey.includes(" ")) {
+      return NextResponse.json(
+        { error: "API credentials cannot contain spaces" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[API-Credentials] POST request`, {
+      userId,
       provider,
-      hasCredentials: !!credentials,
       timestamp: new Date().toISOString(),
     });
 
-    // Mock credential validation
-    const isValid = !!(credentials?.apiKey && credentials?.secretKey);
+    // Encrypt credentials
+    const encryptionService = getEncryptionService();
+    const encryptedApiKey = encryptionService.encrypt(apiKey);
+    const encryptedSecretKey = encryptionService.encrypt(secretKey);
+    const encryptedPassphrase = passphrase
+      ? encryptionService.encrypt(passphrase)
+      : null;
 
-    const response = {
-      success: isValid,
+    // Check if credentials exist
+    const existingCredentials = await db
+      .select({ id: apiCredentials.id })
+      .from(apiCredentials)
+      .where(
+        and(
+          eq(apiCredentials.userId, userId),
+          eq(apiCredentials.provider, provider)
+        )
+      )
+      .limit(1);
+
+    const now = new Date();
+
+    if (existingCredentials.length > 0) {
+      await db
+        .update(apiCredentials)
+        .set({
+          encryptedApiKey,
+          encryptedSecretKey,
+          encryptedPassphrase,
+          isActive: true,
+          updatedAt: now,
+        })
+        .where(and(eq(apiCredentials.userId, userId), eq(apiCredentials.provider, provider)));
+    } else {
+      await db
+        .insert(apiCredentials)
+        .values({
+          userId,
+          provider,
+          encryptedApiKey,
+          encryptedSecretKey,
+          encryptedPassphrase,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+    }
+
+    // Invalidate cache for this user/provider pair
+    try {
+      const cacheKey = `${userId}-${provider}`;
+      credentialsCache.delete(cacheKey);
+    } catch { /* ignore cache invalidation errors */ }
+
+    return NextResponse.json({
+      success: true,
       data: {
-        credentialsStored: isValid,
-        credentialsValid: isValid,
+        credentialsStored: true,
         provider,
-        userId: userId || null,
-        message: isValid
-          ? "Credentials stored successfully"
-          : "Invalid credentials provided",
+        userId,
+        message:
+          existingCredentials.length > 0
+            ? "Credentials updated successfully"
+            : "Credentials stored successfully",
+        timestamp: new Date().toISOString(),
       },
-      message: isValid
-        ? "Credentials updated successfully"
-        : "Failed to validate credentials",
-    };
-
-    return NextResponse.json(response, { status: isValid ? 200 : 400 });
+      message: "API credentials saved",
+    });
   } catch (error) {
     console.error("[API-Credentials] POST error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to store credentials",
-        timestamp: new Date().toISOString(),
-      },
+      { error: "Failed to save API credentials" },
       { status: 500 }
     );
   }

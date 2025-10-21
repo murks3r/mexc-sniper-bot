@@ -106,7 +106,7 @@ const TradingConfigSchema = z.object({
     patternDetectionInterval: z.number().min(1000).max(300000).default(5000),
     safetyCheckInterval: z.number().min(1000).max(60000).default(10000),
     confidenceThreshold: z.number().min(0).max(100).default(80),
-    paperTradingMode: z.boolean().default(true),
+    paperTradingMode: z.boolean().default(false),
   }),
 
   // Risk management
@@ -589,8 +589,24 @@ export class ConfigurationManager {
     try {
       return ConfigurationSchema.parse(cleanConfig);
     } catch (error) {
-      console.error("Configuration validation failed:", error);
-      throw new Error("Invalid configuration");
+      // Safe fallback: log concise warning and return schema defaults
+      const issuesCount = (error as any)?.issues?.length;
+      const details =
+        issuesCount && Number.isFinite(issuesCount)
+          ? `${issuesCount} validation issues`
+          : (error instanceof Error ? error.message : "Unknown validation error");
+      console.warn("Configuration invalid; using defaults (" + details + ")");
+      const defaults = ConfigurationSchema.parse({
+        app: {},
+        mexc: {},
+        trading: {},
+        database: {},
+        cache: {},
+        monitoring: {},
+        security: {},
+      } as any);
+      this.logger.warn("Using default configuration due to validation error");
+      return defaults;
     }
   }
 

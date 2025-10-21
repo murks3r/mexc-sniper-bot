@@ -139,9 +139,9 @@ export function AlertCenter() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
-    severity: "",
-    category: "",
-    acknowledged: "",
+    severity: "all",
+    category: "all",
+    acknowledged: "all",
     search: "",
   });
   const [_sortBy, _setSortBy] = useState("timestamp");
@@ -149,14 +149,25 @@ export function AlertCenter() {
   const [showOnlyCritical, setShowOnlyCritical] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const isViewingTopRef = useRef(true);
+  const pendingBufferRef = useRef<Alert[]>([]);
+  const pendingAccumulatedRef = useRef<Alert[]>([]);
+  const flushTimerRef = useRef<number | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Helper function to build API query parameters (memoized)
   const buildApiParams = useCallback(() => {
     const params = new URLSearchParams();
-    if (filters.severity) params.append("severity", filters.severity);
-    if (filters.category) params.append("category", filters.category);
-    if (filters.acknowledged)
+    if (filters.severity && filters.severity !== "all") {
+      params.append("severity", filters.severity);
+    }
+    if (filters.category && filters.category !== "all") {
+      params.append("category", filters.category);
+    }
+    if (filters.acknowledged && filters.acknowledged !== "all") {
       params.append("acknowledged", filters.acknowledged);
+    }
     return params;
   }, [filters]);
 
@@ -229,11 +240,26 @@ export function AlertCenter() {
     eventSource.onmessage = (event) => {
       try {
         const update = JSON.parse(event.data);
-        if (update.alerts) {
-          setAlerts((prev) => {
-            const newAlerts = [...update.alerts, ...prev.slice(0, 100)]; // Keep latest 100
-            return newAlerts;
-          });
+        if (update.alerts && Array.isArray(update.alerts)) {
+          // Buffer updates and flush at most once per second to avoid UI jitter
+          pendingBufferRef.current = pendingBufferRef.current.concat(update.alerts);
+
+          if (flushTimerRef.current == null) {
+            flushTimerRef.current = window.setTimeout(() => {
+              const batch = pendingBufferRef.current;
+              pendingBufferRef.current = [];
+              flushTimerRef.current = null;
+
+              // Accumulate pending updates without mutating visible list to avoid jitter
+              if (batch.length > 0) {
+                pendingAccumulatedRef.current = [
+                  ...batch,
+                  ...pendingAccumulatedRef.current,
+                ].slice(0, 500);
+                setPendingCount((c) => c + batch.length);
+              }
+            }, 800);
+          }
         }
       } catch (err) {
         console.error("Error parsing real-time alert data:", err);
@@ -245,6 +271,32 @@ export function AlertCenter() {
       setTimeout(setupRealTimeConnection, 5000);
     };
   };
+  const handleListScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    // Consider within 20px of top as top-viewing (newest first)
+    const atTop = el.scrollTop <= 20;
+    isViewingTopRef.current = atTop;
+  };
+
+  const showPendingUpdates = () => {
+    // Scroll to top to reveal newest and clear counter
+    if (listRef.current) {
+      listRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    // Apply accumulated updates atomically to avoid flicker
+    setAlerts((prev) => {
+      const merged = [
+        ...pendingAccumulatedRef.current,
+        ...prev,
+      ].slice(0, 100);
+      pendingAccumulatedRef.current = [];
+      return merged;
+    });
+    setPendingCount(0);
+    isViewingTopRef.current = true;
+  };
+
 
   useEffect(() => {
     fetchAlerts();
@@ -428,6 +480,8 @@ export function AlertCenter() {
 
   const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff7300"];
 
+  const skeletonItems = useSkeletonItems(4, "h-16 bg-gray-100 rounded animate-pulse");
+
   if (loading) {
     return (
       <Card>
@@ -439,11 +493,9 @@ export function AlertCenter() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {useSkeletonItems(4, "h-16 bg-gray-100 rounded animate-pulse").map(
-              (item) => (
-                <div key={item.key} className={item.className} />
-              )
-            )}
+            {skeletonItems.map((item) => (
+              <div key={item.key} className={item.className} />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -629,7 +681,7 @@ export function AlertCenter() {
                     <SelectValue placeholder="Severity" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Severities</SelectItem>
+                    <SelectItem value="all">All Severities</SelectItem>
                     <SelectItem value="critical">Critical</SelectItem>
                     <SelectItem value="error">Error</SelectItem>
                     <SelectItem value="warning">Warning</SelectItem>
@@ -647,7 +699,7 @@ export function AlertCenter() {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="system">System</SelectItem>
                     <SelectItem value="agent">Agent</SelectItem>
                     <SelectItem value="trading">Trading</SelectItem>
@@ -667,7 +719,7 @@ export function AlertCenter() {
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="true">Acknowledged</SelectItem>
                     <SelectItem value="false">Unacknowledged</SelectItem>
                   </SelectContent>
@@ -686,7 +738,13 @@ export function AlertCenter() {
           {/* Alert Table */}
           <Card>
             <CardContent className="p-0">
-              <div className="max-h-96 overflow-auto">
+              {pendingCount > 0 && (
+                <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-sm text-blue-700 flex items-center justify-between">
+                  <span>{pendingCount} new alert(s)</span>
+                  <Button variant="outline" size="sm" onClick={showPendingUpdates}>Show</Button>
+                </div>
+              )}
+              <div className="max-h-96 overflow-auto" ref={listRef} onScroll={handleListScroll}>
                 <Table>
                   <TableHeader>
                     <TableRow>

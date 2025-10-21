@@ -88,11 +88,77 @@ export function OptimizedAgentsDashboard({
         throw new Error(result.error || "Failed to fetch agent status");
       }
 
-      // Validate with Zod schema
+      // Map API response shape to the schema expected by this component
+      const mapSystemStatus = (status: string | undefined) => {
+        switch (status) {
+          case "healthy":
+            return "healthy" as const;
+          case "degraded":
+            return "warning" as const;
+          case "unhealthy":
+            return "error" as const;
+          default:
+            return "warning" as const;
+        }
+      };
+
+      const mapAgentStatus = (status: string | undefined) => {
+        switch (status) {
+          case "healthy":
+            return "active" as const;
+          case "degraded":
+            return "starting" as const;
+          case "unhealthy":
+            return "error" as const;
+          default:
+            return "inactive" as const;
+        }
+      };
+
+      const apiData = result.data || {};
+      const agentsFromApi: any[] = Array.isArray(apiData.agents) ? apiData.agents : [];
+
+      const mapped: AgentList = {
+        agents: agentsFromApi.map((a) => ({
+          id: String(a.id ?? crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)),
+          name: a.name ?? "Unknown Agent",
+          type: (a.type as AgentStatus["type"]) ?? "orchestrator",
+          status: mapAgentStatus(a.status),
+          healthScore: Number(a.healthScore ?? 0),
+          lastActivity: (a.lastChecked ? new Date(a.lastChecked).toISOString() : new Date().toISOString()),
+          performance: {
+            uptime: Number(a.uptime ?? 0),
+            successRate: Number(
+              // If errorRate provided 0..1 or 0..100, convert to successRate
+              typeof a.errorRate === "number"
+                ? a.errorRate <= 1
+                  ? (1 - a.errorRate) * 100
+                  : Math.max(0, 100 - a.errorRate)
+                : 0
+            ),
+            totalOperations: Number(a.trends?.operationsTotal ?? 0),
+            avgResponseTime: Number(a.responseTime ?? a.avgResponseTime ?? 0),
+          },
+          currentTask: a.trends?.currentTask ?? undefined,
+          errors: Array.isArray(a.trends?.recentErrors) ? a.trends.recentErrors : [],
+          capabilities: Array.isArray(a.trends?.capabilities) ? a.trends.capabilities : [],
+        })),
+        systemStatus: mapSystemStatus(apiData.system?.healthStatus),
+        totalAgents:
+          Number(apiData.summary?.totalAgents) || agentsFromApi.length || 0,
+        activeAgents:
+          Number(apiData.summary?.healthyAgents) ||
+          agentsFromApi.filter((a) => mapAgentStatus(a.status) === "active").length ||
+          0,
+        lastUpdate:
+          (result.timestamp ? new Date(result.timestamp).toISOString() : new Date().toISOString()),
+      };
+
+      // Validate with Zod schema after mapping
       try {
-        return AgentListSchema.parse(result.data);
+        return AgentListSchema.parse(mapped);
       } catch (validationError) {
-        console.error("Agent data validation failed:", validationError);
+        console.error("Agent data validation failed after mapping:", validationError);
         throw new Error("Invalid agent data format received from API");
       }
     },

@@ -19,6 +19,7 @@ import {
 } from "../ui/card";
 import { ChartContainer } from "../ui/chart";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { useLivePrices } from "@/src/hooks/use-live-prices";
 
 interface TradingChartProps {
   className?: string;
@@ -48,6 +49,21 @@ type MexcKlineData = [
   string, // buyBaseAssetVolume
   string, // buyQuoteAssetVolume
 ];
+
+// Stable helper outside the component to avoid recreating on every render
+type TimeRange = "7d" | "30d" | "90d";
+const getIntervalAndLimit = (range: TimeRange) => {
+  switch (range) {
+    case "7d":
+      return { interval: "1h", limit: 168 }; // 7 days * 24 hours
+    case "30d":
+      return { interval: "6h", limit: 120 }; // 30 days * 4 intervals per day
+    case "90d":
+      return { interval: "1d", limit: 90 }; // 90 days
+    default:
+      return { interval: "1d", limit: 90 };
+  }
+};
 
 // Real market data fetcher using API route
 const fetchMarketData = async (
@@ -255,27 +271,18 @@ export function TradingChart({
   className,
   symbol = "BTCUSDT",
 }: TradingChartProps) {
-  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("90d");
+  const [timeRange, setTimeRange] = useState<TimeRange>("90d");
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"real" | "ticker" | "demo">(
     "real"
   );
-
-  // Map time ranges to API intervals and limits
-  const getIntervalAndLimit = (range: "7d" | "30d" | "90d") => {
-    switch (range) {
-      case "7d":
-        return { interval: "1h", limit: 168 }; // 7 days * 24 hours
-      case "30d":
-        return { interval: "6h", limit: 120 }; // 30 days * 4 intervals per day
-      case "90d":
-        return { interval: "1d", limit: 90 }; // 90 days
-      default:
-        return { interval: "1d", limit: 90 };
-    }
-  };
+  // Live SSE prices for immediate updates
+  const { prices: livePrices, connected: liveConnected } = useLivePrices(
+    [symbol],
+    true
+  );
 
   // Fetch market data when component mounts or time range changes
   useEffect(() => {
@@ -308,7 +315,7 @@ export function TradingChart({
     const refreshInterval = setInterval(loadMarketData, 60000); // Refresh every minute
 
     return () => clearInterval(refreshInterval);
-  }, [timeRange, symbol, getIntervalAndLimit]);
+  }, [timeRange, symbol]);
 
   const getDaysDescription = () => {
     switch (timeRange) {
@@ -347,8 +354,11 @@ export function TradingChart({
             )}
           </CardTitle>
           <CardDescription>
-            {symbol} volume for the last {getDaysDescription()}{" "}
-            {getDataSourceIndicator()}
+            {symbol} volume for the last {getDaysDescription()} {" "}
+            {getDataSourceIndicator()} {" "}
+            {liveConnected && livePrices[symbol]?.price
+              ? `(live: ${livePrices[symbol].price.toLocaleString()})`
+              : ""}
             {error && <span className="text-destructive ml-2">({error})</span>}
           </CardDescription>
         </div>
@@ -455,6 +465,7 @@ export function TradingChart({
                 fillOpacity={1}
                 fill="url(#colorVolume)"
                 strokeWidth={2}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

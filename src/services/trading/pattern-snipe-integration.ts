@@ -12,10 +12,16 @@ import { EventEmitter } from "node:events";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
 import { toSafeError } from "@/src/lib/error-type-utils";
-import {
-  getCompleteAutoSnipingService,
-  type PatternTrigger,
-} from "./complete-auto-sniping-service";
+// Removed duplicate service import - using consolidated core trading service instead
+// PatternTrigger interface moved to local definition
+export interface PatternTrigger {
+  id: string;
+  symbol: string;
+  pattern: string;
+  confidence: number;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
 
 // Pattern detection interfaces
 export interface PatternDetectionEvent {
@@ -90,7 +96,13 @@ export class PatternSnipeIntegration extends EventEmitter {
 
   private isActive = false;
   private config: PatternSnipeConfig;
-  private autoSnipingService = getCompleteAutoSnipingService();
+  private autoSnipingService: any | null = null;
+  private listenersAttached = false;
+  // Using consolidated core trading service instead of duplicate services
+  private async getAutoSnipingService() {
+    const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+    return getCoreTrading();
+  }
 
   // Pattern monitoring
   private activePatterns: Map<string, PatternDetectionEvent> = new Map();
@@ -125,8 +137,6 @@ export class PatternSnipeIntegration extends EventEmitter {
       minConfidence: this.config.minConfidenceScore,
       riskPerPattern: this.config.riskPerPattern,
     });
-
-    this.setupEventListeners();
   }
 
   /**
@@ -141,9 +151,19 @@ export class PatternSnipeIntegration extends EventEmitter {
     try {
       this.logger.info("Starting pattern-snipe integration");
 
+      // Resolve and cache auto-sniping service
+      if (!this.autoSnipingService) {
+        this.autoSnipingService = await this.getAutoSnipingService();
+      }
+
       // Initialize auto-sniping service if not already done
-      if (!this.autoSnipingService.getStatus().isInitialized) {
+      if (!this.autoSnipingService?.getStatus().isInitialized) {
         await this.autoSnipingService.initialize();
+      }
+
+      // Attach listeners once
+      if (!this.listenersAttached) {
+        this.setupEventListeners();
       }
 
       // Start pattern detection monitoring
@@ -327,13 +347,24 @@ export class PatternSnipeIntegration extends EventEmitter {
    * Get integration status and metrics
    */
   getStatus() {
+    const safeAutoSnipingStatus = (() => {
+      try {
+        if (this.autoSnipingService && typeof this.autoSnipingService.getStatus === "function") {
+          return this.autoSnipingService.getStatus();
+        }
+      } catch (_e) {
+        // fall through to default below
+      }
+      return { isInitialized: false, isActive: false };
+    })();
+
     return {
       isActive: this.isActive,
       config: this.config,
       activePatterns: this.activePatterns.size,
       patternHistory: this.patternHistory.size,
       metrics: this.patternMetrics,
-      autoSnipingStatus: this.autoSnipingService.getStatus(),
+      autoSnipingStatus: safeAutoSnipingStatus,
       timestamp: new Date().toISOString(),
     };
   }
@@ -397,6 +428,8 @@ export class PatternSnipeIntegration extends EventEmitter {
    * Set up event listeners
    */
   private setupEventListeners(): void {
+    if (!this.autoSnipingService || this.listenersAttached) return;
+    this.listenersAttached = true;
     // Listen for pattern detection events from the pattern detection service
     this.on("pattern_detected", async (event: PatternDetectionEvent) => {
       if (this.isActive && this.config.enabled) {
@@ -412,14 +445,14 @@ export class PatternSnipeIntegration extends EventEmitter {
     });
 
     // Listen for auto-sniping service events
-    this.autoSnipingService.on("snipe_executed", (data) => {
+    this.autoSnipingService.on("snipe_executed", (data: any) => {
       this.logger.info("Pattern snipe executed successfully", {
         snipeId: data.snipeId,
         symbol: data.target.symbolName,
       });
     });
 
-    this.autoSnipingService.on("snipe_failed", (data) => {
+    this.autoSnipingService.on("snipe_failed", (data: any) => {
       this.logger.warn("Pattern snipe failed", {
         snipeId: data.snipeId,
         symbol: data.target.symbolName,
@@ -596,11 +629,9 @@ export class PatternSnipeIntegration extends EventEmitter {
         entryStrategy: "market",
         positionSizeUsdt: this.config.riskPerPattern,
         takeProfitCustom:
-          ((event.price.takeProfit - event.price.entry) / event.price.entry) *
-          100,
+          ((event.price.takeProfit - event.price.entry) / event.price.entry) * 100 || 25,
         stopLossPercent:
-          ((event.price.entry - event.price.stopLoss) / event.price.entry) *
-          100,
+          ((event.price.entry - event.price.stopLoss) / event.price.entry) * 100 || 15,
         status: snipeResult.success ? "completed" : "failed",
         priority:
           event.timing.urgency === "critical"

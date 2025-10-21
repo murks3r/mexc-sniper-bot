@@ -11,7 +11,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,8 +120,10 @@ export function SystemArchitectureOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  // Hooks must not be called conditionally; prepare skeleton items up-front
+  const skeletonItems = useSkeletonItems(3, "h-20 bg-gray-100 rounded animate-pulse");
 
-  const fetchSystemOverview = async () => {
+  const fetchSystemOverview = useCallback(async () => {
     try {
       const response = await fetch("/api/monitoring/system-overview");
       if (!response.ok) {
@@ -135,7 +137,7 @@ export function SystemArchitectureOverview() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSystemOverview();
@@ -210,11 +212,9 @@ export function SystemArchitectureOverview() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {useSkeletonItems(3, "h-20 bg-gray-100 rounded animate-pulse").map(
-              (item) => (
-                <div key={item.key} className={item.className} />
-              )
-            )}
+            {skeletonItems.map((item) => (
+              <div key={item.key} className={item.className} />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -413,7 +413,7 @@ export function SystemArchitectureOverview() {
                   {data.agentArchitecture.agentInteractions.map(
                     (interaction, index) => (
                       <div
-                        key={generateListKey(interaction, index, "from")}
+                        key={`${interaction.from}__${interaction.to}__${interaction.type}__${index}`}
                         className="flex items-center gap-3 p-3 rounded-lg border"
                       >
                         <div className="flex-1">

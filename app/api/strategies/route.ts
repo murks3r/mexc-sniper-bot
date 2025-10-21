@@ -16,12 +16,32 @@ import {
 const coreTrading = getCoreTrading();
 const strategyManager = new TradingStrategyManager();
 
+// Fast in-memory cache to avoid recomputing heavy metrics on every navigation
+let strategiesCache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+const STRATEGIES_CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
 /**
  * GET /api/strategies
  * Returns available multi-phase strategies, their performance, and current active strategy
  */
 export async function GET() {
   try {
+    // Serve cached data if fresh
+    const now = Date.now();
+    if (
+      strategiesCache &&
+      now - strategiesCache.timestamp < STRATEGIES_CACHE_TTL_MS
+    ) {
+      return apiResponse(
+        createSuccessResponse(strategiesCache.data, {
+          message: "Strategies data (cached)",
+        }),
+        HTTP_STATUS.OK
+      );
+    }
     // Get current active strategy from local strategy manager
     const activeStrategy = strategyManager.getActiveStrategy();
 
@@ -113,6 +133,9 @@ export async function GET() {
         uptime: serviceStatus.uptime,
       },
     };
+
+    // Update cache
+    strategiesCache = { data: response, timestamp: Date.now() };
 
     return apiResponse(
       createSuccessResponse(response, {

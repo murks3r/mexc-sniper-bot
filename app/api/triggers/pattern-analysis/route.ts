@@ -1,9 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { inngest } from "@/src/inngest/client";
 import { patternStrategyOrchestrator } from "@/src/services/data/pattern-detection/pattern-strategy-orchestrator";
+import { patternTargetIntegrationService } from "@/src/services/data/pattern-detection/pattern-target-integration-service";
+import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user for target creation
+    const user = await requireAuthFromRequest(request);
+    console.log(`[Pattern Analysis] Request from user: ${user.email} (${user.id})`);
+
     const body = await request.json();
     const {
       symbols = [],
@@ -42,9 +48,37 @@ export async function POST(request: NextRequest) {
           },
         });
 
+      // Automatically create snipe targets from detected patterns
+      let targetsCreated = 0;
+      let targetCreationResults = [];
+      
+      if (workflowResult.success && workflowResult.results.patternAnalysis?.matches) {
+        console.log(`[Pattern Analysis] Found ${workflowResult.results.patternAnalysis.matches.length} patterns, creating snipe targets automatically...`);
+        
+        try {
+          targetCreationResults = await patternTargetIntegrationService.createTargetsFromPatterns(
+            workflowResult.results.patternAnalysis.matches,
+            user.id,
+            {
+              minConfidenceForTarget: 75,
+              enabledPatternTypes: ["ready_state", "pre_ready", "launch_sequence"],
+              defaultPositionSizeUsdt: 100,
+              maxConcurrentTargets: 10,
+            }
+          );
+          
+          targetsCreated = targetCreationResults.filter(r => r.success).length;
+          const targetsFailed = targetCreationResults.filter(r => !r.success).length;
+          
+          console.log(`[Pattern Analysis] Automatically created ${targetsCreated} snipe targets (${targetsFailed} failed)`);
+        } catch (error) {
+          console.error("[Pattern Analysis] Failed to create snipe targets automatically:", error);
+        }
+      }
+
       return NextResponse.json({
         success: workflowResult.success,
-        message: "Direct pattern analysis completed",
+        message: `Direct pattern analysis completed. ${targetsCreated} snipe targets created automatically.`,
         directAnalysis: true,
         results: {
           patternAnalysis: workflowResult.results.patternAnalysis,
@@ -61,6 +95,9 @@ export async function POST(request: NextRequest) {
                 m.patternType === "launch_sequence" &&
                 m.advanceNoticeHours >= 3.5
             ).length || 0,
+          // Add target creation info
+          targetsCreated,
+          targetCreationResults,
         },
         error: workflowResult.error,
       });

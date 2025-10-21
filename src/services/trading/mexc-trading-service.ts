@@ -274,10 +274,7 @@ export class MexcTradingService {
     context: TradingContext
   ): Promise<TradingCredentials | null> {
     try {
-      this.logger.info("[MexcTradingService] Retrieving credentials", {
-        requestId: context.requestId,
-        userId,
-      });
+      // Redacted: avoid logging sensitive credential operations
 
       // Get API credentials from database
       const credentials = await db
@@ -304,15 +301,7 @@ export class MexcTradingService {
         credentials[0].encryptedPassphrase
       );
 
-      this.logger.info(
-        "[MexcTradingService] Credentials retrieved successfully",
-        {
-          requestId: context.requestId,
-          hasApiKey: !!apiKey,
-          hasSecretKey: !!secretKey,
-          source: "cache",
-        }
-      );
+      // Redacted: avoid logging sensitive credential operations
 
       return { apiKey, secretKey, source: "cache" };
     } catch (error) {
