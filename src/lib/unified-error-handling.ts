@@ -145,11 +145,7 @@ export class UnifiedErrorHandler {
     }
 
     // API errors (including rate limits)
-    if (
-      message.includes("api") ||
-      message.includes("429") ||
-      message.includes("rate limit")
-    ) {
+    if (message.includes("api") || message.includes("429") || message.includes("rate limit")) {
       return {
         type: ErrorType.API_ERROR,
         severity: ErrorSeverity.MEDIUM,
@@ -304,9 +300,7 @@ export class UnifiedErrorHandler {
   /**
    * Validate safety before attempting recovery
    */
-  async validateSafetyBeforeRecovery(
-    circuitBreaker: any
-  ): Promise<SafetyValidation> {
+  async validateSafetyBeforeRecovery(circuitBreaker: any): Promise<SafetyValidation> {
     if (circuitBreaker.isOpen()) {
       return {
         canProceed: false,
@@ -344,9 +338,7 @@ export class UnifiedErrorHandler {
   /**
    * Validate overall system readiness
    */
-  async validateSystemReadiness(
-    safetyCoordinator: any
-  ): Promise<SystemReadiness> {
+  async validateSystemReadiness(safetyCoordinator: any): Promise<SystemReadiness> {
     const status = safetyCoordinator.getCurrentStatus();
     const components: Record<string, boolean> = {};
     const issues: string[] = [];
@@ -383,9 +375,7 @@ export class UnifiedErrorHandler {
     if (ready) {
       recommendations.push("System is ready for auto-sniping operations");
     } else {
-      recommendations.push(
-        "Complete all validations before enabling auto-sniping"
-      );
+      recommendations.push("Complete all validations before enabling auto-sniping");
     }
 
     return {
@@ -407,8 +397,7 @@ export class UnifiedErrorHandler {
   }> {
     try {
       // Validate safety before reset
-      const safetyCheck =
-        await this.validateSafetyBeforeRecovery(circuitBreaker);
+      const safetyCheck = await this.validateSafetyBeforeRecovery(circuitBreaker);
 
       if (!safetyCheck.canProceed) {
         return {

@@ -42,7 +42,7 @@ interface UseWebSocketPriceOptions {
  */
 export function useWebSocketPrice(
   symbol: string,
-  options: UseWebSocketPriceOptions = {}
+  options: UseWebSocketPriceOptions = {},
 ): UseWebSocketPriceResult {
   const { autoConnect = true, retryOnError = true, maxRetries = 3 } = options;
 
@@ -92,16 +92,13 @@ export function useWebSocketPrice(
       }
 
       // Subscribe to price updates
-      const unsubscribe = webSocketPriceService.subscribe(
-        symbol,
-        (priceUpdate: PriceUpdate) => {
-          if (isMountedRef.current) {
-            setPrice(priceUpdate);
-            setError(null);
-            setRetryCount(0);
-          }
+      const unsubscribe = webSocketPriceService.subscribe(symbol, (priceUpdate: PriceUpdate) => {
+        if (isMountedRef.current) {
+          setPrice(priceUpdate);
+          setError(null);
+          setRetryCount(0);
         }
-      );
+      });
 
       setUnsubscribeFn(() => unsubscribe);
 
@@ -114,9 +111,7 @@ export function useWebSocketPrice(
       console.info(`📊 Subscribed to price updates for ${symbol}`);
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to subscribe to price updates";
+        err instanceof Error ? err.message : "Failed to subscribe to price updates";
       setError(errorMessage);
       console.error(`❌ Failed to subscribe to ${symbol}:`, err);
 
@@ -127,7 +122,7 @@ export function useWebSocketPrice(
           () => {
             subscribe();
           },
-          2 ** retryCount * 1000
+          2 ** retryCount * 1000,
         ); // Exponential backoff
       }
     } finally {
@@ -187,7 +182,7 @@ export function useWebSocketPrice(
  */
 export function useWebSocketPrices(
   symbols: string[],
-  options: UseWebSocketPriceOptions = {}
+  options: UseWebSocketPriceOptions = {},
 ): {
   prices: Map<string, PriceUpdate>;
   isConnected: boolean;
@@ -205,12 +200,8 @@ export function useWebSocketPrices(
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [unsubscribeFns, setUnsubscribeFns] = useState<Map<string, () => void>>(
-    new Map()
-  );
-  const [retryCounts, setRetryCounts] = useState<Map<string, number>>(
-    new Map()
-  );
+  const [unsubscribeFns, setUnsubscribeFns] = useState<Map<string, () => void>>(new Map());
+  const [retryCounts, setRetryCounts] = useState<Map<string, number>>(new Map());
 
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
@@ -251,28 +242,25 @@ export function useWebSocketPrices(
         }
 
         // Subscribe to price updates
-        const unsubscribe = webSocketPriceService.subscribe(
-          symbol,
-          (priceUpdate: PriceUpdate) => {
-            if (isMountedRef.current) {
-              setPrices((prev) => {
-                const newPrices = new Map(prev);
-                newPrices.set(symbol, priceUpdate);
-                return newPrices;
-              });
-              setErrors((prev) => {
-                const newErrors = new Map(prev);
-                newErrors.delete(symbol);
-                return newErrors;
-              });
-              setRetryCounts((prev) => {
-                const newCounts = new Map(prev);
-                newCounts.delete(symbol);
-                return newCounts;
-              });
-            }
+        const unsubscribe = webSocketPriceService.subscribe(symbol, (priceUpdate: PriceUpdate) => {
+          if (isMountedRef.current) {
+            setPrices((prev) => {
+              const newPrices = new Map(prev);
+              newPrices.set(symbol, priceUpdate);
+              return newPrices;
+            });
+            setErrors((prev) => {
+              const newErrors = new Map(prev);
+              newErrors.delete(symbol);
+              return newErrors;
+            });
+            setRetryCounts((prev) => {
+              const newCounts = new Map(prev);
+              newCounts.delete(symbol);
+              return newCounts;
+            });
           }
-        );
+        });
 
         setUnsubscribeFns((prev) => new Map(prev).set(symbol, unsubscribe));
 
@@ -285,28 +273,24 @@ export function useWebSocketPrices(
         console.info(`📊 Subscribed to price updates for ${symbol}`);
       } catch (err) {
         const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to subscribe to price updates";
+          err instanceof Error ? err.message : "Failed to subscribe to price updates";
         setErrors((prev) => new Map(prev).set(symbol, errorMessage));
         console.error(`❌ Failed to subscribe to ${symbol}:`, err);
 
         // Retry logic
         const currentRetryCount = retryCounts.get(symbol) || 0;
         if (retryOnError && currentRetryCount < maxRetries) {
-          setRetryCounts((prev) =>
-            new Map(prev).set(symbol, currentRetryCount + 1)
-          );
+          setRetryCounts((prev) => new Map(prev).set(symbol, currentRetryCount + 1));
           setTimeout(
             () => {
               subscribe(symbol);
             },
-            2 ** currentRetryCount * 1000
+            2 ** currentRetryCount * 1000,
           );
         }
       }
     },
-    [unsubscribeFns, retryOnError, retryCounts, maxRetries]
+    [unsubscribeFns, retryOnError, retryCounts, maxRetries],
   );
 
   const unsubscribe = useCallback(
@@ -327,7 +311,7 @@ export function useWebSocketPrices(
         console.info(`📊 Unsubscribed from price updates for ${symbol}`);
       }
     },
-    [unsubscribeFns]
+    [unsubscribeFns],
   );
 
   const subscribeAll = useCallback(async () => {

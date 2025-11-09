@@ -28,12 +28,7 @@ export interface MobileSidebarContentProps {
  * Mobile Sidebar Component
  * Touch-optimized sidebar with accessibility features
  */
-export function MobileSidebar({
-  open,
-  onOpenChange,
-  children,
-  className,
-}: MobileSidebarProps) {
+export function MobileSidebar({ open, onOpenChange, children, className }: MobileSidebarProps) {
   const { isMobile } = useIsMobile();
 
   // Handle escape key
@@ -72,10 +67,7 @@ export function MobileSidebar({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
-      />
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Sidebar */}
       <div
@@ -86,7 +78,7 @@ export function MobileSidebar({
           "transform transition-transform duration-300 ease-in-out",
           "touch-manipulation overscroll-contain",
           "border-r border-gray-200",
-          className
+          className,
         )}
       >
         {/* Close button */}
@@ -97,7 +89,7 @@ export function MobileSidebar({
             "absolute right-4 top-4 z-10",
             "flex h-8 w-8 items-center justify-center",
             "rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200",
-            "touch-manipulation"
+            "touch-manipulation",
           )}
         >
           <X size={18} />
@@ -114,11 +106,7 @@ export function MobileSidebar({
  * Mobile Sidebar Trigger Button
  * Touch-optimized trigger with proper accessibility
  */
-export function MobileSidebarTrigger({
-  open,
-  onClick,
-  className,
-}: MobileSidebarTriggerProps) {
+export function MobileSidebarTrigger({ open, onClick, className }: MobileSidebarTriggerProps) {
   return (
     <button
       onClick={onClick}
@@ -129,7 +117,7 @@ export function MobileSidebarTrigger({
         "rounded-md bg-transparent text-gray-700 hover:bg-gray-100",
         "touch-manipulation transition-colors duration-200",
         "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-        className
+        className,
       )}
     >
       {open ? (
@@ -152,11 +140,7 @@ export function MobileSidebarContent({
 }: MobileSidebarContentProps & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "flex h-full w-full flex-col overflow-hidden",
-        "px-4 py-2",
-        className
-      )}
+      className={cn("flex h-full w-full flex-col overflow-hidden", "px-4 py-2", className)}
       {...props}
     >
       {children}

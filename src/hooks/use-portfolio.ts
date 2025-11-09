@@ -54,19 +54,13 @@ export function usePortfolio(userId: string) {
   return useQuery({
     queryKey: ["portfolio", userId, "active"],
     queryFn: async (): Promise<Portfolio> => {
-      const response = await fetch(
-        `/api/portfolio?userId=${encodeURIComponent(userId)}`,
-        {
-          credentials: "include", // Include authentication cookies
-        }
-      );
+      const response = await fetch(`/api/portfolio?userId=${encodeURIComponent(userId)}`, {
+        credentials: "include", // Include authentication cookies
+      });
 
       if (!response.ok) {
         // Don't throw errors for 403/401 when not authenticated
-        if (
-          !isAuthenticated &&
-          (response.status === 403 || response.status === 401)
-        ) {
+        if (!isAuthenticated && (response.status === 403 || response.status === 401)) {
           return {
             activePositions: [],
             metrics: {
@@ -123,11 +117,7 @@ export function usePortfolio(userId: string) {
       // No retries to prevent storms
       return false;
     },
-    enabled:
-      !!userId &&
-      userId !== "anonymous" &&
-      isAuthenticated &&
-      user?.id === userId,
+    enabled: !!userId && userId !== "anonymous" && isAuthenticated && user?.id === userId,
   });
 }
 
@@ -135,7 +125,7 @@ export function usePortfolio(userId: string) {
 export function useSnipeTargets(
   userId: string,
   status?: string,
-  options?: { enabled?: boolean; allowSystem?: boolean }
+  options?: { enabled?: boolean; allowSystem?: boolean },
 ) {
   const { user, isAuthenticated } = useAuth();
 
@@ -151,15 +141,10 @@ export function useSnipeTargets(
 
       if (!response.ok) {
         // Don't throw errors for 403/401 when not authenticated
-        if (
-          !isAuthenticated &&
-          (response.status === 403 || response.status === 401)
-        ) {
+        if (!isAuthenticated && (response.status === 403 || response.status === 401)) {
           return [];
         }
-        throw new Error(
-          `Failed to fetch snipe targets: ${response.statusText}`
-        );
+        throw new Error(`Failed to fetch snipe targets: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -203,7 +188,7 @@ export function useSnipeTargets(
 
 // Hook to create snipe target
 export function useCreateSnipeTarget() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (_snipeTarget: {
@@ -223,7 +208,7 @@ export function useCreateSnipeTarget() {
       riskLevel?: string;
     }) => {
       throw new Error(
-        "Manual snipe target creation is disabled. Targets are created automatically."
+        "Manual snipe target creation is disabled. Targets are created automatically.",
       );
     },
     onSuccess: (_data) => {
@@ -269,9 +254,7 @@ export function useUpdateSnipeTarget() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to update snipe target: ${response.statusText}`
-        );
+        throw new Error(`Failed to update snipe target: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -301,9 +284,7 @@ export function useDeleteSnipeTarget() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to delete snipe target: ${response.statusText}`
-        );
+        throw new Error(`Failed to delete snipe target: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -333,9 +314,7 @@ export function useAutoExitManager() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to get auto exit manager status: ${response.statusText}`
-        );
+        throw new Error(`Failed to get auto exit manager status: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -372,9 +351,7 @@ export function useAutoExitManager() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to ${action} auto exit manager: ${response.statusText}`
-        );
+        throw new Error(`Failed to ${action} auto exit manager: ${response.statusText}`);
       }
 
       const data = await response.json();

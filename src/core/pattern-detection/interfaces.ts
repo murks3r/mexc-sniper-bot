@@ -7,10 +7,7 @@
 
 import { z } from "zod";
 import type { ActivityData } from "../../schemas/unified/mexc-api-schemas";
-import type {
-  CalendarEntry,
-  SymbolEntry,
-} from "../../services/api/mexc-unified-exports";
+import type { CalendarEntry, SymbolEntry } from "../../services/api/mexc-unified-exports";
 
 // ============================================================================
 // Core Pattern Types (Preserved from original engine)
@@ -40,11 +37,7 @@ export interface PatternCorrelation {
   type: "positive" | "negative" | "neutral";
 }
 
-export type PatternSource =
-  | "calendar"
-  | "market_data"
-  | "historical"
-  | "manual";
+export type PatternSource = "calendar" | "market_data" | "historical" | "manual";
 
 export interface PatternStatistics {
   totalDetected: number;
@@ -53,11 +46,7 @@ export interface PatternStatistics {
   lastDetected?: Date;
 }
 
-export type PatternType =
-  | "launch_sequence"
-  | "ready_state"
-  | "pre_ready"
-  | "market_pattern";
+export type PatternType = "launch_sequence" | "ready_state" | "pre_ready" | "market_pattern";
 
 // Historical pattern type schema
 export const HistoricalPatternSchema = z.object({
@@ -132,12 +121,7 @@ export interface PatternMatch {
   advanceNoticeHours: number;
   estimatedTimeToReady?: number; // Estimated time in hours until pattern becomes ready
   riskLevel: "low" | "medium" | "high";
-  recommendation:
-    | "immediate_action"
-    | "monitor_closely"
-    | "prepare_entry"
-    | "wait"
-    | "avoid";
+  recommendation: "immediate_action" | "monitor_closely" | "prepare_entry" | "wait" | "avoid";
 
   // Historical context
   similarPatterns?: HistoricalPattern[];
@@ -192,16 +176,10 @@ export interface CorrelationAnalysis {
  * Handles core pattern detection algorithms
  */
 export interface IPatternAnalyzer {
-  detectReadyStatePattern(
-    symbolData: SymbolEntry | SymbolEntry[]
-  ): Promise<PatternMatch[]>;
-  detectAdvanceOpportunities(
-    calendarEntries: CalendarEntry[]
-  ): Promise<PatternMatch[]>;
+  detectReadyStatePattern(symbolData: SymbolEntry | SymbolEntry[]): Promise<PatternMatch[]>;
+  detectAdvanceOpportunities(calendarEntries: CalendarEntry[]): Promise<PatternMatch[]>;
   detectPreReadyPatterns(symbolData: SymbolEntry[]): Promise<PatternMatch[]>;
-  analyzeSymbolCorrelations(
-    symbolData: SymbolEntry[]
-  ): Promise<CorrelationAnalysis[]>;
+  analyzeSymbolCorrelations(symbolData: SymbolEntry[]): Promise<CorrelationAnalysis[]>;
   validateExactReadyState(symbol: SymbolEntry): boolean;
 }
 
@@ -213,7 +191,7 @@ export interface IConfidenceCalculator {
   calculateReadyStateConfidence(symbol: SymbolEntry): Promise<number>;
   calculateAdvanceOpportunityConfidence(
     entry: CalendarEntry,
-    advanceHours: number
+    advanceHours: number,
   ): Promise<number>;
   calculatePreReadyScore(symbol: SymbolEntry): Promise<{
     isPreReady: boolean;
@@ -221,10 +199,7 @@ export interface IConfidenceCalculator {
     estimatedTimeToReady: number;
   }>;
   validateConfidenceScore(score: number): boolean;
-  enhanceConfidenceWithActivity(
-    baseConfidence: number,
-    activities: ActivityData[]
-  ): number;
+  enhanceConfidenceWithActivity(baseConfidence: number, activities: ActivityData[]): number;
 }
 
 /**
@@ -235,7 +210,7 @@ export interface IPatternStorage {
   storeSuccessfulPattern(
     data: SymbolEntry | CalendarEntry,
     type: string,
-    confidence: number
+    confidence: number,
   ): Promise<void>;
   getHistoricalSuccessRate(patternType: string): Promise<number>;
   findSimilarPatterns(
@@ -244,7 +219,7 @@ export interface IPatternStorage {
       threshold?: number;
       limit?: number;
       sameTypeOnly?: boolean;
-    }
+    },
   ): Promise<HistoricalPattern[]>;
   clearCache(): void;
   getCacheStats(): {
@@ -295,8 +270,7 @@ export interface PatternDetectionConfig {
   cacheTimeout: number;
   maxConcurrentAnalysis: number;
 
-  // AI Enhancement settings
-  enableAIEnhancement: boolean;
+  // Enhancement settings
   enableActivityEnhancement: boolean;
 
   // Validation settings
@@ -342,7 +316,7 @@ export class PatternDetectionError extends Error {
   constructor(
     message: string,
     public code: string,
-    public context?: PatternContext
+    public context?: PatternContext,
   ) {
     super(message);
     this.name = "PatternDetectionError";
@@ -353,7 +327,7 @@ export class PatternValidationError extends PatternDetectionError {
   constructor(
     message: string,
     public validationErrors: string[],
-    context?: PatternContext
+    context?: PatternContext,
   ) {
     super(message, "VALIDATION_ERROR", context);
     this.name = "PatternValidationError";
@@ -364,7 +338,7 @@ export class PatternAnalysisError extends PatternDetectionError {
   constructor(
     message: string,
     public analysisType: string,
-    context?: PatternContext
+    context?: PatternContext,
   ) {
     super(message, "ANALYSIS_ERROR", context);
     this.name = "PatternAnalysisError";

@@ -61,16 +61,6 @@ export class EventHandling {
   private readonly baseTickMs: number;
   private readonly maxConcurrentOperations: number;
   private readonly operationTimeoutMs: number;
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[event-handling]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[event-handling]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[event-handling]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[event-handling]", message, context || ""),
-  };
 
   private stats = {
     totalExecutions: 0,
@@ -108,8 +98,7 @@ export class EventHandling {
     };
 
     // Validate the operation structure
-    const { handler, executionCount, totalExecutionTime, ...validationData } =
-      scheduledOp;
+    const { handler, executionCount, totalExecutionTime, ...validationData } = scheduledOp;
     validateScheduledOperation(validationData);
 
     this.operations.set(operation.id, scheduledOp);
@@ -191,7 +180,7 @@ export class EventHandling {
             activeOperations: this.operations.size,
             baseTickMs: this.baseTickMs,
           },
-          error
+          error,
         );
       });
     }, this.baseTickMs);
@@ -268,14 +257,8 @@ export class EventHandling {
   public getStats(): TimerCoordinatorStats {
     const allOperations = Array.from(this.operations.values());
     const runningOperations = allOperations.filter((op) => op.isRunning).length;
-    const totalExecutions = allOperations.reduce(
-      (sum, op) => sum + op.executionCount,
-      0
-    );
-    const totalExecutionTime = allOperations.reduce(
-      (sum, op) => sum + op.totalExecutionTime,
-      0
-    );
+    const totalExecutions = allOperations.reduce((sum, op) => sum + op.executionCount, 0);
+    const totalExecutionTime = allOperations.reduce((sum, op) => sum + op.totalExecutionTime, 0);
 
     return {
       isActive: this.isActive,
@@ -283,8 +266,7 @@ export class EventHandling {
       runningOperations,
       totalExecutions: this.stats.totalExecutions,
       totalErrors: this.stats.totalErrors,
-      averageExecutionTime:
-        totalExecutions > 0 ? totalExecutionTime / totalExecutions : 0,
+      averageExecutionTime: totalExecutions > 0 ? totalExecutionTime / totalExecutions : 0,
       uptime: this.isActive ? Date.now() - this.stats.startTime : 0,
     };
   }
@@ -322,7 +304,7 @@ export class EventHandling {
           operationId,
           operationName: operation.name,
         },
-        error
+        error,
       );
       return false;
     }
@@ -337,9 +319,7 @@ export class EventHandling {
     if (!this.isActive) return;
 
     const now = Date.now();
-    const readyOperations: (typeof this.operations extends Map<string, infer T>
-      ? T
-      : never)[] = [];
+    const readyOperations: (typeof this.operations extends Map<string, infer T> ? T : never)[] = [];
 
     // Find operations that are ready to execute
     const allOperations = Array.from(this.operations.values());
@@ -379,7 +359,7 @@ export class EventHandling {
               operationId: operation.id,
               operationName: operation.name,
             },
-            error
+            error,
           );
         });
       });
@@ -389,7 +369,7 @@ export class EventHandling {
    * Execute an operation with proper error handling and state management
    */
   private async executeOperationSafely(
-    operation: typeof this.operations extends Map<string, infer T> ? T : never
+    operation: typeof this.operations extends Map<string, infer T> ? T : never,
   ): Promise<void> {
     const timer = createTimer("operation_execution", "event-handling");
 
@@ -398,11 +378,8 @@ export class EventHandling {
       operation.lastExecuted = Date.now(); // Create timeout promise
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(
-          () =>
-            reject(
-              new Error(`Operation timeout after ${this.operationTimeoutMs}ms`)
-            ),
-          this.operationTimeoutMs
+          () => reject(new Error(`Operation timeout after ${this.operationTimeoutMs}ms`)),
+          this.operationTimeoutMs,
         );
       });
 
@@ -441,7 +418,7 @@ export class EventHandling {
           executionCount: operation.executionCount,
           status: "failed",
         },
-        error
+        error,
       );
 
       throw error;
@@ -459,7 +436,7 @@ export class EventHandling {
     runningOperations: number;
   } {
     const runningOperations = Array.from(this.operations.values()).filter(
-      (op) => op.isRunning
+      (op) => op.isRunning,
     ).length;
 
     return {
@@ -473,8 +450,6 @@ export class EventHandling {
 /**
  * Factory function to create EventHandling instance
  */
-export function createEventHandling(
-  config?: EventHandlingConfig
-): EventHandling {
+export function createEventHandling(config?: EventHandlingConfig): EventHandling {
   return new EventHandling(config);
 }

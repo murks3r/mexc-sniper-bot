@@ -19,18 +19,13 @@ export async function GET(request: NextRequest) {
 
     if (!symbolsResponse.success || !symbolsResponse.data) {
       return apiResponse(
-        createErrorResponse(
-          symbolsResponse.error || "Failed to fetch symbols",
-          {
-            fallbackData: [],
-            serviceLayer: true,
-            executionTimeMs:
-              "executionTimeMs" in symbolsResponse
-                ? symbolsResponse.executionTimeMs
-                : undefined,
-          }
-        ),
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
+        createErrorResponse(symbolsResponse.error || "Failed to fetch symbols", {
+          fallbackData: [],
+          serviceLayer: true,
+          executionTimeMs:
+            "executionTimeMs" in symbolsResponse ? symbolsResponse.executionTimeMs : undefined,
+        }),
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -38,27 +33,21 @@ export async function GET(request: NextRequest) {
       createSuccessResponse(symbolsResponse.data, {
         count: symbolsResponse.data.length,
         vcoinId: vcoinId || null,
-        cached:
-          "cached" in symbolsResponse ? symbolsResponse.cached : undefined,
+        cached: "cached" in symbolsResponse ? symbolsResponse.cached : undefined,
         executionTimeMs:
-          "executionTimeMs" in symbolsResponse
-            ? symbolsResponse.executionTimeMs
-            : undefined,
+          "executionTimeMs" in symbolsResponse ? symbolsResponse.executionTimeMs : undefined,
         serviceLayer: true,
-      })
+      }),
     );
   } catch (error) {
     console.error("MEXC symbols fetch failed:", { error: error });
 
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error",
-        {
-          fallbackData: [],
-          serviceLayer: true,
-        }
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error", {
+        fallbackData: [],
+        serviceLayer: true,
+      }),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }

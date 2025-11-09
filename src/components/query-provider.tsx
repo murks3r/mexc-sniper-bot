@@ -16,7 +16,7 @@ const ReactQueryDevtools = lazy(() =>
       console.warn("Failed to load React Query DevTools:", error);
       // Return a fallback component that renders nothing
       return { default: () => null };
-    })
+    }),
 );
 
 interface QueryProviderProps {

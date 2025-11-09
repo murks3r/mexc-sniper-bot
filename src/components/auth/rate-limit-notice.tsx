@@ -24,9 +24,7 @@ export function RateLimitNotice({
   onBypassEmail,
   userEmail,
 }: RateLimitNoticeProps) {
-  const [timeRemaining, setTimeRemaining] = useState(
-    rateLimitInfo.retryAfter || 0
-  );
+  const [timeRemaining, setTimeRemaining] = useState(rateLimitInfo.retryAfter || 0);
   const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
@@ -64,10 +62,7 @@ export function RateLimitNotice({
 
   const getProgressValue = () => {
     if (!rateLimitInfo.retryAfter) return 0;
-    return (
-      ((rateLimitInfo.retryAfter - timeRemaining) / rateLimitInfo.retryAfter) *
-      100
-    );
+    return ((rateLimitInfo.retryAfter - timeRemaining) / rateLimitInfo.retryAfter) * 100;
   };
 
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -84,9 +79,7 @@ export function RateLimitNotice({
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Authentication Temporarily Limited</AlertTitle>
-          <AlertDescription className="mt-2">
-            {rateLimitInfo.message}
-          </AlertDescription>
+          <AlertDescription className="mt-2">{rateLimitInfo.message}</AlertDescription>
         </Alert>
 
         {rateLimitInfo.suggestion && (
@@ -115,26 +108,19 @@ export function RateLimitNotice({
             </Button>
           )}
 
-          {isDevelopment &&
-            userEmail &&
-            onBypassEmail &&
-            rateLimitInfo.limitType === "email" && (
-              <Button
-                onClick={handleBypassEmail}
-                variant="outline"
-                className="w-full"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Bypass Email Confirmation (Dev Only)
-              </Button>
-            )}
+          {isDevelopment && userEmail && onBypassEmail && rateLimitInfo.limitType === "email" && (
+            <Button onClick={handleBypassEmail} variant="outline" className="w-full">
+              <Mail className="h-4 w-4 mr-2" />
+              Bypass Email Confirmation (Dev Only)
+            </Button>
+          )}
         </div>
 
         {isDevelopment && (
           <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
             <AlertDescription className="text-xs">
-              <strong>Development Mode:</strong> You can use the bypass tools to
-              work around rate limits. This is not available in production.
+              <strong>Development Mode:</strong> You can use the bypass tools to work around rate
+              limits. This is not available in production.
             </AlertDescription>
           </Alert>
         )}

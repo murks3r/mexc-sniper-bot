@@ -25,9 +25,7 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn(
-      "Supabase environment variables not configured, skipping auth middleware"
-    );
+    console.warn("Supabase environment variables not configured, skipping auth middleware");
     return response;
   }
 
@@ -77,21 +75,22 @@ export async function updateSession(request: NextRequest) {
     // Check if user is authenticated (this call handles session refresh internally)
     let user = null;
     let authError = null;
-    
+
     try {
       const {
         data: { user: userData },
         error: getUserError,
       } = await supabase.auth.getUser();
-      
+
       user = userData;
       authError = getUserError;
     } catch (sessionError) {
       // Session refresh failures are expected when there's no valid session
       // Don't log these as errors since they're part of normal flow
-      if (sessionError instanceof Error && 
-          (sessionError.message.includes('fetch failed') || 
-           sessionError.message.includes('refresh'))) {
+      if (
+        sessionError instanceof Error &&
+        (sessionError.message.includes("fetch failed") || sessionError.message.includes("refresh"))
+      ) {
         // This is expected behavior - no valid session to refresh
         user = null;
         authError = null;
@@ -104,22 +103,14 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Protected routes that require authentication
-    const protectedPaths = [
-      "/dashboard",
-      "/settings",
-      "/strategies",
-      "/api/trading",
-      "/api/user",
-    ];
+    const protectedPaths = ["/dashboard", "/settings", "/strategies", "/api/trading", "/api/user"];
     const isProtectedPath = protectedPaths.some((path) =>
-      request.nextUrl.pathname.startsWith(path)
+      request.nextUrl.pathname.startsWith(path),
     );
 
     // Auth routes that should redirect if already authenticated
     const authPaths = ["/auth"];
-    const isAuthPath = authPaths.some((path) =>
-      request.nextUrl.pathname.startsWith(path)
-    );
+    const isAuthPath = authPaths.some((path) => request.nextUrl.pathname.startsWith(path));
 
     // If user is not authenticated and trying to access protected route
     if (isProtectedPath && (!user || authError)) {
@@ -136,10 +127,12 @@ export async function updateSession(request: NextRequest) {
     return response;
   } catch (error) {
     // Only log unexpected errors, not auth-related failures
-    if (error instanceof Error && 
-        !error.message.includes('fetch failed') && 
-        !error.message.includes('refresh') &&
-        !error.message.includes('Unable to connect')) {
+    if (
+      error instanceof Error &&
+      !error.message.includes("fetch failed") &&
+      !error.message.includes("refresh") &&
+      !error.message.includes("Unable to connect")
+    ) {
       console.error("Supabase middleware error:", error);
     }
     // If anything fails, just continue with the request (fail-safe behavior)

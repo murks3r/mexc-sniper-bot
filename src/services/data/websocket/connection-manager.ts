@@ -61,7 +61,6 @@ export class MexcConnectionManager extends EventEmitter {
   private healthCheckInterval?: NodeJS.Timeout;
   private isConnecting = false;
   private isConnected = false;
-  private connectionStartTime = 0;
   private lastPingTime = 0;
   private metrics!: ConnectionMetrics;
   private circuitBreaker!: CircuitBreakerState;
@@ -85,12 +84,7 @@ export class MexcConnectionManager extends EventEmitter {
     warn: (message: string, context?: any) =>
       console.warn("[connection-manager]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[connection-manager]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[connection-manager]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[connection-manager]", message, context || ""),
   };
@@ -98,7 +92,7 @@ export class MexcConnectionManager extends EventEmitter {
   constructor(
     options: ConnectionManagerOptions,
     onMessage: (data: any) => void,
-    onError: (error: Error) => void
+    onError: (error: Error) => void,
   ) {
     super();
 
@@ -142,9 +136,7 @@ export class MexcConnectionManager extends EventEmitter {
 
       this.ws.on("open", () => this.handleOpen());
       this.ws.on("message", (data: RawData) => this.handleMessage(data));
-      this.ws.on("close", (code: number, reason: Buffer) =>
-        this.handleClose(code, reason)
-      );
+      this.ws.on("close", (code: number, reason: Buffer) => this.handleClose(code, reason));
       this.ws.on("error", (error: Error) => this.handleError(error));
 
       // Wait for connection to be established with proper error handling
@@ -173,11 +165,7 @@ export class MexcConnectionManager extends EventEmitter {
         this.ws?.once("close", (code: number, reason: Buffer) => {
           cleanup();
           this.cleanup();
-          reject(
-            new Error(
-              `Connection closed during establishment: ${code} - ${reason}`
-            )
-          );
+          reject(new Error(`Connection closed during establishment: ${code} - ${reason}`));
         });
       });
     } catch (error) {
@@ -198,10 +186,7 @@ export class MexcConnectionManager extends EventEmitter {
     if (this.ws) {
       try {
         this.ws.removeAllListeners();
-        if (
-          this.ws.readyState === WebSocket.OPEN ||
-          this.ws.readyState === WebSocket.CONNECTING
-        ) {
+        if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
           this.ws.close();
         }
       } catch (error) {
@@ -229,10 +214,7 @@ export class MexcConnectionManager extends EventEmitter {
 
     if (this.ws) {
       this.ws.removeAllListeners();
-      if (
-        this.ws.readyState === WebSocket.OPEN ||
-        this.ws.readyState === WebSocket.CONNECTING
-      ) {
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
         this.ws.close(1000, "Normal closure");
       }
       this.ws = null;
@@ -247,11 +229,7 @@ export class MexcConnectionManager extends EventEmitter {
    * Send data through WebSocket
    */
   send(data: any): void {
-    if (
-      !this.isConnected ||
-      !this.ws ||
-      this.ws.readyState !== WebSocket.OPEN
-    ) {
+    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket not connected or not ready");
     }
 
@@ -392,7 +370,7 @@ export class MexcConnectionManager extends EventEmitter {
         // Exponential backoff with jitter
         this.reconnectDelay = Math.min(
           this.reconnectDelay * 2 + Math.random() * 1000,
-          this.maxReconnectDelay
+          this.maxReconnectDelay,
         );
 
         // Continue attempting reconnection
@@ -413,11 +391,7 @@ export class MexcConnectionManager extends EventEmitter {
    */
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
-      if (
-        this.isConnected &&
-        this.ws &&
-        this.ws.readyState === WebSocket.OPEN
-      ) {
+      if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN) {
         try {
           this.lastPingTime = Date.now();
           this.ws.ping();
@@ -533,8 +507,7 @@ export class MexcConnectionManager extends EventEmitter {
 
     if (this.circuitBreaker.failureCount >= this.circuitBreakerThreshold) {
       this.circuitBreaker.state = "open";
-      this.circuitBreaker.nextAttemptTime =
-        Date.now() + this.reconnectDelay * 2;
+      this.circuitBreaker.nextAttemptTime = Date.now() + this.reconnectDelay * 2;
 
       this.logger.warn("Circuit breaker opened due to failures", {
         failureCount: this.circuitBreaker.failureCount,
@@ -566,10 +539,7 @@ export class MexcConnectionManager extends EventEmitter {
       });
     } else if (this.circuitBreaker.state === "closed") {
       // Reset failure count on successful operation
-      this.circuitBreaker.failureCount = Math.max(
-        0,
-        this.circuitBreaker.failureCount - 1
-      );
+      this.circuitBreaker.failureCount = Math.max(0, this.circuitBreaker.failureCount - 1);
     }
   }
 
@@ -608,10 +578,7 @@ export class MexcConnectionManager extends EventEmitter {
   /**
    * Send message with queuing support during disconnection
    */
-  sendWithQueue(
-    data: any,
-    priority: "high" | "normal" | "low" = "normal"
-  ): void {
+  sendWithQueue(data: any, priority: "high" | "normal" | "low" = "normal"): void {
     const message: QueuedMessage = {
       data,
       priority,
@@ -655,8 +622,7 @@ export class MexcConnectionManager extends EventEmitter {
         normal: 2,
         low: 1,
       };
-      const priorityDiff =
-        (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
       return priorityDiff !== 0 ? priorityDiff : a.timestamp - b.timestamp;
     });
 
@@ -710,10 +676,7 @@ export class MexcConnectionManager extends EventEmitter {
       ...this.metrics,
       circuitBreaker: { ...this.circuitBreaker },
       queueLength: this.messageQueue.length,
-      uptime:
-        this.metrics.connectTime > 0
-          ? Date.now() - this.metrics.connectTime
-          : 0,
+      uptime: this.metrics.connectTime > 0 ? Date.now() - this.metrics.connectTime : 0,
     };
   }
 
@@ -773,7 +736,7 @@ export class MexcConnectionManager extends EventEmitter {
     // Add exponential backoff with jitter
     const exponentialDelay = Math.min(
       baseDelay * 2 ** (this.reconnectAttempts - 1),
-      this.maxReconnectDelay
+      this.maxReconnectDelay,
     );
 
     const jitter = Math.random() * 1000;

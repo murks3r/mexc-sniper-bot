@@ -31,9 +31,7 @@ export const agentPerformanceMetrics = pgTable("agent_performance_metrics", {
   uptime: real().notNull(),
   lastError: text("last_error"),
   metadata: text(),
-  createdAt: timestamp("created_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const alertAnalytics = pgTable("alert_analytics", {
@@ -149,39 +147,36 @@ export const errorIncidents = pgTable(
   (table) => [
     index("error_incidents_first_occurrence_idx").using(
       "btree",
-      table.firstOccurrence.asc().nullsLast().op("timestamp_ops")
+      table.firstOccurrence.asc().nullsLast().op("timestamp_ops"),
     ),
     index("error_incidents_last_occurrence_idx").using(
       "btree",
-      table.lastOccurrence.asc().nullsLast().op("timestamp_ops")
+      table.lastOccurrence.asc().nullsLast().op("timestamp_ops"),
     ),
     index("error_incidents_recovered_idx").using(
       "btree",
-      table.recovered.asc().nullsLast().op("bool_ops")
+      table.recovered.asc().nullsLast().op("bool_ops"),
     ),
     index("error_incidents_service_idx").using(
       "btree",
-      table.service.asc().nullsLast().op("text_ops")
+      table.service.asc().nullsLast().op("text_ops"),
     ),
     index("error_incidents_service_severity_idx").using(
       "btree",
       table.service.asc().nullsLast().op("text_ops"),
-      table.severity.asc().nullsLast().op("text_ops")
+      table.severity.asc().nullsLast().op("text_ops"),
     ),
     index("error_incidents_severity_idx").using(
       "btree",
-      table.severity.asc().nullsLast().op("text_ops")
+      table.severity.asc().nullsLast().op("text_ops"),
     ),
-    index("error_incidents_type_idx").using(
-      "btree",
-      table.type.asc().nullsLast().op("text_ops")
-    ),
+    index("error_incidents_type_idx").using("btree", table.type.asc().nullsLast().op("text_ops")),
     index("error_incidents_type_occurrence_idx").using(
       "btree",
       table.type.asc().nullsLast().op("text_ops"),
-      table.lastOccurrence.asc().nullsLast().op("text_ops")
+      table.lastOccurrence.asc().nullsLast().op("text_ops"),
     ),
-  ]
+  ],
 );
 
 export const escalationPolicies = pgTable("escalation_policies", {
@@ -232,11 +227,11 @@ export const monitoredListings = pgTable(
         "btree",
         table.hasReadyPattern.asc().nullsLast().op("text_ops"),
         table.status.asc().nullsLast().op("bool_ops"),
-        table.confidence.asc().nullsLast().op("float4_ops")
+        table.confidence.asc().nullsLast().op("float4_ops"),
       )
       .where(sql`(has_ready_pattern = true)`),
     unique("monitored_listings_vcoin_id_unique").on(table.vcoinId),
-  ]
+  ],
 );
 
 export const performanceAlerts = pgTable("performance_alerts", {
@@ -252,12 +247,8 @@ export const performanceAlerts = pgTable("performance_alerts", {
   resolvedAt: timestamp("resolved_at", { mode: "string" }),
   resolvedBy: text("resolved_by"),
   metadata: text(),
-  createdAt: timestamp("created_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const performanceBaselines = pgTable("performance_baselines", {
@@ -273,9 +264,7 @@ export const performanceBaselines = pgTable("performance_baselines", {
   calculatedAt: timestamp("calculated_at", { mode: "string" }).notNull(),
   validUntil: timestamp("valid_until", { mode: "string" }),
   metadata: text(),
-  createdAt: timestamp("created_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const reconciliationReports = pgTable(
@@ -302,21 +291,21 @@ export const reconciliationReports = pgTable(
   (table) => [
     index("reconciliation_reports_critical_issues_idx").using(
       "btree",
-      table.criticalIssues.asc().nullsLast().op("int4_ops")
+      table.criticalIssues.asc().nullsLast().op("int4_ops"),
     ),
     index("reconciliation_reports_overall_status_idx").using(
       "btree",
-      table.overallStatus.asc().nullsLast().op("text_ops")
+      table.overallStatus.asc().nullsLast().op("text_ops"),
     ),
     index("reconciliation_reports_start_time_idx").using(
       "btree",
-      table.startTime.asc().nullsLast().op("timestamp_ops")
+      table.startTime.asc().nullsLast().op("timestamp_ops"),
     ),
     index("reconciliation_reports_user_id_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
-  ]
+  ],
 );
 
 export const riskEvents = pgTable(
@@ -346,35 +335,32 @@ export const riskEvents = pgTable(
   (table) => [
     index("risk_events_event_type_idx").using(
       "btree",
-      table.eventType.asc().nullsLast().op("text_ops")
+      table.eventType.asc().nullsLast().op("text_ops"),
     ),
     index("risk_events_resolved_idx").using(
       "btree",
-      table.resolved.asc().nullsLast().op("bool_ops")
+      table.resolved.asc().nullsLast().op("bool_ops"),
     ),
     index("risk_events_severity_idx").using(
       "btree",
-      table.severity.asc().nullsLast().op("text_ops")
+      table.severity.asc().nullsLast().op("text_ops"),
     ),
     index("risk_events_timestamp_idx").using(
       "btree",
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
     index("risk_events_type_timestamp_idx").using(
       "btree",
       table.eventType.asc().nullsLast().op("text_ops"),
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
-    index("risk_events_user_id_idx").using(
-      "btree",
-      table.userId.asc().nullsLast().op("text_ops")
-    ),
+    index("risk_events_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
     index("risk_events_user_severity_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.severity.asc().nullsLast().op("text_ops")
+      table.severity.asc().nullsLast().op("text_ops"),
     ),
-  ]
+  ],
 );
 
 export const systemHealthMetrics = pgTable(
@@ -392,12 +378,8 @@ export const systemHealthMetrics = pgTable(
     diskUsage: real("disk_usage"),
     totalErrors: integer("total_errors").default(0).notNull(),
     criticalErrors: integer("critical_errors").default(0).notNull(),
-    circuitBreakerOpen: boolean("circuit_breaker_open")
-      .default(false)
-      .notNull(),
-    circuitBreakerFailures: integer("circuit_breaker_failures")
-      .default(0)
-      .notNull(),
+    circuitBreakerOpen: boolean("circuit_breaker_open").default(false).notNull(),
+    circuitBreakerFailures: integer("circuit_breaker_failures").default(0).notNull(),
     metadata: text(),
     alertsActive: integer("alerts_active").default(0).notNull(),
     timestamp: timestamp({ mode: "string" }).notNull(),
@@ -408,67 +390,58 @@ export const systemHealthMetrics = pgTable(
   (table) => [
     index("system_health_metrics_service_idx").using(
       "btree",
-      table.service.asc().nullsLast().op("text_ops")
+      table.service.asc().nullsLast().op("text_ops"),
     ),
     index("system_health_metrics_service_status_idx").using(
       "btree",
       table.service.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("system_health_metrics_service_timestamp_idx").using(
       "btree",
       table.service.asc().nullsLast().op("text_ops"),
-      table.timestamp.asc().nullsLast().op("text_ops")
+      table.timestamp.asc().nullsLast().op("text_ops"),
     ),
     index("system_health_metrics_status_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("system_health_metrics_timestamp_idx").using(
       "btree",
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
-  ]
+  ],
 );
 
-export const systemPerformanceSnapshots = pgTable(
-  "system_performance_snapshots",
-  {
-    id: serial().primaryKey().notNull(),
-    timestamp: timestamp({ mode: "string" }).notNull(),
-    totalAgents: integer("total_agents").notNull(),
-    healthyAgents: integer("healthy_agents").notNull(),
-    degradedAgents: integer("degraded_agents").notNull(),
-    unhealthyAgents: integer("unhealthy_agents").notNull(),
-    totalWorkflows: integer("total_workflows").notNull(),
-    runningWorkflows: integer("running_workflows").notNull(),
-    completedWorkflows: integer("completed_workflows").notNull(),
-    failedWorkflows: integer("failed_workflows").notNull(),
-    systemMemoryUsage: real("system_memory_usage").notNull(),
-    systemCpuUsage: real("system_cpu_usage").notNull(),
-    databaseConnections: integer("database_connections").notNull(),
-    averageResponseTime: real("average_response_time").notNull(),
-    throughput: real().notNull(),
-    errorRate: real("error_rate").notNull(),
-    uptime: integer().notNull(),
-    metadata: text(),
-    createdAt: timestamp("created_at", { mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }
-);
+export const systemPerformanceSnapshots = pgTable("system_performance_snapshots", {
+  id: serial().primaryKey().notNull(),
+  timestamp: timestamp({ mode: "string" }).notNull(),
+  totalAgents: integer("total_agents").notNull(),
+  healthyAgents: integer("healthy_agents").notNull(),
+  degradedAgents: integer("degraded_agents").notNull(),
+  unhealthyAgents: integer("unhealthy_agents").notNull(),
+  totalWorkflows: integer("total_workflows").notNull(),
+  runningWorkflows: integer("running_workflows").notNull(),
+  completedWorkflows: integer("completed_workflows").notNull(),
+  failedWorkflows: integer("failed_workflows").notNull(),
+  systemMemoryUsage: real("system_memory_usage").notNull(),
+  systemCpuUsage: real("system_cpu_usage").notNull(),
+  databaseConnections: integer("database_connections").notNull(),
+  averageResponseTime: real("average_response_time").notNull(),
+  throughput: real().notNull(),
+  errorRate: real("error_rate").notNull(),
+  uptime: integer().notNull(),
+  metadata: text(),
+  createdAt: timestamp("created_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
 
 export const verification = pgTable("verification", {
   id: text().primaryKey().notNull(),
   identifier: text().notNull(),
   value: text().notNull(),
   expiresAt: integer().notNull(),
-  createdAt: timestamp({ mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp({ mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  createdAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const workflowActivity = pgTable(
@@ -483,9 +456,7 @@ export const workflowActivity = pgTable(
     symbolName: text("symbol_name"),
     vcoinId: text("vcoin_id"),
     level: text().default("info").notNull(),
-    timestamp: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    timestamp: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -495,49 +466,44 @@ export const workflowActivity = pgTable(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
       table.timestamp.asc().nullsLast().op("text_ops"),
-      table.type.asc().nullsLast().op("timestamp_ops")
+      table.type.asc().nullsLast().op("timestamp_ops"),
     ),
     index("workflow_activity_activity_id_idx").using(
       "btree",
-      table.activityId.asc().nullsLast().op("text_ops")
+      table.activityId.asc().nullsLast().op("text_ops"),
     ),
     index("workflow_activity_timestamp_idx").using(
       "btree",
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
     unique("workflow_activity_activity_id_unique").on(table.activityId),
-  ]
+  ],
 );
 
-export const workflowPerformanceMetrics = pgTable(
-  "workflow_performance_metrics",
-  {
-    id: serial().primaryKey().notNull(),
-    workflowId: text("workflow_id").notNull(),
-    executionId: text("execution_id").notNull(),
-    timestamp: timestamp({ mode: "string" }).notNull(),
-    duration: integer().notNull(),
-    status: text().notNull(),
-    stepsExecuted: integer("steps_executed").notNull(),
-    stepsSkipped: integer("steps_skipped").notNull(),
-    stepsFailed: integer("steps_failed").notNull(),
-    agentsUsed: text("agents_used").notNull(),
-    retriesPerformed: integer("retries_performed").notNull(),
-    fallbacksUsed: integer("fallbacks_used").notNull(),
-    totalResponseTime: real("total_response_time").notNull(),
-    averageStepTime: real("average_step_time").notNull(),
-    bottleneckStep: text("bottleneck_step"),
-    bottleneckDuration: real("bottleneck_duration"),
-    peakMemory: real("peak_memory").notNull(),
-    averageMemory: real("average_memory").notNull(),
-    peakCpu: real("peak_cpu").notNull(),
-    averageCpu: real("average_cpu").notNull(),
-    metadata: text(),
-    createdAt: timestamp("created_at", { mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }
-);
+export const workflowPerformanceMetrics = pgTable("workflow_performance_metrics", {
+  id: serial().primaryKey().notNull(),
+  workflowId: text("workflow_id").notNull(),
+  executionId: text("execution_id").notNull(),
+  timestamp: timestamp({ mode: "string" }).notNull(),
+  duration: integer().notNull(),
+  status: text().notNull(),
+  stepsExecuted: integer("steps_executed").notNull(),
+  stepsSkipped: integer("steps_skipped").notNull(),
+  stepsFailed: integer("steps_failed").notNull(),
+  agentsUsed: text("agents_used").notNull(),
+  retriesPerformed: integer("retries_performed").notNull(),
+  fallbacksUsed: integer("fallbacks_used").notNull(),
+  totalResponseTime: real("total_response_time").notNull(),
+  averageStepTime: real("average_step_time").notNull(),
+  bottleneckStep: text("bottleneck_step"),
+  bottleneckDuration: real("bottleneck_duration"),
+  peakMemory: real("peak_memory").notNull(),
+  averageMemory: real("average_memory").notNull(),
+  peakCpu: real("peak_cpu").notNull(),
+  averageCpu: real("average_cpu").notNull(),
+  metadata: text(),
+  createdAt: timestamp("created_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
 
 export const workflowSystemStatus = pgTable(
   "workflow_system_status",
@@ -566,9 +532,9 @@ export const workflowSystemStatus = pgTable(
   (table) => [
     index("workflow_system_status_user_id_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
-  ]
+  ],
 );
 
 export const user = pgTable(
@@ -581,18 +547,14 @@ export const user = pgTable(
     emailVerified: boolean().default(false).notNull(),
     image: text(),
     legacyBetterAuthId: text(),
-    createdAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   },
   (table) => [
     unique("user_email_unique").on(table.email),
     unique("user_username_unique").on(table.username),
     unique("user_legacyBetterAuthId_unique").on(table.legacyBetterAuthId),
-  ]
+  ],
 );
 
 export const account = pgTable(
@@ -609,12 +571,8 @@ export const account = pgTable(
     refreshTokenExpiresAt: integer(),
     scope: text(),
     password: text(),
-    createdAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   },
   (table) => [
     foreignKey({
@@ -622,7 +580,7 @@ export const account = pgTable(
       foreignColumns: [user.id],
       name: "account_userId_user_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const alertRules = pgTable("alert_rules", {
@@ -689,7 +647,7 @@ export const alertInstances = pgTable(
       foreignColumns: [alertRules.id],
       name: "alert_instances_rule_id_alert_rules_id_fk",
     }),
-  ]
+  ],
 );
 
 export const alertNotifications = pgTable(
@@ -719,7 +677,7 @@ export const alertNotifications = pgTable(
       foreignColumns: [notificationChannels.id],
       name: "alert_notifications_channel_id_notification_channels_id_fk",
     }),
-  ]
+  ],
 );
 
 export const notificationChannels = pgTable("notification_channels", {
@@ -763,14 +721,14 @@ export const apiCredentials = pgTable(
     index("api_credentials_user_provider_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.provider.asc().nullsLast().op("text_ops")
+      table.provider.asc().nullsLast().op("text_ops"),
     ),
     index("idx_api_credentials_user_active")
       .using(
         "btree",
         table.userId.asc().nullsLast().op("text_ops"),
         table.isActive.asc().nullsLast().op("text_ops"),
-        table.updatedAt.asc().nullsLast().op("text_ops")
+        table.updatedAt.asc().nullsLast().op("text_ops"),
       )
       .where(sql`(is_active = true)`),
     foreignKey({
@@ -778,7 +736,7 @@ export const apiCredentials = pgTable(
       foreignColumns: [user.id],
       name: "api_credentials_user_id_user_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const executionHistory = pgTable(
@@ -817,25 +775,25 @@ export const executionHistory = pgTable(
       "btree",
       table.snipeTargetId.asc().nullsLast().op("int4_ops"),
       table.action.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("execution_history_user_status_action_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
       table.status.asc().nullsLast().op("text_ops"),
-      table.action.asc().nullsLast().op("text_ops")
+      table.action.asc().nullsLast().op("text_ops"),
     ),
     index("execution_history_user_symbol_time_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
       table.symbolName.asc().nullsLast().op("timestamp_ops"),
-      table.executedAt.asc().nullsLast().op("text_ops")
+      table.executedAt.asc().nullsLast().op("text_ops"),
     ),
     index("idx_execution_history_user_symbol").using(
       "btree",
       table.userId.asc().nullsLast().op("timestamp_ops"),
       table.symbolName.asc().nullsLast().op("timestamp_ops"),
-      table.executedAt.asc().nullsLast().op("text_ops")
+      table.executedAt.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -847,7 +805,7 @@ export const executionHistory = pgTable(
       foreignColumns: [snipeTargets.id],
       name: "execution_history_snipe_target_id_snipe_targets_id_fk",
     }).onDelete("set null"),
-  ]
+  ],
 );
 
 export const snipeTargets = pgTable(
@@ -889,31 +847,31 @@ export const snipeTargets = pgTable(
       table.symbolName.asc().nullsLast().op("timestamp_ops"),
       table.status.asc().nullsLast().op("text_ops"),
       table.priority.asc().nullsLast().op("text_ops"),
-      table.createdAt.asc().nullsLast().op("text_ops")
+      table.createdAt.asc().nullsLast().op("text_ops"),
     ),
     index("idx_snipe_targets_user_status").using(
       "btree",
       table.userId.asc().nullsLast().op("timestamp_ops"),
       table.status.asc().nullsLast().op("timestamp_ops"),
-      table.createdAt.asc().nullsLast().op("text_ops")
+      table.createdAt.asc().nullsLast().op("text_ops"),
     ),
     index("snipe_targets_status_execution_time_idx").using(
       "btree",
       table.status.asc().nullsLast().op("text_ops"),
-      table.targetExecutionTime.asc().nullsLast().op("text_ops")
+      table.targetExecutionTime.asc().nullsLast().op("text_ops"),
     ),
     index("snipe_targets_user_status_priority_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("int4_ops"),
       table.status.asc().nullsLast().op("text_ops"),
-      table.priority.asc().nullsLast().op("text_ops")
+      table.priority.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
       name: "snipe_targets_user_id_user_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const patternEmbeddings = pgTable(
@@ -927,9 +885,7 @@ export const patternEmbeddings = pgTable(
     patternData: text("pattern_data").notNull(),
     embedding: text().notNull(),
     embeddingDimension: integer("embedding_dimension").default(1536).notNull(),
-    embeddingModel: text("embedding_model")
-      .default("text-embedding-ada-002")
-      .notNull(),
+    embeddingModel: text("embedding_model").default("text-embedding-ada-002").notNull(),
     confidence: real().notNull(),
     occurrences: integer().default(1).notNull(),
     successRate: real("success_rate"),
@@ -954,36 +910,34 @@ export const patternEmbeddings = pgTable(
       table.patternType.asc().nullsLast().op("text_ops"),
       table.confidence.asc().nullsLast().op("timestamp_ops"),
       table.isActive.asc().nullsLast().op("bool_ops"),
-      table.createdAt.asc().nullsLast().op("float4_ops")
+      table.createdAt.asc().nullsLast().op("float4_ops"),
     ),
     index("idx_pattern_embeddings_confidence_active")
       .using(
         "btree",
         table.confidence.asc().nullsLast().op("text_ops"),
         table.isActive.asc().nullsLast().op("text_ops"),
-        table.patternType.asc().nullsLast().op("float4_ops")
+        table.patternType.asc().nullsLast().op("float4_ops"),
       )
-      .where(
-        sql`((confidence > (0.7)::double precision) AND (is_active = true))`
-      ),
+      .where(sql`((confidence > (0.7)::double precision) AND (is_active = true))`),
     index("idx_pattern_embeddings_symbol_timestamp").using(
       "btree",
       table.symbolName.asc().nullsLast().op("text_ops"),
       table.createdAt.asc().nullsLast().op("timestamp_ops"),
-      table.confidence.asc().nullsLast().op("timestamp_ops")
+      table.confidence.asc().nullsLast().op("timestamp_ops"),
     ),
     index("pattern_embeddings_symbol_type_idx").using(
       "btree",
       table.symbolName.asc().nullsLast().op("text_ops"),
-      table.patternType.asc().nullsLast().op("text_ops")
+      table.patternType.asc().nullsLast().op("text_ops"),
     ),
     index("pattern_embeddings_type_confidence_idx").using(
       "btree",
       table.patternType.asc().nullsLast().op("text_ops"),
-      table.confidence.asc().nullsLast().op("text_ops")
+      table.confidence.asc().nullsLast().op("text_ops"),
     ),
     unique("pattern_embeddings_pattern_id_unique").on(table.patternId),
-  ]
+  ],
 );
 
 export const patternSimilarityCache = pgTable(
@@ -1005,12 +959,12 @@ export const patternSimilarityCache = pgTable(
       "btree",
       table.patternId1.asc().nullsLast().op("text_ops"),
       table.cosineSimilarity.asc().nullsLast().op("text_ops"),
-      table.createdAt.asc().nullsLast().op("float4_ops")
+      table.createdAt.asc().nullsLast().op("float4_ops"),
     ),
     index("pattern_similarity_cache_unique_pair_idx").using(
       "btree",
       table.patternId1.asc().nullsLast().op("text_ops"),
-      table.patternId2.asc().nullsLast().op("text_ops")
+      table.patternId2.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.patternId1],
@@ -1022,7 +976,7 @@ export const patternSimilarityCache = pgTable(
       foreignColumns: [patternEmbeddings.patternId],
       name: "pattern_similarity_cache_pattern_id_2_pattern_embeddings_patter",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const positionSnapshots = pgTable(
@@ -1051,37 +1005,37 @@ export const positionSnapshots = pgTable(
   (table) => [
     index("position_snapshots_reconciliation_id_idx").using(
       "btree",
-      table.reconciliationId.asc().nullsLast().op("text_ops")
+      table.reconciliationId.asc().nullsLast().op("text_ops"),
     ),
     index("position_snapshots_snapshot_id_idx").using(
       "btree",
-      table.snapshotId.asc().nullsLast().op("text_ops")
+      table.snapshotId.asc().nullsLast().op("text_ops"),
     ),
     index("position_snapshots_source_idx").using(
       "btree",
-      table.source.asc().nullsLast().op("text_ops")
+      table.source.asc().nullsLast().op("text_ops"),
     ),
     index("position_snapshots_source_timestamp_idx").using(
       "btree",
       table.source.asc().nullsLast().op("timestamp_ops"),
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
     index("position_snapshots_symbol_idx").using(
       "btree",
-      table.symbol.asc().nullsLast().op("text_ops")
+      table.symbol.asc().nullsLast().op("text_ops"),
     ),
     index("position_snapshots_timestamp_idx").using(
       "btree",
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
     index("position_snapshots_user_id_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     index("position_snapshots_user_symbol_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.symbol.asc().nullsLast().op("text_ops")
+      table.symbol.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1089,7 +1043,7 @@ export const positionSnapshots = pgTable(
       name: "position_snapshots_user_id_user_id_fk",
     }).onDelete("cascade"),
     unique("position_snapshots_snapshot_id_unique").on(table.snapshotId),
-  ]
+  ],
 );
 
 export const session = pgTable(
@@ -1098,12 +1052,8 @@ export const session = pgTable(
     id: text().primaryKey().notNull(),
     expiresAt: integer().notNull(),
     token: text().notNull(),
-    createdAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp({ mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
     ipAddress: text(),
     userAgent: text(),
     userId: text().notNull(),
@@ -1115,7 +1065,7 @@ export const session = pgTable(
       name: "session_userId_user_id_fk",
     }).onDelete("cascade"),
     unique("session_token_unique").on(table.token),
-  ]
+  ],
 );
 
 export const simulationSessions = pgTable(
@@ -1147,22 +1097,22 @@ export const simulationSessions = pgTable(
   (table) => [
     index("simulation_sessions_start_time_idx").using(
       "btree",
-      table.startTime.asc().nullsLast().op("timestamp_ops")
+      table.startTime.asc().nullsLast().op("timestamp_ops"),
     ),
     index("simulation_sessions_status_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("simulation_sessions_user_id_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
       name: "simulation_sessions_user_id_user_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const simulationTrades = pgTable(
@@ -1191,30 +1141,27 @@ export const simulationTrades = pgTable(
   (table) => [
     index("simulation_trades_realized_idx").using(
       "btree",
-      table.realized.asc().nullsLast().op("bool_ops")
+      table.realized.asc().nullsLast().op("bool_ops"),
     ),
     index("simulation_trades_session_id_idx").using(
       "btree",
-      table.sessionId.asc().nullsLast().op("text_ops")
+      table.sessionId.asc().nullsLast().op("text_ops"),
     ),
     index("simulation_trades_symbol_idx").using(
       "btree",
-      table.symbol.asc().nullsLast().op("text_ops")
+      table.symbol.asc().nullsLast().op("text_ops"),
     ),
     index("simulation_trades_timestamp_idx").using(
       "btree",
-      table.timestamp.asc().nullsLast().op("timestamp_ops")
+      table.timestamp.asc().nullsLast().op("timestamp_ops"),
     ),
-    index("simulation_trades_type_idx").using(
-      "btree",
-      table.type.asc().nullsLast().op("text_ops")
-    ),
+    index("simulation_trades_type_idx").using("btree", table.type.asc().nullsLast().op("text_ops")),
     foreignKey({
       columns: [table.sessionId],
       foreignColumns: [simulationSessions.id],
       name: "simulation_trades_session_id_simulation_sessions_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const tradingStrategies = pgTable(
@@ -1263,38 +1210,38 @@ export const tradingStrategies = pgTable(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
       table.status.asc().nullsLast().op("text_ops"),
-      table.updatedAt.asc().nullsLast().op("timestamp_ops")
+      table.updatedAt.asc().nullsLast().op("timestamp_ops"),
     ),
     index("trading_strategies_status_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("trading_strategies_symbol_idx").using(
       "btree",
-      table.symbol.asc().nullsLast().op("text_ops")
+      table.symbol.asc().nullsLast().op("text_ops"),
     ),
     index("trading_strategies_symbol_status_idx").using(
       "btree",
       table.symbol.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("trading_strategies_template_idx").using(
       "btree",
-      table.strategyTemplateId.asc().nullsLast().op("int4_ops")
+      table.strategyTemplateId.asc().nullsLast().op("int4_ops"),
     ),
     index("trading_strategies_user_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     index("trading_strategies_user_status_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("trading_strategies_user_symbol_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.symbol.asc().nullsLast().op("text_ops")
+      table.symbol.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1306,7 +1253,7 @@ export const tradingStrategies = pgTable(
       foreignColumns: [strategyTemplates.id],
       name: "trading_strategies_strategy_template_id_strategy_templates_id_f",
     }).onDelete("set null"),
-  ]
+  ],
 );
 
 export const strategyConfigBackups = pgTable(
@@ -1326,26 +1273,26 @@ export const strategyConfigBackups = pgTable(
   (table) => [
     index("strategy_config_backups_active_idx").using(
       "btree",
-      table.isActive.asc().nullsLast().op("bool_ops")
+      table.isActive.asc().nullsLast().op("bool_ops"),
     ),
     index("strategy_config_backups_reason_idx").using(
       "btree",
-      table.backupReason.asc().nullsLast().op("text_ops")
+      table.backupReason.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_config_backups_strategy_idx").using(
       "btree",
-      table.strategyId.asc().nullsLast().op("int4_ops")
+      table.strategyId.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_config_backups_version_idx").using(
       "btree",
-      table.version.asc().nullsLast().op("int4_ops")
+      table.version.asc().nullsLast().op("int4_ops"),
     ),
     foreignKey({
       columns: [table.strategyId],
       foreignColumns: [tradingStrategies.id],
       name: "strategy_config_backups_strategy_id_trading_strategies_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const strategyPerformanceMetrics = pgTable(
@@ -1386,29 +1333,29 @@ export const strategyPerformanceMetrics = pgTable(
     index("strategy_performance_metrics_period_idx").using(
       "btree",
       table.periodStart.asc().nullsLast().op("timestamp_ops"),
-      table.periodEnd.asc().nullsLast().op("timestamp_ops")
+      table.periodEnd.asc().nullsLast().op("timestamp_ops"),
     ),
     index("strategy_performance_metrics_period_type_idx").using(
       "btree",
-      table.periodType.asc().nullsLast().op("text_ops")
+      table.periodType.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_performance_metrics_strategy_idx").using(
       "btree",
-      table.strategyId.asc().nullsLast().op("int4_ops")
+      table.strategyId.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_performance_metrics_strategy_period_idx").using(
       "btree",
       table.strategyId.asc().nullsLast().op("timestamp_ops"),
-      table.periodStart.asc().nullsLast().op("int4_ops")
+      table.periodStart.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_performance_metrics_user_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_performance_metrics_user_period_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.periodStart.asc().nullsLast().op("text_ops")
+      table.periodStart.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1420,7 +1367,7 @@ export const strategyPerformanceMetrics = pgTable(
       foreignColumns: [tradingStrategies.id],
       name: "strategy_performance_metrics_strategy_id_trading_strategies_id_",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const strategyPhaseExecutions = pgTable(
@@ -1459,34 +1406,34 @@ export const strategyPhaseExecutions = pgTable(
   (table) => [
     index("strategy_phase_executions_phase_idx").using(
       "btree",
-      table.phaseNumber.asc().nullsLast().op("int4_ops")
+      table.phaseNumber.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_phase_executions_status_idx").using(
       "btree",
-      table.executionStatus.asc().nullsLast().op("text_ops")
+      table.executionStatus.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_phase_executions_strategy_idx").using(
       "btree",
-      table.strategyId.asc().nullsLast().op("int4_ops")
+      table.strategyId.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_phase_executions_strategy_phase_idx").using(
       "btree",
       table.strategyId.asc().nullsLast().op("int4_ops"),
-      table.phaseNumber.asc().nullsLast().op("int4_ops")
+      table.phaseNumber.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_phase_executions_strategy_status_idx").using(
       "btree",
       table.strategyId.asc().nullsLast().op("int4_ops"),
-      table.executionStatus.asc().nullsLast().op("int4_ops")
+      table.executionStatus.asc().nullsLast().op("int4_ops"),
     ),
     index("strategy_phase_executions_user_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_phase_executions_user_strategy_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("int4_ops"),
-      table.strategyId.asc().nullsLast().op("int4_ops")
+      table.strategyId.asc().nullsLast().op("int4_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1498,7 +1445,7 @@ export const strategyPhaseExecutions = pgTable(
       foreignColumns: [tradingStrategies.id],
       name: "strategy_phase_executions_strategy_id_trading_strategies_id_fk",
     }).onDelete("cascade"),
-  ]
+  ],
 );
 
 export const strategyTemplates = pgTable(
@@ -1526,22 +1473,22 @@ export const strategyTemplates = pgTable(
   (table) => [
     index("strategy_templates_risk_level_idx").using(
       "btree",
-      table.riskLevel.asc().nullsLast().op("text_ops")
+      table.riskLevel.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_templates_strategy_id_idx").using(
       "btree",
-      table.strategyId.asc().nullsLast().op("text_ops")
+      table.strategyId.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_templates_type_idx").using(
       "btree",
-      table.type.asc().nullsLast().op("text_ops")
+      table.type.asc().nullsLast().op("text_ops"),
     ),
     index("strategy_templates_usage_count_idx").using(
       "btree",
-      table.usageCount.asc().nullsLast().op("int4_ops")
+      table.usageCount.asc().nullsLast().op("int4_ops"),
     ),
     unique("strategy_templates_strategy_id_unique").on(table.strategyId),
-  ]
+  ],
 );
 
 export const transactionLocks = pgTable(
@@ -1580,22 +1527,22 @@ export const transactionLocks = pgTable(
         "btree",
         table.resourceId.asc().nullsLast().op("timestamp_ops"),
         table.status.asc().nullsLast().op("timestamp_ops"),
-        table.expiresAt.asc().nullsLast().op("timestamp_ops")
+        table.expiresAt.asc().nullsLast().op("timestamp_ops"),
       )
       .where(sql`(status = 'active'::text)`),
     index("transaction_locks_owner_status_idx").using(
       "btree",
       table.ownerId.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("transaction_locks_resource_status_idx").using(
       "btree",
       table.resourceId.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     unique("transaction_locks_lock_id_unique").on(table.lockId),
     unique("transaction_locks_idempotency_key_unique").on(table.idempotencyKey),
-  ]
+  ],
 );
 
 export const transactionQueue = pgTable(
@@ -1610,9 +1557,7 @@ export const transactionQueue = pgTable(
     transactionData: text("transaction_data").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     status: text().default("pending").notNull(),
-    queuedAt: timestamp("queued_at", { mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    queuedAt: timestamp("queued_at", { mode: "string" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
     processingStartedAt: timestamp("processing_started_at", { mode: "string" }),
     completedAt: timestamp("completed_at", { mode: "string" }),
     result: text(),
@@ -1631,13 +1576,13 @@ export const transactionQueue = pgTable(
     index("transaction_queue_resource_status_idx").using(
       "btree",
       table.resourceId.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("transaction_queue_status_priority_idx").using(
       "btree",
       table.status.asc().nullsLast().op("timestamp_ops"),
       table.priority.asc().nullsLast().op("timestamp_ops"),
-      table.queuedAt.asc().nullsLast().op("int4_ops")
+      table.queuedAt.asc().nullsLast().op("int4_ops"),
     ),
     foreignKey({
       columns: [table.lockId],
@@ -1645,7 +1590,7 @@ export const transactionQueue = pgTable(
       name: "transaction_queue_lock_id_transaction_locks_lock_id_fk",
     }).onDelete("set null"),
     unique("transaction_queue_queue_id_unique").on(table.queueId),
-  ]
+  ],
 );
 
 export const transactions = pgTable(
@@ -1687,22 +1632,22 @@ export const transactions = pgTable(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
       table.createdAt.asc().nullsLast().op("timestamp_ops"),
-      table.status.asc().nullsLast().op("timestamp_ops")
+      table.status.asc().nullsLast().op("timestamp_ops"),
     ),
     index("transactions_symbol_time_idx").using(
       "btree",
       table.symbolName.asc().nullsLast().op("text_ops"),
-      table.transactionTime.asc().nullsLast().op("text_ops")
+      table.transactionTime.asc().nullsLast().op("text_ops"),
     ),
     index("transactions_user_status_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("text_ops"),
-      table.status.asc().nullsLast().op("text_ops")
+      table.status.asc().nullsLast().op("text_ops"),
     ),
     index("transactions_user_time_idx").using(
       "btree",
       table.userId.asc().nullsLast().op("timestamp_ops"),
-      table.transactionTime.asc().nullsLast().op("text_ops")
+      table.transactionTime.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1714,7 +1659,7 @@ export const transactions = pgTable(
       foreignColumns: [snipeTargets.id],
       name: "transactions_snipe_target_id_snipe_targets_id_fk",
     }).onDelete("set null"),
-  ]
+  ],
 );
 
 export const userPreferences = pgTable(
@@ -1722,44 +1667,32 @@ export const userPreferences = pgTable(
   {
     id: serial().primaryKey().notNull(),
     userId: text("user_id").notNull(),
-    defaultBuyAmountUsdt: real("default_buy_amount_usdt")
-      .default(100)
-      .notNull(),
+    defaultBuyAmountUsdt: real("default_buy_amount_usdt").default(100).notNull(),
     maxConcurrentSnipes: integer("max_concurrent_snipes").default(3).notNull(),
     takeProfitLevel1: real("take_profit_level_1").default(5).notNull(),
     takeProfitLevel2: real("take_profit_level_2").default(10).notNull(),
     takeProfitLevel3: real("take_profit_level_3").default(15).notNull(),
     takeProfitLevel4: real("take_profit_level_4").default(25).notNull(),
     takeProfitCustom: real("take_profit_custom"),
-    defaultTakeProfitLevel: integer("default_take_profit_level")
-      .default(2)
-      .notNull(),
+    defaultTakeProfitLevel: integer("default_take_profit_level").default(2).notNull(),
     stopLossPercent: real("stop_loss_percent").default(5).notNull(),
     riskTolerance: text("risk_tolerance").default("medium").notNull(),
     readyStatePattern: text("ready_state_pattern").default("2,2,4").notNull(),
     targetAdvanceHours: real("target_advance_hours").default(3.5).notNull(),
     autoSnipeEnabled: boolean("auto_snipe_enabled").default(true).notNull(),
-    selectedExitStrategy: text("selected_exit_strategy")
-      .default("balanced")
-      .notNull(),
+    selectedExitStrategy: text("selected_exit_strategy").default("balanced").notNull(),
     customExitStrategy: text("custom_exit_strategy"),
     autoBuyEnabled: boolean("auto_buy_enabled").default(true).notNull(),
     autoSellEnabled: boolean("auto_sell_enabled").default(true).notNull(),
-    calendarPollIntervalSeconds: integer("calendar_poll_interval_seconds")
-      .default(300)
-      .notNull(),
-    symbolsPollIntervalSeconds: integer("symbols_poll_interval_seconds")
-      .default(30)
-      .notNull(),
+    calendarPollIntervalSeconds: integer("calendar_poll_interval_seconds").default(300).notNull(),
+    symbolsPollIntervalSeconds: integer("symbols_poll_interval_seconds").default(30).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: timestamp("updated_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    takeProfitStrategy: text("take_profit_strategy")
-      .default("balanced")
-      .notNull(),
+    takeProfitStrategy: text("take_profit_strategy").default("balanced").notNull(),
     takeProfitLevelsConfig: text("take_profit_levels_config"),
     sellQuantityLevel1: real("sell_quantity_level_1").default(25).notNull(),
     sellQuantityLevel2: real("sell_quantity_level_2").default(25).notNull(),
@@ -1771,11 +1704,11 @@ export const userPreferences = pgTable(
     index("idx_user_preferences_user_key").using(
       "btree",
       table.userId.asc().nullsLast().op("timestamp_ops"),
-      table.updatedAt.asc().nullsLast().op("text_ops")
+      table.updatedAt.asc().nullsLast().op("text_ops"),
     ),
     index("user_preferences_user_id_idx").using(
       "btree",
-      table.userId.asc().nullsLast().op("text_ops")
+      table.userId.asc().nullsLast().op("text_ops"),
     ),
     foreignKey({
       columns: [table.userId],
@@ -1783,7 +1716,7 @@ export const userPreferences = pgTable(
       name: "user_preferences_user_id_user_id_fk",
     }).onDelete("cascade"),
     unique("user_preferences_user_id_unique").on(table.userId),
-  ]
+  ],
 );
 
 export const coinActivities = pgTable(
@@ -1816,33 +1749,33 @@ export const coinActivities = pgTable(
     index("coin_activities_active_currency_idx").using(
       "btree",
       table.isActive.asc().nullsLast().op("bool_ops"),
-      table.currency.asc().nullsLast().op("text_ops")
+      table.currency.asc().nullsLast().op("text_ops"),
     ),
     index("coin_activities_activity_type_idx").using(
       "btree",
-      table.activityType.asc().nullsLast().op("text_ops")
+      table.activityType.asc().nullsLast().op("text_ops"),
     ),
     index("coin_activities_currency_idx").using(
       "btree",
-      table.currency.asc().nullsLast().op("text_ops")
+      table.currency.asc().nullsLast().op("text_ops"),
     ),
     index("coin_activities_discovered_at_idx").using(
       "btree",
-      table.discoveredAt.asc().nullsLast().op("timestamp_ops")
+      table.discoveredAt.asc().nullsLast().op("timestamp_ops"),
     ),
     index("coin_activities_is_active_idx").using(
       "btree",
-      table.isActive.asc().nullsLast().op("bool_ops")
+      table.isActive.asc().nullsLast().op("bool_ops"),
     ),
     index("coin_activities_type_discovered_idx").using(
       "btree",
       table.activityType.asc().nullsLast().op("text_ops"),
-      table.discoveredAt.asc().nullsLast().op("text_ops")
+      table.discoveredAt.asc().nullsLast().op("text_ops"),
     ),
     index("coin_activities_vcoin_id_idx").using(
       "btree",
-      table.vcoinId.asc().nullsLast().op("text_ops")
+      table.vcoinId.asc().nullsLast().op("text_ops"),
     ),
     unique("coin_activities_activity_id_unique").on(table.activityId),
-  ]
+  ],
 );

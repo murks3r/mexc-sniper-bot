@@ -96,10 +96,7 @@ export class AutoSnipingStats {
 
     if (update.volume !== undefined) {
       this.volumeHistory.push(update.volume);
-      this.metrics.totalVolume = this.volumeHistory.reduce(
-        (sum, vol) => sum + vol,
-        0
-      );
+      this.metrics.totalVolume = this.volumeHistory.reduce((sum, vol) => sum + vol, 0);
     }
 
     if (update.executionTime !== undefined) {
@@ -118,11 +115,7 @@ export class AutoSnipingStats {
   /**
    * Record successful snipe
    */
-  recordSuccessfulSnipe(
-    confidence: number,
-    volume: number,
-    executionTime: number
-  ): void {
+  recordSuccessfulSnipe(confidence: number, volume: number, executionTime: number): void {
     this.metrics.processedTargets++;
     this.metrics.successfulSnipes++;
     this.metrics.lastActivity = new Date();
@@ -132,10 +125,7 @@ export class AutoSnipingStats {
     this.executionTimes.push(executionTime);
 
     this.metrics.averageConfidence = this.calculateAverageConfidence();
-    this.metrics.totalVolume = this.volumeHistory.reduce(
-      (sum, vol) => sum + vol,
-      0
-    );
+    this.metrics.totalVolume = this.volumeHistory.reduce((sum, vol) => sum + vol, 0);
     this.metrics.averageExecutionTime = this.calculateAverageExecutionTime();
 
     this.context.logger.info("Successful snipe recorded", {
@@ -173,9 +163,7 @@ export class AutoSnipingStats {
    */
   getSuccessRate(): number {
     if (this.metrics.processedTargets === 0) return 0;
-    return (
-      (this.metrics.successfulSnipes / this.metrics.processedTargets) * 100
-    );
+    return (this.metrics.successfulSnipes / this.metrics.processedTargets) * 100;
   }
 
   /**
@@ -225,8 +213,7 @@ export class AutoSnipingStats {
         worstExecutionTime: Math.max(...this.executionTimes) || 0,
         averageVolume:
           this.volumeHistory.length > 0
-            ? this.volumeHistory.reduce((sum, vol) => sum + vol, 0) /
-              this.volumeHistory.length
+            ? this.volumeHistory.reduce((sum, vol) => sum + vol, 0) / this.volumeHistory.length
             : 0,
         totalValue: this.metrics.totalVolume || 0,
       },

@@ -23,7 +23,7 @@ export async function GET() {
         timestamp: new Date().toISOString(),
         localTime: Date.now(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

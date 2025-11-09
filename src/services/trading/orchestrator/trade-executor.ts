@@ -26,8 +26,7 @@ export class TradeExecutor {
   private failedExecutions = 0;
 
   // Connection state
-  private connectionStatus: "connected" | "disconnected" | "error" =
-    "disconnected";
+  private connectionStatus: "connected" | "disconnected" | "error" = "disconnected";
   private lastConnectionCheck = new Date();
 
   // Rate limiting
@@ -89,8 +88,7 @@ export class TradeExecutor {
    */
   async getHealthStatus(): Promise<"operational" | "degraded" | "offline"> {
     if (!this.state.isInitialized) return "offline";
-    if (!this.state.isHealthy || this.connectionStatus === "error")
-      return "degraded";
+    if (!this.state.isHealthy || this.connectionStatus === "error") return "degraded";
     if (this.connectionStatus === "disconnected") return "degraded";
     return "operational";
   }
@@ -110,9 +108,7 @@ export class TradeExecutor {
   /**
    * Execute a snipe target
    */
-  async executeSnipeTarget(
-    target: SnipeTarget
-  ): Promise<ServiceResponse<TradeExecutionResult>> {
+  async executeSnipeTarget(target: SnipeTarget): Promise<ServiceResponse<TradeExecutionResult>> {
     const startTime = Date.now();
 
     try {
@@ -131,15 +127,9 @@ export class TradeExecutor {
       }
 
       // Connection check
-      if (
-        this.connectionStatus === "disconnected" ||
-        this.connectionStatus === "error"
-      ) {
+      if (this.connectionStatus === "disconnected" || this.connectionStatus === "error") {
         await this.testConnection();
-        if (
-          this.connectionStatus === "error" ||
-          this.connectionStatus === "disconnected"
-        ) {
+        if (this.connectionStatus === "error" || this.connectionStatus === "disconnected") {
           throw new Error("No connection to trading API");
         }
       }
@@ -183,20 +173,10 @@ export class TradeExecutor {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      const safeError = toSafeError(error);
-      this.context.logger.error(
-        `Failed to execute snipe target ${target.symbolName}: ${safeError.message}`
+      return this.handleExecutionError(
+        error,
+        `Failed to execute snipe target ${target.symbolName}`,
       );
-
-      this.totalExecutions++;
-      this.failedExecutions++;
-      this.updateMetrics();
-
-      return {
-        success: false,
-        error: safeError.message,
-        timestamp: new Date().toISOString(),
-      };
     }
   }
 
@@ -204,7 +184,7 @@ export class TradeExecutor {
    * Execute a manual trade
    */
   async executeManualTrade(
-    params: TradeParameters
+    params: TradeParameters,
   ): Promise<ServiceResponse<TradeExecutionResult>> {
     const startTime = Date.now();
 
@@ -218,9 +198,7 @@ export class TradeExecutor {
       // Validate parameters
       const validation = this.validateTradeParameters(params);
       if (!validation.isValid) {
-        throw new Error(
-          `Invalid trade parameters: ${validation.errors.join(", ")}`
-        );
+        throw new Error(`Invalid trade parameters: ${validation.errors.join(", ")}`);
       }
 
       // Execute the trade
@@ -246,20 +224,7 @@ export class TradeExecutor {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      const safeError = toSafeError(error);
-      this.context.logger.error(
-        `Failed to execute manual trade ${params.symbol}: ${safeError.message}`
-      );
-
-      this.totalExecutions++;
-      this.failedExecutions++;
-      this.updateMetrics();
-
-      return {
-        success: false,
-        error: safeError.message,
-        timestamp: new Date().toISOString(),
-      };
+      return this.handleExecutionError(error, `Failed to execute manual trade ${params.symbol}`);
     }
   }
 
@@ -268,10 +233,7 @@ export class TradeExecutor {
    */
   async getAverageExecutionTime(): Promise<number> {
     if (this.executionTimes.length === 0) return 0;
-    return (
-      this.executionTimes.reduce((sum, time) => sum + time, 0) /
-      this.executionTimes.length
-    );
+    return this.executionTimes.reduce((sum, time) => sum + time, 0) / this.executionTimes.length;
   }
 
   /**
@@ -316,9 +278,7 @@ export class TradeExecutor {
         status: this.connectionStatus,
       });
     } catch (error) {
-      this.context.logger.error(
-        `Connection test failed: ${toSafeError(error).message}`
-      );
+      this.context.logger.error(`Connection test failed: ${toSafeError(error).message}`);
       this.connectionStatus = "error";
     }
   }
@@ -326,9 +286,7 @@ export class TradeExecutor {
   /**
    * Prepare trade parameters from snipe target
    */
-  private async prepareTradeParameters(
-    target: SnipeTarget
-  ): Promise<TradeParameters> {
+  private async prepareTradeParameters(target: SnipeTarget): Promise<TradeParameters> {
     // Calculate position size in quote currency (USDT)
     const positionSizeUsdt = target.positionSizeUsdt;
 
@@ -368,9 +326,7 @@ export class TradeExecutor {
   /**
    * Execute trade with API (simulated)
    */
-  private async executeTrade(
-    params: TradeParameters
-  ): Promise<TradeExecutionResult> {
+  private async executeTrade(params: TradeParameters): Promise<TradeExecutionResult> {
     try {
       this.context.logger.debug("Executing trade", { params });
 
@@ -388,7 +344,7 @@ export class TradeExecutor {
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error(
-        `Trade execution failed for ${params.symbol}: ${safeError.message}`
+        `Trade execution failed for ${params.symbol}: ${safeError.message}`,
       );
 
       return {
@@ -399,12 +355,16 @@ export class TradeExecutor {
   }
 
   /**
-   * Simulate paper trade execution
+   * Create order result with common structure
    */
-  private simulatePaperTrade(params: TradeParameters): TradeExecutionResult {
-    const orderId = `PAPER_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  private createOrderResult(
+    params: TradeParameters,
+    orderIdPrefix: string,
+    price?: string,
+  ): TradeExecutionResult {
+    const orderId = `${orderIdPrefix}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const executedQty = params.quantity || "0";
-    const price = params.price || (100 + Math.random() * 1000).toFixed(6);
+    const finalPrice = price || params.price || (100 + Math.random() * 1000).toFixed(6);
 
     return {
       success: true,
@@ -413,12 +373,19 @@ export class TradeExecutor {
         symbol: params.symbol,
         side: params.side,
         type: params.type,
-        price,
+        price: finalPrice,
         executedQty,
         status: "FILLED",
         timestamp: new Date().toISOString(),
       },
     };
+  }
+
+  /**
+   * Simulate paper trade execution
+   */
+  private simulatePaperTrade(params: TradeParameters): TradeExecutionResult {
+    return this.createOrderResult(params, "PAPER");
   }
 
   /**
@@ -429,23 +396,7 @@ export class TradeExecutor {
     const success = Math.random() > 0.05;
 
     if (success) {
-      const orderId = `REAL_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      const executedQty = params.quantity || "0";
-      const price = params.price || (100 + Math.random() * 1000).toFixed(6);
-
-      return {
-        success: true,
-        data: {
-          orderId,
-          symbol: params.symbol,
-          side: params.side,
-          type: params.type,
-          price,
-          executedQty,
-          status: "FILLED",
-          timestamp: new Date().toISOString(),
-        },
-      };
+      return this.createOrderResult(params, "REAL");
     } else {
       // Simulate various failure reasons
       const errors = [
@@ -512,6 +463,27 @@ export class TradeExecutor {
   }
 
   /**
+   * Handle execution error with consistent error handling pattern
+   */
+  private handleExecutionError(
+    error: unknown,
+    errorMessage: string,
+  ): ServiceResponse<TradeExecutionResult> {
+    const safeError = toSafeError(error);
+    this.context.logger.error(`${errorMessage}: ${safeError.message}`);
+
+    this.totalExecutions++;
+    this.failedExecutions++;
+    this.updateMetrics();
+
+    return {
+      success: false,
+      error: safeError.message,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Update execution metrics
    */
   private updateMetrics(): void {
@@ -521,13 +493,10 @@ export class TradeExecutor {
       failedExecutions: this.failedExecutions,
       averageExecutionTime:
         this.executionTimes.length > 0
-          ? this.executionTimes.reduce((sum, time) => sum + time, 0) /
-            this.executionTimes.length
+          ? this.executionTimes.reduce((sum, time) => sum + time, 0) / this.executionTimes.length
           : 0,
       successRate:
-        this.totalExecutions > 0
-          ? (this.successfulExecutions / this.totalExecutions) * 100
-          : 0,
+        this.totalExecutions > 0 ? (this.successfulExecutions / this.totalExecutions) * 100 : 0,
     };
 
     // Keep only last 100 execution times to prevent memory growth

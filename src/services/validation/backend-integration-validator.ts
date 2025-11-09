@@ -111,18 +111,16 @@ export class BackendIntegrationValidator {
     // Generate recommendations
     if (failedTests > 0) {
       recommendations.push(
-        "Review failed validations and ensure all services are properly configured"
+        "Review failed validations and ensure all services are properly configured",
       );
     }
     if (criticalIssues.length > 0) {
       recommendations.push(
-        "Address critical API connectivity and trading issues before deployment"
+        "Address critical API connectivity and trading issues before deployment",
       );
     }
     if (passedTests >= 6) {
-      recommendations.push(
-        "Backend integration is healthy - proceed with testing"
-      );
+      recommendations.push("Backend integration is healthy - proceed with testing");
     }
 
     const totalDuration = Date.now() - startTime;
@@ -270,10 +268,7 @@ export class BackendIntegrationValidator {
       }
 
       // Test order book (real implementation)
-      const orderBookResult = await marketService.getOrderBookDepth(
-        "BTCUSDT",
-        10
-      );
+      const orderBookResult = await marketService.getOrderBookDepth("BTCUSDT", 10);
       if (!orderBookResult.success) {
         throw new Error("Order book retrieval failed");
       }
@@ -331,10 +326,7 @@ export class BackendIntegrationValidator {
       }
 
       // Test order status update
-      const statusUpdate = await executionOrderService.updateOrderStatus(
-        testOrder.id,
-        "cancelled"
-      );
+      const statusUpdate = await executionOrderService.updateOrderStatus(testOrder.id, "cancelled");
       if (!statusUpdate) {
         throw new Error("Failed to update order status");
       }
@@ -369,7 +361,9 @@ export class BackendIntegrationValidator {
       this.logger.info("Validating auto-sniping services...");
 
       // Using consolidated core trading service instead of duplicate services
-      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const { getCoreTrading } = await import(
+        "@/src/services/trading/consolidated/core-trading/base-service"
+      );
       const coreTrading = getCoreTrading();
 
       // Test service status
@@ -381,9 +375,7 @@ export class BackendIntegrationValidator {
       // Test initialization
       const initResult = await snipingService.initialize();
       if (!initResult.success) {
-        throw new Error(
-          `Auto-sniping initialization failed: ${initResult.error}`
-        );
+        throw new Error(`Auto-sniping initialization failed: ${initResult.error}`);
       }
 
       return {
@@ -416,7 +408,9 @@ export class BackendIntegrationValidator {
       this.logger.info("Validating complete orchestration...");
 
       // Using consolidated core trading service instead of duplicate orchestrator
-      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const { getCoreTrading } = await import(
+        "@/src/services/trading/consolidated/core-trading/base-service"
+      );
       const orchestrator = getCoreTrading();
 
       // Test orchestrator status
@@ -467,9 +461,7 @@ export class BackendIntegrationValidator {
 
       // Error handling should return success: false, not throw
       if (invalidResult.success) {
-        throw new Error(
-          "Error handling failed - invalid request should not succeed"
-        );
+        throw new Error("Error handling failed - invalid request should not succeed");
       }
 
       if (!invalidResult.error) {
@@ -509,7 +501,9 @@ export class BackendIntegrationValidator {
       const mexcService = await getUnifiedMexcService();
       const marketService = getMexcMarketService();
       // Using consolidated core trading service instead of duplicate services
-      const { getCoreTrading } = await import("@/src/services/trading/consolidated/core-trading/base-service");
+      const { getCoreTrading } = await import(
+        "@/src/services/trading/consolidated/core-trading/base-service"
+      );
       const coreTrading = getCoreTrading();
 
       if (!mexcService || !marketService || !coreTrading) {
@@ -525,8 +519,7 @@ export class BackendIntegrationValidator {
       return {
         component: "Service Integration",
         success: true,
-        details:
-          "All services instantiated successfully and can communicate with MEXC API",
+        details: "All services instantiated successfully and can communicate with MEXC API",
         timestamp: new Date().toISOString(),
         duration: Date.now() - startTime,
       };

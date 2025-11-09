@@ -56,7 +56,7 @@ export interface TradingRepository {
   getTradingMetrics(
     userId: string,
     fromDate?: Date,
-    toDate?: Date
+    toDate?: Date,
   ): Promise<{
     totalTrades: number;
     successfulTrades: number;
@@ -198,9 +198,7 @@ export interface PortfolioService {
   /**
    * Get balance for a specific asset
    */
-  getAssetBalance(
-    asset: string
-  ): Promise<{ free: string; locked: string } | null>;
+  getAssetBalance(asset: string): Promise<{ free: string; locked: string } | null>;
 }
 
 export interface MarketService {
@@ -267,16 +265,14 @@ export interface MarketService {
   /**
    * Get symbol status
    */
-  getSymbolStatus(
-    symbol: string
-  ): Promise<{ status: string; trading: boolean }>;
+  getSymbolStatus(symbol: string): Promise<{ status: string; trading: boolean }>;
 
   /**
    * Get order book depth
    */
   getOrderBookDepth(
     symbol: string,
-    limit?: number
+    limit?: number,
   ): Promise<{
     success: boolean;
     data?: {

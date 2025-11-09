@@ -13,42 +13,18 @@ import type {
   MexcServiceResponse,
   SymbolEntry,
 } from "./mexc-api-types";
-import {
-  createMexcCoreAccountClient,
-  type MexcCoreAccountClient,
-} from "./mexc-core-account";
+import { createMexcCoreAccountClient, type MexcCoreAccountClient } from "./mexc-core-account";
 // Import modular components
-import {
-  createMexcCoreHttpClient,
-  type MexcCoreHttpClient,
-} from "./mexc-core-http";
-import {
-  createMexcCoreMarketClient,
-  type MexcCoreMarketClient,
-} from "./mexc-core-market";
+import { createMexcCoreHttpClient, type MexcCoreHttpClient } from "./mexc-core-http";
+import { createMexcCoreMarketClient, type MexcCoreMarketClient } from "./mexc-core-market";
 import type { OrderData, OrderResult } from "./mexc-core-trading";
-import {
-  createMexcCoreTradingClient,
-  type MexcCoreTradingClient,
-} from "./mexc-core-trading";
+import { createMexcCoreTradingClient, type MexcCoreTradingClient } from "./mexc-core-trading";
 
 // ============================================================================
 // Core Client with Modular Architecture
 // ============================================================================
 
 export class MexcCoreClient {
-  // Simple console logger to avoid webpack bundling issues
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-core-client]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-core-client]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[mexc-core-client]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-core-client]", message, context || ""),
-  };
-
   // Modular components
   private httpClient: MexcCoreHttpClient;
   private marketClient: MexcCoreMarketClient;
@@ -77,9 +53,7 @@ export class MexcCoreClient {
   /**
    * Get symbols for a specific coin
    */
-  async getSymbolsByVcoinId(
-    vcoinId: string
-  ): Promise<MexcServiceResponse<SymbolEntry[]>> {
+  async getSymbolsByVcoinId(vcoinId: string): Promise<MexcServiceResponse<SymbolEntry[]>> {
     return this.marketClient.getSymbolsByVcoinId(vcoinId);
   }
 
@@ -93,9 +67,7 @@ export class MexcCoreClient {
   /**
    * Get basic symbol information by symbol name
    */
-  async getSymbolInfoBasic(
-    symbolName: string
-  ): Promise<MexcServiceResponse<any>> {
+  async getSymbolInfoBasic(symbolName: string): Promise<MexcServiceResponse<any>> {
     return this.marketClient.getSymbolInfoBasic(symbolName);
   }
 
@@ -125,7 +97,7 @@ export class MexcCoreClient {
    */
   async getOrderBook(
     symbol: string,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<
     MexcServiceResponse<{
       bids: [string, string][];
@@ -164,9 +136,7 @@ export class MexcCoreClient {
   /**
    * Get balance for a specific asset
    */
-  async getAssetBalance(
-    asset: string
-  ): Promise<MexcServiceResponse<BalanceEntry | null>> {
+  async getAssetBalance(asset: string): Promise<MexcServiceResponse<BalanceEntry | null>> {
     return this.accountClient.getAssetBalance(asset);
   }
 
@@ -177,58 +147,42 @@ export class MexcCoreClient {
   /**
    * Place a trading order
    */
-  async placeOrder(
-    orderData: OrderData
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async placeOrder(orderData: OrderData): Promise<MexcServiceResponse<OrderResult>> {
     return this.tradingClient.placeOrder(orderData);
   }
 
   /**
    * Cancel an order
    */
-  async cancelOrder(
-    symbol: string,
-    orderId: number
-  ): Promise<MexcServiceResponse<any>> {
+  async cancelOrder(symbol: string, orderId: number): Promise<MexcServiceResponse<any>> {
     return this.tradingClient.cancelOrder(symbol, orderId);
   }
 
   /**
    * Get order status
    */
-  async getOrderStatus(
-    symbol: string,
-    orderId: number
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async getOrderStatus(symbol: string, orderId: number): Promise<MexcServiceResponse<OrderResult>> {
     return this.tradingClient.getOrderStatus(symbol, orderId);
   }
 
   /**
    * Get all open orders
    */
-  async getOpenOrders(
-    symbol?: string
-  ): Promise<MexcServiceResponse<OrderResult[]>> {
+  async getOpenOrders(symbol?: string): Promise<MexcServiceResponse<OrderResult[]>> {
     return this.tradingClient.getOpenOrders(symbol);
   }
 
   /**
    * Market buy order shortcut
    */
-  async marketBuy(
-    symbol: string,
-    quantity: string
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async marketBuy(symbol: string, quantity: string): Promise<MexcServiceResponse<OrderResult>> {
     return this.tradingClient.marketBuy(symbol, quantity);
   }
 
   /**
    * Market sell order shortcut
    */
-  async marketSell(
-    symbol: string,
-    quantity: string
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async marketSell(symbol: string, quantity: string): Promise<MexcServiceResponse<OrderResult>> {
     return this.tradingClient.marketSell(symbol, quantity);
   }
 

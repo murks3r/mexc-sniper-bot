@@ -101,9 +101,7 @@ export class AdvancedOrderManager {
       });
 
       if (!limitOrderResult.success) {
-        throw new Error(
-          `Failed to place limit order: ${limitOrderResult.error}`
-        );
+        throw new Error(`Failed to place limit order: ${limitOrderResult.error}`);
       }
 
       // Place stop order
@@ -118,10 +116,7 @@ export class AdvancedOrderManager {
 
       if (!stopOrderResult.success) {
         // Cancel the limit order if stop order fails
-        await this.context.mexcService.cancelOrder(
-          params.symbol,
-          limitOrderResult.data.orderId
-        );
+        await this.context.mexcService.cancelOrder(params.symbol, limitOrderResult.data.orderId);
         throw new Error(`Failed to place stop order: ${stopOrderResult.error}`);
       }
 
@@ -167,9 +162,7 @@ export class AdvancedOrderManager {
   /**
    * Place a trailing stop order
    */
-  async placeTrailingStop(
-    params: TrailingStopParams
-  ): Promise<ServiceResponse<string>> {
+  async placeTrailingStop(params: TrailingStopParams): Promise<ServiceResponse<string>> {
     try {
       this.context.logger.info("Placing trailing stop order", {
         symbol: params.symbol,
@@ -192,12 +185,7 @@ export class AdvancedOrderManager {
       const trailingStopId = `trailing_${Date.now()}`;
 
       // Create trailing stop monitor
-      const monitor = new TrailingStopMonitor(
-        trailingStopId,
-        params,
-        currentPrice,
-        this.context
-      );
+      const monitor = new TrailingStopMonitor(trailingStopId, params, currentPrice, this.context);
 
       this.activeTrailingStops.set(trailingStopId, monitor);
 
@@ -284,14 +272,9 @@ export class AdvancedOrderManager {
       if (!takeProfitResult.success) {
         // Cancel entry order if it exists
         if (entryOrderId) {
-          await this.context.mexcService.cancelOrder(
-            params.symbol,
-            entryOrderId
-          );
+          await this.context.mexcService.cancelOrder(params.symbol, entryOrderId);
         }
-        throw new Error(
-          `Failed to place take profit order: ${takeProfitResult.error}`
-        );
+        throw new Error(`Failed to place take profit order: ${takeProfitResult.error}`);
       }
 
       // Place stop loss order (opposite side)
@@ -307,18 +290,10 @@ export class AdvancedOrderManager {
       if (!stopLossResult.success) {
         // Cancel previous orders
         if (entryOrderId) {
-          await this.context.mexcService.cancelOrder(
-            params.symbol,
-            entryOrderId
-          );
+          await this.context.mexcService.cancelOrder(params.symbol, entryOrderId);
         }
-        await this.context.mexcService.cancelOrder(
-          params.symbol,
-          takeProfitResult.data.orderId
-        );
-        throw new Error(
-          `Failed to place stop loss order: ${stopLossResult.error}`
-        );
+        await this.context.mexcService.cancelOrder(params.symbol, takeProfitResult.data.orderId);
+        throw new Error(`Failed to place stop loss order: ${stopLossResult.error}`);
       }
 
       const bracketId = `bracket_${Date.now()}`;
@@ -332,7 +307,7 @@ export class AdvancedOrderManager {
           stopLossOrderId: stopLossResult.data.orderId,
           symbol: params.symbol,
         },
-        this.context
+        this.context,
       );
 
       this.activeBracketOrders.set(bracketId, monitor);
@@ -373,7 +348,7 @@ export class AdvancedOrderManager {
     symbol: string,
     entryPrice: number,
     stopLossPrice: number,
-    config: PositionSizingConfig
+    config: PositionSizingConfig,
   ): Promise<number> {
     try {
       // Get portfolio value
@@ -394,14 +369,13 @@ export class AdvancedOrderManager {
 
       // Adjust for volatility
       const volatility = await this.estimateVolatility(symbol);
-      const volatilityAdjustment =
-        1 / (1 + volatility * config.volatilityMultiplier);
+      const volatilityAdjustment = 1 / (1 + volatility * config.volatilityMultiplier);
       positionSize *= volatilityAdjustment;
 
       // Check correlation limits
       const correlationAdjustment = await this.calculateCorrelationAdjustment(
         symbol,
-        config.correlationLimit
+        config.correlationLimit,
       );
       positionSize *= correlationAdjustment;
 
@@ -442,15 +416,11 @@ export class AdvancedOrderManager {
 
   private async validateOCOParameters(params: OCOOrderParams): Promise<void> {
     if (params.side === "BUY" && params.stopPrice >= params.price) {
-      throw new Error(
-        "For BUY OCO orders, stop price must be below limit price"
-      );
+      throw new Error("For BUY OCO orders, stop price must be below limit price");
     }
 
     if (params.side === "SELL" && params.stopPrice <= params.price) {
-      throw new Error(
-        "For SELL OCO orders, stop price must be above limit price"
-      );
+      throw new Error("For SELL OCO orders, stop price must be above limit price");
     }
 
     if (params.quantity <= 0) {
@@ -458,30 +428,20 @@ export class AdvancedOrderManager {
     }
   }
 
-  private async validateBracketParameters(
-    params: BracketOrderParams
-  ): Promise<void> {
+  private async validateBracketParameters(params: BracketOrderParams): Promise<void> {
     if (params.side === "BUY") {
       if (params.takeProfitPrice <= (params.price || 0)) {
-        throw new Error(
-          "Take profit price must be above entry price for BUY orders"
-        );
+        throw new Error("Take profit price must be above entry price for BUY orders");
       }
       if (params.stopLossPrice >= (params.price || Infinity)) {
-        throw new Error(
-          "Stop loss price must be below entry price for BUY orders"
-        );
+        throw new Error("Stop loss price must be below entry price for BUY orders");
       }
     } else {
       if (params.takeProfitPrice >= (params.price || Infinity)) {
-        throw new Error(
-          "Take profit price must be below entry price for SELL orders"
-        );
+        throw new Error("Take profit price must be below entry price for SELL orders");
       }
       if (params.stopLossPrice <= (params.price || 0)) {
-        throw new Error(
-          "Stop loss price must be above entry price for SELL orders"
-        );
+        throw new Error("Stop loss price must be above entry price for SELL orders");
       }
     }
   }
@@ -513,13 +473,10 @@ export class AdvancedOrderManager {
             totalValue += parseFloat(asset.free) + parseFloat(asset.locked);
           } else {
             // Convert other assets to USDT value
-            const ticker = await this.context.mexcService.getTicker(
-              `${asset.asset}USDT`
-            );
+            const ticker = await this.context.mexcService.getTicker(`${asset.asset}USDT`);
             if (ticker.success && ticker.data?.price) {
               const price = parseFloat(ticker.data.price);
-              const assetBalance =
-                parseFloat(asset.free) + parseFloat(asset.locked);
+              const assetBalance = parseFloat(asset.free) + parseFloat(asset.locked);
               totalValue += assetBalance * price;
             }
           }
@@ -543,9 +500,7 @@ export class AdvancedOrderManager {
       // In a real implementation, this would use historical data
       const ticker = await this.context.mexcService.getTicker(symbol);
       if (ticker.success && ticker.data?.priceChangePercent) {
-        const priceChange = Math.abs(
-          parseFloat(ticker.data.priceChangePercent)
-        );
+        const priceChange = Math.abs(parseFloat(ticker.data.priceChangePercent));
         return priceChange / 100; // Convert percentage to decimal
       }
 
@@ -557,7 +512,7 @@ export class AdvancedOrderManager {
 
   private async calculateCorrelationAdjustment(
     _symbol: string,
-    _correlationLimit: number
+    _correlationLimit: number,
   ): Promise<number> {
     try {
       // Simplified correlation calculation
@@ -573,7 +528,7 @@ export class AdvancedOrderManager {
 
   private monitorOCOOrder(
     ocoId: string,
-    orderIds: { limitOrderId: string; stopOrderId: string; symbol: string }
+    orderIds: { limitOrderId: string; stopOrderId: string; symbol: string },
   ): void {
     // Implement OCO monitoring logic
     const checkInterval = 5000; // 5 seconds
@@ -583,27 +538,21 @@ export class AdvancedOrderManager {
         // Check status of both orders
         const limitStatus = await this.context.mexcService.getOrderStatus(
           params.symbol,
-          orderIds.limitOrderId
+          orderIds.limitOrderId,
         );
 
         const stopStatus = await this.context.mexcService.getOrderStatus(
           params.symbol,
-          orderIds.stopOrderId
+          orderIds.stopOrderId,
         );
 
         // If one order is filled, cancel the other
         if (limitStatus.success && limitStatus.data?.status === "FILLED") {
-          await this.context.mexcService.cancelOrder(
-            orderIds.symbol,
-            orderIds.stopOrderId
-          );
+          await this.context.mexcService.cancelOrder(orderIds.symbol, orderIds.stopOrderId);
           clearInterval(monitor);
           this.activeOCOOrders.delete(ocoId);
         } else if (stopStatus.success && stopStatus.data?.status === "FILLED") {
-          await this.context.mexcService.cancelOrder(
-            orderIds.symbol,
-            orderIds.limitOrderId
-          );
+          await this.context.mexcService.cancelOrder(orderIds.symbol, orderIds.limitOrderId);
           clearInterval(monitor);
           this.activeOCOOrders.delete(ocoId);
         }
@@ -664,9 +613,7 @@ export class AdvancedOrderManager {
       activeTrailingStops: this.activeTrailingStops.size,
       activeBracketOrders: this.activeBracketOrders.size,
       totalAdvancedOrders:
-        this.activeOCOOrders.size +
-        this.activeTrailingStops.size +
-        this.activeBracketOrders.size,
+        this.activeOCOOrders.size + this.activeTrailingStops.size + this.activeBracketOrders.size,
     };
   }
 }
@@ -685,7 +632,7 @@ class TrailingStopMonitor {
     private id: string,
     private params: TrailingStopParams,
     initialPrice: number,
-    private context: ModuleContext
+    private context: ModuleContext,
   ) {
     this.highestPrice = initialPrice;
     this.lowestPrice = initialPrice;
@@ -707,9 +654,7 @@ class TrailingStopMonitor {
 
     try {
       // Get current price
-      const ticker = await this.context.mexcService.getTicker(
-        this.params.symbol
-      );
+      const ticker = await this.context.mexcService.getTicker(this.params.symbol);
       if (!ticker.success || !ticker.data?.price) return;
 
       const currentPrice = parseFloat(ticker.data.price);
@@ -782,7 +727,7 @@ class BracketOrderMonitor {
       stopLossOrderId: string;
       symbol: string;
     },
-    private context: ModuleContext
+    private context: ModuleContext,
   ) {}
 
   start(): void {
@@ -801,25 +746,25 @@ class BracketOrderMonitor {
       // Check if take profit or stop loss orders are filled
       const tpStatus = await this.context.mexcService.getOrderStatus(
         this.symbol,
-        this.orderIds.takeProfitOrderId
+        this.orderIds.takeProfitOrderId,
       );
 
       const slStatus = await this.context.mexcService.getOrderStatus(
         this.symbol,
-        this.orderIds.stopLossOrderId
+        this.orderIds.stopLossOrderId,
       );
 
       // If either is filled, cancel the other
       if (tpStatus.success && tpStatus.data?.status === "FILLED") {
         await this.context.mexcService.cancelOrder(
           this.orderIds.symbol,
-          this.orderIds.stopLossOrderId
+          this.orderIds.stopLossOrderId,
         );
         this.stop();
       } else if (slStatus.success && slStatus.data?.status === "FILLED") {
         await this.context.mexcService.cancelOrder(
           this.orderIds.symbol,
-          this.orderIds.takeProfitOrderId
+          this.orderIds.takeProfitOrderId,
         );
         this.stop();
       }

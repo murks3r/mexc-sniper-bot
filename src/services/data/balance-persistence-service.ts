@@ -49,17 +49,13 @@ export class BalancePersistenceService {
   async saveBalanceSnapshot(
     userId: string,
     balanceData: BalanceData,
-    options: BalancePersistenceOptions = {}
+    options: BalancePersistenceOptions = {},
   ): Promise<void> {
     try {
       // Validate input data
       const validatedData = BalanceDataSchema.parse(balanceData);
 
-      const {
-        snapshotType = "periodic",
-        dataSource = "api",
-        priceSource = "mexc",
-      } = options;
+      const { snapshotType = "periodic", dataSource = "api", priceSource = "mexc" } = options;
 
       console.info("Saving balance snapshot", {
         userId,
@@ -79,9 +75,7 @@ export class BalancePersistenceService {
         usdValue: balance.usdtValue || 0,
         priceSource,
         exchangeRate:
-          balance.usdtValue && balance.total > 0
-            ? balance.usdtValue / balance.total
-            : null,
+          balance.usdtValue && balance.total > 0 ? balance.usdtValue / balance.total : null,
         snapshotType,
         dataSource,
         timestamp: new Date(),
@@ -116,10 +110,7 @@ export class BalancePersistenceService {
   /**
    * Update portfolio summary with latest balance data
    */
-  private async updatePortfolioSummary(
-    userId: string,
-    balanceData: BalanceData
-  ): Promise<void> {
+  private async updatePortfolioSummary(userId: string, balanceData: BalanceData): Promise<void> {
     try {
       // Calculate top assets (top 5 by USD value)
       const sortedAssets = balanceData.balances
@@ -157,7 +148,7 @@ export class BalancePersistenceService {
         const previous = existing[0];
         const performance24h = this.calculatePerformanceChange(
           previous.totalUsdValue,
-          balanceData.totalUsdtValue
+          balanceData.totalUsdtValue,
         );
 
         await db
@@ -204,10 +195,7 @@ export class BalancePersistenceService {
   /**
    * Calculate percentage change between two values
    */
-  private calculatePerformanceChange(
-    previousValue: number,
-    currentValue: number
-  ): number {
+  private calculatePerformanceChange(previousValue: number, currentValue: number): number {
     if (previousValue === 0) return 0;
     return ((currentValue - previousValue) / previousValue) * 100;
   }
@@ -240,7 +228,7 @@ export class BalancePersistenceService {
   async getAssetBalanceHistory(
     userId: string,
     asset: string,
-    daysBack: number = 30
+    daysBack: number = 30,
   ): Promise<any[]> {
     try {
       const cutoffDate = new Date();
@@ -253,8 +241,8 @@ export class BalancePersistenceService {
           and(
             eq(balanceSnapshots.userId, userId),
             eq(balanceSnapshots.asset, asset),
-            gte(balanceSnapshots.timestamp, cutoffDate)
-          )
+            gte(balanceSnapshots.timestamp, cutoffDate),
+          ),
         )
         .orderBy(desc(balanceSnapshots.timestamp));
 
@@ -303,8 +291,8 @@ export class BalancePersistenceService {
         .where(
           and(
             eq(balanceSnapshots.snapshotType, "periodic"),
-            gte(balanceSnapshots.timestamp, cutoffDate)
-          )
+            gte(balanceSnapshots.timestamp, cutoffDate),
+          ),
         );
 
       console.info("Old balance snapshots cleaned up", {
@@ -320,5 +308,4 @@ export class BalancePersistenceService {
 }
 
 // Export singleton instance
-export const balancePersistenceService =
-  BalancePersistenceService.getInstance();
+export const balancePersistenceService = BalancePersistenceService.getInstance();

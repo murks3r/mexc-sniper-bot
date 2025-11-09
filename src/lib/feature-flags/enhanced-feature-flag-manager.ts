@@ -23,7 +23,7 @@ export const GradualRolloutConfigSchema = z.object({
       z.object({
         percentage: z.number().min(0).max(100),
         duration: z.number().min(0),
-      })
+      }),
     )
     .optional(),
 });
@@ -42,9 +42,7 @@ export const EnhancedFeatureFlagConfigSchema = z.object({
   createdBy: z.string(),
 });
 
-export type EnhancedFeatureFlagConfig = z.infer<
-  typeof EnhancedFeatureFlagConfigSchema
->;
+export type EnhancedFeatureFlagConfig = z.infer<typeof EnhancedFeatureFlagConfigSchema>;
 
 export interface FlagEvaluation {
   flagName: string;
@@ -74,7 +72,7 @@ class EnhancedFeatureFlagManager {
   async evaluateFlag(
     flagName: string,
     userContext: UserContext,
-    defaultValue: boolean = false
+    defaultValue: boolean = false,
   ): Promise<FlagEvaluation> {
     const flag = this.flags.get(flagName);
 
@@ -101,10 +99,7 @@ class EnhancedFeatureFlagManager {
     };
   }
 
-  private evaluateFlagForUser(
-    flag: EnhancedFeatureFlagConfig,
-    userContext: UserContext
-  ): boolean {
+  private evaluateFlagForUser(flag: EnhancedFeatureFlagConfig, userContext: UserContext): boolean {
     if (!flag.enabled) return false;
 
     switch (flag.strategy) {
@@ -121,7 +116,7 @@ class EnhancedFeatureFlagManager {
 
   private evaluateGradualRollout(
     flag: EnhancedFeatureFlagConfig,
-    userContext: UserContext
+    userContext: UserContext,
   ): boolean {
     if (!flag.gradualRollout) return flag.enabled;
 
@@ -131,10 +126,7 @@ class EnhancedFeatureFlagManager {
     return hash < percentage;
   }
 
-  private evaluateTargetedFlag(
-    flag: EnhancedFeatureFlagConfig,
-    userContext: UserContext
-  ): boolean {
+  private evaluateTargetedFlag(flag: EnhancedFeatureFlagConfig, userContext: UserContext): boolean {
     if (!flag.targetGroups || flag.targetGroups.length === 0) {
       return flag.enabled;
     }
@@ -153,10 +145,7 @@ class EnhancedFeatureFlagManager {
     return Math.abs(hash) % 100;
   }
 
-  updateFlag(
-    flagName: string,
-    updates: Partial<EnhancedFeatureFlagConfig>
-  ): void {
+  updateFlag(flagName: string, updates: Partial<EnhancedFeatureFlagConfig>): void {
     const flag = this.flags.get(flagName);
     if (flag) {
       const updatedFlag = {

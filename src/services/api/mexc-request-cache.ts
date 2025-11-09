@@ -23,12 +23,7 @@ export class MexcRequestCache {
     warn: (message: string, context?: any) =>
       console.warn("[mexc-request-cache]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-request-cache]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[mexc-request-cache]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[mexc-request-cache]", message, context || ""),
   };
@@ -41,7 +36,7 @@ export class MexcRequestCache {
       () => {
         this.cleanup();
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     );
   }
 
@@ -180,7 +175,7 @@ export class MexcRequestCache {
    */
   private removeOldestEntries(count: number): void {
     const entries = Array.from(this.cache.entries()).sort(
-      ([, a], [, b]) => a.timestamp - b.timestamp
+      ([, a], [, b]) => a.timestamp - b.timestamp,
     );
 
     const toRemove = entries.slice(0, count);
@@ -193,11 +188,7 @@ export class MexcRequestCache {
   /**
    * Generate cache key for API requests
    */
-  static generateKey(
-    method: string,
-    url: string,
-    params?: Record<string, unknown>
-  ): string {
+  static generateKey(method: string, url: string, params?: Record<string, unknown>): string {
     const paramsStr = params ? JSON.stringify(params) : "";
     return `${method}:${url}:${paramsStr}`;
   }
@@ -209,7 +200,7 @@ export class MexcRequestCache {
     method: string,
     url: string,
     params?: Record<string, unknown>,
-    timeWindow = 60000 // 1 minute window for auth requests
+    timeWindow = 60000, // 1 minute window for auth requests
   ): string {
     const windowedTime = Math.floor(Date.now() / timeWindow) * timeWindow;
     const paramsStr = params ? JSON.stringify(params) : "";
@@ -266,11 +257,7 @@ export function resetGlobalCache(): void {
  * Cache decorator for methods
  */
 export function cacheable(ttl: number = 60000) {
-  return (
-    target: unknown,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) => {
+  return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: unknown[]) {

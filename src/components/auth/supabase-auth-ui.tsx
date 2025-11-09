@@ -4,7 +4,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 import {
   bypassRateLimitInDev,
@@ -12,24 +12,23 @@ import {
 } from "@/src/lib/supabase-rate-limit-handler";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Separator } from "../ui/separator";
 import { RateLimitNotice } from "./rate-limit-notice";
+import { useAuth } from "./supabase-auth-provider";
 
-export function SupabaseAuthUI() {
+export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
   const supabase = getSupabaseBrowserClient();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use session from provider to avoid duplicate session checks
+  const { user: contextUser, isLoading: contextLoading, signInAnonymously, isAnonymous } = useAuth();
+  const [user, setUser] = useState<any>(contextUser);
+  const [isLoading, setIsLoading] = useState(contextLoading);
   const [mounted, setMounted] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
-  const [lastEmail, setLastEmail] = useState<string>("");
+  const [lastEmail, _setLastEmail] = useState<string>("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
 
   // Detect test environment to disable OAuth providers
   const isTestEnvironment =
@@ -43,24 +42,17 @@ export function SupabaseAuthUI() {
     setMounted(true);
   }, []);
 
-  // Get initial session and listen for auth changes
+  // Sync with context user to avoid duplicate session checks
+  useEffect(() => {
+    if (contextUser !== undefined) {
+      setUser(contextUser);
+      setIsLoading(contextLoading);
+    }
+  }, [contextUser, contextLoading]);
+
+  // Only listen for auth changes, don't fetch session again (provider handles that)
   useEffect(() => {
     if (!supabase || !mounted) return;
-
-    const getSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error getting session:", error);
-        setIsLoading(false);
-      }
-    };
-
-    getSession();
 
     // Clear any existing errors when starting fresh
     setAuthError(null);
@@ -84,8 +76,7 @@ export function SupabaseAuthUI() {
         try {
           const { error } = await supabase.auth.getSession();
           if (error && SupabaseRateLimitHandler.isRateLimitError(error)) {
-            const rateLimitAnalysis =
-              SupabaseRateLimitHandler.analyzeRateLimitError(error);
+            const rateLimitAnalysis = SupabaseRateLimitHandler.analyzeRateLimitError(error);
             setRateLimitInfo(rateLimitAnalysis);
           }
         } catch (err) {
@@ -96,8 +87,7 @@ export function SupabaseAuthUI() {
 
     // Listen for auth errors globally
     const handleAuthError = (error: any) => {
-      const rateLimitAnalysis =
-        SupabaseRateLimitHandler.analyzeRateLimitError(error);
+      const rateLimitAnalysis = SupabaseRateLimitHandler.analyzeRateLimitError(error);
       if (rateLimitAnalysis.isRateLimited) {
         setRateLimitInfo(rateLimitAnalysis);
         setIsLoading(false);
@@ -189,9 +179,7 @@ export function SupabaseAuthUI() {
     if (lastEmail) return lastEmail;
 
     // Try to get email from form inputs or global tracking
-    const emailInput = document.querySelector(
-      'input[type="email"]'
-    ) as HTMLInputElement;
+    const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
     return emailInput?.value || (window as any).lastAuthEmail || "";
   };
 
@@ -230,10 +218,21 @@ export function SupabaseAuthUI() {
         <CardHeader>
           <CardTitle className="text-foreground">Welcome back!</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Signed in as {user.email}
+            {isAnonymous
+              ? "Signed in as Guest"
+              : `Signed in as ${user.email || "User"}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isAnonymous && (
+            <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
+                You're signed in as a guest. Your data will be lost if you sign out or clear your
+                browser data. Consider upgrading to a permanent account.
+              </AlertDescription>
+            </Alert>
+          )}
           <Button onClick={handleSignOut} variant="outline" className="w-full">
             Sign Out
           </Button>
@@ -259,9 +258,7 @@ export function SupabaseAuthUI() {
         {/* Show simplified auth form below rate limit notice */}
         <Card className="bg-card border-border shadow-lg opacity-50">
           <CardHeader>
-            <CardTitle className="text-foreground">
-              Authentication Temporarily Limited
-            </CardTitle>
+            <CardTitle className="text-foreground">Authentication Temporarily Limited</CardTitle>
             <CardDescription className="text-muted-foreground">
               Please wait or use the bypass options above
             </CardDescription>
@@ -279,9 +276,7 @@ export function SupabaseAuthUI() {
   return (
     <Card className="bg-card border-border shadow-lg">
       <CardHeader>
-        <CardTitle className="text-foreground">
-          Welcome to MEXC Sniper Bot
-        </CardTitle>
+        <CardTitle className="text-foreground">Welcome to MEXC Sniper Bot</CardTitle>
         <CardDescription className="text-muted-foreground">
           Sign in to your account or create a new one
         </CardDescription>
@@ -366,9 +361,7 @@ export function SupabaseAuthUI() {
           }}
           providers={isTestEnvironment ? [] : ["google", "github"]}
           redirectTo={
-            typeof window !== "undefined"
-              ? `${window.location.origin}/dashboard`
-              : "/dashboard"
+            typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "/dashboard"
           }
           onlyThirdPartyProviders={false}
           magicLink={true}
@@ -412,8 +405,7 @@ export function SupabaseAuthUI() {
                 button_label: "Send reset instructions",
                 loading_button_label: "Sending reset instructions...",
                 link_text: "Forgot your password?",
-                confirmation_text:
-                  "Check your email for the password reset link",
+                confirmation_text: "Check your email for the password reset link",
               },
             },
           }}
@@ -435,7 +427,40 @@ export function SupabaseAuthUI() {
             `,
           }}
         />
+
+        <Separator className="my-4" />
+
+        <div className="space-y-3">
+          <Button
+            onClick={async () => {
+              setIsSigningInAnonymously(true);
+              setAuthError(null);
+              try {
+                const { error } = await signInAnonymously();
+                if (error) {
+                  setAuthError(error.message || "Failed to sign in anonymously");
+                  setIsSigningInAnonymously(false);
+                } else {
+                  // Success - will redirect via auth state change
+                  router.push("/dashboard");
+                }
+              } catch (err) {
+                setAuthError(err instanceof Error ? err.message : "An unexpected error occurred");
+                setIsSigningInAnonymously(false);
+              }
+            }}
+            variant="outline"
+            className="w-full"
+            disabled={isSigningInAnonymously}
+          >
+            {isSigningInAnonymously ? "Signing in..." : "Continue as Guest"}
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Sign in anonymously to try the platform. You can upgrade to a permanent account later.
+            Note: Your data will be lost if you sign out or clear browser data.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
-}
+});

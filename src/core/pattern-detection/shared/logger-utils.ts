@@ -33,19 +33,11 @@ export function createPatternLogger(moduleName: string): PatternLogger {
 
   return {
     info: (message: string, context?: any) => {
-      console.info(
-        prefix,
-        message,
-        ENABLE_CONTEXT_LOGGING ? context || "" : ""
-      );
+      console.info(prefix, message, ENABLE_CONTEXT_LOGGING ? context || "" : "");
     },
 
     warn: (message: string, context?: any) => {
-      console.warn(
-        prefix,
-        message,
-        ENABLE_CONTEXT_LOGGING ? context || "" : ""
-      );
+      console.warn(prefix, message, ENABLE_CONTEXT_LOGGING ? context || "" : "");
     },
 
     error: (message: string, context?: any, error?: Error) => {
@@ -53,17 +45,13 @@ export function createPatternLogger(moduleName: string): PatternLogger {
         prefix,
         message,
         ENABLE_CONTEXT_LOGGING ? context || "" : "",
-        ENABLE_CONTEXT_LOGGING ? error || "" : ""
+        ENABLE_CONTEXT_LOGGING ? error || "" : "",
       );
     },
 
     debug: (message: string, context?: any) => {
       if (LOG_LEVEL === "debug") {
-        console.debug(
-          prefix,
-          message,
-          ENABLE_CONTEXT_LOGGING ? context || "" : ""
-        );
+        console.debug(prefix, message, ENABLE_CONTEXT_LOGGING ? context || "" : "");
       }
     },
   };
@@ -92,7 +80,7 @@ export function validateConfidenceScore(score: number): boolean {
 export function createErrorContext(
   operation: string,
   identifier?: string,
-  additionalContext?: Record<string, any>
+  additionalContext?: Record<string, any>,
 ): Record<string, any> {
   const context: Record<string, any> = { operation };
 

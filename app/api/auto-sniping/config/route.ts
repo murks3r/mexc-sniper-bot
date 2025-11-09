@@ -1,8 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from "@/src/lib/api-response";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import {
   ConfigurationManager,
   ConfigurationSchema,
@@ -36,7 +33,7 @@ export async function GET() {
       createSuccessResponse({
         config,
         message: "Auto-sniping configuration retrieved successfully",
-      })
+      }),
     );
   } catch (error) {
     // Never fail this endpoint: return schema defaults on any error
@@ -56,14 +53,14 @@ export async function GET() {
           config: defaults.trading.autoSniping,
           message: "Auto-sniping configuration retrieved with defaults",
           warning: error instanceof Error ? error.message : "Unknown error",
-        })
+        }),
       );
     } catch (_fallbackErr) {
       return NextResponse.json(
         createErrorResponse("Failed to get auto-sniping configuration", {
           error: error instanceof Error ? error.message : "Unknown error",
         }),
-        { status: 500 }
+        { status: 500 },
       );
     }
   }
@@ -79,7 +76,7 @@ export async function POST(request: NextRequest) {
         createErrorResponse("Invalid configuration", {
           errors: parsed.error.format(),
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -96,14 +93,14 @@ export async function POST(request: NextRequest) {
       createSuccessResponse({
         config: configManager.getSection("trading").autoSniping,
         message: "Configuration updated successfully",
-      })
+      }),
     );
   } catch (error) {
     return NextResponse.json(
       createErrorResponse("Failed to update configuration", {
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

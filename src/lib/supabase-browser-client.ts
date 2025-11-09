@@ -19,10 +19,10 @@ function checkSupabaseConfiguration(): boolean {
   }
 
   // Check for placeholder values that indicate unconfigured environment
-  const isPlaceholderUrl = supabaseUrl.includes('placeholder') || 
-                          supabaseUrl === 'https://placeholder.supabase.co';
-  const isPlaceholderKey = supabaseAnonKey.includes('placeholder') || 
-                          supabaseAnonKey === 'placeholder_key';
+  const isPlaceholderUrl =
+    supabaseUrl.includes("placeholder") || supabaseUrl === "https://placeholder.supabase.co";
+  const isPlaceholderKey =
+    supabaseAnonKey.includes("placeholder") || supabaseAnonKey === "placeholder_key";
 
   return !isPlaceholderUrl && !isPlaceholderKey;
 }
@@ -41,7 +41,7 @@ export function createSupabaseBrowserClient() {
   // Check if already determined configuration status
   if (!isSupabaseConfigured && supabaseBrowserClient === null) {
     isSupabaseConfigured = checkSupabaseConfiguration();
-    
+
     if (!isSupabaseConfigured) {
       console.info("[Supabase] Environment not configured, auth features disabled");
       return null;
@@ -76,8 +76,7 @@ export function createSupabaseBrowserClient() {
               if (options?.domain) cookieString += `; domain=${options.domain}`;
               if (options?.secure) cookieString += "; secure";
               if (options?.httpOnly) cookieString += "; httponly";
-              if (options?.sameSite)
-                cookieString += `; samesite=${options.sameSite}`;
+              if (options?.sameSite) cookieString += `; samesite=${options.sameSite}`;
               document.cookie = cookieString;
             } catch (error) {
               console.warn("[Supabase] Cookie set error:", error);
@@ -102,25 +101,34 @@ export function createSupabaseBrowserClient() {
           fetch: (url, options = {}) => {
             // Add timeout and better error handling to prevent hanging requests
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout (increased for slow networks)
 
             return fetch(url, {
               ...options,
               signal: controller.signal,
-            }).finally(() => {
-              clearTimeout(timeoutId);
-            }).catch((error) => {
-              if (error.name === 'AbortError') {
-                console.warn("[Supabase] Request timeout - this is expected if Supabase is not configured");
-                throw new Error("Request timeout");
-              }
-              throw error;
-            });
+            })
+              .finally(() => {
+                clearTimeout(timeoutId);
+              })
+              .catch((error) => {
+                if (error.name === "AbortError") {
+                  const urlStr = typeof url === "string" ? url : url.toString();
+                  console.warn("[Supabase] Request timeout after 15 seconds", {
+                    url: urlStr.includes("auth") ? "auth endpoint" : urlStr,
+                    note: "This may be normal if Supabase is unreachable or network is slow",
+                  });
+                  throw new Error("Request timeout after 15 seconds");
+                }
+                throw error;
+              });
           },
         },
       });
 
-      console.info("[Supabase] Browser client initialized successfully");
+      // Only log in development to reduce console noise in production
+      if (process.env.NODE_ENV === "development") {
+        console.info("[Supabase] Browser client initialized successfully");
+      }
     } catch (error) {
       console.error("[Supabase] Failed to initialize browser client:", error);
       supabaseBrowserClient = null;

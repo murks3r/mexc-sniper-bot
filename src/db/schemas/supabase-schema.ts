@@ -9,6 +9,7 @@ export * from "./patterns";
 export * from "./performance";
 export * from "./safety";
 export * from "./strategies";
+export * from "./trading";
 // Export Supabase auth schemas with selective exports to avoid conflicts
 export {
   type NewSnipeTarget,
@@ -33,13 +34,13 @@ export {
   workflowSystemStatus,
   // Exclude CoinActivity and NewCoinActivity types as patterns.ts has the comprehensive version
 } from "./supabase-auth";
-// Supabase trading schemas removed to avoid redundancy
 
 import * as alerts from "./alerts";
 import * as patterns from "./patterns";
 import * as performance from "./performance";
 import * as safety from "./safety";
 import * as strategies from "./strategies";
+import * as trading from "./trading";
 import {
   snipeTargets,
   userPreferences,
@@ -64,6 +65,7 @@ export const supabaseSchema = {
   ...performance,
   ...alerts,
   ...safety,
+  ...trading,
 };
 
 export default supabaseSchema;

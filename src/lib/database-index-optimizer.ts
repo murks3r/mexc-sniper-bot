@@ -18,7 +18,7 @@ export class DatabaseIndexOptimizer {
 
   async createIndex(recommendation: IndexRecommendation): Promise<boolean> {
     console.log(
-      `[Index Optimizer] Would create index on ${recommendation.table}(${recommendation.columns.join(", ")})`
+      `[Index Optimizer] Would create index on ${recommendation.table}(${recommendation.columns.join(", ")})`,
     );
     return true;
   }

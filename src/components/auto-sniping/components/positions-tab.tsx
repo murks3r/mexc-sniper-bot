@@ -7,13 +7,7 @@
 import { Target, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ExecutionPosition } from "../schemas/validation-schemas";
 import { PnLIndicator } from "./pnl-indicator";
@@ -34,9 +28,7 @@ export function PositionsTab({
   formatCurrency,
 }: PositionsTabProps) {
   const handleClosePosition = async (positionId: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to close this position?"
-    );
+    const confirmed = window.confirm("Are you sure you want to close this position?");
     if (confirmed) {
       await onClosePosition(positionId);
     }
@@ -50,9 +42,7 @@ export function PositionsTab({
             <Target className="h-5 w-5" />
             Active Positions ({activePositions.length})
           </CardTitle>
-          <CardDescription>
-            Monitor and manage your active trading positions
-          </CardDescription>
+          <CardDescription>Monitor and manage your active trading positions</CardDescription>
         </div>
         {activePositions.length > 0 && (
           <Button
@@ -92,15 +82,11 @@ export function PositionsTab({
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                     <div>
                       <p className="text-sm text-gray-600">Entry Price</p>
-                      <p className="font-medium">
-                        {formatCurrency(position.entryPrice)}
-                      </p>
+                      <p className="font-medium">{formatCurrency(position.entryPrice)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Current Price</p>
-                      <p className="font-medium">
-                        {formatCurrency(position.currentPrice)}
-                      </p>
+                      <p className="font-medium">{formatCurrency(position.currentPrice)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Quantity</p>
@@ -117,9 +103,7 @@ export function PositionsTab({
                       Pattern: {position.patternMatch.patternType}(
                       {position.patternMatch.confidence}% confidence)
                     </span>
-                    <span>
-                      Opened: {new Date(position.entryTime).toLocaleString()}
-                    </span>
+                    <span>Opened: {new Date(position.entryTime).toLocaleString()}</span>
                   </div>
 
                   {(position.stopLossPrice || position.takeProfitPrice) && (
@@ -129,9 +113,7 @@ export function PositionsTab({
                           SL: {formatCurrency(position.stopLossPrice)}
                         </span>
                       )}
-                      {position.stopLossPrice &&
-                        position.takeProfitPrice &&
-                        " • "}
+                      {position.stopLossPrice && position.takeProfitPrice && " • "}
                       {position.takeProfitPrice && (
                         <span className="text-green-600">
                           TP: {formatCurrency(position.takeProfitPrice)}
@@ -144,9 +126,7 @@ export function PositionsTab({
             </div>
           </ScrollArea>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No active positions
-          </div>
+          <div className="text-center py-8 text-gray-500">No active positions</div>
         )}
       </CardContent>
     </Card>

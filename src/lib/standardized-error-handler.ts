@@ -7,12 +7,7 @@
 
 import type { ApiResponse } from "./api-response";
 import { isServerError, isTimeoutError } from "./error-type-utils";
-import {
-  type ApiError,
-  isApiError,
-  isNetworkError,
-  isValidationError,
-} from "./errors";
+import { type ApiError, isApiError, isNetworkError, isValidationError } from "./errors";
 import { createLogger, type LogContext } from "./unified-logger";
 
 const logger = createLogger("error-handler", {
@@ -129,10 +124,7 @@ export class StandardizedErrorHandler {
   /**
    * Process and standardize an error
    */
-  processError(
-    error: unknown,
-    context: Partial<StandardizedErrorContext> = {}
-  ): StandardizedError {
+  processError(error: unknown, context: Partial<StandardizedErrorContext> = {}): StandardizedError {
     const startTime = performance.now();
 
     // Ensure we have a proper Error instance
@@ -171,7 +163,7 @@ export class StandardizedErrorHandler {
    */
   createApiErrorResponse<T = null>(
     error: unknown,
-    context: Partial<StandardizedErrorContext> = {}
+    context: Partial<StandardizedErrorContext> = {},
   ): ApiResponse<T> {
     const standardizedError = this.processError(error, context);
     const { error: processedError, metadata } = standardizedError;
@@ -217,7 +209,7 @@ export class StandardizedErrorHandler {
   async withRetry<T>(
     operation: () => Promise<T>,
     context: Partial<StandardizedErrorContext> = {},
-    maxAttempts: number = this.config.maxRetryAttempts
+    maxAttempts: number = this.config.maxRetryAttempts,
   ): Promise<T> {
     let lastError: unknown;
 
@@ -340,7 +332,7 @@ export class StandardizedErrorHandler {
 
   private generateErrorMetadata(
     error: Error,
-    context: Partial<StandardizedErrorContext>
+    context: Partial<StandardizedErrorContext>,
   ): ErrorMetadata {
     const category = this.categorizeError(error);
     const severity = this.determineSeverity(error, category);
@@ -374,12 +366,9 @@ export class StandardizedErrorHandler {
     if (isServerError(error)) return ErrorCategory.SYSTEM;
 
     if (isApiError(error)) {
-      if ((error as ApiError).statusCode === 401)
-        return ErrorCategory.AUTHENTICATION;
-      if ((error as ApiError).statusCode === 403)
-        return ErrorCategory.AUTHORIZATION;
-      if ((error as ApiError).statusCode === 429)
-        return ErrorCategory.RATE_LIMIT;
+      if ((error as ApiError).statusCode === 401) return ErrorCategory.AUTHENTICATION;
+      if ((error as ApiError).statusCode === 403) return ErrorCategory.AUTHORIZATION;
+      if ((error as ApiError).statusCode === 429) return ErrorCategory.RATE_LIMIT;
       if ((error as ApiError).statusCode >= 500) return ErrorCategory.SYSTEM;
     }
 
@@ -398,31 +387,19 @@ export class StandardizedErrorHandler {
     return ErrorCategory.BUSINESS_LOGIC;
   }
 
-  private determineSeverity(
-    _error: Error,
-    category: ErrorCategory
-  ): ErrorSeverity {
+  private determineSeverity(_error: Error, category: ErrorCategory): ErrorSeverity {
     // Critical errors
-    if (
-      category === ErrorCategory.SYSTEM ||
-      category === ErrorCategory.DATABASE
-    ) {
+    if (category === ErrorCategory.SYSTEM || category === ErrorCategory.DATABASE) {
       return ErrorSeverity.CRITICAL;
     }
 
     // High severity errors
-    if (
-      category === ErrorCategory.AUTHENTICATION ||
-      category === ErrorCategory.CONFIGURATION
-    ) {
+    if (category === ErrorCategory.AUTHENTICATION || category === ErrorCategory.CONFIGURATION) {
       return ErrorSeverity.HIGH;
     }
 
     // Medium severity errors
-    if (
-      category === ErrorCategory.EXTERNAL_API ||
-      category === ErrorCategory.NETWORK
-    ) {
+    if (category === ErrorCategory.EXTERNAL_API || category === ErrorCategory.NETWORK) {
       return ErrorSeverity.MEDIUM;
     }
 
@@ -430,21 +407,12 @@ export class StandardizedErrorHandler {
     return ErrorSeverity.LOW;
   }
 
-  private determineRecoveryStrategy(
-    _error: Error,
-    category: ErrorCategory
-  ): RecoveryStrategy {
-    if (
-      category === ErrorCategory.NETWORK ||
-      category === ErrorCategory.RATE_LIMIT
-    ) {
+  private determineRecoveryStrategy(_error: Error, category: ErrorCategory): RecoveryStrategy {
+    if (category === ErrorCategory.NETWORK || category === ErrorCategory.RATE_LIMIT) {
       return RecoveryStrategy.RETRY;
     }
 
-    if (
-      category === ErrorCategory.VALIDATION ||
-      category === ErrorCategory.AUTHENTICATION
-    ) {
+    if (category === ErrorCategory.VALIDATION || category === ErrorCategory.AUTHENTICATION) {
       return RecoveryStrategy.USER_ACTION_REQUIRED;
     }
 
@@ -526,16 +494,10 @@ export class StandardizedErrorHandler {
   }
 
   private shouldAlert(metadata: ErrorMetadata): boolean {
-    return (
-      metadata.severity === ErrorSeverity.CRITICAL ||
-      metadata.severity === ErrorSeverity.HIGH
-    );
+    return metadata.severity === ErrorSeverity.CRITICAL || metadata.severity === ErrorSeverity.HIGH;
   }
 
-  private async sendAlert(
-    error: Error,
-    metadata: ErrorMetadata
-  ): Promise<void> {
+  private async sendAlert(error: Error, metadata: ErrorMetadata): Promise<void> {
     // Implementation would integrate with alerting system
     logger.error(
       "ALERT: Critical error detected",
@@ -545,7 +507,7 @@ export class StandardizedErrorHandler {
         severity: metadata.severity,
         message: metadata.technicalMessage,
       },
-      error
+      error,
     );
   }
 
@@ -591,7 +553,7 @@ export const errorHandler = new StandardizedErrorHandler();
  */
 export function handleApiError<T = null>(
   error: unknown,
-  context?: Partial<StandardizedErrorContext>
+  context?: Partial<StandardizedErrorContext>,
 ): ApiResponse<T> {
   return errorHandler.createApiErrorResponse<T>(error, context);
 }
@@ -601,7 +563,7 @@ export function handleApiError<T = null>(
  */
 export function handleServiceError(
   error: unknown,
-  context?: Partial<StandardizedErrorContext>
+  context?: Partial<StandardizedErrorContext>,
 ): StandardizedError {
   return errorHandler.processError(error, context);
 }
@@ -612,7 +574,7 @@ export function handleServiceError(
 export function withErrorHandling(
   target: any,
   propertyName: string,
-  descriptor: PropertyDescriptor
+  descriptor: PropertyDescriptor,
 ) {
   const method = descriptor.value;
 

@@ -21,16 +21,8 @@ interface SliderProps {
 
 const Slider = forwardRef<HTMLInputElement, SliderProps>(
   (
-    {
-      value = [0],
-      onValueChange,
-      min = 0,
-      max = 100,
-      step = 1,
-      disabled = false,
-      className = "",
-    },
-    ref
+    { value = [0], onValueChange, min = 0, max = 100, step = 1, disabled = false, className = "" },
+    ref,
   ) => {
     const currentValue = value[0] || 0;
 
@@ -76,7 +68,7 @@ const Slider = forwardRef<HTMLInputElement, SliderProps>(
         `}</style>
       </div>
     );
-  }
+  },
 );
 
 Slider.displayName = "Slider";

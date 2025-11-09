@@ -16,13 +16,7 @@ import {
   notificationChannels,
 } from "./schemas/alerts";
 // Import all table definitions from modular files
-import {
-  account,
-  session,
-  user,
-  userPreferences,
-  verification,
-} from "./schemas/auth";
+import { account, session, user, userPreferences, verification } from "./schemas/auth";
 import {
   coinActivities,
   monitoredListings,
@@ -61,6 +55,7 @@ import {
   balanceSnapshots,
   executionHistory,
   portfolioSummary,
+  positions,
   snipeTargets,
   transactionLocks,
   transactionQueue,
@@ -80,6 +75,7 @@ export {
   apiCredentials,
   snipeTargets,
   executionHistory,
+  positions,
   transactions,
   transactionLocks,
   transactionQueue,
@@ -156,6 +152,7 @@ const allTables = {
   apiCredentials,
   snipeTargets,
   executionHistory,
+  positions,
   transactions,
   transactionLocks,
   transactionQueue,

@@ -19,7 +19,7 @@ export async function GET() {
         success: false,
         error: "Failed to get auto exit manager status",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
             success: false,
             error: "Invalid action. Use 'start' or 'stop'",
           },
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: "Failed to control auto exit manager",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

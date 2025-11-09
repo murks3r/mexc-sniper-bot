@@ -59,33 +59,6 @@ export interface DiversificationAssessment {
 }
 
 export class DynamicCalculations {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-  private get logger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[dynamic-calculations]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[dynamic-calculations]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error(
-            "[dynamic-calculations]",
-            message,
-            context || "",
-            error || ""
-          ),
-        debug: (message: string, context?: any) =>
-          console.debug("[dynamic-calculations]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
-
   constructor(private config: DynamicCalculationsConfig) {}
 
   /**
@@ -94,7 +67,7 @@ export class DynamicCalculations {
   calculateDynamicStopLoss(
     symbol: string,
     _entryPrice: number,
-    currentPrice: number
+    currentPrice: number,
   ): StopLossRecommendation {
     const position = this.config.positions.get(symbol);
     const volatility = this.config.marketConditions.volatilityIndex / 100;
@@ -111,8 +84,7 @@ export class DynamicCalculations {
 
     // Adjust for position size (larger positions = tighter stop loss)
     if (position) {
-      const positionSizeRatio =
-        position.size / this.config.riskConfig.maxSinglePositionSize;
+      const positionSizeRatio = position.size / this.config.riskConfig.maxSinglePositionSize;
       stopLossPercent -= positionSizeRatio * 0.01; // Up to -1%
     }
 
@@ -136,7 +108,7 @@ export class DynamicCalculations {
   calculateDynamicTakeProfit(
     symbol: string,
     _entryPrice: number,
-    currentPrice: number
+    currentPrice: number,
   ): TakeProfitRecommendation {
     const position = this.config.positions.get(symbol);
     const volatility = this.config.marketConditions.volatilityIndex / 100;
@@ -157,8 +129,7 @@ export class DynamicCalculations {
 
     // Adjust for position size (larger positions = tighter take profit)
     if (position) {
-      const positionSizeRatio =
-        position.size / this.config.riskConfig.maxSinglePositionSize;
+      const positionSizeRatio = position.size / this.config.riskConfig.maxSinglePositionSize;
       takeProfitPercent -= positionSizeRatio * 0.015; // Up to -1.5%
     }
 
@@ -200,10 +171,7 @@ export class DynamicCalculations {
         positionRequest.requestedPositionSize / positionRequest.portfolioValue;
 
       // Check against maximum single position size
-      if (
-        positionRequest.requestedPositionSize >
-        this.config.riskConfig.maxSinglePositionSize
-      ) {
+      if (positionRequest.requestedPositionSize > this.config.riskConfig.maxSinglePositionSize) {
         adjustedSize = this.config.riskConfig.maxSinglePositionSize;
         adjustmentReason = "position_size_capped";
         warnings.push("position_capped");
@@ -213,13 +181,12 @@ export class DynamicCalculations {
       // Check against portfolio percentage limits (5% default)
       const maxPortfolioPercentage = 0.05; // 5%
       if (positionSizeRatio > maxPortfolioPercentage) {
-        const maxAllowedSize =
-          positionRequest.portfolioValue * maxPortfolioPercentage;
+        const maxAllowedSize = positionRequest.portfolioValue * maxPortfolioPercentage;
         if (maxAllowedSize < adjustedSize) {
           adjustedSize = maxAllowedSize;
           adjustmentReason = "position_size_capped";
           warnings.push(
-            `Position size reduced to ${(maxPortfolioPercentage * 100).toFixed(1)}% of portfolio`
+            `Position size reduced to ${(maxPortfolioPercentage * 100).toFixed(1)}% of portfolio`,
           );
         }
       }
@@ -229,8 +196,7 @@ export class DynamicCalculations {
       const newPortfolioValue = currentPortfolioValue + adjustedSize;
 
       if (newPortfolioValue > this.config.riskConfig.maxPortfolioValue) {
-        const remainingCapacity =
-          this.config.riskConfig.maxPortfolioValue - currentPortfolioValue;
+        const remainingCapacity = this.config.riskConfig.maxPortfolioValue - currentPortfolioValue;
         if (remainingCapacity <= 0) {
           approved = false;
           rejectionReason = "portfolio_risk_exceeded";
@@ -238,9 +204,7 @@ export class DynamicCalculations {
         } else if (remainingCapacity < adjustedSize) {
           adjustedSize = remainingCapacity;
           adjustmentReason = "portfolio_capacity_limit";
-          warnings.push(
-            "Position size reduced due to portfolio capacity limits"
-          );
+          warnings.push("Position size reduced due to portfolio capacity limits");
         }
       }
 
@@ -258,9 +222,7 @@ export class DynamicCalculations {
         positionRequest.correlationWithPortfolio > 0.7
       ) {
         adjustedSize *= 0.8; // 20% reduction for high correlation
-        warnings.push(
-          "Position size reduced due to high portfolio correlation"
-        );
+        warnings.push("Position size reduced due to high portfolio correlation");
         if (!adjustmentReason) adjustmentReason = "correlation_risk_adjustment";
       }
 
@@ -272,7 +234,7 @@ export class DynamicCalculations {
       }
 
       console.info(
-        `[DynamicCalculations] Position validation: ${positionRequest.symbol} - Requested: ${positionRequest.requestedPositionSize}, Adjusted: ${adjustedSize}, Approved: ${approved}`
+        `[DynamicCalculations] Position validation: ${positionRequest.symbol} - Requested: ${positionRequest.requestedPositionSize}, Adjusted: ${adjustedSize}, Approved: ${approved}`,
       );
 
       return {
@@ -284,10 +246,7 @@ export class DynamicCalculations {
         warnings,
       };
     } catch (error) {
-      console.error(
-        "[DynamicCalculations] Position size validation failed:",
-        error
-      );
+      console.error("[DynamicCalculations] Position size validation failed:", error);
       return {
         approved: false,
         adjustedPositionSize: 0,
@@ -375,10 +334,7 @@ export class DynamicCalculations {
     let recommendedStopLoss: number | undefined;
     if (!isValid) {
       const volatility = this.config.marketConditions.volatilityIndex / 100;
-      const optimalStopLossPercent = Math.max(
-        5,
-        Math.min(15, 8 + volatility * 10)
-      ); // 5-15% range
+      const optimalStopLossPercent = Math.max(5, Math.min(15, 8 + volatility * 10)); // 5-15% range
       recommendedStopLoss = entryPrice * (1 - optimalStopLossPercent / 100);
     }
 
@@ -431,7 +387,7 @@ export class DynamicCalculations {
     const positionCount = this.config.positions.size + 1; // Including new position
     const diversificationScore = Math.min(
       100,
-      positionCount * 10 - correlation * 30 - positionRatio * 100
+      positionCount * 10 - correlation * 30 - positionRatio * 100,
     );
 
     return {
@@ -486,10 +442,7 @@ export class DynamicCalculations {
    * Calculate portfolio value
    */
   private calculatePortfolioValue(): number {
-    return Array.from(this.config.positions.values()).reduce(
-      (total, pos) => total + pos.size,
-      0
-    );
+    return Array.from(this.config.positions.values()).reduce((total, pos) => total + pos.size, 0);
   }
 
   /**
@@ -501,9 +454,7 @@ export class DynamicCalculations {
 }
 
 // Factory function for creating dynamic calculations instance
-export function createDynamicCalculations(
-  config: DynamicCalculationsConfig
-): DynamicCalculations {
+export function createDynamicCalculations(config: DynamicCalculationsConfig): DynamicCalculations {
   return new DynamicCalculations(config);
 }
 

@@ -112,8 +112,8 @@ export class PerformanceMonitoringService {
    * Measure execution time of a function
    */
   async measureAsync<T>(
-    operation: string,
-    fn: () => Promise<T>
+    _operation: string,
+    fn: () => Promise<T>,
   ): Promise<{ result: T; duration: number }> {
     const startTime = performance.now();
     try {
@@ -132,7 +132,7 @@ export class PerformanceMonitoringService {
   /**
    * Measure execution time of a synchronous function
    */
-  measure<T>(operation: string, fn: () => T): { result: T; duration: number } {
+  measure<T>(_operation: string, fn: () => T): { result: T; duration: number } {
     const startTime = performance.now();
     try {
       const result = fn();
@@ -376,7 +376,7 @@ export class PerformanceMonitoringService {
         cpuUsage: 0,
         errorRate: 0,
         throughput: 0,
-      }
+      },
     );
 
     const count = this.metrics.length;
@@ -401,17 +401,14 @@ export class PerformanceMonitoringService {
 
     if (recent.length === 0 || older.length === 0) return {};
 
-    const recentAvg =
-      recent.reduce((sum, m) => sum + m.responseTime, 0) / recent.length;
-    const olderAvg =
-      older.reduce((sum, m) => sum + m.responseTime, 0) / older.length;
+    const recentAvg = recent.reduce((sum, m) => sum + m.responseTime, 0) / recent.length;
+    const olderAvg = older.reduce((sum, m) => sum + m.responseTime, 0) / older.length;
 
     const diff = recentAvg - olderAvg;
     const threshold = olderAvg * 0.1; // 10% threshold
 
     return {
-      responseTime:
-        Math.abs(diff) < threshold ? "stable" : diff > 0 ? "up" : "down",
+      responseTime: Math.abs(diff) < threshold ? "stable" : diff > 0 ? "up" : "down",
     };
   }
 
@@ -420,7 +417,7 @@ export class PerformanceMonitoringService {
    */
   private determineSeverity(
     metric: keyof PerformanceMetrics,
-    value: number
+    value: number,
   ): "low" | "medium" | "high" | "critical" {
     // Simple severity rules - can be made more sophisticated
     if (metric === "memoryUsage" && value > 1000) return "critical";

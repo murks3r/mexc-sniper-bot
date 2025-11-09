@@ -150,7 +150,7 @@ export const ExchangeInfoSchema = z.object({
         interval: z.string(),
         intervalNum: z.number(),
         limit: z.number(),
-      })
+      }),
     )
     .optional(),
   exchangeFilters: z.array(TradingFilterSchema).optional(),
@@ -214,14 +214,7 @@ export const OrderResultSchema = z.object({
 export const OrderStatusSchema = z.object({
   orderId: z.string(),
   symbol: z.string(),
-  status: z.enum([
-    "NEW",
-    "PARTIALLY_FILLED",
-    "FILLED",
-    "CANCELED",
-    "REJECTED",
-    "EXPIRED",
-  ]),
+  status: z.enum(["NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED"]),
   side: z.enum(["BUY", "SELL"]),
   type: z.enum(["LIMIT", "MARKET", "STOP_LOSS", "STOP_LOSS_LIMIT"]),
   quantity: z.string(),
@@ -276,13 +269,13 @@ export const MarketStatsSchema = z.object({
     z.object({
       symbol: z.string(),
       priceChangePercent: z.number(),
-    })
+    }),
   ),
   topLosers: z.array(
     z.object({
       symbol: z.string(),
       priceChangePercent: z.number(),
-    })
+    }),
   ),
   averageVolatility: z.number(),
 });
@@ -293,12 +286,7 @@ export const MarketStatsSchema = z.object({
  */
 export const PatternAnalysisSchema = z.object({
   symbol: z.string(),
-  pattern: z.enum([
-    "ready_state",
-    "pre_launch",
-    "volatility_spike",
-    "volume_surge",
-  ]),
+  pattern: z.enum(["ready_state", "pre_launch", "volatility_spike", "volume_surge"]),
   confidence: z.number().min(0).max(100),
   strength: z.number().min(0).max(10),
   timeframe: z.string(),
@@ -307,7 +295,7 @@ export const PatternAnalysisSchema = z.object({
       type: z.string(),
       strength: z.number(),
       description: z.string(),
-    })
+    }),
   ),
   recommendations: z.array(z.string()),
   riskFactors: z.array(z.string()),
@@ -333,7 +321,7 @@ export const TradingOpportunitySchema = z.object({
       name: z.string(),
       value: z.number(),
       signal: z.enum(["bullish", "bearish", "neutral"]),
-    })
+    }),
   ),
 });
 
@@ -435,7 +423,7 @@ export const MEXC_SCHEMA_NAMES = Object.keys(ALL_MEXC_SCHEMAS) as Array<
  */
 export function validateMexcData<T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: boolean; data?: T; error?: string } {
   try {
     const result = schema.parse(data);
@@ -449,8 +437,7 @@ export function validateMexcData<T>(
     }
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Unknown validation error",
+      error: error instanceof Error ? error.message : "Unknown validation error",
     };
   }
 }
@@ -458,9 +445,7 @@ export function validateMexcData<T>(
 /**
  * Get schema by name for dynamic validation
  */
-export function getMexcSchema(
-  schemaName: keyof typeof ALL_MEXC_SCHEMAS
-): z.ZodSchema<unknown> {
+export function getMexcSchema(schemaName: keyof typeof ALL_MEXC_SCHEMAS): z.ZodSchema<unknown> {
   return ALL_MEXC_SCHEMAS[schemaName];
 }
 
@@ -469,7 +454,7 @@ export function getMexcSchema(
  */
 export function validateServiceResponse<T>(
   data: unknown,
-  dataSchema?: z.ZodSchema<T>
+  dataSchema?: z.ZodSchema<T>,
 ): { success: boolean; data?: T; error?: string } {
   const baseResponseSchema = z.object({
     success: z.boolean(),

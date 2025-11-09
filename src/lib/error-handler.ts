@@ -59,28 +59,6 @@ export function setErrorLogger(_logger: any) {
  * Error context builder
  */
 export class ErrorContext {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-  private get logger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[error-handler]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[error-handler]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error("[error-handler]", message, context || "", error || ""),
-        debug: (message: string, context?: any) =>
-          console.debug("[error-handler]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
-
   private context: Record<string, unknown> = {};
 
   add(key: string, value: unknown): ErrorContext {
@@ -112,10 +90,7 @@ export class ErrorContext {
 /**
  * Handle API errors and return appropriate response
  */
-export function handleApiError(
-  error: unknown,
-  context?: Record<string, unknown>
-): NextResponse {
+export function handleApiError(error: unknown, context?: Record<string, unknown>): NextResponse {
   // Handle known application errors
   if (isApplicationError(error)) {
     const logContext = {
@@ -127,11 +102,7 @@ export function handleApiError(
 
     // Log based on error type
     if (error.isOperational) {
-      errorLogger.warn(
-        `Operational error: ${error.message}`,
-        error,
-        logContext
-      );
+      errorLogger.warn(`Operational error: ${error.message}`, error, logContext);
     } else {
       errorLogger.error(`System error: ${error.message}`, error, logContext);
     }
@@ -140,9 +111,7 @@ export function handleApiError(
     const response = createErrorResponse(error.getUserMessage(), {
       code: error.code,
       timestamp: error.timestamp.toISOString(),
-      ...(isValidationError(error) && error.field
-        ? { field: error.field }
-        : {}),
+      ...(isValidationError(error) && error.field ? { field: error.field } : {}),
       ...(isRateLimitError(error) ? { retryAfter: error.retryAfter } : {}),
     });
 
@@ -152,11 +121,7 @@ export function handleApiError(
   // Handle standard errors
   const safeError = ensureError(error);
   if (error instanceof Error) {
-    errorLogger.error(
-      `Unhandled error: ${safeError.message}`,
-      safeError,
-      context
-    );
+    errorLogger.error(`Unhandled error: ${safeError.message}`, safeError, context);
 
     // Check for specific error patterns
     if (safeError.message.includes("ECONNREFUSED")) {
@@ -164,7 +129,7 @@ export function handleApiError(
         createErrorResponse("Service temporarily unavailable", {
           code: "SERVICE_UNAVAILABLE",
         }),
-        HTTP_STATUS.SERVICE_UNAVAILABLE
+        HTTP_STATUS.SERVICE_UNAVAILABLE,
       );
     }
 
@@ -173,7 +138,7 @@ export function handleApiError(
         createErrorResponse("Request timeout", {
           code: "TIMEOUT_ERROR",
         }),
-        HTTP_STATUS.SERVICE_UNAVAILABLE
+        HTTP_STATUS.SERVICE_UNAVAILABLE,
       );
     }
 
@@ -182,7 +147,7 @@ export function handleApiError(
       createErrorResponse("An unexpected error occurred", {
         code: "INTERNAL_ERROR",
       }),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 
@@ -197,7 +162,7 @@ export function handleApiError(
     createErrorResponse("An unexpected error occurred", {
       code: "UNKNOWN_ERROR",
     }),
-    HTTP_STATUS.INTERNAL_SERVER_ERROR
+    HTTP_STATUS.INTERNAL_SERVER_ERROR,
   );
 }
 
@@ -205,7 +170,7 @@ export function handleApiError(
  * Async error wrapper for API route handlers
  */
 export function asyncHandler<T extends any[], R>(
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R | NextResponse> {
   return async (...args: T) => {
     try {
@@ -221,7 +186,7 @@ export function asyncHandler<T extends any[], R>(
  */
 export function withErrorContext<T extends any[], R>(
   handler: (...args: T) => Promise<R>,
-  contextBuilder: (...args: T) => Record<string, unknown>
+  contextBuilder: (...args: T) => Record<string, unknown>,
 ): (...args: T) => Promise<R | NextResponse> {
   return async (...args: T) => {
     try {
@@ -239,7 +204,7 @@ export function withErrorContext<T extends any[], R>(
 export async function safeExecute<T>(
   operation: () => Promise<T>,
   operationName: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
 ): Promise<T> {
   try {
     return await operation();
@@ -252,17 +217,9 @@ export async function safeExecute<T>(
 
     const errorToLog = ensureError(error);
     if (isOperationalError(error)) {
-      errorLogger.warn(
-        `Operation failed: ${operationName}`,
-        errorToLog,
-        enrichedContext
-      );
+      errorLogger.warn(`Operation failed: ${operationName}`, errorToLog, enrichedContext);
     } else {
-      errorLogger.error(
-        `System failure in: ${operationName}`,
-        errorToLog,
-        enrichedContext
-      );
+      errorLogger.error(`System failure in: ${operationName}`, errorToLog, enrichedContext);
     }
 
     throw error;
@@ -283,7 +240,7 @@ export interface ErrorRecoveryStrategy<T> {
 export async function executeWithRecovery<T>(
   operation: () => Promise<T>,
   recovery: ErrorRecoveryStrategy<T>,
-  maxAttempts = 3
+  maxAttempts = 3,
 ): Promise<T> {
   let lastError: unknown;
 
@@ -316,7 +273,7 @@ export const StandardErrors = {
       createErrorResponse("Authentication required", {
         code: "AUTHENTICATION_ERROR",
       }),
-      HTTP_STATUS.UNAUTHORIZED
+      HTTP_STATUS.UNAUTHORIZED,
     ),
 
   forbidden: () =>
@@ -324,7 +281,7 @@ export const StandardErrors = {
       createErrorResponse("Access denied", {
         code: "AUTHORIZATION_ERROR",
       }),
-      HTTP_STATUS.FORBIDDEN
+      HTTP_STATUS.FORBIDDEN,
     ),
 
   notFound: (resource: string) =>
@@ -333,7 +290,7 @@ export const StandardErrors = {
         code: "NOT_FOUND_ERROR",
         resource,
       }),
-      HTTP_STATUS.NOT_FOUND
+      HTTP_STATUS.NOT_FOUND,
     ),
 
   badRequest: (message: string) =>
@@ -341,7 +298,7 @@ export const StandardErrors = {
       createErrorResponse(message, {
         code: "BAD_REQUEST",
       }),
-      HTTP_STATUS.BAD_REQUEST
+      HTTP_STATUS.BAD_REQUEST,
     ),
 
   validationError: (field: string, message: string) =>
@@ -350,7 +307,7 @@ export const StandardErrors = {
         code: "VALIDATION_ERROR",
         field,
       }),
-      HTTP_STATUS.BAD_REQUEST
+      HTTP_STATUS.BAD_REQUEST,
     ),
 
   conflict: (message: string) =>
@@ -358,7 +315,7 @@ export const StandardErrors = {
       createErrorResponse(message, {
         code: "CONFLICT_ERROR",
       }),
-      HTTP_STATUS.CONFLICT
+      HTTP_STATUS.CONFLICT,
     ),
 
   tooManyRequests: (retryAfter: number) =>
@@ -367,7 +324,7 @@ export const StandardErrors = {
         code: "RATE_LIMIT_ERROR",
         retryAfter,
       }),
-      HTTP_STATUS.TOO_MANY_REQUESTS
+      HTTP_STATUS.TOO_MANY_REQUESTS,
     ),
 } as const;
 

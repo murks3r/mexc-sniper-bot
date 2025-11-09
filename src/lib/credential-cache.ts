@@ -11,17 +11,14 @@ interface CachedCredentials {
   passphrase?: string;
 }
 
-const cache = new Map<
-  string,
-  { credentials: CachedCredentials; timestamp: number }
->();
+const cache = new Map<string, { credentials: CachedCredentials; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function getCachedCredentials(
   userId: string,
   encryptedApiKey: string,
   encryptedSecretKey: string,
-  encryptedPassphrase?: string
+  encryptedPassphrase?: string,
 ): Promise<CachedCredentials> {
   const cacheKey = `${userId}:${encryptedApiKey}`;
   const cached = cache.get(cacheKey);

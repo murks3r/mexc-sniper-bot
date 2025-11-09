@@ -48,12 +48,7 @@ export class WebSocketRateLimiter {
     warn: (message: string, context?: unknown) =>
       console.warn("[websocket-rate-limiter]", message, context || ""),
     error: (message: string, context?: unknown, error?: Error) =>
-      console.error(
-        "[websocket-rate-limiter]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[websocket-rate-limiter]", message, context || "", error || ""),
     debug: (message: string, context?: unknown) =>
       console.debug("[websocket-rate-limiter]", message, context || ""),
   };
@@ -134,14 +129,11 @@ export class WebSocketRateLimiter {
 
     // Check if message limit has been reached
     if (limit.count >= this.maxMessagesPerMinute) {
-      this.logger.warn(
-        `Message rate limit exceeded for connection: ${connectionId}`,
-        {
-          currentCount: limit.count,
-          maxMessages: this.maxMessagesPerMinute,
-          windowMs: this.windowMs,
-        }
-      );
+      this.logger.warn(`Message rate limit exceeded for connection: ${connectionId}`, {
+        currentCount: limit.count,
+        maxMessages: this.maxMessagesPerMinute,
+        windowMs: this.windowMs,
+      });
       return false;
     }
 
@@ -178,7 +170,7 @@ export class WebSocketRateLimiter {
   getStats(): RateLimiterStats {
     const totalTrackedConnections = Array.from(this.ipLimits.values()).reduce(
       (total, limit) => total + limit.connections.size,
-      0
+      0,
     );
 
     return {
@@ -208,10 +200,7 @@ export class WebSocketRateLimiter {
       };
     }
 
-    const remainingMessages = Math.max(
-      0,
-      this.maxMessagesPerMinute - limit.count
-    );
+    const remainingMessages = Math.max(0, this.maxMessagesPerMinute - limit.count);
     const isLimited = limit.count >= this.maxMessagesPerMinute;
 
     return {
@@ -241,10 +230,7 @@ export class WebSocketRateLimiter {
       };
     }
 
-    const remainingConnections = Math.max(
-      0,
-      this.maxConnectionsPerIP - limit.connections.size
-    );
+    const remainingConnections = Math.max(0, this.maxConnectionsPerIP - limit.connections.size);
     const isLimited = limit.connections.size >= this.maxConnectionsPerIP;
 
     return {

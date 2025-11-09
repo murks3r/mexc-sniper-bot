@@ -14,7 +14,7 @@ export function ApiCredentialsForm({ userId }: ApiCredentialsFormProps) {
   const [secretKey, setSecretKey] = useState("");
 
   const handleSave = () => {
-  // Redacted: avoid logging sensitive credential operations
+    // Redacted: avoid logging sensitive credential operations
   };
 
   return (
@@ -24,11 +24,7 @@ export function ApiCredentialsForm({ userId }: ApiCredentialsFormProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <Input
-            placeholder="API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
+          <Input placeholder="API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
           <Input
             placeholder="Secret Key"
             type="password"

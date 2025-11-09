@@ -46,10 +46,7 @@ export interface EventDispatcher {
   /** Publish multiple domain events */
   publishMany(events: DomainEvent[]): Promise<void>;
   /** Subscribe to domain events of a specific type */
-  subscribe<T extends DomainEvent>(
-    eventType: string,
-    handler: DomainEventHandler<T>
-  ): void;
+  subscribe<T extends DomainEvent>(eventType: string, handler: DomainEventHandler<T>): void;
   /** Unsubscribe from domain events */
   unsubscribe(eventType: string, handler: DomainEventHandler): void;
 }

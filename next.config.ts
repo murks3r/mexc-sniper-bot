@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
+
   // Experimental features for better optimization
   experimental: {
     optimizePackageImports: [

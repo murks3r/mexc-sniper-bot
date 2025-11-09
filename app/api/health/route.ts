@@ -7,7 +7,6 @@
 
 import type { NextRequest, NextResponse } from "next/server";
 import { apiResponse } from "@/src/lib/api-response";
-import { createResilientEndpoint } from "@/src/lib/enhanced-api-resilience-middleware";
 import { getSystemResilienceStatus } from "@/src/lib/enhanced-resilience-manager";
 import { MexcConfigValidator } from "@/src/services/api/mexc-config-validator";
 
@@ -106,7 +105,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       {
         responseTime,
         timestamp: new Date().toISOString(),
-      }
+      },
     );
   }
 }

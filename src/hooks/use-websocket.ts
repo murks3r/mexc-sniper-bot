@@ -22,10 +22,7 @@ import type {
   WebSocketChannel,
   WebSocketMessage,
 } from "@/src/lib/websocket-types";
-import {
-  type WebSocketClientState,
-  webSocketClient,
-} from "../services/data/websocket-client";
+import { type WebSocketClientState, webSocketClient } from "../services/data/websocket-client";
 
 // ======================
 // Hook Configuration
@@ -64,14 +61,12 @@ export interface UseWebSocketResult {
   /** Manual reconnect function */
   reconnect: () => void;
   /** Send a message */
-  send: <T>(
-    message: Omit<WebSocketMessage<T>, "messageId" | "timestamp">
-  ) => boolean;
+  send: <T>(message: Omit<WebSocketMessage<T>, "messageId" | "timestamp">) => boolean;
   /** Subscribe to a channel */
   subscribe: (
     channel: WebSocketChannel,
     handler: MessageHandler,
-    request?: SubscriptionRequest
+    request?: SubscriptionRequest,
   ) => () => void;
   /** Get current subscriptions */
   subscriptions: string[];
@@ -83,9 +78,7 @@ export interface UseWebSocketResult {
 // Main WebSocket Hook
 // ======================
 
-export function useWebSocket(
-  config: UseWebSocketConfig = {}
-): UseWebSocketResult {
+export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResult {
   const {
     autoConnect = true,
     autoReconnect = true,
@@ -149,8 +142,7 @@ export function useWebSocket(
         console.info("[WebSocket Hook] Connected successfully");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Connection failed";
+      const errorMessage = err instanceof Error ? err.message : "Connection failed";
       setError(errorMessage);
 
       if (debug) {
@@ -192,21 +184,13 @@ export function useWebSocket(
 
       return success;
     },
-    [debug]
+    [debug],
   );
 
   // Subscribe function
   const subscribe = useCallback(
-    (
-      channel: WebSocketChannel,
-      handler: MessageHandler,
-      request?: SubscriptionRequest
-    ) => {
-      const unsubscribe = clientRef.current.subscribe(
-        channel,
-        handler,
-        request
-      );
+    (channel: WebSocketChannel, handler: MessageHandler, request?: SubscriptionRequest) => {
+      const unsubscribe = clientRef.current.subscribe(channel, handler, request);
 
       // Store unsubscribe function for cleanup
       const handlerId = `${channel}:${Date.now()}`;
@@ -230,24 +214,18 @@ export function useWebSocket(
         }
       };
     },
-    [debug]
+    [debug],
   );
 
   // Set up event listeners
   useEffect(() => {
     const client = clientRef.current;
 
-    const handleStateChange = ({
-      newState,
-    }: {
-      newState: WebSocketClientState;
-    }) => {
+    const handleStateChange = ({ newState }: { newState: WebSocketClientState }) => {
       if (isMountedRef.current) {
         setState(newState);
         setIsConnected(newState === "connected");
-        setIsConnecting(
-          newState === "connecting" || newState === "reconnecting"
-        );
+        setIsConnecting(newState === "connecting" || newState === "reconnecting");
       }
     };
 
@@ -274,8 +252,7 @@ export function useWebSocket(
 
     const handleError = (error: any) => {
       if (isMountedRef.current) {
-        const errorMessage =
-          error instanceof Error ? error.message : "WebSocket error";
+        const errorMessage = error instanceof Error ? error.message : "WebSocket error";
         setError(errorMessage);
 
         if (debug) {
@@ -314,12 +291,7 @@ export function useWebSocket(
 
   // Auto-connect effect
   useEffect(() => {
-    if (
-      autoConnect &&
-      !isConnected &&
-      !isConnecting &&
-      state === "disconnected"
-    ) {
+    if (autoConnect && !isConnected && !isConnecting && state === "disconnected") {
       connect();
     }
   }, [autoConnect, isConnected, isConnecting, state, connect]);
@@ -433,7 +405,7 @@ export function useTradingPrices(symbols?: string[]) {
           });
           setLastUpdate(Date.now());
         }
-      })
+      }),
     );
 
     // Subscribe to specific symbol prices if provided
@@ -449,7 +421,7 @@ export function useTradingPrices(symbols?: string[]) {
               });
               setLastUpdate(Date.now());
             }
-          })
+          }),
         );
       }
     }
@@ -488,7 +460,7 @@ export function usePatternDiscovery(symbols?: string[]) {
           setPatterns((prev) => [message.data, ...prev.slice(0, 99)]); // Keep last 100
           setLastUpdate(Date.now());
         }
-      })
+      }),
     );
 
     // Subscribe to ready state patterns
@@ -502,7 +474,7 @@ export function usePatternDiscovery(symbols?: string[]) {
           });
           setLastUpdate(Date.now());
         }
-      })
+      }),
     );
 
     // Subscribe to specific symbol patterns if provided
@@ -514,7 +486,7 @@ export function usePatternDiscovery(symbols?: string[]) {
               setPatterns((prev) => [message.data, ...prev.slice(0, 99)]);
               setLastUpdate(Date.now());
             }
-          })
+          }),
         );
 
         unsubscribers.push(
@@ -527,7 +499,7 @@ export function usePatternDiscovery(symbols?: string[]) {
               });
               setLastUpdate(Date.now());
             }
-          })
+          }),
         );
       }
     }
@@ -541,10 +513,7 @@ export function usePatternDiscovery(symbols?: string[]) {
     patterns,
     readyStates: Array.from(readyStates.values()),
     readyStateMap: readyStates,
-    getReadyState: useCallback(
-      (symbol: string) => readyStates.get(symbol),
-      [readyStates]
-    ),
+    getReadyState: useCallback((symbol: string) => readyStates.get(symbol), [readyStates]),
     lastUpdate,
   };
 }
@@ -577,10 +546,7 @@ export function useWorkflows() {
   return {
     workflows: Array.from(workflows.values()),
     workflowMap: workflows,
-    getWorkflow: useCallback(
-      (workflowId: string) => workflows.get(workflowId),
-      [workflows]
-    ),
+    getWorkflow: useCallback((workflowId: string) => workflows.get(workflowId), [workflows]),
     lastUpdate,
   };
 }
@@ -605,7 +571,7 @@ export function useNotifications(userId?: string) {
           setNotifications((prev) => [message.data, ...prev.slice(0, 99)]);
           setUnreadCount((prev) => prev + 1);
         }
-      })
+      }),
     );
 
     // Subscribe to user-specific notifications if userId provided
@@ -616,7 +582,7 @@ export function useNotifications(userId?: string) {
             setNotifications((prev) => [message.data, ...prev.slice(0, 99)]);
             setUnreadCount((prev) => prev + 1);
           }
-        })
+        }),
       );
     }
 

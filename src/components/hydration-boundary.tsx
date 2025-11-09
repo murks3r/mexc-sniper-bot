@@ -38,24 +38,16 @@ export function HydrationBoundary({
   if (preserveSSR && !hasMounted) {
     return (
       <SSRSafeErrorBoundary fallback={errorFallback}>
-        <Suspense fallback={fallback || <div>Loading...</div>}>
-          {children}
-        </Suspense>
+        <Suspense fallback={fallback || <div>Loading...</div>}>{children}</Suspense>
       </SSRSafeErrorBoundary>
     );
   }
 
   if (!isHydrated) {
-    return (
-      <>{fallback || <div style={{ visibility: "hidden" }}>{children}</div>}</>
-    );
+    return <>{fallback || <div style={{ visibility: "hidden" }}>{children}</div>}</>;
   }
 
-  return (
-    <SSRSafeErrorBoundary fallback={errorFallback}>
-      {children}
-    </SSRSafeErrorBoundary>
-  );
+  return <SSRSafeErrorBoundary fallback={errorFallback}>{children}</SSRSafeErrorBoundary>;
 }
 
 /**
@@ -77,13 +69,7 @@ export function useHydration() {
 /**
  * Component that only renders on client-side
  */
-export function ClientOnly({
-  children,
-  fallback,
-}: {
-  children: ReactNode;
-  fallback?: ReactNode;
-}) {
+export function ClientOnly({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
   const { hasMounted } = useHydration();
 
   if (!hasMounted) {

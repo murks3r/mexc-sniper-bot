@@ -62,13 +62,7 @@ export interface RequestContext {
 
 export interface ErrorClassification {
   isRetryable: boolean;
-  category:
-    | "network"
-    | "authentication"
-    | "rate_limit"
-    | "server"
-    | "client"
-    | "timeout";
+  category: "network" | "authentication" | "rate_limit" | "server" | "client" | "timeout";
   severity: "low" | "medium" | "high" | "critical";
   suggestedDelay?: number;
   suggestedBackoff?: number;

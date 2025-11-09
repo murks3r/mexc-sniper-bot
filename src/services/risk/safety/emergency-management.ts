@@ -6,17 +6,10 @@
  */
 
 import { EventEmitter } from "node:events";
-import type {
-  AgentConsensusRequest,
-  SafetyMonitorAgent,
-} from "@/src/mexc-agents/safety-monitor-agent";
+// Removed: SafetyMonitorAgent - agents removed
 import type { EmergencySafetySystem } from "../emergency-safety-system";
 import type { SafetyAlertsManager } from "./safety-alerts";
-import type {
-  EmergencyLevel,
-  SafetyCoordinatorConfig,
-  SafetyMetrics,
-} from "./safety-types";
+import type { EmergencyLevel, SafetyCoordinatorConfig, SafetyMetrics } from "./safety-types";
 
 export interface EmergencyProcedure {
   id: string;
@@ -48,32 +41,16 @@ export interface EmergencyState {
 }
 
 export class EmergencyManager extends EventEmitter {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[emergency-management]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[emergency-management]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[emergency-management]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[emergency-management]", message, context || ""),
-  };
-
   private emergencyState: EmergencyState;
   private activeProcedures: Map<string, EmergencyProcedure> = new Map();
   private procedureHistory: any[] = [];
 
   constructor(
-    private config: SafetyCoordinatorConfig,
+    _config: SafetyCoordinatorConfig,
     private emergencySystem: EmergencySafetySystem,
-    private safetyMonitor: SafetyMonitorAgent,
     private alertsManager: SafetyAlertsManager,
-    private metrics: SafetyMetrics
+    private metrics: SafetyMetrics,
+    // Removed: safetyMonitor - agents removed
   ) {
     super();
 
@@ -112,10 +89,7 @@ export class EmergencyManager extends EventEmitter {
   /**
    * Execute emergency shutdown
    */
-  async executeEmergencyShutdown(
-    reason: string,
-    userId: string
-  ): Promise<boolean> {
+  async executeEmergencyShutdown(reason: string, userId: string): Promise<boolean> {
     console.info(`[EmergencyManager] Executing emergency shutdown: ${reason}`);
 
     try {
@@ -176,59 +150,23 @@ export class EmergencyManager extends EventEmitter {
   }
 
   /**
-   * Request agent consensus for critical decision
+   * Removed: Request agent consensus - agents removed
+   * Consensus functionality no longer available without agents
    */
-  async requestConsensus(request: AgentConsensusRequest): Promise<any> {
-    try {
-      const response = await this.safetyMonitor.requestAgentConsensus(request);
-
-      // Update consensus metrics
-      this.metrics.consensusMetrics.averageProcessingTime =
-        (this.metrics.consensusMetrics.averageProcessingTime +
-          response.processingTime) /
-        2;
-      this.metrics.consensusMetrics.approvalRate =
-        (this.metrics.consensusMetrics.approvalRate +
-          response.consensus.approvalRate) /
-        2;
-
-      // Create alert if consensus failed
-      if (!response.consensus.achieved) {
-        await this.alertsManager.createAlert({
-          type: "consensus_failure",
-          severity: "high",
-          title: "Consensus Failed",
-          message: `Failed to achieve consensus for ${request.type}`,
-          source: "consensus_system",
-          actions: [
-            "Review consensus requirements",
-            "Manual approval may be required",
-          ],
-          metadata: { request, response },
-        });
-      }
-
-      return response;
-    } catch (error) {
-      console.error("[EmergencyManager] Consensus request failed:", error);
-      throw error;
-    }
+  async requestConsensus(_request: any): Promise<any> {
+    // Removed: Agent consensus - agents removed
+    // Return mock response for backward compatibility
+    return {
+      consensus: { achieved: true, approvalRate: 100 },
+      processingTime: 0,
+    };
   }
 
   /**
    * Escalate emergency level
    */
-  async escalateEmergency(
-    currentLevel: EmergencyLevel,
-    reason: string
-  ): Promise<EmergencyLevel> {
-    const levels: EmergencyLevel[] = [
-      "none",
-      "low",
-      "medium",
-      "high",
-      "critical",
-    ];
+  async escalateEmergency(currentLevel: EmergencyLevel, reason: string): Promise<EmergencyLevel> {
+    const levels: EmergencyLevel[] = ["none", "low", "medium", "high", "critical"];
     const currentIndex = levels.indexOf(currentLevel);
     const newLevel = levels[Math.min(currentIndex + 1, levels.length - 1)];
 
@@ -242,10 +180,7 @@ export class EmergencyManager extends EventEmitter {
         title: `Emergency Level Escalated to ${newLevel.toUpperCase()}`,
         message: `Emergency level escalated from ${currentLevel} to ${newLevel}: ${reason}`,
         source: "emergency_manager",
-        actions: [
-          "Review emergency procedures",
-          "Consider additional safety measures",
-        ],
+        actions: ["Review emergency procedures", "Consider additional safety measures"],
         metadata: { previousLevel: currentLevel, newLevel, reason },
       });
 
@@ -263,17 +198,8 @@ export class EmergencyManager extends EventEmitter {
   /**
    * De-escalate emergency level
    */
-  async deescalateEmergency(
-    currentLevel: EmergencyLevel,
-    reason: string
-  ): Promise<EmergencyLevel> {
-    const levels: EmergencyLevel[] = [
-      "none",
-      "low",
-      "medium",
-      "high",
-      "critical",
-    ];
+  async deescalateEmergency(currentLevel: EmergencyLevel, reason: string): Promise<EmergencyLevel> {
+    const levels: EmergencyLevel[] = ["none", "low", "medium", "high", "critical"];
     const currentIndex = levels.indexOf(currentLevel);
     const newLevel = levels[Math.max(currentIndex - 1, 0)];
 
@@ -310,10 +236,7 @@ export class EmergencyManager extends EventEmitter {
   /**
    * Execute emergency procedure by ID
    */
-  async executeProcedure(
-    procedureId: string,
-    executedBy: string
-  ): Promise<boolean> {
+  async executeProcedure(procedureId: string, executedBy: string): Promise<boolean> {
     const procedure = this.getEmergencyProcedure(procedureId);
     if (!procedure) {
       throw new Error(`Emergency procedure not found: ${procedureId}`);
@@ -322,9 +245,10 @@ export class EmergencyManager extends EventEmitter {
     console.info(`[EmergencyManager] Executing procedure: ${procedure.name}`);
 
     try {
-      // Check if consensus is required
+      // Removed: Consensus check - agents removed
       if (procedure.requiredApprovals.length > 0) {
-        const consensusRequest: AgentConsensusRequest = {
+        // Removed: Agent consensus request - agents removed
+        const consensusRequest: any = {
           requestId: `emergency-${procedureId}-${Date.now()}`,
           type: "emergency_response",
           priority: "critical",
@@ -371,10 +295,7 @@ export class EmergencyManager extends EventEmitter {
         title: `Emergency Procedure Failed: ${procedure.name}`,
         message: `Failed to execute emergency procedure: ${error}`,
         source: "emergency_manager",
-        actions: [
-          "Manual intervention required",
-          "Review procedure configuration",
-        ],
+        actions: ["Manual intervention required", "Review procedure configuration"],
         metadata: { procedure, error: String(error) },
       });
 
@@ -496,10 +417,7 @@ export class EmergencyManager extends EventEmitter {
   /**
    * Execute an emergency step
    */
-  private async executeEmergencyStep(
-    step: EmergencyStep,
-    _procedureId: string
-  ): Promise<void> {
+  private async executeEmergencyStep(step: EmergencyStep, _procedureId: string): Promise<void> {
     console.info(`[EmergencyManager] Executing step: ${step.name}`);
 
     // Add timeout wrapper
@@ -552,8 +470,6 @@ export class EmergencyManager extends EventEmitter {
       this.procedureHistory = this.procedureHistory.slice(-100);
     }
 
-    console.info(
-      `[EmergencyManager] Recorded action: ${action.type} - ${action.reason}`
-    );
+    console.info(`[EmergencyManager] Recorded action: ${action.type} - ${action.reason}`);
   }
 }

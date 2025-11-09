@@ -10,9 +10,9 @@ const CACHE_DURATION = 30 * 1000; // 30 seconds
 
 async function getSystemHealthFast() {
   const now = Date.now();
-  
+
   // Return cached data if still valid
-  if (systemHealthCache && (now - systemHealthCache.timestamp) < CACHE_DURATION) {
+  if (systemHealthCache && now - systemHealthCache.timestamp < CACHE_DURATION) {
     return systemHealthCache.data;
   }
 
@@ -21,14 +21,14 @@ async function getSystemHealthFast() {
     database: { status: "pass", message: "Database connection healthy" },
     environment: { status: "pass", message: "Environment configured" },
     connectivity: { status: "pass", message: "Network connectivity available" },
-    workflows: { status: "pass", message: "Workflow system operational" },
-    openai: { status: "pass", message: "AI services available" }
+    workflows: { status: "pass", message: "Workflow system operational" }
+
   };
 
   // Cache the result
   systemHealthCache = {
     data: healthData,
-    timestamp: now
+    timestamp: now,
   };
 
   return healthData;
@@ -37,11 +37,11 @@ async function getSystemHealthFast() {
 export async function GET() {
   try {
     const healthData = await getSystemHealthFast();
-    
+
     return NextResponse.json({
       status: "healthy",
       timestamp: new Date().toISOString(),
-      services: healthData
+      services: healthData,
     });
   } catch (error) {
     console.error("System health check failed:", error);
@@ -49,9 +49,9 @@ export async function GET() {
       {
         status: "unhealthy",
         timestamp: new Date().toISOString(),
-        error: "System health check failed"
+        error: "System health check failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -83,7 +83,7 @@ const TradePropsSchema = z.object({
 export class Trade extends AggregateRoot<string> {
   private constructor(private props: TradeProps) {
     super(props.id);
-    
+
     // Validate props
     const validationResult = TradePropsSchema.safeParse(props);
     if (!validationResult.success) {
@@ -91,7 +91,7 @@ export class Trade extends AggregateRoot<string> {
       throw new DomainValidationError(
         firstError.path.join("."),
         "invalid value",
-        firstError.message
+        firstError.message,
       );
     }
 
@@ -141,7 +141,7 @@ export class Trade extends AggregateRoot<string> {
         strategy: props.strategy,
         isAutoSnipe: props.isAutoSnipe || false,
         confidenceScore: props.confidenceScore,
-      })
+      }),
     );
 
     return trade;
@@ -158,10 +158,13 @@ export class Trade extends AggregateRoot<string> {
 
   private static validateBusinessRules(props: TradeProps): void {
     // Auto-snipe confidence validation
-    if (props.isAutoSnipe && (props.confidenceScore === undefined || props.confidenceScore === null)) {
+    if (
+      props.isAutoSnipe &&
+      (props.confidenceScore === undefined || props.confidenceScore === null)
+    ) {
       throw new BusinessRuleViolationError(
         "Auto-snipe trades must have a confidence score",
-        `Trade: ${props.id}`
+        `Trade: ${props.id}`,
       );
     }
 
@@ -170,7 +173,7 @@ export class Trade extends AggregateRoot<string> {
       if (props.stopLossPercent <= 0 || props.stopLossPercent > 100) {
         throw new BusinessRuleViolationError(
           "Stop loss percentage must be between 0 and 100",
-          `Trade: ${props.id}`
+          `Trade: ${props.id}`,
         );
       }
     }
@@ -180,7 +183,7 @@ export class Trade extends AggregateRoot<string> {
       if (props.takeProfitPercent <= 0) {
         throw new BusinessRuleViolationError(
           "Take profit percentage must be positive",
-          `Trade: ${props.id}`
+          `Trade: ${props.id}`,
         );
       }
     }
@@ -189,14 +192,14 @@ export class Trade extends AggregateRoot<string> {
     if (props.status === TradeStatus.COMPLETED && !props.executionCompletedAt) {
       throw new BusinessRuleViolationError(
         "Completed trades must have execution completion timestamp",
-        `Trade: ${props.id}`
+        `Trade: ${props.id}`,
       );
     }
 
     if (props.status === TradeStatus.EXECUTING && !props.executionStartedAt) {
       throw new BusinessRuleViolationError(
         "Executing trades must have execution start timestamp",
-        `Trade: ${props.id}`
+        `Trade: ${props.id}`,
       );
     }
   }
@@ -320,11 +323,9 @@ export class Trade extends AggregateRoot<string> {
   }
 
   isFinalized(): boolean {
-    return [
-      TradeStatus.COMPLETED,
-      TradeStatus.FAILED,
-      TradeStatus.CANCELLED,
-    ].includes(this.props.status);
+    return [TradeStatus.COMPLETED, TradeStatus.FAILED, TradeStatus.CANCELLED].includes(
+      this.props.status,
+    );
   }
 
   hasOrders(): boolean {
@@ -354,11 +355,7 @@ export class Trade extends AggregateRoot<string> {
   }
 
   calculatePnLPercentage(): number | undefined {
-    if (
-      !this.props.realizedPnL ||
-      !this.props.totalCost ||
-      this.props.totalCost.isZero()
-    ) {
+    if (!this.props.realizedPnL || !this.props.totalCost || this.props.totalCost.isZero()) {
       return undefined;
     }
     return (this.props.realizedPnL.amount / this.props.totalCost.amount) * 100;
@@ -368,10 +365,7 @@ export class Trade extends AggregateRoot<string> {
     if (!this.props.executionStartedAt || !this.props.executionCompletedAt) {
       return undefined;
     }
-    return (
-      this.props.executionCompletedAt.getTime() -
-      this.props.executionStartedAt.getTime()
-    );
+    return this.props.executionCompletedAt.getTime() - this.props.executionStartedAt.getTime();
   }
 
   // Command methods (return new instances)
@@ -384,7 +378,7 @@ export class Trade extends AggregateRoot<string> {
     if (order.symbol !== this.props.symbol) {
       throw new InvalidTradeParametersError(
         "symbol",
-        `Order symbol ${order.symbol} does not match trade symbol ${this.props.symbol}`
+        `Order symbol ${order.symbol} does not match trade symbol ${this.props.symbol}`,
       );
     }
 
@@ -393,14 +387,9 @@ export class Trade extends AggregateRoot<string> {
   }
 
   updateOrder(orderId: string, updatedOrder: Order): Trade {
-    const orderIndex = this.props.orders.findIndex(
-      (order) => order.id === orderId
-    );
+    const orderIndex = this.props.orders.findIndex((order) => order.id === orderId);
     if (orderIndex === -1) {
-      throw new InvalidTradeParametersError(
-        "orderId",
-        `Order ${orderId} not found in trade`
-      );
+      throw new InvalidTradeParametersError("orderId", `Order ${orderId} not found in trade`);
     }
 
     const updatedOrders = [...this.props.orders];
@@ -422,18 +411,14 @@ export class Trade extends AggregateRoot<string> {
 
     // Emit domain event
     updatedTrade.addDomainEvent(
-      TradingEventFactory.createTradeExecutionStarted(
-        this.props.id,
-        this.props.userId,
-        {
-          symbol: this.props.symbol,
-          side: "BUY", // Simplified assumption
-          orderType: "MARKET",
-          strategy: this.props.strategy,
-          isAutoSnipe: this.props.isAutoSnipe,
-          confidenceScore: this.props.confidenceScore,
-        }
-      )
+      TradingEventFactory.createTradeExecutionStarted(this.props.id, this.props.userId, {
+        symbol: this.props.symbol,
+        side: "BUY", // Simplified assumption
+        orderType: "MARKET",
+        strategy: this.props.strategy,
+        isAutoSnipe: this.props.isAutoSnipe,
+        confidenceScore: this.props.confidenceScore,
+      }),
     );
 
     return updatedTrade;
@@ -445,7 +430,7 @@ export class Trade extends AggregateRoot<string> {
     quantity?: number,
     totalCost?: Money,
     totalRevenue?: Money,
-    fees?: Money
+    fees?: Money,
   ): Trade {
     if (!this.isExecuting()) {
       throw new InvalidOrderStateError(this.props.status, "complete execution");
@@ -472,21 +457,17 @@ export class Trade extends AggregateRoot<string> {
 
     // Emit domain event
     updatedTrade.addDomainEvent(
-      TradingEventFactory.createTradeExecutionCompleted(
-        this.props.id,
-        this.props.userId,
-        {
-          orderId: this.props.orders[0]?.id || "unknown",
-          symbol: this.props.symbol,
-          side: "BUY", // Simplified
-          executedQuantity: quantity?.toString() || "0",
-          executedPrice: entryPrice.toFormattedString(),
-          totalCost: totalCost?.amount || 0,
-          fees: fees?.amount || 0,
-          executionTimeMs: updatedTrade.getExecutionDurationMs() || 0,
-          status: "FILLED",
-        }
-      )
+      TradingEventFactory.createTradeExecutionCompleted(this.props.id, this.props.userId, {
+        orderId: this.props.orders[0]?.id || "unknown",
+        symbol: this.props.symbol,
+        side: "BUY", // Simplified
+        executedQuantity: quantity?.toString() || "0",
+        executedPrice: entryPrice.toFormattedString(),
+        totalCost: totalCost?.amount || 0,
+        fees: fees?.amount || 0,
+        executionTimeMs: updatedTrade.getExecutionDurationMs() || 0,
+        status: "FILLED",
+      }),
     );
 
     return updatedTrade;
@@ -543,7 +524,7 @@ export class Trade extends AggregateRoot<string> {
     if (percentage <= 0 || percentage >= 100) {
       throw new InvalidTradeParametersError(
         "stopLossPercent",
-        "Stop loss percentage must be between 0 and 100"
+        "Stop loss percentage must be between 0 and 100",
       );
     }
 
@@ -557,7 +538,7 @@ export class Trade extends AggregateRoot<string> {
     if (percentage <= 0) {
       throw new InvalidTradeParametersError(
         "takeProfitPercent",
-        "Take profit percentage must be positive"
+        "Take profit percentage must be positive",
       );
     }
 

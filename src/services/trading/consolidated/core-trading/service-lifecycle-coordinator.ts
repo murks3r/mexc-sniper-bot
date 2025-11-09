@@ -112,12 +112,10 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
   }
 
   public static getInstance(
-    config?: Partial<ServiceCoordinationConfig>
+    config?: Partial<ServiceCoordinationConfig>,
   ): ServiceLifecycleCoordinator {
     if (!ServiceLifecycleCoordinator.instance) {
-      ServiceLifecycleCoordinator.instance = new ServiceLifecycleCoordinator(
-        config
-      );
+      ServiceLifecycleCoordinator.instance = new ServiceLifecycleCoordinator(config);
     }
     return ServiceLifecycleCoordinator.instance;
   }
@@ -143,9 +141,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
         this.logger.info("Initializing Core Trading Service...");
         const result = await this.initializationManager.getInitializedService();
         if (!result.success || !result.service) {
-          throw new Error(
-            `Core Trading Service initialization failed: ${result.error}`
-          );
+          throw new Error(`Core Trading Service initialization failed: ${result.error}`);
         }
         this.coreService = result.service;
         this.logger.info("Core Trading Service initialized successfully");
@@ -176,15 +172,11 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
       },
       initialize: async () => {
         // Safety coordinator is initialized as part of Core Trading Service
-        this.logger.debug(
-          "Safety coordinator initialization handled by Core Trading Service"
-        );
+        this.logger.debug("Safety coordinator initialization handled by Core Trading Service");
       },
       shutdown: async () => {
         // Safety coordinator shutdown is handled by Core Trading Service
-        this.logger.debug(
-          "Safety coordinator shutdown handled by Core Trading Service"
-        );
+        this.logger.debug("Safety coordinator shutdown handled by Core Trading Service");
       },
     });
   }
@@ -232,10 +224,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
       // FIXED: Start services in dependency order with timeout
       const startupPromise = this.performCoordinatedStartup(coreServiceConfig);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error("Service startup timeout")),
-          this.config.startupTimeout
-        );
+        setTimeout(() => reject(new Error("Service startup timeout")), this.config.startupTimeout);
       });
 
       await Promise.race([startupPromise, timeoutPromise]);
@@ -253,10 +242,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
       // Attempt cleanup
       await this.stopServices().catch((cleanupError) => {
         this.logger.error("Cleanup after startup failure also failed", {
-          error:
-            cleanupError instanceof Error
-              ? cleanupError.message
-              : "Unknown error",
+          error: cleanupError instanceof Error ? cleanupError.message : "Unknown error",
         });
       });
 
@@ -267,14 +253,12 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
   /**
    * FIXED: Perform coordinated service startup
    */
-  private async performCoordinatedStartup(
-    _coreServiceConfig?: any
-  ): Promise<void> {
+  private async performCoordinatedStartup(_coreServiceConfig?: any): Promise<void> {
     const requiredDependencies = Array.from(this.dependencies.values()).filter(
-      (dep) => dep.required
+      (dep) => dep.required,
     );
     const optionalDependencies = Array.from(this.dependencies.values()).filter(
-      (dep) => !dep.required
+      (dep) => !dep.required,
     );
 
     // Start required dependencies first
@@ -287,16 +271,13 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
       try {
         await this.startSingleService(dependency);
       } catch (error) {
-        this.logger.warn(
-          `Optional dependency ${dependency.name} failed to start`,
-          {
-            error: error instanceof Error ? error.message : "Unknown error",
-          }
-        );
+        this.logger.warn(`Optional dependency ${dependency.name} failed to start`, {
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
         this.emit(
           "service-degraded",
           dependency.name,
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : "Unknown error",
         );
       }
     }
@@ -305,9 +286,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
   /**
    * FIXED: Start a single service with retry logic
    */
-  private async startSingleService(
-    dependency: ServiceDependency
-  ): Promise<void> {
+  private async startSingleService(dependency: ServiceDependency): Promise<void> {
     this.logger.debug(`Starting service: ${dependency.name}`);
 
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
@@ -317,9 +296,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
         // Verify service health
         const isHealthy = await dependency.healthCheck();
         if (!isHealthy) {
-          throw new Error(
-            `Service ${dependency.name} failed health check after initialization`
-          );
+          throw new Error(`Service ${dependency.name} failed health check after initialization`);
         }
 
         this.logger.debug(`Service ${dependency.name} started successfully`, {
@@ -329,26 +306,21 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
         return;
       } catch (error) {
         const safeError = toSafeError(error);
-        this.logger.warn(
-          `Service ${dependency.name} start attempt ${attempt} failed`,
-          {
-            error: safeError.message,
-            attempt,
-            maxRetries: this.config.maxRetries,
-          }
-        );
+        this.logger.warn(`Service ${dependency.name} start attempt ${attempt} failed`, {
+          error: safeError.message,
+          attempt,
+          maxRetries: this.config.maxRetries,
+        });
 
         if (attempt === this.config.maxRetries) {
           this.emit("service-failed", dependency.name, safeError);
           throw new Error(
-            `Service ${dependency.name} failed to start after ${this.config.maxRetries} attempts: ${safeError.message}`
+            `Service ${dependency.name} failed to start after ${this.config.maxRetries} attempts: ${safeError.message}`,
           );
         }
 
         // Wait before retry
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.config.retryDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, this.config.retryDelay));
       }
     }
   }
@@ -441,9 +413,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
    */
   public getCoreService(): CoreTradingService {
     if (!this.coreService) {
-      throw new Error(
-        "Core Trading Service is not available. Start services first."
-      );
+      throw new Error("Core Trading Service is not available. Start services first.");
     }
     return this.coreService;
   }
@@ -479,18 +449,15 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
               this.logger.info(`Attempting auto-recovery for service: ${name}`);
               try {
                 await this.startSingleService(dependency);
-                this.logger.info(
-                  `Auto-recovery successful for service: ${name}`
-                );
+                this.logger.info(`Auto-recovery successful for service: ${name}`);
               } catch (error) {
                 this.logger.error(`Auto-recovery failed for service: ${name}`, {
-                  error:
-                    error instanceof Error ? error.message : "Unknown error",
+                  error: error instanceof Error ? error.message : "Unknown error",
                 });
 
                 if (this.config.enableEmergencyShutdown) {
                   await this.emergencyShutdown(
-                    `Critical service ${name} failed and auto-recovery failed`
+                    `Critical service ${name} failed and auto-recovery failed`,
                   );
                 }
               }
@@ -547,10 +514,7 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
   /**
    * Wait for specific state
    */
-  private async waitForState(
-    targetState: ServiceLifecycleState,
-    timeout = 30000
-  ): Promise<void> {
+  private async waitForState(targetState: ServiceLifecycleState, timeout = 30000): Promise<void> {
     if (this.state === targetState) return;
 
     return new Promise((resolve, reject) => {
@@ -578,9 +542,7 @@ const coordinator = ServiceLifecycleCoordinator.getInstance();
 /**
  * FIXED: Convenience function to start all services
  */
-export async function startCoreServices(
-  config?: any
-): Promise<CoreTradingService> {
+export async function startCoreServices(config?: any): Promise<CoreTradingService> {
   await coordinator.startServices(config);
   return coordinator.getCoreService();
 }

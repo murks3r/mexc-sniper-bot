@@ -54,10 +54,7 @@ interface UseErrorHandlingReturn {
   errorState: ErrorState;
 
   // Error handling methods
-  handleError: (
-    error: unknown,
-    context?: Partial<StandardizedErrorContext>
-  ) => void;
+  handleError: (error: unknown, context?: Partial<StandardizedErrorContext>) => void;
   clearError: () => void;
   retryOperation: (operation: () => Promise<void> | void) => Promise<void>;
 
@@ -68,7 +65,7 @@ interface UseErrorHandlingReturn {
   // Enhanced async wrapper
   withErrorHandling: <T>(
     operation: () => Promise<T>,
-    context?: Partial<StandardizedErrorContext>
+    context?: Partial<StandardizedErrorContext>,
   ) => Promise<T | null>;
 }
 
@@ -85,9 +82,7 @@ const defaultOptions: UseErrorHandlingOptions = {
 /**
  * Custom hook for standardized error handling
  */
-export function useErrorHandling(
-  options: UseErrorHandlingOptions = {}
-): UseErrorHandlingReturn {
+export function useErrorHandling(options: UseErrorHandlingOptions = {}): UseErrorHandlingReturn {
   const config = { ...defaultOptions, ...options };
   const retryCountRef = useRef(0);
   const pendingOperationRef = useRef<(() => Promise<void> | void) | null>(null);
@@ -104,10 +99,7 @@ export function useErrorHandling(
       const mergedContext = {
         ...config.context,
         ...context,
-        operation:
-          context?.operation ||
-          config.context?.operation ||
-          "component.operation",
+        operation: context?.operation || config.context?.operation || "component.operation",
         additionalData: {
           ...config.context?.additionalData,
           ...context?.additionalData,
@@ -148,10 +140,10 @@ export function useErrorHandling(
           retryable: metadata.retryable,
           operation: mergedContext.operation,
         },
-        processedError
+        processedError,
       );
     },
-    [config]
+    [config],
   );
 
   // Clear error state
@@ -171,10 +163,7 @@ export function useErrorHandling(
   // Retry operation with exponential backoff
   const retryOperation = useCallback(
     async (operation: () => Promise<void> | void) => {
-      if (
-        !config.enableRetry ||
-        retryCountRef.current >= (config.maxRetries || 3)
-      ) {
+      if (!config.enableRetry || retryCountRef.current >= (config.maxRetries || 3)) {
         logger.warn("Retry attempted but not allowed or max retries exceeded", {
           retryCount: retryCountRef.current,
           maxRetries: config.maxRetries,
@@ -188,8 +177,7 @@ export function useErrorHandling(
 
       try {
         // Wait with exponential backoff
-        const delay =
-          (config.retryDelay || 1000) * 2 ** (retryCountRef.current - 1);
+        const delay = (config.retryDelay || 1000) * 2 ** (retryCountRef.current - 1);
         await new Promise((resolve) => setTimeout(resolve, delay));
 
         // Execute operation
@@ -226,7 +214,7 @@ export function useErrorHandling(
         }
       }
     },
-    [config, handleError, clearError]
+    [config, handleError, clearError],
   );
 
   // Check if error is retryable
@@ -243,7 +231,7 @@ export function useErrorHandling(
   const withErrorHandling = useCallback(
     async <T>(
       operation: () => Promise<T>,
-      context?: Partial<StandardizedErrorContext>
+      context?: Partial<StandardizedErrorContext>,
     ): Promise<T | null> => {
       try {
         const result = await operation();
@@ -259,7 +247,7 @@ export function useErrorHandling(
         return null;
       }
     },
-    [errorState.isError, clearError, handleError]
+    [errorState.isError, clearError, handleError],
   );
 
   // Auto-recovery effect
@@ -330,9 +318,7 @@ export function useFormErrorHandling(options: UseErrorHandlingOptions = {}) {
 /**
  * Hook for data loading error handling
  */
-export function useDataLoadingErrorHandling(
-  options: UseErrorHandlingOptions = {}
-) {
+export function useDataLoadingErrorHandling(options: UseErrorHandlingOptions = {}) {
   return useErrorHandling({
     ...options,
     context: {
@@ -348,9 +334,7 @@ export function useDataLoadingErrorHandling(
 /**
  * Hook for file upload error handling
  */
-export function useFileUploadErrorHandling(
-  options: UseErrorHandlingOptions = {}
-) {
+export function useFileUploadErrorHandling(options: UseErrorHandlingOptions = {}) {
   return useErrorHandling({
     ...options,
     context: {

@@ -11,11 +11,7 @@ import { type ComponentType, type KeyboardEvent, useMemo } from "react";
  * Generate stable keys for array rendering without using array indexes
  * This solves the noArrayIndexKey linting issue while maintaining performance
  */
-export function generateStableKey(
-  prefix: string,
-  index: number,
-  additionalData?: string
-): string {
+export function generateStableKey(prefix: string, index: number, additionalData?: string): string {
   if (additionalData) {
     return `${prefix}-${additionalData}-${index}`;
   }
@@ -40,13 +36,10 @@ export function generateChartCellKey(index: number, type = "cell"): string {
  * Type-safe wrapper for chart tooltip formatters
  * Replaces (value: any, name: string) with proper typing
  */
-export type TooltipFormatter = (
-  value: unknown,
-  name: string
-) => [string, string];
+export type TooltipFormatter = (value: unknown, name: string) => [string, string];
 
 export function createTooltipFormatter(
-  valueFormatter: (value: unknown) => string
+  valueFormatter: (value: unknown) => string,
 ): TooltipFormatter {
   return (value: unknown, name: string) => [valueFormatter(value), name];
 }
@@ -104,7 +97,7 @@ export function useSkeletonItems(count: number, className: string) {
         key: generateSkeletonKey(i),
         className,
       })),
-    [count, className]
+    [count, className],
   );
 }
 
@@ -117,7 +110,7 @@ export function updateNestedConfig<T extends Record<string, any>>(
   section: keyof T,
   subsection: string,
   key: string,
-  value: any
+  value: any,
 ): T {
   return {
     ...currentConfig,
@@ -135,7 +128,7 @@ export function updateNestedConfig<T extends Record<string, any>>(
  * Badge variant type safety helper
  */
 export function getSafeBadgeVariant(
-  severity: string
+  severity: string,
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (severity.toLowerCase()) {
     case "critical":
@@ -183,11 +176,7 @@ export function generateComponentId(type: string, data?: string): string {
 /**
  * Safe array key generator for lists with content
  */
-export function generateListKey(
-  item: any,
-  _index: number,
-  preferredKey?: string
-): string {
+export function generateListKey(item: any, _index: number, preferredKey?: string): string {
   if (preferredKey && item[preferredKey]) {
     return `item-${item[preferredKey]}`;
   }

@@ -30,9 +30,7 @@ export class WorkflowExecutionLogger {
         vcoinId: execution.vcoinId,
       });
 
-      console.log(
-        `✅ Workflow execution logged: ${execution.workflowId} - ${execution.message}`
-      );
+      console.log(`✅ Workflow execution logged: ${execution.workflowId} - ${execution.message}`);
     } catch (error) {
       console.error("❌ Failed to log workflow execution:", {
         error,
@@ -52,7 +50,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ): Promise<void> {
     await WorkflowExecutionLogger.logExecution({
       workflowId,
@@ -73,7 +71,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ): Promise<void> {
     await WorkflowExecutionLogger.logExecution({
       workflowId,
@@ -94,7 +92,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : error;
     await WorkflowExecutionLogger.logExecution({
@@ -116,7 +114,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ): Promise<void> {
     await WorkflowExecutionLogger.logExecution({
       workflowId,
@@ -137,7 +135,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ): Promise<void> {
     await WorkflowExecutionLogger.logExecution({
       workflowId,
@@ -157,7 +155,7 @@ export class WorkflowExecutionLogger {
       symbolName?: string;
       vcoinId?: string;
       userId?: string;
-    }
+    },
   ) {
     return {
       workflowId,

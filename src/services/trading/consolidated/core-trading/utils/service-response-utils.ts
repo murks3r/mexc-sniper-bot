@@ -38,7 +38,7 @@ export class ServiceResponseUtils {
    */
   static async executeWithResponse<T>(
     operation: () => Promise<T>,
-    errorContext?: string
+    errorContext?: string,
   ): Promise<ServiceResponse<T>> {
     try {
       const result = await operation();
@@ -56,10 +56,7 @@ export class ServiceResponseUtils {
    * Execute a sync function and wrap the result in a ServiceResponse
    * Handles error catching and conversion automatically
    */
-  static executeSync<T>(
-    operation: () => T,
-    errorContext?: string
-  ): ServiceResponse<T> {
+  static executeSync<T>(operation: () => T, errorContext?: string): ServiceResponse<T> {
     try {
       const result = operation();
       return ServiceResponseUtils.success(result);
@@ -76,10 +73,7 @@ export class ServiceResponseUtils {
    * Wrap a conditional check in a ServiceResponse
    * Returns error if condition is false, success if true
    */
-  static validateCondition(
-    condition: boolean,
-    errorMessage: string
-  ): ServiceResponse<void> {
+  static validateCondition(condition: boolean, errorMessage: string): ServiceResponse<void> {
     if (condition) {
       return ServiceResponseUtils.success();
     }
@@ -90,11 +84,7 @@ export class ServiceResponseUtils {
    * Convert an existing result to ServiceResponse format
    * Useful for adapting legacy code patterns
    */
-  static fromResult<T>(result: {
-    success: boolean;
-    data?: T;
-    error?: string;
-  }): ServiceResponse<T> {
+  static fromResult<T>(result: { success: boolean; data?: T; error?: string }): ServiceResponse<T> {
     if (result.success) {
       return ServiceResponseUtils.success(result.data);
     }

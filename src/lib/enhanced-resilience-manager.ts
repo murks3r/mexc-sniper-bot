@@ -5,7 +5,7 @@
  * to improve system resilience from 33.93% to >80%
  */
 
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 
 // ===================== CIRCUIT BREAKER IMPLEMENTATION =====================
 
@@ -45,7 +45,7 @@ export class EnhancedCircuitBreaker extends EventEmitter {
 
   constructor(
     private readonly name: string,
-    config: Partial<CircuitBreakerConfig> = {}
+    config: Partial<CircuitBreakerConfig> = {},
   ) {
     super();
     this.config = {
@@ -75,10 +75,7 @@ export class EnhancedCircuitBreaker extends EventEmitter {
       const result = await Promise.race([
         operation(),
         new Promise<never>((_, reject) => {
-          setTimeout(
-            () => reject(new Error("Operation timeout")),
-            this.config.timeout
-          );
+          setTimeout(() => reject(new Error("Operation timeout")), this.config.timeout);
         }),
       ]);
 
@@ -190,10 +187,7 @@ export class EnhancedCircuitBreaker extends EventEmitter {
       this.emit("metrics", { name: this.name, metrics });
 
       // Auto-reset metrics periodically
-      if (
-        Date.now() - (this.lastFailureTime || 0) >
-        this.config.monitoringPeriod
-      ) {
+      if (Date.now() - (this.lastFailureTime || 0) > this.config.monitoringPeriod) {
         this.resetMetrics();
       }
     }, 30000); // Every 30 seconds
@@ -207,12 +201,10 @@ export class EnhancedCircuitBreaker extends EventEmitter {
 
   getMetrics(): CircuitBreakerMetrics {
     const totalRequests = this.successCount + this.failureCount;
-    const successRate =
-      totalRequests > 0 ? (this.successCount / totalRequests) * 100 : 100;
+    const successRate = totalRequests > 0 ? (this.successCount / totalRequests) * 100 : 100;
     const averageResponseTime =
       this.responseTimes.length > 0
-        ? this.responseTimes.reduce((sum, time) => sum + time, 0) /
-          this.responseTimes.length
+        ? this.responseTimes.reduce((sum, time) => sum + time, 0) / this.responseTimes.length
         : 0;
 
     return {
@@ -269,7 +261,7 @@ export class RetryManager {
 
   static async executeWithRetry<T>(
     operation: () => Promise<T>,
-    config: Partial<RetryConfig> = {}
+    config: Partial<RetryConfig> = {},
   ): Promise<T> {
     const retryConfig = { ...RetryManager.defaultConfig, ...config };
     let lastError: any;
@@ -292,9 +284,8 @@ export class RetryManager {
 
         // Calculate delay with exponential backoff and jitter
         const baseDelay = Math.min(
-          retryConfig.baseDelay *
-            retryConfig.backoffMultiplier ** (attempt - 1),
-          retryConfig.maxDelay
+          retryConfig.baseDelay * retryConfig.backoffMultiplier ** (attempt - 1),
+          retryConfig.maxDelay,
         );
 
         const delay = retryConfig.jitter
@@ -326,25 +317,16 @@ export class FallbackManager {
 
   static async executeWithFallback<T>(
     primaryOperation: () => Promise<T>,
-    config: FallbackConfig<T>
+    config: FallbackConfig<T>,
   ): Promise<T> {
-    const {
-      strategies,
-      timeout,
-      enableCaching,
-      cacheKey,
-      cacheTtl = 60000,
-    } = config;
+    const { strategies, timeout, enableCaching, cacheKey, cacheTtl = 60000 } = config;
 
     // Try primary operation first
     try {
       const result = await Promise.race([
         primaryOperation(),
         new Promise<never>((_, reject) => {
-          setTimeout(
-            () => reject(new Error("Primary operation timeout")),
-            timeout
-          );
+          setTimeout(() => reject(new Error("Primary operation timeout")), timeout);
         }),
       ]);
 
@@ -363,7 +345,7 @@ export class FallbackManager {
         try {
           const result = await strategies[i]();
           return result;
-        } catch (fallbackError) {}
+        } catch (_fallbackError) {}
       }
 
       // If all fallbacks fail, try cache
@@ -375,9 +357,7 @@ export class FallbackManager {
       }
 
       // All strategies failed
-      throw new Error(
-        `All fallback strategies failed. Primary error: ${primaryError.message}`
-      );
+      throw new Error(`All fallback strategies failed. Primary error: ${primaryError.message}`);
     }
   }
 
@@ -401,7 +381,7 @@ export class ResilienceCoordinator {
 
   getOrCreateCircuitBreaker(
     name: string,
-    config?: Partial<CircuitBreakerConfig>
+    config?: Partial<CircuitBreakerConfig>,
   ): EnhancedCircuitBreaker {
     if (!this.circuitBreakers.has(name)) {
       const circuitBreaker = new EnhancedCircuitBreaker(name, config);
@@ -409,7 +389,7 @@ export class ResilienceCoordinator {
       // Listen to circuit breaker events for monitoring
       circuitBreaker.on("state-change", (event) => {
         console.log(
-          `[Resilience] Circuit breaker [${event.name}] state changed: ${event.from} → ${event.to}`
+          `[Resilience] Circuit breaker [${event.name}] state changed: ${event.from} → ${event.to}`,
         );
       });
 
@@ -432,11 +412,11 @@ export class ResilienceCoordinator {
       fallbackStrategies?: FallbackStrategy<T>[];
       enableCaching?: boolean;
       cacheKey?: string;
-    }
+    },
   ): Promise<T> {
     const circuitBreaker = this.getOrCreateCircuitBreaker(
       options.circuitBreakerName,
-      options.circuitBreakerConfig
+      options.circuitBreakerConfig,
     );
 
     const resilientOperation = async () => {
@@ -445,10 +425,7 @@ export class ResilienceCoordinator {
 
     // Add retry logic
     const operationWithRetry = async () => {
-      return await RetryManager.executeWithRetry(
-        resilientOperation,
-        options.retryConfig
-      );
+      return await RetryManager.executeWithRetry(resilientOperation, options.retryConfig);
     };
 
     // Add fallback strategies
@@ -473,9 +450,7 @@ export class ResilienceCoordinator {
     overallHealth: number;
     recommendations: string[];
   } {
-    const circuitBreakerMetrics = Array.from(
-      this.circuitBreakers.entries()
-    ).map(([name, cb]) => ({
+    const circuitBreakerMetrics = Array.from(this.circuitBreakers.entries()).map(([name, cb]) => ({
       name,
       state: cb.getState(),
       metrics: cb.getMetrics(),
@@ -492,40 +467,30 @@ export class ResilienceCoordinator {
     }
 
     const healthyCount = circuitBreakerMetrics.filter(
-      (cb) => cb.state === CircuitState.CLOSED
+      (cb) => cb.state === CircuitState.CLOSED,
     ).length;
     const avgSuccessRate =
-      circuitBreakerMetrics.reduce(
-        (sum, cb) => sum + cb.metrics.successRate,
-        0
-      ) / totalCbs;
-    const overallHealth =
-      (healthyCount / totalCbs) * 0.6 + (avgSuccessRate / 100) * 0.4;
+      circuitBreakerMetrics.reduce((sum, cb) => sum + cb.metrics.successRate, 0) / totalCbs;
+    const overallHealth = (healthyCount / totalCbs) * 0.6 + (avgSuccessRate / 100) * 0.4;
 
     // Generate recommendations
     const recommendations: string[] = [];
-    const openCircuits = circuitBreakerMetrics.filter(
-      (cb) => cb.state === CircuitState.OPEN
-    );
-    const degradedCircuits = circuitBreakerMetrics.filter(
-      (cb) => cb.metrics.successRate < 90
-    );
+    const openCircuits = circuitBreakerMetrics.filter((cb) => cb.state === CircuitState.OPEN);
+    const degradedCircuits = circuitBreakerMetrics.filter((cb) => cb.metrics.successRate < 90);
 
     if (openCircuits.length > 0) {
       recommendations.push(
-        `${openCircuits.length} circuit breaker(s) are OPEN: ${openCircuits.map((cb) => cb.name).join(", ")}`
+        `${openCircuits.length} circuit breaker(s) are OPEN: ${openCircuits.map((cb) => cb.name).join(", ")}`,
       );
     }
 
     if (degradedCircuits.length > 0) {
-      recommendations.push(
-        `${degradedCircuits.length} circuit breaker(s) have low success rates`
-      );
+      recommendations.push(`${degradedCircuits.length} circuit breaker(s) have low success rates`);
     }
 
     if (overallHealth < 0.8) {
       recommendations.push(
-        "Overall system resilience is below 80% - consider implementing additional fallback strategies"
+        "Overall system resilience is below 80% - consider implementing additional fallback strategies",
       );
     }
 
@@ -559,7 +524,7 @@ export async function executeWithResilience<T>(
     enableRetries?: boolean;
     enableCircuitBreaker?: boolean;
     customFallbacks?: FallbackStrategy<T>[];
-  } = {}
+  } = {},
 ): Promise<T> {
   const fallbackStrategies: FallbackStrategy<T>[] = [];
 
@@ -573,17 +538,13 @@ export async function executeWithResilience<T>(
     fallbackStrategies.push(async () => options.fallbackValue!);
   }
 
-  return await globalResilienceCoordinator.executeResilientOperation(
-    operation,
-    {
-      circuitBreakerName: operationName,
-      retryConfig: options.enableRetries !== false ? {} : { maxAttempts: 1 },
-      fallbackStrategies:
-        options.enableCircuitBreaker !== false ? fallbackStrategies : undefined,
-      enableCaching: true,
-      cacheKey: operationName,
-    }
-  );
+  return await globalResilienceCoordinator.executeResilientOperation(operation, {
+    circuitBreakerName: operationName,
+    retryConfig: options.enableRetries !== false ? {} : { maxAttempts: 1 },
+    fallbackStrategies: options.enableCircuitBreaker !== false ? fallbackStrategies : undefined,
+    enableCaching: true,
+    cacheKey: operationName,
+  });
 }
 
 export function getSystemResilienceStatus(): {
@@ -595,7 +556,7 @@ export function getSystemResilienceStatus(): {
 } {
   const metrics = globalResilienceCoordinator.getSystemResilienceMetrics();
   const openCircuitCount = metrics.circuitBreakers.filter(
-    (cb) => cb.state === CircuitState.OPEN
+    (cb) => cb.state === CircuitState.OPEN,
   ).length;
 
   return {

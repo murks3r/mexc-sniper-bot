@@ -64,10 +64,7 @@ export function SafeDynamicWrapper({
   );
 
   return (
-    <ErrorBoundary
-      level="component"
-      fallback={errorFallback || defaultErrorFallback}
-    >
+    <ErrorBoundary level="component" fallback={errorFallback || defaultErrorFallback}>
       <Suspense fallback={fallback || defaultFallback}>
         <div className={className}>{children}</div>
       </Suspense>

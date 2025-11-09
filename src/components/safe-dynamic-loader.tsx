@@ -45,7 +45,7 @@ const TableSkeleton = () => (
 // Safe lazy wrapper that handles import failures
 function safeLazy<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
-  fallbackComponent?: ComponentType<any>
+  fallbackComponent?: ComponentType<any>,
 ): LazyExoticComponent<ComponentType<any>> {
   return lazy(() =>
     factory().catch((error) => {
@@ -55,12 +55,10 @@ function safeLazy<T extends ComponentType<any>>(
         default:
           fallbackComponent ||
           ((() => (
-            <div className="p-4 text-center text-gray-500">
-              Component failed to load
-            </div>
+            <div className="p-4 text-center text-gray-500">Component failed to load</div>
           )) as ComponentType<any>),
       };
-    })
+    }),
   );
 }
 
@@ -75,13 +73,8 @@ export function SafeLazyWrapper({
   errorFallback?: ReactNode;
 }) {
   return (
-    <ErrorBoundary
-      level="component"
-      fallback={errorFallback || <CardSkeleton />}
-    >
-      <Suspense fallback={fallback || <ComponentSkeleton />}>
-        {children}
-      </Suspense>
+    <ErrorBoundary level="component" fallback={errorFallback || <CardSkeleton />}>
+      <Suspense fallback={fallback || <ComponentSkeleton />}>{children}</Suspense>
     </ErrorBoundary>
   );
 }
@@ -97,7 +90,7 @@ export const MetricCard = safeLazy(
       <div className="font-medium">{title}</div>
       <div className="text-2xl font-bold">{value}</div>
     </div>
-  )
+  ),
 );
 
 export const TradingChart = safeLazy(
@@ -106,7 +99,7 @@ export const TradingChart = safeLazy(
     <div className="rounded-lg border p-4 h-64 flex items-center justify-center">
       <div className="text-gray-500">Trading Chart</div>
     </div>
-  )
+  ),
 );
 
 export const CoinListingsBoard = safeLazy(
@@ -119,7 +112,7 @@ export const CoinListingsBoard = safeLazy(
       <h3 className="font-medium mb-2">Coin Listings</h3>
       <div className="text-gray-500">Loading coin listings...</div>
     </div>
-  )
+  ),
 );
 
 export const OptimizedActivityFeed = safeLazy(
@@ -132,7 +125,7 @@ export const OptimizedActivityFeed = safeLazy(
       <h3 className="font-medium mb-2">Activity Feed</h3>
       <div className="text-gray-500">No recent activity</div>
     </div>
-  )
+  ),
 );
 
 export const OptimizedTradingTargets = safeLazy(
@@ -145,7 +138,7 @@ export const OptimizedTradingTargets = safeLazy(
       <h3 className="font-medium mb-2">Trading Targets</h3>
       <div className="text-gray-500">No active targets</div>
     </div>
-  )
+  ),
 );
 
 export const RecentTradesTable = safeLazy(
@@ -158,7 +151,7 @@ export const RecentTradesTable = safeLazy(
       <h3 className="font-medium mb-2">Recent Trades</h3>
       <TableSkeleton />
     </div>
-  )
+  ),
 );
 
 export const UpcomingCoinsSection = safeLazy(
@@ -171,7 +164,7 @@ export const UpcomingCoinsSection = safeLazy(
       <h3 className="font-medium mb-2">Upcoming Coins</h3>
       <div className="text-gray-500">No upcoming listings</div>
     </div>
-  )
+  ),
 );
 
 export const OptimizedAccountBalance = safeLazy(
@@ -184,7 +177,7 @@ export const OptimizedAccountBalance = safeLazy(
       <h3 className="font-medium mb-2">Account Balance</h3>
       <div className="text-2xl font-bold">$0.00</div>
     </div>
-  )
+  ),
 );
 
 // Wrapper components with safe loading
@@ -270,15 +263,13 @@ export async function preloadDashboardComponents() {
   const nonCriticalComponents = componentsToPreload.slice(3);
 
   // Load critical components first, then non-critical
-  const criticalResults = await Promise.allSettled(
-    criticalComponents.map((loader) => loader())
-  );
+  const criticalResults = await Promise.allSettled(criticalComponents.map((loader) => loader()));
 
   // Small delay to avoid blocking critical rendering
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   const nonCriticalResults = await Promise.allSettled(
-    nonCriticalComponents.map((loader) => loader())
+    nonCriticalComponents.map((loader) => loader()),
   );
 
   const results = [...criticalResults, ...nonCriticalResults];
@@ -295,14 +286,13 @@ export async function preloadDashboardComponents() {
   const failed = results.filter((r) => r.status === "rejected").length;
 
   console.info(
-    `Preloaded ${successful}/${successful + failed} dashboard components (${criticalResults.filter((r) => r.status === "fulfilled").length} critical)`
+    `Preloaded ${successful}/${successful + failed} dashboard components (${criticalResults.filter((r) => r.status === "fulfilled").length} critical)`,
   );
 
   return {
     successful,
     failed,
     total: successful + failed,
-    criticalLoaded: criticalResults.filter((r) => r.status === "fulfilled")
-      .length,
+    criticalLoaded: criticalResults.filter((r) => r.status === "fulfilled").length,
   };
 }

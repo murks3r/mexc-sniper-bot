@@ -57,7 +57,7 @@ export class MexcRateLimiter {
   processMexcRateLimitHeaders(
     endpoint: string,
     headers: Record<string, string>,
-    metrics: EndpointMetrics
+    metrics: EndpointMetrics,
   ): void {
     try {
       // Extract weight and order count headers (case-insensitive)
@@ -67,37 +67,21 @@ export class MexcRateLimiter {
       const weightUsedHeaderKey = originalHeaderKeys.find(
         (key) =>
           key.toLowerCase().includes("x-mbx-used-weight") ||
-          key.toLowerCase().includes("x-mexc-used-weight")
+          key.toLowerCase().includes("x-mexc-used-weight"),
       );
 
       if (weightUsedHeaderKey) {
-        const weightUsed = Number.parseInt(
-          headers[weightUsedHeaderKey] || "0",
-          10
-        );
-        const weightLimit = this.extractWeightLimit(
-          headers,
-          weightUsedHeaderKey
-        );
+        const weightUsed = Number.parseInt(headers[weightUsedHeaderKey] || "0", 10);
+        const weightLimit = this.extractWeightLimit(headers, weightUsedHeaderKey);
 
         if (weightUsed > 0 && weightLimit > 0) {
           const utilizationRate = weightUsed / weightLimit;
-          this.adjustRateLimitBasedOnUtilization(
-            endpoint,
-            utilizationRate,
-            "weight",
-            metrics
-          );
+          this.adjustRateLimitBasedOnUtilization(endpoint, utilizationRate, "weight", metrics);
         }
       }
 
       // Check order count limits
-      this.processOrderCountLimits(
-        headers,
-        originalHeaderKeys,
-        endpoint,
-        metrics
-      );
+      this.processOrderCountLimits(headers, originalHeaderKeys, endpoint, metrics);
 
       logger.info(`Processed MEXC headers for ${endpoint}`, {
         weightUsed: weightUsedHeaderKey ? headers[weightUsedHeaderKey] : "none",
@@ -106,7 +90,7 @@ export class MexcRateLimiter {
       logger.error(
         `Error processing MEXC headers for ${endpoint}:`,
         { endpoint },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
   } /**
@@ -116,30 +100,22 @@ export class MexcRateLimiter {
     headers: Record<string, string>,
     originalHeaderKeys: string[],
     endpoint: string,
-    metrics: EndpointMetrics
+    metrics: EndpointMetrics,
   ): void {
     // Check order count limits (1-second window)
     const orderCount1sHeaderKey = originalHeaderKeys.find(
       (key) =>
         key.toLowerCase().includes("x-mbx-order-count-1s") ||
-        key.toLowerCase().includes("x-mexc-order-count-1s")
+        key.toLowerCase().includes("x-mexc-order-count-1s"),
     );
 
     if (orderCount1sHeaderKey) {
-      const orderCount = Number.parseInt(
-        headers[orderCount1sHeaderKey] || "0",
-        10
-      );
+      const orderCount = Number.parseInt(headers[orderCount1sHeaderKey] || "0", 10);
       const orderLimit = this.extractOrderLimit(headers, orderCount1sHeaderKey);
 
       if (orderCount > 0 && orderLimit > 0) {
         const utilizationRate = orderCount / orderLimit;
-        this.adjustRateLimitBasedOnUtilization(
-          endpoint,
-          utilizationRate,
-          "order_1s",
-          metrics
-        );
+        this.adjustRateLimitBasedOnUtilization(endpoint, utilizationRate, "order_1s", metrics);
       }
     }
 
@@ -147,24 +123,16 @@ export class MexcRateLimiter {
     const orderCount1mHeaderKey = originalHeaderKeys.find(
       (key) =>
         key.toLowerCase().includes("x-mbx-order-count-1m") ||
-        key.toLowerCase().includes("x-mexc-order-count-1m")
+        key.toLowerCase().includes("x-mexc-order-count-1m"),
     );
 
     if (orderCount1mHeaderKey) {
-      const orderCount = Number.parseInt(
-        headers[orderCount1mHeaderKey] || "0",
-        10
-      );
+      const orderCount = Number.parseInt(headers[orderCount1mHeaderKey] || "0", 10);
       const orderLimit = this.extractOrderLimit(headers, orderCount1mHeaderKey);
 
       if (orderCount > 0 && orderLimit > 0) {
         const utilizationRate = orderCount / orderLimit;
-        this.adjustRateLimitBasedOnUtilization(
-          endpoint,
-          utilizationRate,
-          "order_1m",
-          metrics
-        );
+        this.adjustRateLimitBasedOnUtilization(endpoint, utilizationRate, "order_1m", metrics);
       }
     }
   }
@@ -175,14 +143,12 @@ export class MexcRateLimiter {
   handleRateLimitResponse(
     endpoint: string,
     headers?: Record<string, string>,
-    metrics?: EndpointMetrics
+    metrics?: EndpointMetrics,
   ): void {
     try {
       // Look for Retry-After header
       const retryAfterHeader = headers
-        ? Object.keys(headers).find(
-            (key) => key.toLowerCase() === "retry-after"
-          )
+        ? Object.keys(headers).find((key) => key.toLowerCase() === "retry-after")
         : undefined;
 
       const retryAfterSeconds =
@@ -192,10 +158,7 @@ export class MexcRateLimiter {
 
       // Significantly reduce rate limit temporarily
       if (metrics) {
-        metrics.adaptationFactor = Math.min(
-          metrics.adaptationFactor * 0.1,
-          0.1
-        ); // Reduce to 10%
+        metrics.adaptationFactor = Math.min(metrics.adaptationFactor * 0.1, 0.1); // Reduce to 10%
         metrics.lastAdaptation = Date.now();
 
         logger.warn(`Rate limited on ${endpoint}`, {
@@ -212,21 +175,18 @@ export class MexcRateLimiter {
       logger.error(
         `Error handling rate limit response for ${endpoint}:`,
         { endpoint },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
   } /**
    * Extract weight limit from headers or use defaults
    */
-  private extractWeightLimit(
-    headers: Record<string, string>,
-    weightHeader: string
-  ): number {
+  private extractWeightLimit(headers: Record<string, string>, weightHeader: string): number {
     // Look for weight limit header
     const limitHeader = Object.keys(headers).find(
       (key) =>
         key.toLowerCase().includes("x-mbx-weight-limit") ||
-        key.toLowerCase().includes("x-mexc-weight-limit")
+        key.toLowerCase().includes("x-mexc-weight-limit"),
     );
 
     if (limitHeader) {
@@ -244,15 +204,12 @@ export class MexcRateLimiter {
   /**
    * Extract order limit from headers or use defaults
    */
-  private extractOrderLimit(
-    headers: Record<string, string>,
-    orderHeader: string
-  ): number {
+  private extractOrderLimit(headers: Record<string, string>, orderHeader: string): number {
     // Look for order limit header
     const limitHeader = Object.keys(headers).find(
       (key) =>
         key.toLowerCase().includes("x-mbx-order-limit") ||
-        key.toLowerCase().includes("x-mexc-order-limit")
+        key.toLowerCase().includes("x-mexc-order-limit"),
     );
 
     if (limitHeader) {
@@ -276,7 +233,7 @@ export class MexcRateLimiter {
     endpoint: string,
     utilizationRate: number,
     limitType: string,
-    metrics: EndpointMetrics
+    metrics: EndpointMetrics,
   ): void {
     let newAdaptationFactor = metrics.adaptationFactor;
 
@@ -311,27 +268,15 @@ export class MexcRateLimiter {
   } /**
    * Temporarily reduce endpoint limits after rate limiting
    */
-  private temporarilyReduceEndpointLimits(
-    endpoint: string,
-    retryAfterSeconds: number
-  ): void {
+  private temporarilyReduceEndpointLimits(endpoint: string, retryAfterSeconds: number): void {
     const currentConfig = this.endpointConfigs[endpoint];
     if (currentConfig) {
       // Temporarily reduce limits
       const reducedConfig = {
         ...currentConfig,
-        maxRequests: Math.max(
-          Math.floor((currentConfig.maxRequests || 100) * 0.5),
-          1
-        ),
-        burstAllowance: Math.max(
-          Math.floor((currentConfig.burstAllowance || 10) * 0.3),
-          1
-        ),
-        windowMs: Math.max(
-          (currentConfig.windowMs || 60000) * 2,
-          retryAfterSeconds * 1000
-        ),
+        maxRequests: Math.max(Math.floor((currentConfig.maxRequests || 100) * 0.5), 1),
+        burstAllowance: Math.max(Math.floor((currentConfig.burstAllowance || 10) * 0.3), 1),
+        windowMs: Math.max((currentConfig.windowMs || 60000) * 2, retryAfterSeconds * 1000),
       };
 
       this.endpointConfigs[endpoint] = reducedConfig;
@@ -364,10 +309,7 @@ export class MexcRateLimiter {
   /**
    * Update endpoint configuration
    */
-  updateEndpointConfig(
-    endpoint: string,
-    config: Partial<RateLimitConfig>
-  ): void {
+  updateEndpointConfig(endpoint: string, config: Partial<RateLimitConfig>): void {
     this.endpointConfigs[endpoint] = {
       ...this.endpointConfigs[endpoint],
       ...config,

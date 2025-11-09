@@ -7,10 +7,7 @@
  */
 
 import type { PortfolioService } from "@/src/application/interfaces/trading-repository";
-import type {
-  BalanceEntry,
-  MexcServiceResponse,
-} from "../data/modules/mexc-api-types";
+import type { BalanceEntry, MexcServiceResponse } from "../data/modules/mexc-api-types";
 import type { MexcCacheLayer } from "../data/modules/mexc-cache-layer";
 import type { MexcCoreClient } from "../data/modules/mexc-core-client";
 
@@ -32,7 +29,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
   constructor(
     private coreClient: MexcCoreClient,
-    private cacheLayer: MexcCacheLayer
+    private cacheLayer: MexcCacheLayer,
   ) {}
 
   // ============================================================================
@@ -118,15 +115,13 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       }
 
       // Map internal format to interface format
-      const balances = (result.data?.balances || []).map(
-        (balance: BalanceEntry) => ({
-          asset: balance.asset,
-          free: balance.free,
-          locked: balance.locked,
-          total: balance.total,
-          usdtValue: balance.usdtValue,
-        })
-      );
+      const balances = (result.data?.balances || []).map((balance: BalanceEntry) => ({
+        asset: balance.asset,
+        free: balance.free,
+        locked: balance.locked,
+        total: balance.total,
+        usdtValue: balance.usdtValue,
+      }));
 
       return {
         success: true,
@@ -180,13 +175,11 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       }
 
       // Map internal format to interface format
-      const balances = (result.data?.balances || []).map(
-        (balance: BalanceEntry) => ({
-          asset: balance.asset,
-          free: balance.free,
-          locked: balance.locked,
-        })
-      );
+      const balances = (result.data?.balances || []).map((balance: BalanceEntry) => ({
+        asset: balance.asset,
+        free: balance.free,
+        locked: balance.locked,
+      }));
 
       return {
         success: true,
@@ -224,19 +217,14 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    * Check if user has sufficient balance for trading
    * Implements PortfolioService.hasSufficientBalance interface
    */
-  async hasSufficientBalance(
-    asset: string,
-    requiredAmount: number
-  ): Promise<boolean> {
+  async hasSufficientBalance(asset: string, requiredAmount: number): Promise<boolean> {
     try {
       const balanceResponse = await this.getAccountBalanceInternal();
       if (!balanceResponse.success || !balanceResponse.data) {
         return false;
       }
 
-      const assetBalance = balanceResponse.data.find(
-        (balance) => balance.asset === asset
-      );
+      const assetBalance = balanceResponse.data.find((balance) => balance.asset === asset);
       if (!assetBalance) {
         return false;
       }
@@ -253,9 +241,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    * Get balance for a specific asset
    * Implements PortfolioService.getAssetBalance interface
    */
-  async getAssetBalance(
-    asset: string
-  ): Promise<{ free: string; locked: string } | null> {
+  async getAssetBalance(asset: string): Promise<{ free: string; locked: string } | null> {
     try {
       const balancesResponse = await this.getAccountBalancesInternal();
       if (!balancesResponse.success) {
@@ -263,7 +249,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       }
 
       const assetBalance = balancesResponse.data?.balances.find(
-        (balance) => balance.asset === asset
+        (balance) => balance.asset === asset,
       );
 
       return assetBalance
@@ -285,9 +271,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
   /**
    * Get account balance (internal method for module use)
    */
-  async getAccountBalanceInternal(): Promise<
-    MexcServiceResponse<BalanceEntry[]>
-  > {
+  async getAccountBalanceInternal(): Promise<MexcServiceResponse<BalanceEntry[]>> {
     return this.cacheLayer.getOrSet(
       "account:balance",
       async () => {
@@ -304,31 +288,29 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
           const priceData = await this.fetchRealTimePrices(rawBalances);
 
           // Enhance balances with real USDT values
-          const enhancedBalances = rawBalances.map(
-            (balance: Record<string, unknown>) => {
-              const free = parseFloat(String(balance.free || "0"));
-              const locked = parseFloat(String(balance.locked || "0"));
-              const total = free + locked;
+          const enhancedBalances = rawBalances.map((balance: Record<string, unknown>) => {
+            const free = parseFloat(String(balance.free || "0"));
+            const locked = parseFloat(String(balance.locked || "0"));
+            const total = free + locked;
 
-              let usdtValue = 0;
-              if (balance.asset === "USDT") {
-                usdtValue = total;
-              } else {
-                const price = priceData[String(balance.asset || "")];
-                if (price && price > 0) {
-                  usdtValue = total * price;
-                }
+            let usdtValue = 0;
+            if (balance.asset === "USDT") {
+              usdtValue = total;
+            } else {
+              const price = priceData[String(balance.asset || "")];
+              if (price && price > 0) {
+                usdtValue = total * price;
               }
-
-              return {
-                asset: String(balance.asset || ""),
-                free: String(balance.free || "0"),
-                locked: String(balance.locked || "0"),
-                total,
-                usdtValue: Number.parseFloat(usdtValue.toFixed(6)),
-              };
             }
-          );
+
+            return {
+              asset: String(balance.asset || ""),
+              free: String(balance.free || "0"),
+              locked: String(balance.locked || "0"),
+              total,
+              usdtValue: Number.parseFloat(usdtValue.toFixed(6)),
+            };
+          });
 
           return {
             success: true,
@@ -345,7 +327,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
           };
         }
       },
-      "user" // 10 minute cache for user data
+      "user", // 10 minute cache for user data
     );
   }
 
@@ -421,14 +403,11 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
             total,
             usdtValue: Number.parseFloat(usdtValue.toFixed(6)),
           };
-        })
+        }),
       );
 
       // Calculate portfolio metrics
-      const totalUsdtValue = balances.reduce(
-        (sum, balance) => sum + (balance.usdtValue || 0),
-        0
-      );
+      const totalUsdtValue = balances.reduce((sum, balance) => sum + (balance.usdtValue || 0), 0);
       const totalValue = totalUsdtValue;
 
       // Get BTC price for BTC conversion
@@ -441,17 +420,14 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         balances.forEach((balance) => {
           if (balance.usdtValue && balance.usdtValue > 0) {
             allocation[balance.asset] = Number.parseFloat(
-              ((balance.usdtValue / totalUsdtValue) * 100).toFixed(2)
+              ((balance.usdtValue / totalUsdtValue) * 100).toFixed(2),
             );
           }
         });
       }
 
       // Calculate 24h performance data
-      const performance24h = await this.calculate24hPerformance(
-        balances,
-        priceData
-      );
+      const performance24h = await this.calculate24hPerformance(balances, priceData);
 
       return {
         success: true,
@@ -469,8 +445,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       this.logger.error("Error in getAccountBalancesInternal:", error);
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        error: error instanceof Error ? error.message : "Unknown error occurred",
         timestamp: Date.now(),
         source: "unified-mexc-portfolio",
       };
@@ -516,8 +491,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
     } catch (error) {
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to get account info",
+        error: error instanceof Error ? error.message : "Failed to get account info",
         timestamp: Date.now(),
         source: "unified-mexc-portfolio",
       };
@@ -532,18 +506,14 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    * Fetch real-time prices for all assets in USDT
    */
   private async fetchRealTimePrices(
-    balances: Record<string, unknown>[]
+    balances: Record<string, unknown>[],
   ): Promise<Record<string, number>> {
     const priceData: Record<string, number> = {};
 
     try {
       // Extract unique assets (excluding USDT)
       const assets = [
-        ...new Set(
-          balances
-            .map((b) => b.asset as string)
-            .filter((asset) => asset !== "USDT")
-        ),
+        ...new Set(balances.map((b) => b.asset as string).filter((asset) => asset !== "USDT")),
       ];
 
       if (assets.length === 0) {
@@ -555,10 +525,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         try {
           const allTickersResult = await this.coreClient.getAllTickers();
 
-          if (
-            allTickersResult.success &&
-            Array.isArray(allTickersResult.data)
-          ) {
+          if (allTickersResult.success && Array.isArray(allTickersResult.data)) {
             // Create a map for quick lookups
             const tickerMap = new Map<string, Record<string, unknown>>();
             allTickersResult.data.forEach((ticker) => {
@@ -569,9 +536,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
             // Get BTC/USDT rate for conversions
             const btcUsdtTicker = tickerMap.get("BTCUSDT");
-            const btcUsdtRate = btcUsdtTicker
-              ? parseFloat(String(btcUsdtTicker.lastPrice))
-              : 0;
+            const btcUsdtRate = btcUsdtTicker ? parseFloat(String(btcUsdtTicker.lastPrice)) : 0;
 
             if (btcUsdtRate > 0) {
               priceData.BTC = btcUsdtRate;
@@ -610,7 +575,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         } catch (error) {
           this.logger.warn(
             "Batch ticker fetch failed, falling back to individual requests:",
-            error
+            error,
           );
         }
       }
@@ -682,7 +647,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    */
   private async calculate24hPerformance(
     balances: Record<string, unknown>[],
-    _priceData: Record<string, number>
+    _priceData: Record<string, number>,
   ): Promise<{ change: number; changePercent: number }> {
     try {
       let totalChange = 0;
@@ -690,7 +655,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
       // Extract assets that have USDT values
       const assetsWithValue = balances.filter(
-        (balance) => balance.usdtValue && (balance.usdtValue as number) > 0
+        (balance) => balance.usdtValue && (balance.usdtValue as number) > 0,
       );
 
       if (assetsWithValue.length === 0) {
@@ -710,10 +675,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
           });
         }
       } catch (error) {
-        this.logger.warn(
-          "Failed to fetch all tickers for performance calculation:",
-          error
-        );
+        this.logger.warn("Failed to fetch all tickers for performance calculation:", error);
       }
 
       for (const balance of assetsWithValue) {
@@ -738,13 +700,8 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
             } else {
               // Fallback to individual ticker request
               const tickerResult = await this.coreClient.getTicker(symbol);
-              if (
-                tickerResult.success &&
-                tickerResult.data?.priceChangePercent
-              ) {
-                priceChangePercent = parseFloat(
-                  tickerResult.data.priceChangePercent
-                );
+              if (tickerResult.success && tickerResult.data?.priceChangePercent) {
+                priceChangePercent = parseFloat(tickerResult.data.priceChangePercent);
               }
             }
           }
@@ -755,17 +712,12 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
           }
         } catch (error) {
           // Ignore individual asset errors for performance calculation
-          this.logger.debug(
-            `Skipping performance calculation for ${balance.asset}:`,
-            error
-          );
+          this.logger.debug(`Skipping performance calculation for ${balance.asset}:`, error);
         }
       }
 
       const changePercent =
-        totalCurrentValue > 0
-          ? (totalChange / (totalCurrentValue - totalChange)) * 100
-          : 0;
+        totalCurrentValue > 0 ? (totalChange / (totalCurrentValue - totalChange)) * 100 : 0;
 
       return {
         change: Number.parseFloat(totalChange.toFixed(6)),
@@ -813,8 +765,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       this.logger.info("Price fetching validation successful:", result);
       return result;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       this.logger.error("Price fetching validation failed:", errorMessage);
       return {
         success: false,
@@ -847,14 +798,10 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
       const balances = balanceResult.data || [];
       const hasRealPrices = balances.some(
-        (balance) =>
-          balance.usdtValue && balance.usdtValue > 0 && balance.asset !== "USDT"
+        (balance) => balance.usdtValue && balance.usdtValue > 0 && balance.asset !== "USDT",
       );
 
-      const totalValue = balances.reduce(
-        (sum, balance) => sum + (balance.usdtValue || 0),
-        0
-      );
+      const totalValue = balances.reduce((sum, balance) => sum + (balance.usdtValue || 0), 0);
 
       return {
         success: true,
@@ -863,8 +810,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         totalValue,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {
         success: false,
         hasRealPrices: false,
@@ -888,11 +834,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         return [];
       }
 
-      return (
-        balances.data?.balances
-          .filter((b) => (b.usdtValue || 0) > 0)
-          .slice(0, limit) || []
-      );
+      return balances.data?.balances.filter((b) => (b.usdtValue || 0) > 0).slice(0, limit) || [];
     } catch (error) {
       this.logger.error("Failed to get top assets:", error);
       return [];
@@ -903,7 +845,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    * Get enhanced portfolio with market data
    */
   async getEnhancedPortfolio(
-    tickers?: Record<string, unknown>[]
+    tickers?: Record<string, unknown>[],
   ): Promise<MexcServiceResponse<Record<string, unknown>>> {
     try {
       const balancesResponse = await this.getAccountBalancesInternal();
@@ -916,10 +858,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
       // If tickers provided, calculate enhanced metrics
       if (tickers && tickers.length > 0) {
-        const enhancedPortfolio = this.calculatePortfolioMetrics(
-          portfolio.balances,
-          tickers
-        );
+        const enhancedPortfolio = this.calculatePortfolioMetrics(portfolio.balances, tickers);
         return {
           success: true,
           data: enhancedPortfolio,
@@ -947,9 +886,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
   /**
    * Get portfolio analysis with risk metrics
    */
-  async getPortfolioAnalysis(): Promise<
-    MexcServiceResponse<Record<string, unknown>>
-  > {
+  async getPortfolioAnalysis(): Promise<MexcServiceResponse<Record<string, unknown>>> {
     try {
       const portfolioResponse = await this.getAccountBalancesInternal();
 
@@ -964,10 +901,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       // Create simple allocation based on asset values
       const allocation = this.calculateAllocation(portfolio.balances);
       const concentrationRisk = this.calculateConcentrationRisk(allocation);
-      const diversificationScore = this.calculateDiversificationScore(
-        assetCount,
-        allocation
-      );
+      const diversificationScore = this.calculateDiversificationScore(assetCount, allocation);
 
       const analysisData = {
         summary: {
@@ -981,15 +915,9 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
         risk: {
           concentrationRisk,
           diversificationScore,
-          riskLevel: this.assessRiskLevel(
-            concentrationRisk,
-            diversificationScore
-          ),
+          riskLevel: this.assessRiskLevel(concentrationRisk, diversificationScore),
         },
-        recommendations: this.generateRecommendations(
-          concentrationRisk,
-          diversificationScore
-        ),
+        recommendations: this.generateRecommendations(concentrationRisk, diversificationScore),
       };
 
       return {
@@ -1013,7 +941,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    */
   private calculatePortfolioMetrics(
     assets: BalanceEntry[],
-    tickers: Record<string, unknown>[]
+    tickers: Record<string, unknown>[],
   ): Record<string, unknown> {
     const tickerMap = new Map(tickers.map((t) => [t.symbol, t]));
     let totalUsdtValue = 0;
@@ -1021,8 +949,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
     // Calculate enhanced balance data
     const enhancedAssets = assets.map((balance) => {
-      const total =
-        Number.parseFloat(balance.free) + Number.parseFloat(balance.locked);
+      const total = Number.parseFloat(balance.free) + Number.parseFloat(balance.locked);
       let usdtValue = 0;
 
       if (balance.asset === "USDT") {
@@ -1042,9 +969,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
 
         if (assetTicker?.lastPrice && assetTicker.priceChangePercent) {
           const price = Number.parseFloat(String(assetTicker.lastPrice));
-          const priceChange = Number.parseFloat(
-            String(assetTicker.priceChangePercent)
-          );
+          const priceChange = Number.parseFloat(String(assetTicker.priceChangePercent));
 
           if (String(assetTicker.symbol).endsWith("USDT")) {
             usdtValue = total * price;
@@ -1053,8 +978,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
             // Convert to USDT using BTC price
             const btcTicker = tickerMap.get("BTCUSDT");
             if (btcTicker?.lastPrice) {
-              usdtValue =
-                btcValue * Number.parseFloat(String(btcTicker.lastPrice));
+              usdtValue = btcValue * Number.parseFloat(String(btcTicker.lastPrice));
             }
           }
 
@@ -1073,8 +997,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       };
     });
 
-    const pnlPercent =
-      totalUsdtValue > 0 ? (totalPnl / totalUsdtValue) * 100 : 0;
+    const pnlPercent = totalUsdtValue > 0 ? (totalPnl / totalUsdtValue) * 100 : 0;
 
     return {
       totalValue: Number.parseFloat(totalUsdtValue.toFixed(6)),
@@ -1105,7 +1028,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
       assets.forEach((asset) => {
         if (asset.usdtValue && asset.usdtValue > 0) {
           allocation[asset.asset] = Number.parseFloat(
-            ((asset.usdtValue / totalValue) * 100).toFixed(2)
+            ((asset.usdtValue / totalValue) * 100).toFixed(2),
           );
         }
       });
@@ -1117,17 +1040,12 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
   /**
    * Calculate concentration risk (0-100, higher = more risk)
    */
-  private calculateConcentrationRisk(
-    allocation: Record<string, number>
-  ): number {
+  private calculateConcentrationRisk(allocation: Record<string, number>): number {
     const allocations = Object.values(allocation);
     if (allocations.length === 0) return 0;
 
     // Calculate Herfindahl-Hirschman Index (HHI)
-    const hhi = allocations.reduce(
-      (sum, percentage) => sum + (percentage / 100) ** 2,
-      0
-    );
+    const hhi = allocations.reduce((sum, percentage) => sum + (percentage / 100) ** 2, 0);
 
     // Convert to 0-100 scale (higher = more concentrated = more risk)
     return Number.parseFloat((hhi * 100).toFixed(2));
@@ -1138,7 +1056,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    */
   private calculateDiversificationScore(
     assetCount: number,
-    allocation: Record<string, number>
+    allocation: Record<string, number>,
   ): number {
     if (assetCount === 0) return 0;
 
@@ -1154,10 +1072,7 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
   /**
    * Assess overall risk level
    */
-  private assessRiskLevel(
-    concentrationRisk: number,
-    diversificationScore: number
-  ): string {
+  private assessRiskLevel(concentrationRisk: number, diversificationScore: number): string {
     if (concentrationRisk > 50 || diversificationScore < 30) return "HIGH";
     if (concentrationRisk > 25 || diversificationScore < 60) return "MEDIUM";
     return "LOW";
@@ -1168,14 +1083,12 @@ export class UnifiedMexcPortfolioModule implements PortfolioService {
    */
   private generateRecommendations(
     concentrationRisk: number,
-    diversificationScore: number
+    diversificationScore: number,
   ): string[] {
     const recommendations: string[] = [];
 
     if (concentrationRisk > 50) {
-      recommendations.push(
-        "Consider reducing position sizes in dominant assets"
-      );
+      recommendations.push("Consider reducing position sizes in dominant assets");
     }
 
     if (diversificationScore < 40) {

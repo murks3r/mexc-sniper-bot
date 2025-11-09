@@ -287,7 +287,7 @@ export {
  */
 export function validateData<T>(
   schema: import("zod").ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: boolean; data?: T; error?: string } {
   try {
     const result = schema.parse(data);
@@ -307,8 +307,7 @@ export function validateData<T>(
     }
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Unknown validation error",
+      error: error instanceof Error ? error.message : "Unknown validation error",
     };
   }
 }

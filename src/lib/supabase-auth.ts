@@ -71,7 +71,7 @@ export async function createSupabaseServerClient() {
           }
         },
       },
-    }
+    },
   );
 }
 
@@ -99,11 +99,7 @@ export async function getSession(): Promise<SupabaseSession> {
     const supabaseUser: SupabaseUser = {
       id: user.id,
       email: user.email ?? "",
-      name:
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email ||
-        "User",
+      name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || "User",
       username: user.user_metadata?.username,
       picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
       emailVerified: !!user.email_confirmed_at,
@@ -177,10 +173,7 @@ export async function syncUserWithDatabase(supabaseUser: SupabaseUser) {
         updatedAt: new Date(),
       };
 
-      await db
-        .update(userTable)
-        .set(updateData)
-        .where(eq(userTable.id, supabaseUser.id));
+      await db.update(userTable).set(updateData).where(eq(userTable.id, supabaseUser.id));
 
       getLogger().info(`Updated user: ${supabaseUser.email}`);
     }
@@ -193,6 +186,95 @@ export async function syncUserWithDatabase(supabaseUser: SupabaseUser) {
 }
 
 /**
+ * Ensure user exists in database with comprehensive fallback logic
+ * This handles the case where a user authenticates but doesn't exist in our DB yet
+ */
+export async function ensureUserInDatabase(): Promise<void> {
+  try {
+    const session = await getSession();
+    if (!session.isAuthenticated || !session.user) {
+      return;
+    }
+
+    const existing = await db
+      .select()
+      .from(originalUser)
+      .where(eq(originalUser.id, session.user.id))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return; // User already exists
+    }
+
+    // Try to fetch from Supabase Admin API first
+    try {
+      const supabase = createSupabaseAdminClient();
+      const { data: userData, error } = await supabase.auth.admin.getUserById(session.user.id);
+
+      if (!error && userData?.user) {
+        const realUserData = {
+          id: userData.user.id,
+          email: userData.user.email || session.user.email,
+          name:
+            userData.user.user_metadata?.name ||
+            userData.user.user_metadata?.full_name ||
+            session.user.name ||
+            session.user.email,
+          emailVerified: !!userData.user.email_confirmed_at,
+          createdAt: new Date(userData.user.created_at),
+          updatedAt: new Date(userData.user.updated_at),
+        };
+        await upsertUserData(realUserData);
+        return;
+      }
+    } catch (_adminErr) {
+      // Fall through to session-derived data
+    }
+
+    // Fallback to session-derived fields
+    const fallbackUserData = {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name || session.user.email,
+      emailVerified: !!session.user.emailVerified,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await upsertUserData(fallbackUserData);
+  } catch (syncError) {
+    getLogger().error("Error ensuring user in database:", syncError);
+    // Don't throw - allow calling code to continue
+  }
+}
+
+/**
+ * Upsert user data (insert or update)
+ */
+async function upsertUserData(userData: {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): Promise<void> {
+  try {
+    await db.insert(originalUser).values(userData);
+  } catch {
+    // If insert fails (e.g., user was created concurrently), try update
+    await db
+      .update(originalUser)
+      .set({
+        email: userData.email,
+        name: userData.name,
+        emailVerified: userData.emailVerified,
+        updatedAt: new Date(),
+      })
+      .where(eq(originalUser.id, userData.id));
+  }
+}
+
+/**
  * Get user from database by Supabase ID
  */
 export async function getUserFromDatabase(supabaseId: string) {
@@ -200,11 +282,7 @@ export async function getUserFromDatabase(supabaseId: string) {
     // Consolidated to always use auth.user
     const userTable = originalUser;
 
-    const users = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, supabaseId))
-      .limit(1);
+    const users = await db.select().from(userTable).where(eq(userTable.id, supabaseId)).limit(1);
     return users[0] || null;
   } catch (error) {
     getLogger().error("Error getting user from database:", error);
@@ -247,7 +325,7 @@ export function createSupabaseAdminClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 }
 

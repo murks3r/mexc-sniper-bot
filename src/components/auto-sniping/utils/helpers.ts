@@ -51,9 +51,7 @@ export const getPnLColorClass = (pnl: string | number): string => {
 /**
  * Get alert badge variant based on severity
  */
-export const getAlertBadgeVariant = (
-  severity: string
-): "destructive" | "secondary" | "outline" => {
+export const getAlertBadgeVariant = (severity: string): "destructive" | "secondary" | "outline" => {
   if (severity === "critical" || severity === "error") return "destructive";
   if (severity === "warning") return "secondary";
   return "outline";
@@ -93,10 +91,7 @@ export const getStatusColor = (status: string): string => {
 /**
  * Safe number parsing with fallback
  */
-export const safeParseNumber = (
-  value: string | number,
-  fallback = 0
-): number => {
+export const safeParseNumber = (value: string | number, fallback = 0): number => {
   if (typeof value === "number") return value;
   const parsed = Number.parseFloat(value);
   return Number.isNaN(parsed) ? fallback : parsed;
@@ -108,7 +103,7 @@ export const safeParseNumber = (
 export const validateNumberRange = (
   value: number,
   min: number,
-  max: number
+  max: number,
 ): { isValid: boolean; error?: string } => {
   if (value < min) {
     return { isValid: false, error: `Value must be at least ${min}` };
@@ -124,7 +119,7 @@ export const validateNumberRange = (
  */
 export const debounce = <T extends (...args: readonly unknown[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
   return (...args: Parameters<T>) => {
@@ -136,10 +131,7 @@ export const debounce = <T extends (...args: readonly unknown[]) => unknown>(
 /**
  * Calculate success rate percentage
  */
-export const calculateSuccessRate = (
-  successful: number,
-  total: number
-): number => {
+export const calculateSuccessRate = (successful: number, total: number): number => {
   if (total === 0) return 0;
   return (successful / total) * 100;
 };
@@ -164,19 +156,14 @@ export const formatDuration = (milliseconds: number): string => {
 /**
  * Generate unique key for React lists
  */
-export const generateKey = (
-  prefix: string,
-  ...identifiers: (string | number)[]
-): string => {
+export const generateKey = (prefix: string, ...identifiers: (string | number)[]): string => {
   return `${prefix}-${identifiers.join("-")}`;
 };
 
 /**
  * Check if value is positive, negative, or neutral
  */
-export const getValueTrend = (
-  value: number
-): "positive" | "negative" | "neutral" => {
+export const getValueTrend = (value: number): "positive" | "negative" | "neutral" => {
   if (value > 0) return "positive";
   if (value < 0) return "negative";
   return "neutral";

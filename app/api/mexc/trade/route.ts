@@ -10,11 +10,11 @@ import {
   HTTP_STATUS,
 } from "@/src/lib/api-response";
 import { getCachedCredentials } from "@/src/lib/credential-cache";
+import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 import type { OrderParameters } from "@/src/services/api/mexc-client-types";
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 import { transactionLockService } from "@/src/services/data/transaction-lock-service";
 import { enhancedRiskManagementService } from "@/src/services/risk/enhanced-risk-management-service";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 
 // Create logger at module level like other working routes
 export async function POST(request: NextRequest) {
@@ -25,15 +25,7 @@ export async function POST(request: NextRequest) {
     console.log(`[MEXC Trade] Request from user: ${user.email} (${userId})`);
 
     const body = await request.json();
-    const {
-      symbol,
-      side,
-      type,
-      quantity,
-      price,
-      snipeTargetId,
-      skipLock,
-    } = body;
+    const { symbol, side, type, quantity, price, snipeTargetId, skipLock } = body;
 
     // Get API credentials - try database first, then fallback to environment
     let apiKey: string;
@@ -56,8 +48,8 @@ export async function POST(request: NextRequest) {
         and(
           eq(apiCredentials.userId, userId),
           eq(apiCredentials.provider, "mexc"),
-          eq(apiCredentials.isActive, true)
-        )
+          eq(apiCredentials.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -68,17 +60,14 @@ export async function POST(request: NextRequest) {
           userId,
           credentials[0].encryptedApiKey,
           credentials[0].encryptedSecretKey,
-          credentials[0].encryptedPassphrase
+          credentials[0].encryptedPassphrase,
         );
         apiKey = decrypted.apiKey;
         secretKey = decrypted.secretKey;
         credentialSource = "database";
         console.info(`Using database credentials for user ${userId}`);
       } catch (decryptError) {
-        console.error(
-          `Failed to decrypt database credentials for ${userId}:`,
-          decryptError
-        );
+        console.error(`Failed to decrypt database credentials for ${userId}:`, decryptError);
         // Fall through to environment fallback
       }
     }
@@ -96,14 +85,13 @@ export async function POST(request: NextRequest) {
       } else {
         return apiResponse(
           createErrorResponse("No MEXC API credentials found", {
-            message:
-              "Please configure MEXC API credentials in settings or environment variables",
+            message: "Please configure MEXC API credentials in settings or environment variables",
             details: {
               databaseCredentials: !!credentials[0],
               environmentCredentials: !!(envApiKey && envSecretKey),
             },
           }),
-          HTTP_STATUS.BAD_REQUEST
+          HTTP_STATUS.BAD_REQUEST,
         );
       }
     }
@@ -114,7 +102,7 @@ export async function POST(request: NextRequest) {
         createErrorResponse("Missing required trading parameters", {
           message: "Symbol, side, type, and quantity are required",
         }),
-        HTTP_STATUS.BAD_REQUEST
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
 
@@ -131,14 +119,14 @@ export async function POST(request: NextRequest) {
       const lockStatus = await transactionLockService.getLockStatus(resourceId);
       if (lockStatus.isLocked) {
         console.info(
-          `🔒 Resource ${resourceId} is locked. Queue length: ${lockStatus.queueLength}`
+          `🔒 Resource ${resourceId} is locked. Queue length: ${lockStatus.queueLength}`,
         );
         return apiResponse(
           createErrorResponse("Trade already in progress", {
             message: `Another trade for ${symbol} ${side} is being processed. Queue position: ${lockStatus.queueLength + 1}`,
             lockStatus,
           }),
-          HTTP_STATUS.CONFLICT
+          HTTP_STATUS.CONFLICT,
         );
       }
     }
@@ -161,16 +149,13 @@ export async function POST(request: NextRequest) {
 
     // Enhanced Risk Assessment (if not skipped)
     if (!skipLock) {
-      console.info(
-        `🎯 Risk Assessment: Evaluating trade risk for ${userId} - ${symbol} ${side}`
-      );
+      console.info(`🎯 Risk Assessment: Evaluating trade risk for ${userId} - ${symbol} ${side}`);
 
       try {
-        const riskAssessment =
-          await enhancedRiskManagementService.assessTradingRisk(
-            userId,
-            orderParams
-          );
+        const riskAssessment = await enhancedRiskManagementService.assessTradingRisk(
+          userId,
+          orderParams,
+        );
 
         console.info(`🎯 Risk Assessment Result:`, {
           approved: riskAssessment.approved,
@@ -195,16 +180,13 @@ export async function POST(request: NextRequest) {
                 compliance: riskAssessment.compliance,
               },
             }),
-            HTTP_STATUS.FORBIDDEN
+            HTTP_STATUS.FORBIDDEN,
           );
         }
 
         // Log warnings even for approved trades
         if (riskAssessment.warnings.length > 0) {
-          console.warn(
-            `⚠️ Risk Management Warnings for ${symbol}:`,
-            riskAssessment.warnings
-          );
+          console.warn(`⚠️ Risk Management Warnings for ${symbol}:`, riskAssessment.warnings);
         }
 
         // Add risk metadata to order for tracking
@@ -216,8 +198,7 @@ export async function POST(request: NextRequest) {
         };
       } catch (riskError) {
         console.error(`❌ Risk Assessment Failed for ${symbol}:`, {
-          error:
-            riskError instanceof Error ? riskError.message : String(riskError),
+          error: riskError instanceof Error ? riskError.message : String(riskError),
         });
 
         // On risk assessment failure, block the trade for safety
@@ -226,11 +207,9 @@ export async function POST(request: NextRequest) {
             message: "Unable to assess trade risk - blocking for safety",
             code: "RISK_ASSESSMENT_ERROR",
             details:
-              riskError instanceof Error
-                ? riskError.message
-                : "Unknown risk assessment error",
+              riskError instanceof Error ? riskError.message : "Unknown risk assessment error",
           }),
-          HTTP_STATUS.INTERNAL_SERVER_ERROR
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
         );
       }
     } else {
@@ -251,9 +230,7 @@ export async function POST(request: NextRequest) {
       // Check if paper trading is enabled
       const paperTradingEnabled = process.env.MEXC_PAPER_TRADING === "true";
 
-      console.info(
-        `Paper trading mode: ${paperTradingEnabled ? "ENABLED" : "DISABLED"}`
-      );
+      console.info(`Paper trading mode: ${paperTradingEnabled ? "ENABLED" : "DISABLED"}`);
 
       // Use executeTrade instead of placeOrder to support paper trading
       const orderResponse = await mexcService.executeTrade({
@@ -310,7 +287,7 @@ export async function POST(request: NextRequest) {
           timeoutMs: 30000, // 30 second timeout
           priority: side.toUpperCase() === "SELL" ? 1 : 5, // Prioritize sells
         },
-        executeTrade
+        executeTrade,
       );
 
       if (!lockResult.success) {
@@ -320,7 +297,7 @@ export async function POST(request: NextRequest) {
             lockId: lockResult.lockId,
             executionTimeMs: lockResult.executionTimeMs,
           }),
-          HTTP_STATUS.BAD_REQUEST
+          HTTP_STATUS.BAD_REQUEST,
         );
       }
 
@@ -365,9 +342,7 @@ export async function POST(request: NextRequest) {
             : null,
           slippagePercent:
             price && orderData.price
-              ? ((parseFloat(orderData.price) - parseFloat(price)) /
-                  parseFloat(price)) *
-                100
+              ? ((parseFloat(orderData.price) - parseFloat(price)) / parseFloat(price)) * 100
               : null,
           status: "success",
           requestedAt: new Date(),
@@ -377,9 +352,7 @@ export async function POST(request: NextRequest) {
         };
 
         await db.insert(executionHistory).values(executionRecord);
-        console.info(
-          `📝 Execution history saved for order ${orderResult.orderId}`
-        );
+        console.info(`📝 Execution history saved for order ${orderResult.orderId}`);
       } catch (error) {
         console.error("Failed to save execution history:", { error: error });
         // Don't fail the trade response if history save fails
@@ -389,7 +362,7 @@ export async function POST(request: NextRequest) {
         createSuccessResponse(orderResult, {
           message: "Order placed successfully",
         }),
-        HTTP_STATUS.CREATED
+        HTTP_STATUS.CREATED,
       );
     } else {
       console.error(`❌ Trading order failed:`, orderResult);
@@ -399,7 +372,7 @@ export async function POST(request: NextRequest) {
           message: "Order placement failed",
           details: orderResult,
         }),
-        HTTP_STATUS.BAD_REQUEST
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
   } catch (error) {
@@ -412,15 +385,13 @@ export async function POST(request: NextRequest) {
           message: "Please sign in to execute trades",
           code: "AUTHENTICATION_REQUIRED",
         }),
-        HTTP_STATUS.UNAUTHORIZED
+        HTTP_STATUS.UNAUTHORIZED,
       );
     }
 
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }

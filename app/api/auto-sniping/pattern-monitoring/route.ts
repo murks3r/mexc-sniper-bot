@@ -6,10 +6,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { apiAuthWrapper } from "@/src/lib/api-auth";
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from "@/src/lib/api-response";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import { PatternMonitoringService } from "@/src/services/notification/pattern-monitoring-service";
 
 // Lazy service getter to avoid build-time initialization
@@ -26,10 +23,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     const { searchParams } = new URL(request.url);
     const _includeActivity = searchParams.get("include_activity") === "true";
     const includePatterns = searchParams.get("include_patterns") === "true";
-    const patternLimit = parseInt(
-      searchParams.get("pattern_limit") || "20",
-      10
-    );
+    const patternLimit = parseInt(searchParams.get("pattern_limit") || "20", 10);
 
     // Get monitoring report
     const report = await getPatternMonitoringService().getMonitoringReport();
@@ -37,8 +31,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     // Optionally include recent patterns
     let recentPatterns;
     if (includePatterns) {
-      recentPatterns =
-        getPatternMonitoringService().getRecentPatterns(patternLimit);
+      recentPatterns = getPatternMonitoringService().getRecentPatterns(patternLimit);
     }
 
     const responseData = {
@@ -48,15 +41,14 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
         isActive: report.stats.engineStatus === "active",
         lastUpdate: report.lastUpdated,
         totalAlerts: report.activeAlerts.length,
-        unacknowledgedAlerts: report.activeAlerts.filter((a) => !a.acknowledged)
-          .length,
+        unacknowledgedAlerts: report.activeAlerts.filter((a) => !a.acknowledged).length,
       },
     };
 
     return NextResponse.json(
       createSuccessResponse(responseData, {
         message: "Pattern monitoring report retrieved successfully",
-      })
+      }),
     );
   } catch (error) {
     console.error("[API] Pattern monitoring GET failed:", { error });
@@ -64,7 +56,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
       createErrorResponse("Failed to get pattern monitoring report", {
         details: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
@@ -84,8 +76,8 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         return NextResponse.json(
           createSuccessResponse(
             { status: "started" },
-            { message: "Pattern monitoring started successfully" }
-          )
+            { message: "Pattern monitoring started successfully" },
+          ),
         );
 
       case "stop_monitoring":
@@ -93,26 +85,24 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         return NextResponse.json(
           createSuccessResponse(
             { status: "stopped" },
-            { message: "Pattern monitoring stopped successfully" }
-          )
+            { message: "Pattern monitoring stopped successfully" },
+          ),
         );
 
       case "manual_detection": {
         if (!symbols || !Array.isArray(symbols)) {
           return NextResponse.json(
-            createErrorResponse(
-              "Invalid request: symbols array is required for manual detection",
-              { code: "INVALID_SYMBOLS" }
-            ),
-            { status: 400 }
+            createErrorResponse("Invalid request: symbols array is required for manual detection", {
+              code: "INVALID_SYMBOLS",
+            }),
+            { status: 400 },
           );
         }
 
-        const patterns =
-          await getPatternMonitoringService().detectPatternsManually(
-            symbols,
-            calendarEntries
-          );
+        const patterns = await getPatternMonitoringService().detectPatternsManually(
+          symbols,
+          calendarEntries,
+        );
 
         return NextResponse.json(
           createSuccessResponse(
@@ -120,98 +110,32 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
               patterns,
               summary: {
                 totalPatterns: patterns.length,
-                readyStatePatterns: patterns.filter(
-                  (p) => p.patternType === "ready_state"
-                ).length,
-                preReadyPatterns: patterns.filter(
-                  (p) => p.patternType === "pre_ready"
-                ).length,
-                advanceOpportunities: patterns.filter(
-                  (p) => p.patternType === "launch_sequence"
-                ).length,
+                readyStatePatterns: patterns.filter((p) => p.patternType === "ready_state").length,
+                preReadyPatterns: patterns.filter((p) => p.patternType === "pre_ready").length,
+                advanceOpportunities: patterns.filter((p) => p.patternType === "launch_sequence")
+                  .length,
                 averageConfidence:
                   patterns.length > 0
-                    ? patterns.reduce((sum, p) => sum + p.confidence, 0) /
-                      patterns.length
+                    ? patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length
                     : 0,
               },
             },
             {
               message: `Manual pattern detection completed: ${patterns.length} patterns found`,
-            }
-          )
+            },
+          ),
         );
       }
 
       case "trigger_pattern_to_targets": {
-        // NEW ACTION: Trigger pattern detection and create snipe targets
-        const { patternStrategyOrchestrator } = await import(
-          "@/src/services/data/pattern-detection/pattern-strategy-orchestrator"
-        );
-        const { patternTargetIntegrationService } = await import(
-          "@/src/services/data/pattern-detection/pattern-target-integration-service"
-        );
-        const { UnifiedMexcServiceV2 } = await import(
-          "@/src/services/api/unified-mexc-service-v2"
-        );
-
-        const mexcService = new UnifiedMexcServiceV2();
-        const userId = body.userId || "system";
-
-        // Get market data
-        const symbolsResponse = await mexcService.getSymbolsData();
-        if (!symbolsResponse.success || !symbolsResponse.data) {
-          return NextResponse.json(
-            createErrorResponse("Failed to fetch market data from MEXC", {
-              code: "MEXC_DATA_FAILED",
-            }),
-            { status: 500 }
-          );
-        }
-
-        // Run pattern detection workflow (this will auto-create snipe targets)
-        const workflowResult =
-          await patternStrategyOrchestrator.executePatternWorkflow({
-            type: "monitoring",
-            input: {
-              symbolData: symbolsResponse.data as any[],
-            },
-            options: {
-              confidenceThreshold: body.confidenceThreshold || 75,
-              enableAgentAnalysis: true,
-              maxExecutionTime: 30000,
-            },
-          });
-
-        // Get integration statistics
-        const stats =
-          await patternTargetIntegrationService.getStatistics(userId);
-
+        // Removed: Pattern detection workflow - pattern-detection services removed
+        // Targets are now created directly from calendar sync
         return NextResponse.json(
-          createSuccessResponse(
-            {
-              workflow: {
-                success: workflowResult.success,
-                patternsDetected:
-                  workflowResult.results.patternAnalysis?.matches?.length || 0,
-                readyStatePatterns:
-                  workflowResult.results.patternAnalysis?.matches?.filter(
-                    (m) => m.patternType === "ready_state"
-                  ).length || 0,
-                executionTime: workflowResult.performance.executionTime,
-              },
-              targetIntegration: stats,
-              message: "Pattern detection triggered and snipe targets created",
-              nextSteps: [
-                "Snipe targets have been created in the database",
-                "Auto-sniping orchestrator will pick them up automatically",
-                "Monitor /api/auto-sniping/control for execution status",
-              ],
-            },
-            {
-              message: `Pattern-to-targets integration completed: ${stats.totalTargetsCreated} total targets`,
-            }
-          )
+          createErrorResponse("Pattern detection removed - use calendar sync instead", {
+            code: "PATTERN_DETECTION_REMOVED",
+            message: "Targets are now created automatically from calendar sync. Use /api/sync/calendar-to-database to sync calendar listings.",
+          }),
+          { status: 410 }, // 410 Gone - feature removed
         );
       }
 
@@ -221,41 +145,38 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Invalid request: alertId is required", {
               code: "MISSING_ALERT_ID",
             }),
-            { status: 400 }
+            { status: 400 },
           );
         }
 
-        const acknowledged =
-          getPatternMonitoringService().acknowledgeAlert(alertId);
+        const acknowledged = getPatternMonitoringService().acknowledgeAlert(alertId);
         if (!acknowledged) {
           return NextResponse.json(
             createErrorResponse("Alert not found", { code: "ALERT_NOT_FOUND" }),
-            { status: 404 }
+            { status: 404 },
           );
         }
 
         return NextResponse.json(
           createSuccessResponse(
             { alertId, status: "acknowledged" },
-            { message: "Alert acknowledged successfully" }
-          )
+            { message: "Alert acknowledged successfully" },
+          ),
         );
       }
 
       case "clear_acknowledged_alerts": {
-        const clearedCount =
-          getPatternMonitoringService().clearAcknowledgedAlerts();
+        const clearedCount = getPatternMonitoringService().clearAcknowledgedAlerts();
         return NextResponse.json(
           createSuccessResponse(
             { clearedCount },
-            { message: `${clearedCount} acknowledged alerts cleared` }
-          )
+            { message: `${clearedCount} acknowledged alerts cleared` },
+          ),
         );
       }
 
       case "get_monitoring_status": {
-        const report =
-          await getPatternMonitoringService().getMonitoringReport();
+        const report = await getPatternMonitoringService().getMonitoringReport();
         return NextResponse.json(
           createSuccessResponse(
             {
@@ -268,8 +189,8 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             },
             {
               message: "Monitoring status retrieved successfully",
-            }
-          )
+            },
+          ),
         );
       }
 
@@ -278,7 +199,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
           createErrorResponse(`Unknown action: ${action}`, {
             code: "INVALID_ACTION",
           }),
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error) {
@@ -287,7 +208,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
       createErrorResponse("Pattern monitoring operation failed", {
         details: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
@@ -310,8 +231,8 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
         {
           message:
             "Pattern monitoring configuration updated (note: requires service restart for changes to take effect)",
-        }
-      )
+        },
+      ),
     );
   } catch (error) {
     console.error("[API] Pattern monitoring PUT failed:", { error });
@@ -319,7 +240,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       createErrorResponse("Failed to update pattern monitoring configuration", {
         details: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

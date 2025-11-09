@@ -17,7 +17,7 @@ export class TradingNotificationServiceAdapter implements NotificationService {
     } = console,
     private readonly eventEmitter?: {
       emit: (event: string, data: any) => void;
-    }
+    },
   ) {}
 
   async notifyTradeExecution(trade: Trade): Promise<void> {
@@ -181,7 +181,7 @@ export class TradingNotificationServiceAdapter implements NotificationService {
 
   async notifyPositionUpdate(
     trade: Trade,
-    updateType: "stop_loss" | "take_profit" | "partial_fill"
+    updateType: "stop_loss" | "take_profit" | "partial_fill",
   ): Promise<void> {
     try {
       this.logger.info("Position update notification", {
@@ -213,7 +213,7 @@ export class TradingNotificationServiceAdapter implements NotificationService {
 
   async notifyRiskAlert(
     trade: Trade,
-    alertType: "stop_loss_triggered" | "max_loss_approaching"
+    alertType: "stop_loss_triggered" | "max_loss_approaching",
   ): Promise<void> {
     try {
       this.logger.warn("Risk alert notification", {

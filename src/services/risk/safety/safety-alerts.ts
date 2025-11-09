@@ -7,11 +7,7 @@
 
 import { EventEmitter } from "node:events";
 import type { WebSocketServerService } from "../../data/websocket/websocket-server-service";
-import type {
-  SafetyAction,
-  SafetyAlert,
-  SafetyCoordinatorConfig,
-} from "./safety-types";
+import type { SafetyAction, SafetyAlert, SafetyCoordinatorConfig } from "./safety-types";
 
 export class SafetyAlertsManager extends EventEmitter {
   private logger = {
@@ -32,7 +28,7 @@ export class SafetyAlertsManager extends EventEmitter {
 
   constructor(
     private config: SafetyCoordinatorConfig,
-    private websocketService?: WebSocketServerService
+    private websocketService?: WebSocketServerService,
   ) {
     super();
   }
@@ -69,10 +65,7 @@ export class SafetyAlertsManager extends EventEmitter {
    * Create a new safety alert
    */
   async createAlert(
-    alertData: Omit<
-      SafetyAlert,
-      "id" | "timestamp" | "acknowledged" | "resolved"
-    >
+    alertData: Omit<SafetyAlert, "id" | "timestamp" | "acknowledged" | "resolved">,
   ): Promise<string> {
     const alert: SafetyAlert = {
       id: `alert-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -92,9 +85,7 @@ export class SafetyAlertsManager extends EventEmitter {
       await this.broadcastSafetyUpdate("alert", alert);
     }
 
-    console.info(
-      `[SafetyAlertsManager] Created ${alert.severity} alert: ${alert.title}`
-    );
+    console.info(`[SafetyAlertsManager] Created ${alert.severity} alert: ${alert.title}`);
 
     return alert.id;
   }
@@ -136,11 +127,7 @@ export class SafetyAlertsManager extends EventEmitter {
   /**
    * Resolve a safety alert
    */
-  async resolveAlert(
-    alertId: string,
-    userId: string,
-    resolution: string
-  ): Promise<boolean> {
+  async resolveAlert(alertId: string, userId: string, resolution: string): Promise<boolean> {
     const alert = this.activeAlerts.get(alertId);
     if (!alert) {
       return false;
@@ -176,7 +163,7 @@ export class SafetyAlertsManager extends EventEmitter {
     title: string,
     message: string,
     source: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<string> {
     return this.createAlert({
       type: "emergency_condition",
@@ -195,7 +182,7 @@ export class SafetyAlertsManager extends EventEmitter {
   async createAgentAnomalyAlert(
     agentId: string,
     anomalyDetails: string,
-    severity: "low" | "medium" | "high" | "critical" = "medium"
+    severity: "low" | "medium" | "high" | "critical" = "medium",
   ): Promise<string> {
     return this.createAlert({
       type: "agent_anomaly",
@@ -203,11 +190,7 @@ export class SafetyAlertsManager extends EventEmitter {
       title: `Agent Anomaly Detected: ${agentId}`,
       message: `Unusual behavior detected in agent ${agentId}: ${anomalyDetails}`,
       source: agentId,
-      actions: [
-        "Review agent behavior",
-        "Check agent configuration",
-        "Consider agent restart",
-      ],
+      actions: ["Review agent behavior", "Check agent configuration", "Consider agent restart"],
       metadata: { agentId, anomalyDetails },
     });
   }
@@ -219,7 +202,7 @@ export class SafetyAlertsManager extends EventEmitter {
     riskType: string,
     currentValue: number,
     threshold: number,
-    severity: "low" | "medium" | "high" | "critical" = "high"
+    severity: "low" | "medium" | "high" | "critical" = "high",
   ): Promise<string> {
     return this.createAlert({
       type: "risk_breach",
@@ -241,7 +224,7 @@ export class SafetyAlertsManager extends EventEmitter {
    */
   clearResolvedAlerts(): number {
     const resolvedCount = Array.from(this.activeAlerts.values()).filter(
-      (alert) => alert.resolved
+      (alert) => alert.resolved,
     ).length;
 
     for (const [id, alert] of this.activeAlerts.entries()) {
@@ -257,21 +240,15 @@ export class SafetyAlertsManager extends EventEmitter {
   /**
    * Get alerts by severity
    */
-  getAlertsBySeverity(
-    severity: "low" | "medium" | "high" | "critical"
-  ): SafetyAlert[] {
-    return Array.from(this.activeAlerts.values()).filter(
-      (alert) => alert.severity === severity
-    );
+  getAlertsBySeverity(severity: "low" | "medium" | "high" | "critical"): SafetyAlert[] {
+    return Array.from(this.activeAlerts.values()).filter((alert) => alert.severity === severity);
   }
 
   /**
    * Get alerts by type
    */
   getAlertsByType(type: SafetyAlert["type"]): SafetyAlert[] {
-    return Array.from(this.activeAlerts.values()).filter(
-      (alert) => alert.type === type
-    );
+    return Array.from(this.activeAlerts.values()).filter((alert) => alert.type === type);
   }
 
   /**
@@ -291,14 +268,9 @@ export class SafetyAlertsManager extends EventEmitter {
       byType: {
         agent_anomaly: active.filter((a) => a.type === "agent_anomaly").length,
         risk_breach: active.filter((a) => a.type === "risk_breach").length,
-        emergency_condition: active.filter(
-          (a) => a.type === "emergency_condition"
-        ).length,
-        consensus_failure: active.filter((a) => a.type === "consensus_failure")
-          .length,
-        system_degradation: active.filter(
-          (a) => a.type === "system_degradation"
-        ).length,
+        emergency_condition: active.filter((a) => a.type === "emergency_condition").length,
+        consensus_failure: active.filter((a) => a.type === "consensus_failure").length,
+        system_degradation: active.filter((a) => a.type === "system_degradation").length,
       },
       acknowledged: active.filter((a) => a.acknowledged).length,
       unacknowledged: active.filter((a) => !a.acknowledged).length,
@@ -309,7 +281,7 @@ export class SafetyAlertsManager extends EventEmitter {
    * Record a safety action
    */
   private async recordSafetyAction(
-    actionData: Omit<SafetyAction, "id" | "executedAt">
+    actionData: Omit<SafetyAction, "id" | "executedAt">,
   ): Promise<void> {
     const action: SafetyAction = {
       id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -328,9 +300,7 @@ export class SafetyAlertsManager extends EventEmitter {
     // Emit action event
     this.emit("action_executed", action);
 
-    console.info(
-      `[SafetyAlertsManager] Executed ${action.type} action: ${action.reason}`
-    );
+    console.info(`[SafetyAlertsManager] Executed ${action.type} action: ${action.reason}`);
   }
 
   /**
@@ -352,10 +322,7 @@ export class SafetyAlertsManager extends EventEmitter {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error(
-        "[SafetyAlertsManager] Failed to broadcast safety update:",
-        error
-      );
+      console.error("[SafetyAlertsManager] Failed to broadcast safety update:", error);
     }
   }
 

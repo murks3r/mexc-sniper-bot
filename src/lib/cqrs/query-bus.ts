@@ -6,10 +6,7 @@
  */
 
 import { EventEmitter } from "node:events";
-import {
-  type DomainEvent,
-  eventStoreManager,
-} from "../event-sourcing/event-store";
+import { type DomainEvent, eventStoreManager } from "../event-sourcing/event-store";
 
 // Base Query Interface
 export interface Query {
@@ -79,7 +76,7 @@ export class QueryBus extends EventEmitter {
    */
   registerHandler<TQuery extends Query, TResult>(
     queryType: string,
-    handler: QueryHandler<TQuery, TResult>
+    handler: QueryHandler<TQuery, TResult>,
   ): void {
     this.handlers.set(queryType, handler);
   }
@@ -227,7 +224,7 @@ export abstract class BaseQueryHandler<TQuery extends Query, TResult = any>
     data: T[],
     page: number,
     limit: number,
-    total: number
+    total: number,
   ): QueryResult<T[]> {
     return {
       success: true,
@@ -332,7 +329,7 @@ export class InMemoryReadModelStore {
 export abstract class BaseReadModelProjection implements ReadModelProjection {
   constructor(
     public readonly projectionName: string,
-    protected readonly store: InMemoryReadModelStore
+    protected readonly store: InMemoryReadModelStore,
   ) {}
 
   abstract handle(event: DomainEvent): Promise<void>;
@@ -342,9 +339,7 @@ export abstract class BaseReadModelProjection implements ReadModelProjection {
     await this.store.clear(this.projectionName);
 
     // Replay all events
-    await eventStoreManager.replayEvents(undefined, (event) =>
-      this.handle(event)
-    );
+    await eventStoreManager.replayEvents(undefined, (event) => this.handle(event));
   }
 
   async getModel(id: string): Promise<ReadModel | null> {
@@ -371,7 +366,7 @@ export class QueryFactory {
   static createQuery<T = any>(
     type: string,
     parameters: T,
-    metadata: Partial<Query["metadata"]> = {}
+    metadata: Partial<Query["metadata"]> = {},
   ): Query {
     return {
       id: `query_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

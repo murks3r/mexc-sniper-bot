@@ -122,7 +122,7 @@ export const CONFIG_VALIDATION_RULES: ConfigValidationRule[] = [
  * Merge user configuration with defaults
  */
 export function mergeEmergencyConfig(
-  userConfig: Partial<AdvancedEmergencyConfig>
+  userConfig: Partial<AdvancedEmergencyConfig>,
 ): AdvancedEmergencyConfig {
   return {
     ...DEFAULT_EMERGENCY_CONFIG,
@@ -142,7 +142,7 @@ export function mergeEmergencyConfig(
  * Merge legacy configuration with defaults
  */
 export function mergeLegacyConfig(
-  userConfig: Partial<LegacyEmergencyConfig>
+  userConfig: Partial<LegacyEmergencyConfig>,
 ): LegacyEmergencyConfig {
   return {
     ...DEFAULT_LEGACY_CONFIG,
@@ -161,9 +161,7 @@ export function mergeLegacyConfig(
 /**
  * Convert legacy configuration to new format
  */
-export function convertLegacyConfig(
-  legacyConfig: LegacyEmergencyConfig
-): AdvancedEmergencyConfig {
+export function convertLegacyConfig(legacyConfig: LegacyEmergencyConfig): AdvancedEmergencyConfig {
   return {
     enabled: true,
     testMode: false,
@@ -205,9 +203,7 @@ export function validateEmergencyConfig(config: AdvancedEmergencyConfig): {
     // Check type
     const actualType = Array.isArray(value) ? "array" : typeof value;
     if (actualType !== rule.type) {
-      errors.push(
-        `Invalid type for ${rule.field}: expected ${rule.type}, got ${actualType}`
-      );
+      errors.push(`Invalid type for ${rule.field}: expected ${rule.type}, got ${actualType}`);
       continue;
     }
 
@@ -223,13 +219,9 @@ export function validateEmergencyConfig(config: AdvancedEmergencyConfig): {
 
     // Check allowed values
     if (rule.allowedValues && rule.type === "array") {
-      const invalidValues = value.filter(
-        (v: any) => !rule.allowedValues?.includes(v)
-      );
+      const invalidValues = value.filter((v: any) => !rule.allowedValues?.includes(v));
       if (invalidValues.length > 0) {
-        errors.push(
-          `Invalid values in ${rule.field}: ${invalidValues.join(", ")}`
-        );
+        errors.push(`Invalid values in ${rule.field}: ${invalidValues.join(", ")}`);
       }
     } else if (rule.allowedValues && !rule.allowedValues.includes(value)) {
       errors.push(`Invalid value for ${rule.field}: ${value}`);
@@ -251,7 +243,7 @@ export function validateEmergencyConfig(config: AdvancedEmergencyConfig): {
  * Get configuration for specific environment
  */
 export function getEnvironmentConfig(
-  env: "development" | "staging" | "production"
+  env: "development" | "staging" | "production",
 ): Partial<AdvancedEmergencyConfig> {
   switch (env) {
     case "development":
@@ -295,8 +287,7 @@ export class EmergencyConfigManager {
 
   constructor(userConfig: Partial<AdvancedEmergencyConfig> = {}) {
     const envConfig = getEnvironmentConfig(
-      (process.env.NODE_ENV as "development" | "staging" | "production") ||
-        "development"
+      (process.env.NODE_ENV as "development" | "staging" | "production") || "development",
     );
 
     // Merge: defaults -> environment -> user config
@@ -377,9 +368,7 @@ export class EmergencyConfigManager {
       this.config = mergeEmergencyConfig(importedConfig);
       this.validateConfig();
     } catch (error) {
-      throw new Error(
-        `Failed to import configuration: ${(error as Error).message}`
-      );
+      throw new Error(`Failed to import configuration: ${(error as Error).message}`);
     }
   }
 }

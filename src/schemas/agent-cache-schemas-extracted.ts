@@ -231,15 +231,9 @@ export type WorkflowMetadata = z.infer<typeof WorkflowMetadataSchema>;
 export type WorkflowCacheEntry = z.infer<typeof WorkflowCacheEntrySchema>;
 export type AgentHealthMetadata = z.infer<typeof AgentHealthMetadataSchema>;
 export type AgentHealthCache = z.infer<typeof AgentHealthCacheSchema>;
-export type AgentPerformanceMetrics = z.infer<
-  typeof AgentPerformanceMetricsSchema
->;
-export type WorkflowEfficiencyMetrics = z.infer<
-  typeof WorkflowEfficiencyMetricsSchema
->;
-export type HealthMonitoringMetrics = z.infer<
-  typeof HealthMonitoringMetricsSchema
->;
+export type AgentPerformanceMetrics = z.infer<typeof AgentPerformanceMetricsSchema>;
+export type WorkflowEfficiencyMetrics = z.infer<typeof WorkflowEfficiencyMetricsSchema>;
+export type HealthMonitoringMetrics = z.infer<typeof HealthMonitoringMetricsSchema>;
 export type AgentCacheAnalytics = z.infer<typeof AgentCacheAnalyticsSchema>;
 
 // ============================================================================
@@ -263,9 +257,7 @@ export function validateAgentCacheMetrics(data: unknown): AgentCacheMetrics {
 /**
  * Validate cached agent response
  */
-export function validateCachedAgentResponse(
-  data: unknown
-): CachedAgentResponse {
+export function validateCachedAgentResponse(data: unknown): CachedAgentResponse {
   return CachedAgentResponseSchema.parse(data);
 }
 
@@ -286,9 +278,7 @@ export function validateAgentHealthCache(data: unknown): AgentHealthCache {
 /**
  * Validate agent cache analytics
  */
-export function validateAgentCacheAnalytics(
-  data: unknown
-): AgentCacheAnalytics {
+export function validateAgentCacheAnalytics(data: unknown): AgentCacheAnalytics {
   return AgentCacheAnalyticsSchema.parse(data);
 }
 

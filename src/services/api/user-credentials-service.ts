@@ -16,24 +16,19 @@ export interface DecryptedCredentials {
  */
 export async function getUserCredentials(
   userId: string,
-  provider = "mexc"
+  provider = "mexc",
 ): Promise<DecryptedCredentials | null> {
   try {
     // Query the database for user credentials
     const result = await db
       .select()
       .from(apiCredentials)
-      .where(
-        and(
-          eq(apiCredentials.userId, userId),
-          eq(apiCredentials.provider, provider)
-        )
-      )
+      .where(and(eq(apiCredentials.userId, userId), eq(apiCredentials.provider, provider)))
       .limit(1);
 
     if (result.length === 0) {
       console.info(
-        `[UserCredentialsService] No credentials found for user ${userId} and provider ${provider}`
+        `[UserCredentialsService] No credentials found for user ${userId} and provider ${provider}`,
       );
       return null;
     }
@@ -41,9 +36,7 @@ export async function getUserCredentials(
     const creds = result[0];
 
     if (!creds.isActive) {
-      console.info(
-        `[UserCredentialsService] Credentials found but inactive for user ${userId}`
-      );
+      console.info(`[UserCredentialsService] Credentials found but inactive for user ${userId}`);
       return null;
     }
 
@@ -54,10 +47,10 @@ export async function getUserCredentials(
     } catch (encryptionError) {
       console.error(
         `[UserCredentialsService] Encryption service initialization failed for user ${userId}:`,
-        encryptionError
+        encryptionError,
       );
       throw new Error(
-        "Encryption service unavailable - check ENCRYPTION_MASTER_KEY environment variable"
+        "Encryption service unavailable - check ENCRYPTION_MASTER_KEY environment variable",
       );
     }
 
@@ -76,11 +69,9 @@ export async function getUserCredentials(
     } catch (decryptError) {
       console.error(
         `[UserCredentialsService] Failed to decrypt credentials for user ${userId}:`,
-        decryptError
+        decryptError,
       );
-      throw new Error(
-        "Failed to decrypt API credentials - encryption key may be incorrect"
-      );
+      throw new Error("Failed to decrypt API credentials - encryption key may be incorrect");
     }
 
     // Update last used timestamp
@@ -98,10 +89,7 @@ export async function getUserCredentials(
       lastUsed: creds.lastUsed || undefined,
     };
   } catch (error) {
-    console.error(
-      `[UserCredentialsService] Error getting credentials for user ${userId}:`,
-      error
-    );
+    console.error(`[UserCredentialsService] Error getting credentials for user ${userId}:`, error);
     throw error;
   }
 }
@@ -109,10 +97,7 @@ export async function getUserCredentials(
 /**
  * Check if user has active credentials for a provider
  */
-export async function hasUserCredentials(
-  userId: string,
-  provider = "mexc"
-): Promise<boolean> {
+export async function hasUserCredentials(userId: string, provider = "mexc"): Promise<boolean> {
   try {
     const result = await db
       .select({ id: apiCredentials.id })
@@ -121,17 +106,14 @@ export async function hasUserCredentials(
         and(
           eq(apiCredentials.userId, userId),
           eq(apiCredentials.provider, provider),
-          eq(apiCredentials.isActive, true)
-        )
+          eq(apiCredentials.isActive, true),
+        ),
       )
       .limit(1);
 
     return result.length > 0;
   } catch (error) {
-    console.error(
-      `[UserCredentialsService] Error checking credentials for user ${userId}:`,
-      error
-    );
+    console.error(`[UserCredentialsService] Error checking credentials for user ${userId}:`, error);
     return false;
   }
 }

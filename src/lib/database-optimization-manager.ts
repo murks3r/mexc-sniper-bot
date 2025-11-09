@@ -25,12 +25,8 @@ export class DatabaseOptimizationManager {
     };
   }
 
-  async applyOptimization(
-    recommendation: IndexRecommendation
-  ): Promise<boolean> {
-    console.log(
-      `[Optimization Manager] Would apply optimization: ${recommendation.reason}`
-    );
+  async applyOptimization(recommendation: IndexRecommendation): Promise<boolean> {
+    console.log(`[Optimization Manager] Would apply optimization: ${recommendation.reason}`);
     return true;
   }
 }

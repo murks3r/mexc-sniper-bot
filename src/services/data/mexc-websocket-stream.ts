@@ -143,19 +143,15 @@ export class MexcWebSocketStreamService extends EventEmitter {
     streamProcessor.on("stream_started", () => this.emit("stream_started"));
     streamProcessor.on("stream_stopped", () => this.emit("stream_stopped"));
     streamProcessor.on("price_update", (price: TradingPriceMessage) =>
-      this.emit("price_update", price)
+      this.emit("price_update", price),
     );
-    streamProcessor.on("depth_update", (depth: any) =>
-      this.emit("depth_update", depth)
-    );
-    streamProcessor.on("status_update", (status: any) =>
-      this.emit("status_update", status)
-    );
+    streamProcessor.on("depth_update", (depth: any) => this.emit("depth_update", depth));
+    streamProcessor.on("status_update", (status: any) => this.emit("status_update", status));
     streamProcessor.on("trading_signal", (signal: TradingSignalMessage) =>
-      this.emit("trading_signal", signal)
+      this.emit("trading_signal", signal),
     );
     streamProcessor.on("notification", (notification: NotificationMessage) =>
-      this.emit("notification", notification)
+      this.emit("notification", notification),
     );
     streamProcessor.on("trade", (trade: any) => this.emit("trade", trade));
     streamProcessor.on("error", (error: Error) => this.emit("error", error));

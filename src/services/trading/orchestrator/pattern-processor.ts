@@ -54,9 +54,7 @@ export class PatternProcessor {
     this.context.logger.info("Initializing Pattern Processor Module");
     this.state.isInitialized = true;
     this.state.lastActivity = new Date();
-    this.context.logger.info(
-      "Pattern Processor Module initialized successfully"
-    );
+    this.context.logger.info("Pattern Processor Module initialized successfully");
   }
 
   /**
@@ -85,10 +83,7 @@ export class PatternProcessor {
     if (!this.state.isHealthy) return "degraded";
 
     // Check if we've detected patterns recently
-    if (
-      this.lastDetectionTime &&
-      Date.now() - this.lastDetectionTime.getTime() > 300000
-    ) {
+    if (this.lastDetectionTime && Date.now() - this.lastDetectionTime.getTime() > 300000) {
       // 5 minutes
       return "degraded";
     }
@@ -125,7 +120,7 @@ export class PatternProcessor {
           }
         } catch (error) {
           this.context.logger.debug(
-            `Pattern analysis failed for ${symbol}: ${toSafeError(error).message}`
+            `Pattern analysis failed for ${symbol}: ${toSafeError(error).message}`,
           );
         }
       }
@@ -135,14 +130,12 @@ export class PatternProcessor {
       this.state.lastActivity = new Date();
 
       // Update metrics
-      const currentTotal =
-        (this.state.metrics.totalPatternsDetected as number) || 0;
+      const currentTotal = (this.state.metrics.totalPatternsDetected as number) || 0;
       this.state.metrics.totalPatternsDetected = currentTotal + patterns.length;
       this.state.metrics.processingTime = Date.now() - startTime;
 
       if (patterns.length > 0) {
-        const avgConfidence =
-          patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length;
+        const avgConfidence = patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length;
         this.state.metrics.averageConfidence = avgConfidence;
       }
 
@@ -155,9 +148,7 @@ export class PatternProcessor {
       return patterns;
     } catch (error) {
       const safeError = toSafeError(error);
-      this.context.logger.error(
-        `Pattern detection failed: ${safeError.message}`
-      );
+      this.context.logger.error(`Pattern detection failed: ${safeError.message}`);
       this.state.isHealthy = false;
       return [];
     }
@@ -185,7 +176,7 @@ export class PatternProcessor {
       return pattern;
     } catch (error) {
       this.context.logger.error(
-        `Failed to analyze symbol ${symbol}: ${toSafeError(error).message}`
+        `Failed to analyze symbol ${symbol}: ${toSafeError(error).message}`,
       );
       return null;
     }
@@ -194,9 +185,7 @@ export class PatternProcessor {
   /**
    * Assess an opportunity for trading viability
    */
-  async assessOpportunity(
-    pattern: PatternMatch
-  ): Promise<OpportunityAssessment> {
+  async assessOpportunity(pattern: PatternMatch): Promise<OpportunityAssessment> {
     try {
       this.context.logger.debug("Assessing trading opportunity", { pattern });
 
@@ -209,9 +198,7 @@ export class PatternProcessor {
         reasons.push(`High confidence score: ${confidence.toFixed(1)}%`);
         recommendedAction = "execute";
       } else if (confidence >= this.context.config.confidenceThreshold - 10) {
-        reasons.push(
-          `Moderate confidence, consider waiting: ${confidence.toFixed(1)}%`
-        );
+        reasons.push(`Moderate confidence, consider waiting: ${confidence.toFixed(1)}%`);
         recommendedAction = "wait";
       } else {
         reasons.push(`Low confidence score: ${confidence.toFixed(1)}%`);
@@ -269,7 +256,7 @@ export class PatternProcessor {
       };
     } catch (error) {
       this.context.logger.error(
-        `Failed to assess opportunity for ${pattern.symbol}: ${toSafeError(error).message}`
+        `Failed to assess opportunity for ${pattern.symbol}: ${toSafeError(error).message}`,
       );
 
       return {
@@ -357,10 +344,7 @@ export class PatternProcessor {
   /**
    * Analyze pattern from market data
    */
-  private async analyzePattern(
-    symbol: string,
-    marketData: any
-  ): Promise<PatternMatch | null> {
+  private async analyzePattern(symbol: string, marketData: any): Promise<PatternMatch | null> {
     try {
       // Calculate base confidence score
       let confidence = 50; // Base confidence
@@ -386,8 +370,7 @@ export class PatternProcessor {
       }
 
       // Liquidity depth analysis
-      const totalDepth =
-        marketData.orderBookDepth.bids + marketData.orderBookDepth.asks;
+      const totalDepth = marketData.orderBookDepth.bids + marketData.orderBookDepth.asks;
       if (totalDepth > 150000) {
         confidence += (10 * this.SCORING_WEIGHTS.liquidityDepth) / 0.2;
         factors.push("Good liquidity depth");
@@ -397,10 +380,7 @@ export class PatternProcessor {
       }
 
       // Technical indicators
-      if (
-        marketData.technicalIndicators.rsi > 40 &&
-        marketData.technicalIndicators.rsi < 60
-      ) {
+      if (marketData.technicalIndicators.rsi > 40 && marketData.technicalIndicators.rsi < 60) {
         confidence += (8 * this.SCORING_WEIGHTS.technicalIndicators) / 0.1;
         factors.push("Balanced RSI");
       }
@@ -435,10 +415,7 @@ export class PatternProcessor {
       let riskLevel: "low" | "medium" | "high" = "medium";
       if (confidence >= 80 && marketData.technicalIndicators.volatility < 0.2) {
         riskLevel = "low";
-      } else if (
-        confidence < 60 ||
-        marketData.technicalIndicators.volatility > 0.3
-      ) {
+      } else if (confidence < 60 || marketData.technicalIndicators.volatility > 0.3) {
         riskLevel = "high";
       }
 
@@ -452,9 +429,7 @@ export class PatternProcessor {
         riskLevel,
         advanceNoticeHours,
         detectedAt: new Date().toISOString(),
-        validUntil: new Date(
-          Date.now() + advanceNoticeHours * 60 * 60 * 1000
-        ).toISOString(),
+        validUntil: new Date(Date.now() + advanceNoticeHours * 60 * 60 * 1000).toISOString(),
         metadata: {
           factors: factors.join(","), // Convert array to string
           price: marketData.price,
@@ -475,7 +450,7 @@ export class PatternProcessor {
       return pattern;
     } catch (error) {
       this.context.logger.error(
-        `Pattern analysis failed for ${symbol}: ${toSafeError(error).message}`
+        `Pattern analysis failed for ${symbol}: ${toSafeError(error).message}`,
       );
       return null;
     }

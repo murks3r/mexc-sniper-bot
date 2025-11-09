@@ -1,9 +1,6 @@
 import { apiResponse, createHealthResponse } from "@/src/lib/api-response";
 import { withDatabaseQueryCache } from "@/src/lib/database-query-cache-middleware";
-import {
-  checkAuthTables,
-  checkDatabaseHealth,
-} from "@/src/lib/db-health-check";
+import { checkAuthTables, checkDatabaseHealth } from "@/src/lib/db-health-check";
 
 // Rate limiting for health checks (30-second intervals)
 const rateLimitCache = new Map<string, number>();
@@ -42,11 +39,7 @@ function getCachedHealthResult(key: string): any | null {
   return cached.result;
 }
 
-function setCachedHealthResult(
-  key: string,
-  result: any,
-  isHealthy: boolean
-): void {
+function setCachedHealthResult(key: string, result: any, isHealthy: boolean): void {
   const ttl = isHealthy ? 10 * 60 * 1000 : 30 * 1000; // 10 min success, 30 sec failure
   healthResultCache.set(key, {
     result,
@@ -57,9 +50,7 @@ function setCachedHealthResult(
 
 async function healthHandler(request: Request) {
   const clientIP =
-    request.headers.get("x-forwarded-for") ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+    request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
   const rateLimitKey = `health-check-${clientIP}`;
   const cacheKey = "health-check-result";
 
@@ -89,18 +80,14 @@ async function healthHandler(request: Request) {
     const cachedResult = getCachedHealthResult(cacheKey);
     if (cachedResult) {
       console.info("[Health Check] Returning cached result");
-      return apiResponse(
-        cachedResult,
-        cachedResult.status === "healthy" ? 200 : 503
-      );
+      return apiResponse(cachedResult, cachedResult.status === "healthy" ? 200 : 503);
     }
 
-    let dbHealth: { healthy: boolean; message: string; error: string | null } =
-      {
-        healthy: false,
-        message: "Database check not performed",
-        error: "Unknown error",
-      };
+    let dbHealth: { healthy: boolean; message: string; error: string | null } = {
+      healthy: false,
+      message: "Database check not performed",
+      error: "Unknown error",
+    };
     let authTables: {
       healthy: boolean;
       message: string;
@@ -116,12 +103,8 @@ async function healthHandler(request: Request) {
     try {
       dbHealth = await Promise.race([
         checkDatabaseHealth(),
-        new Promise<{ healthy: false; message: string; error: string }>(
-          (_, reject) =>
-            setTimeout(
-              () => reject(new Error("Database health check timeout")),
-              5000
-            )
+        new Promise<{ healthy: false; message: string; error: string }>((_, reject) =>
+          setTimeout(() => reject(new Error("Database health check timeout")), 5000),
         ),
       ]);
     } catch (dbError) {
@@ -139,20 +122,15 @@ async function healthHandler(request: Request) {
         // Use optimized critical-only table check by default
         authTables = await Promise.race([
           checkAuthTables(false), // Only check critical tables (user, session)
-          new Promise<{ healthy: false; message: string; error: string }>(
-            (_, reject) =>
-              setTimeout(
-                () => reject(new Error("Auth tables check timeout")),
-                3000
-              )
+          new Promise<{ healthy: false; message: string; error: string }>((_, reject) =>
+            setTimeout(() => reject(new Error("Auth tables check timeout")), 3000),
           ),
         ]);
       } catch (authError) {
         authTables = {
           healthy: false,
           message: "Auth tables check failed",
-          error:
-            authError instanceof Error ? authError.message : String(authError),
+          error: authError instanceof Error ? authError.message : String(authError),
         };
         console.error("[Health Check] Auth tables check error:", authError);
       }
@@ -169,8 +147,7 @@ async function healthHandler(request: Request) {
     const envCheck = {
       AUTH_SECRET: !!process.env.AUTH_SECRET,
       DATABASE_URL: !!process.env.DATABASE_URL,
-      DATABASE_URL_PROTOCOL:
-        process.env.DATABASE_URL?.split("://")[0] || "unknown",
+      DATABASE_URL_PROTOCOL: process.env.DATABASE_URL?.split("://")[0] || "unknown",
       NODE_ENV: process.env.NODE_ENV || "development",
     };
 
@@ -192,9 +169,7 @@ async function healthHandler(request: Request) {
           tableChecksReduced: true,
           criticalTablesOnly: !dbHealth.healthy ? "skipped" : "checked",
           circuitBreakerActive:
-            (dbHealth as any).fromCircuitBreaker ||
-            (authTables as any).fromCircuitBreaker ||
-            false,
+            (dbHealth as any).fromCircuitBreaker || (authTables as any).fromCircuitBreaker || false,
         },
       },
       diagnostics: {
@@ -231,8 +206,7 @@ async function healthHandler(request: Request) {
         environment: {
           AUTH_SECRET: !!process.env.AUTH_SECRET,
           DATABASE_URL: !!process.env.DATABASE_URL,
-          DATABASE_URL_PROTOCOL:
-            process.env.DATABASE_URL?.split("://")[0] || "unknown",
+          DATABASE_URL_PROTOCOL: process.env.DATABASE_URL?.split("://")[0] || "unknown",
           NODE_ENV: process.env.NODE_ENV || "development",
         },
         optimization: {
@@ -244,8 +218,7 @@ async function healthHandler(request: Request) {
       diagnostics: {
         dbConnectivityIssue: true,
         authTablesIssue: true,
-        configurationIssue:
-          !process.env.DATABASE_URL || !process.env.AUTH_SECRET,
+        configurationIssue: !process.env.DATABASE_URL || !process.env.AUTH_SECRET,
         cascadeRisk: true,
       },
     };

@@ -12,10 +12,7 @@
  * - Handler registration and management
  */
 
-import type {
-  MessageHandler,
-  WebSocketMessage,
-} from "@/src/lib/websocket-types";
+import type { MessageHandler, WebSocketMessage } from "@/src/lib/websocket-types";
 
 export interface MessageRoutingStats {
   totalHandlers: number;
@@ -40,12 +37,7 @@ export class WebSocketMessageRouter {
     warn: (message: string, context?: unknown) =>
       console.warn("[websocket-message-router]", message, context || ""),
     error: (message: string, context?: unknown, error?: Error) =>
-      console.error(
-        "[websocket-message-router]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[websocket-message-router]", message, context || "", error || ""),
     debug: (message: string, context?: unknown) =>
       console.debug("[websocket-message-router]", message, context || ""),
   };
@@ -124,10 +116,7 @@ export class WebSocketMessageRouter {
   /**
    * Route a message to appropriate handlers
    */
-  async routeMessage(
-    message: WebSocketMessage,
-    connectionId: string
-  ): Promise<void> {
+  async routeMessage(message: WebSocketMessage, connectionId: string): Promise<void> {
     const routingStart = Date.now();
 
     try {
@@ -138,21 +127,11 @@ export class WebSocketMessageRouter {
       });
 
       // Execute global handlers first
-      await this.executeHandlers(
-        this.globalHandlers,
-        message,
-        connectionId,
-        "global"
-      );
+      await this.executeHandlers(this.globalHandlers, message, connectionId, "global");
 
       // Execute channel-specific handlers
       const channelHandlers = this.handlers.get(message.channel) || [];
-      await this.executeHandlers(
-        channelHandlers,
-        message,
-        connectionId,
-        message.channel
-      );
+      await this.executeHandlers(channelHandlers, message, connectionId, message.channel);
 
       this.routingStats.messagesRouted++;
 
@@ -176,7 +155,7 @@ export class WebSocketMessageRouter {
           messageId: message.id,
           routingTimeMs: routingTime,
         },
-        error as Error
+        error as Error,
       );
 
       throw error;
@@ -190,7 +169,7 @@ export class WebSocketMessageRouter {
     handlers: MessageHandler[],
     message: WebSocketMessage,
     connectionId: string,
-    handlerType: string
+    handlerType: string,
   ): Promise<void> {
     if (handlers.length === 0) {
       return;
@@ -220,7 +199,7 @@ export class WebSocketMessageRouter {
             messageChannel: message.channel,
             connectionId,
           },
-          error as Error
+          error as Error,
         );
 
         // Don't rethrow to prevent one failing handler from stopping others
@@ -258,7 +237,7 @@ export class WebSocketMessageRouter {
   getStats(): MessageRoutingStats {
     const channelHandlerCount = Array.from(this.handlers.values()).reduce(
       (total, handlers) => total + handlers.length,
-      0
+      0,
     );
 
     return {
@@ -310,7 +289,7 @@ export class WebSocketMessageRouter {
   clearAllHandlers(): void {
     const channelHandlerCount = Array.from(this.handlers.values()).reduce(
       (total, handlers) => total + handlers.length,
-      0
+      0,
     );
     const globalHandlerCount = this.globalHandlers.length;
 

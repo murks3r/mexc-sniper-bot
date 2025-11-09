@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ArrowUpRight,
-  DollarSign,
-  Eye,
-  Target,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
+import { ArrowUpRight, DollarSign, Eye, Target, TrendingUp, Zap } from "lucide-react";
 import { type ComponentType, memo, type ReactNode } from "react";
 import { useCurrencyFormatting } from "../../hooks/use-currency-formatting";
 import { Card, CardContent } from "../ui/card";
@@ -79,25 +72,19 @@ const MetricCard = memo(
                 <Icon className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  {title}
-                </p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</p>
                 <div className="flex items-center space-x-1">
-                  <p className="text-lg font-bold text-gray-900">
-                    {isLoading ? "..." : value}
-                  </p>
+                  <p className="text-lg font-bold text-gray-900">{isLoading ? "..." : value}</p>
                   {trendIcon}
                 </div>
-                {subtitle && (
-                  <p className="text-xs text-gray-500">{subtitle}</p>
-                )}
+                {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
     );
-  }
+  },
 );
 MetricCard.displayName = "MetricCard";
 
@@ -120,14 +107,12 @@ const LoadingSkeleton = memo(() => (
 LoadingSkeleton.displayName = "LoadingSkeleton";
 
 // Section component for better organization
-const MetricsSection = memo(
-  ({ title, children }: { title: string; children: ReactNode }) => (
-    <div>
-      <h3 className="text-sm font-medium text-gray-700 mb-3">{title}</h3>
-      {children}
-    </div>
-  )
-);
+const MetricsSection = memo(({ title, children }: { title: string; children: ReactNode }) => (
+  <div>
+    <h3 className="text-sm font-medium text-gray-700 mb-3">{title}</h3>
+    {children}
+  </div>
+));
 MetricsSection.displayName = "MetricsSection";
 
 // Main component with optimizations
@@ -169,9 +154,7 @@ export const OptimizedMetricsGrid = memo(
             />
             <MetricCard
               title="Successful Snipes"
-              value={
-                metrics?.successfulSnipes || sniperStats?.executedTargets || 0
-              }
+              value={metrics?.successfulSnipes || sniperStats?.executedTargets || 0}
               subtitle="Executed trades"
               icon={Zap}
               color="purple"
@@ -244,7 +227,7 @@ export const OptimizedMetricsGrid = memo(
         </MetricsSection>
       </div>
     );
-  }
+  },
 );
 
 OptimizedMetricsGrid.displayName = "OptimizedMetricsGrid";

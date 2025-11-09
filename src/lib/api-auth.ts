@@ -25,10 +25,8 @@ let _logger: any = null;
 function getLogger() {
   if (!_logger) {
     _logger = {
-      info: (message: string, context?: any) =>
-        console.info("[api-auth]", message, context || ""),
-      warn: (message: string, context?: any) =>
-        console.warn("[api-auth]", message, context || ""),
+      info: (message: string, context?: any) => console.info("[api-auth]", message, context || ""),
+      warn: (message: string, context?: any) => console.warn("[api-auth]", message, context || ""),
       error: (message: string, context?: any, error?: Error) =>
         console.error("[api-auth]", message, context || "", error || ""),
       debug: (message: string, context?: any) =>
@@ -43,7 +41,7 @@ export async function requireApiAuth(
   options?: {
     skipRateLimit?: boolean;
     rateLimitType?: "auth" | "authStrict" | "general";
-  }
+  },
 ) {
   const ip = getClientIP(request);
   const userAgent = request.headers.get("user-agent") || undefined;
@@ -65,27 +63,21 @@ export async function requireApiAuth(
     throw new Response(
       JSON.stringify(
         createErrorResponse("Access temporarily restricted", {
-          message:
-            "Your IP has been temporarily restricted due to suspicious activity",
+          message: "Your IP has been temporarily restricted due to suspicious activity",
           code: "IP_RESTRICTED",
-        })
+        }),
       ),
       {
         status: HTTP_STATUS.FORBIDDEN,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 
   // Apply rate limiting unless explicitly skipped or bypassed
   if (!options?.skipRateLimit && !shouldBypassRateLimit(ip)) {
     const rateLimitType = options?.rateLimitType || "auth";
-    const rateLimitResult = await checkRateLimit(
-      ip,
-      endpoint,
-      rateLimitType,
-      userAgent
-    );
+    const rateLimitResult = await checkRateLimit(ip, endpoint, rateLimitType, userAgent);
 
     if (!rateLimitResult.success) {
       // Log additional security event for repeated violations
@@ -142,12 +134,12 @@ export async function requireApiAuth(
         createErrorResponse("Authentication required", {
           message: "Please sign in to access this resource",
           code: "AUTHENTICATION_REQUIRED",
-        })
+        }),
       ),
       {
         status: HTTP_STATUS.UNAUTHORIZED,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }
@@ -155,10 +147,7 @@ export async function requireApiAuth(
 /**
  * Validate that the userId parameter matches the authenticated user
  */
-export async function validateUserAccess(
-  _request: NextRequest,
-  userId: string
-) {
+export async function validateUserAccess(_request: NextRequest, userId: string) {
   try {
     const user = await requireAuth();
 
@@ -168,12 +157,12 @@ export async function validateUserAccess(
           createErrorResponse("Access denied", {
             message: "You can only access your own data",
             code: "ACCESS_DENIED",
-          })
+          }),
         ),
         {
           status: HTTP_STATUS.FORBIDDEN,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -188,12 +177,12 @@ export async function validateUserAccess(
         createErrorResponse("Authentication required", {
           message: "Please sign in to access this resource",
           code: "AUTHENTICATION_REQUIRED",
-        })
+        }),
       ),
       {
         status: HTTP_STATUS.UNAUTHORIZED,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }
@@ -214,7 +203,7 @@ export async function getOptionalAuth() {
  * Wrapper for API routes that require authentication
  */
 export function withAuth<T extends any[]>(
-  handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>
+  handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>,
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
@@ -225,13 +214,10 @@ export function withAuth<T extends any[]>(
         return error;
       }
 
-      return new Response(
-        JSON.stringify(createErrorResponse("Internal server error")),
-        {
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createErrorResponse("Internal server error")), {
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   };
 }
@@ -241,7 +227,7 @@ export function withAuth<T extends any[]>(
  */
 export function withUserAccess<T extends any[]>(
   handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>,
-  getUserId: (request: NextRequest, ...args: T) => string
+  getUserId: (request: NextRequest, ...args: T) => string,
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
@@ -253,13 +239,10 @@ export function withUserAccess<T extends any[]>(
         return error;
       }
 
-      return new Response(
-        JSON.stringify(createErrorResponse("Internal server error")),
-        {
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createErrorResponse("Internal server error")), {
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   };
 }
@@ -275,7 +258,7 @@ export function withAuthOptions<T extends any[]>(
     requireUserAccess?: boolean;
     getUserId?: (request: NextRequest, ...args: T) => string;
     adminOnly?: boolean;
-  }
+  },
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
@@ -342,12 +325,12 @@ export function withAuthOptions<T extends any[]>(
               createErrorResponse("Access denied", {
                 message: "You can only access your own data",
                 code: "ACCESS_DENIED",
-              })
+              }),
             ),
             {
               status: HTTP_STATUS.FORBIDDEN,
               headers: { "Content-Type": "application/json" },
-            }
+            },
           );
         }
       }
@@ -358,13 +341,10 @@ export function withAuthOptions<T extends any[]>(
         return error;
       }
 
-      return new Response(
-        JSON.stringify(createErrorResponse("Internal server error")),
-        {
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createErrorResponse("Internal server error")), {
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   };
 }
@@ -374,7 +354,7 @@ export function withAuthOptions<T extends any[]>(
  */
 export function withUserAuth<T extends any[]>(
   handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>,
-  getUserIdFromParams: (request: NextRequest, ...args: T) => string
+  getUserIdFromParams: (request: NextRequest, ...args: T) => string,
 ) {
   return withAuthOptions(handler, {
     requireUserAccess: true,
@@ -387,7 +367,7 @@ export function withUserAuth<T extends any[]>(
  * Wrapper for admin-only API routes
  */
 export function withAdminAuth<T extends any[]>(
-  handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>
+  handler: (request: NextRequest, user: any, ...args: T) => Promise<Response>,
 ) {
   return withAuthOptions(handler, {
     adminOnly: true,
@@ -408,12 +388,12 @@ export function getUserIdFromQuery(request: NextRequest): string {
         createErrorResponse("User ID required", {
           message: "userId parameter is required",
           code: "MISSING_USER_ID",
-        })
+        }),
       ),
       {
         status: HTTP_STATUS.BAD_REQUEST,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 
@@ -434,12 +414,12 @@ export async function getUserIdFromBody(request: NextRequest): Promise<string> {
           createErrorResponse("User ID required", {
             message: "userId field is required in request body",
             code: "MISSING_USER_ID",
-          })
+          }),
         ),
         {
           status: HTTP_STATUS.BAD_REQUEST,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -454,12 +434,12 @@ export async function getUserIdFromBody(request: NextRequest): Promise<string> {
         createErrorResponse("Invalid request body", {
           message: "Request body must be valid JSON",
           code: "INVALID_JSON",
-        })
+        }),
       ),
       {
         status: HTTP_STATUS.BAD_REQUEST,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }
@@ -472,15 +452,13 @@ export async function checkAdminRole(user: any): Promise<boolean> {
     // Multi-level admin role check for comprehensive security
 
     // 1. Check environment-based admin list
-    const adminEmails =
-      process.env.ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [];
+    const adminEmails = process.env.ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [];
     if (adminEmails.includes(user.email)) {
       return true;
     }
 
     // 2. Check admin user IDs from environment
-    const adminUserIds =
-      process.env.ADMIN_USER_IDS?.split(",").map((id) => id.trim()) || [];
+    const adminUserIds = process.env.ADMIN_USER_IDS?.split(",").map((id) => id.trim()) || [];
     if (adminUserIds.includes(user.id)) {
       return true;
     }
@@ -513,10 +491,7 @@ export async function checkAdminRole(user: any): Promise<boolean> {
 
     // 5. Check for specific admin permissions
     if (user.permissions && Array.isArray(user.permissions)) {
-      return (
-        user.permissions.includes("admin") ||
-        user.permissions.includes("super_admin")
-      );
+      return user.permissions.includes("admin") || user.permissions.includes("super_admin");
     }
 
     // 6. Default to false if no admin role found
@@ -539,7 +514,7 @@ export async function checkAdminRole(user: any): Promise<boolean> {
  * This is the main wrapper function used in API routes
  */
 export function apiAuthWrapper<T extends any[]>(
-  handler: (request: NextRequest, ...args: T) => Promise<Response>
+  handler: (request: NextRequest, ...args: T) => Promise<Response>,
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
@@ -555,13 +530,10 @@ export function apiAuthWrapper<T extends any[]>(
         return error;
       }
 
-      return new Response(
-        JSON.stringify(createErrorResponse("Internal server error")),
-        {
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createErrorResponse("Internal server error")), {
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   };
 }

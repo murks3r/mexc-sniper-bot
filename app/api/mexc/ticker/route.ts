@@ -21,48 +21,35 @@ export async function GET(request: NextRequest) {
       const tickerResponse = await mexcService.getTicker(symbol);
 
       if (!tickerResponse.success || !tickerResponse.data) {
-        console.warn(
-          `[ticker-api] Failed to fetch ticker for ${symbol}:`,
-          tickerResponse.error
-        );
+        console.warn(`[ticker-api] Failed to fetch ticker for ${symbol}:`, tickerResponse.error);
         return apiResponse(
-          createErrorResponse(
-            tickerResponse.error || `Failed to fetch ticker for ${symbol}`,
-            {
-              symbol,
-              fallbackData: null,
-              serviceLayer: true,
-            }
-          ),
-          HTTP_STATUS.INTERNAL_SERVER_ERROR
+          createErrorResponse(tickerResponse.error || `Failed to fetch ticker for ${symbol}`, {
+            symbol,
+            fallbackData: null,
+            serviceLayer: true,
+          }),
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
         );
       }
 
-      console.info(
-        `[ticker-api] ✅ Successfully fetched ticker for ${symbol}:`,
-        {
-          price: tickerResponse.data.price || tickerResponse.data.lastPrice,
-          lastPrice: tickerResponse.data.lastPrice || tickerResponse.data.price,
-        }
-      );
+      console.info(`[ticker-api] ✅ Successfully fetched ticker for ${symbol}:`, {
+        price: tickerResponse.data.price || tickerResponse.data.lastPrice,
+        lastPrice: tickerResponse.data.lastPrice || tickerResponse.data.price,
+      });
 
       return apiResponse(
         createSuccessResponse([tickerResponse.data], {
           symbol,
           serviceLayer: true,
-          cached:
-            "cached" in tickerResponse ? tickerResponse.cached : undefined,
-        })
+          cached: "cached" in tickerResponse ? tickerResponse.cached : undefined,
+        }),
       );
     }
 
     // Handle multiple symbols ticker
     if (symbols) {
       const symbolList = symbols.split(",").filter((s) => s.trim().length > 0);
-      console.info(
-        `[ticker-api] Fetching tickers for ${symbolList.length} symbols:`,
-        symbolList
-      );
+      console.info(`[ticker-api] Fetching tickers for ${symbolList.length} symbols:`, symbolList);
 
       const tickerResponse = await mexcService.getTicker24hr(symbolList);
 
@@ -72,30 +59,24 @@ export async function GET(request: NextRequest) {
           error: tickerResponse.error,
         });
         return apiResponse(
-          createErrorResponse(
-            tickerResponse.error || "Failed to fetch ticker data",
-            {
-              symbols: symbolList,
-              fallbackData: [],
-              serviceLayer: true,
-            }
-          ),
-          HTTP_STATUS.INTERNAL_SERVER_ERROR
+          createErrorResponse(tickerResponse.error || "Failed to fetch ticker data", {
+            symbols: symbolList,
+            fallbackData: [],
+            serviceLayer: true,
+          }),
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
         );
       }
 
-      console.info(
-        `[ticker-api] ✅ Successfully fetched ${tickerResponse.data.length} tickers`
-      );
+      console.info(`[ticker-api] ✅ Successfully fetched ${tickerResponse.data.length} tickers`);
 
       return apiResponse(
         createSuccessResponse(tickerResponse.data, {
           count: tickerResponse.data.length,
           symbols: symbolList,
           serviceLayer: true,
-          cached:
-            "cached" in tickerResponse ? tickerResponse.cached : undefined,
-        })
+          cached: "cached" in tickerResponse ? tickerResponse.cached : undefined,
+        }),
       );
     }
 
@@ -105,48 +86,34 @@ export async function GET(request: NextRequest) {
     const allTickersResponse = await mexcService.getTicker24hr();
 
     if (!allTickersResponse.success || !allTickersResponse.data) {
-      console.warn(
-        "[ticker-api] Failed to fetch all tickers:",
-        allTickersResponse.error
-      );
+      console.warn("[ticker-api] Failed to fetch all tickers:", allTickersResponse.error);
       return apiResponse(
-        createErrorResponse(
-          allTickersResponse.error || "Failed to fetch all ticker data",
-          {
-            fallbackData: [],
-            serviceLayer: true,
-          }
-        ),
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
+        createErrorResponse(allTickersResponse.error || "Failed to fetch all ticker data", {
+          fallbackData: [],
+          serviceLayer: true,
+        }),
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
       );
     }
 
-    console.info(
-      `[ticker-api] ✅ Successfully fetched ${allTickersResponse.data.length} tickers`
-    );
+    console.info(`[ticker-api] ✅ Successfully fetched ${allTickersResponse.data.length} tickers`);
 
     return apiResponse(
       createSuccessResponse(allTickersResponse.data, {
         count: allTickersResponse.data.length,
         serviceLayer: true,
-        cached:
-          "cached" in allTickersResponse
-            ? allTickersResponse.cached
-            : undefined,
-      })
+        cached: "cached" in allTickersResponse ? allTickersResponse.cached : undefined,
+      }),
     );
   } catch (error) {
     console.error("[ticker-api] Ticker fetch failed:", { error });
 
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error",
-        {
-          fallbackData: [],
-          serviceLayer: true,
-        }
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error", {
+        fallbackData: [],
+        serviceLayer: true,
+      }),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }

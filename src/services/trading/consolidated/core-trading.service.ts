@@ -6,7 +6,6 @@
  *
  * MODULES:
  * - core-trading/base-service.ts: Main orchestrator class (<500 lines)
- * - core-trading/manual-trading.ts: Manual trading operations (<500 lines)
  * - core-trading/auto-sniping.ts: Auto-sniping execution (<500 lines)
  * - core-trading/position-manager.ts: Position management (<500 lines)
  * - core-trading/performance-tracker.ts: Performance analytics (<500 lines)
@@ -32,7 +31,6 @@ export { CoreTradingService } from "./core-trading/base-service";
 // ============================================================================
 
 export { AutoSnipingModule } from "./core-trading/auto-sniping";
-export { ManualTradingModule } from "./core-trading/manual-trading";
 export { PerformanceTracker } from "./core-trading/performance-tracker";
 export { PositionManager } from "./core-trading/position-manager";
 export { StrategyManager } from "./core-trading/strategy-manager";
@@ -70,9 +68,7 @@ import type { CoreTradingConfig } from "./core-trading/types";
 /**
  * Get the global Core Trading Service instance (singleton)
  */
-export function getCoreTrading(
-  config?: Partial<CoreTradingConfig>
-): CoreTradingService {
+export function getCoreTrading(config?: Partial<CoreTradingConfig>): CoreTradingService {
   return CoreTradingService.getInstance(config);
 }
 
@@ -86,9 +82,7 @@ export function resetCoreTrading(): void {
 /**
  * Create a new Core Trading Service instance (not singleton)
  */
-export function createCoreTrading(
-  config: Partial<CoreTradingConfig>
-): CoreTradingService {
+export function createCoreTrading(config: Partial<CoreTradingConfig>): CoreTradingService {
   return new CoreTradingService(config);
 }
 

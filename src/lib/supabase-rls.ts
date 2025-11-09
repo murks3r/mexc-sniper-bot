@@ -60,10 +60,9 @@ export async function checkRLSStatus(): Promise<RLSStatus> {
 
     for (const table of requiredTables) {
       try {
-        const { data: rlsData, error: rlsError } = await supabaseAdmin.rpc(
-          "check_table_rls",
-          { table_name: table }
-        );
+        const { data: rlsData, error: rlsError } = await supabaseAdmin.rpc("check_table_rls", {
+          table_name: table,
+        });
 
         if (rlsError) {
           errors.push(`Failed to check RLS for ${table}: ${rlsError.message}`);
@@ -117,10 +116,7 @@ export async function applyRLSMigration(): Promise<{
   errors: string[];
 }> {
   try {
-    const migrationPath = join(
-      process.cwd(),
-      "src/db/migrations/001_setup_rls_policies.sql"
-    );
+    const migrationPath = join(process.cwd(), "src/db/migrations/001_setup_rls_policies.sql");
     const migrationSQL = readFileSync(migrationPath, "utf-8");
 
     // Split the migration into individual statements
@@ -181,7 +177,7 @@ export async function testRLSPolicies(userId: string): Promise<{
           autoRefreshToken: false,
           persistSession: false,
         },
-      }
+      },
     );
 
     // Test 1: User can access their own data
@@ -220,17 +216,14 @@ export async function testRLSPolicies(userId: string): Promise<{
 
     // Test 3: API credentials isolation
     try {
-      const { data: credentialsData, error: credentialsError } =
-        await userClient
-          .from("api_credentials")
-          .select("*")
-          .neq("user_id", userId)
-          .limit(1);
+      const { data: credentialsData, error: credentialsError } = await userClient
+        .from("api_credentials")
+        .select("*")
+        .neq("user_id", userId)
+        .limit(1);
 
       if (credentialsData && credentialsData.length > 0) {
-        errors.push(
-          "❌ User can access other users' API credentials (CRITICAL RLS violation)"
-        );
+        errors.push("❌ User can access other users' API credentials (CRITICAL RLS violation)");
       } else {
         results.push("✓ API credentials are properly isolated");
       }
@@ -240,17 +233,14 @@ export async function testRLSPolicies(userId: string): Promise<{
 
     // Test 4: Transaction data isolation
     try {
-      const { data: transactionData, error: transactionError } =
-        await userClient
-          .from("transactions")
-          .select("*")
-          .neq("user_id", userId)
-          .limit(1);
+      const { data: transactionData, error: transactionError } = await userClient
+        .from("transactions")
+        .select("*")
+        .neq("user_id", userId)
+        .limit(1);
 
       if (transactionData && transactionData.length > 0) {
-        errors.push(
-          "❌ User can access other users' transactions (CRITICAL RLS violation)"
-        );
+        errors.push("❌ User can access other users' transactions (CRITICAL RLS violation)");
       } else {
         results.push("✓ Transaction data is properly isolated");
       }
@@ -350,9 +340,7 @@ export async function validateRLSSetup(): Promise<{
 
     if (!rlsStatus.enabled) {
       issues.push("RLS is not enabled on all required tables");
-      recommendations.push(
-        "Run the RLS migration to enable Row Level Security"
-      );
+      recommendations.push("Run the RLS migration to enable Row Level Security");
     }
 
     if (rlsStatus.errors.length > 0) {

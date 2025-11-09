@@ -33,11 +33,7 @@ export interface ErrorRecoveryResult<T> {
   data?: T;
   error?: string;
   attempts: RecoveryAttempt[];
-  finalStrategy:
-    | "success"
-    | "retry_exhausted"
-    | "fallback_used"
-    | "circuit_open";
+  finalStrategy: "success" | "retry_exhausted" | "fallback_used" | "circuit_open";
   totalTime: number;
 }
 
@@ -46,22 +42,6 @@ export interface ErrorRecoveryResult<T> {
 // ============================================================================
 
 export class ErrorClassifier {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-error-recovery-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-error-recovery-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-error-recovery-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-error-recovery-service]", message, context || ""),
-  };
-
   private readonly RETRYABLE_ERRORS = [
     "timeout",
     "ECONNRESET",
@@ -88,33 +68,24 @@ export class ErrorClassifier {
     "Invalid credentials",
   ];
 
-  private readonly IMMEDIATE_RETRY_ERRORS = [
-    "Rate limit exceeded",
-    "Too many requests",
-  ];
+  private readonly IMMEDIATE_RETRY_ERRORS = ["Rate limit exceeded", "Too many requests"];
 
   isRetryable(error: string): boolean {
     const errorLower = error.toLowerCase();
 
     // Check non-retryable first (they take precedence)
-    if (
-      this.NON_RETRYABLE_ERRORS.some((pattern) =>
-        errorLower.includes(pattern.toLowerCase())
-      )
-    ) {
+    if (this.NON_RETRYABLE_ERRORS.some((pattern) => errorLower.includes(pattern.toLowerCase()))) {
       return false;
     }
 
     // Check retryable patterns
-    return this.RETRYABLE_ERRORS.some((pattern) =>
-      errorLower.includes(pattern.toLowerCase())
-    );
+    return this.RETRYABLE_ERRORS.some((pattern) => errorLower.includes(pattern.toLowerCase()));
   }
 
   needsImmediateRetry(error: string): boolean {
     const errorLower = error.toLowerCase();
     return this.IMMEDIATE_RETRY_ERRORS.some((pattern) =>
-      errorLower.includes(pattern.toLowerCase())
+      errorLower.includes(pattern.toLowerCase()),
     );
   }
 
@@ -127,10 +98,7 @@ export class ErrorClassifier {
       return 2000; // 2 seconds for signature errors (time sync)
     }
 
-    if (
-      error.toLowerCase().includes("network") ||
-      error.toLowerCase().includes("timeout")
-    ) {
+    if (error.toLowerCase().includes("network") || error.toLowerCase().includes("timeout")) {
       return baseDelay * 2 ** (attempt - 1); // Exponential backoff for network issues
     }
 
@@ -181,26 +149,24 @@ export class MexcErrorRecoveryService {
   async executeWithRecovery<T>(
     operation: () => Promise<T>,
     fallback?: () => Promise<T>,
-    operationName = "API Operation"
+    operationName = "API Operation",
   ): Promise<ErrorRecoveryResult<T>> {
     const startTime = Date.now();
     const attempts: RecoveryAttempt[] = [];
 
-    console.info(
-      `[MexcErrorRecoveryService] Starting ${operationName} with recovery...`
-    );
+    console.info(`[MexcErrorRecoveryService] Starting ${operationName} with recovery...`);
 
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
       try {
         console.info(
-          `[MexcErrorRecoveryService] ${operationName} attempt ${attempt}/${this.config.maxRetries}`
+          `[MexcErrorRecoveryService] ${operationName} attempt ${attempt}/${this.config.maxRetries}`,
         );
 
         const result = await operation();
 
         const totalTime = Date.now() - startTime;
         console.info(
-          `[MexcErrorRecoveryService] ✅ ${operationName} succeeded on attempt ${attempt} (${totalTime}ms)`
+          `[MexcErrorRecoveryService] ✅ ${operationName} succeeded on attempt ${attempt} (${totalTime}ms)`,
         );
 
         return {
@@ -216,17 +182,13 @@ export class MexcErrorRecoveryService {
 
         console.error(
           `[MexcErrorRecoveryService] ❌ ${operationName} attempt ${attempt} failed:`,
-          errorMessage
+          errorMessage,
         );
 
         // Determine retry strategy
         const isRetryable = this.classifier.isRetryable(errorMessage);
         const retryDelay = this.config.exponentialBackoff
-          ? this.classifier.getRetryDelay(
-              errorMessage,
-              attempt,
-              this.config.retryDelay
-            )
+          ? this.classifier.getRetryDelay(errorMessage, attempt, this.config.retryDelay)
           : this.config.retryDelay;
 
         const recoveryAttempt: RecoveryAttempt = {
@@ -247,7 +209,7 @@ export class MexcErrorRecoveryService {
         // If not retryable or max retries reached
         if (!isRetryable || attempt >= this.config.maxRetries) {
           console.info(
-            `[MexcErrorRecoveryService] ${operationName} not retryable or max attempts reached`
+            `[MexcErrorRecoveryService] ${operationName} not retryable or max attempts reached`,
           );
 
           // Try fallback if available and appropriate
@@ -258,13 +220,13 @@ export class MexcErrorRecoveryService {
           ) {
             try {
               console.info(
-                `[MexcErrorRecoveryService] Attempting fallback for ${operationName}...`
+                `[MexcErrorRecoveryService] Attempting fallback for ${operationName}...`,
               );
               const fallbackResult = await fallback();
 
               const totalTime = Date.now() - startTime;
               console.info(
-                `[MexcErrorRecoveryService] ✅ ${operationName} fallback succeeded (${totalTime}ms)`
+                `[MexcErrorRecoveryService] ✅ ${operationName} fallback succeeded (${totalTime}ms)`,
               );
 
               return {
@@ -278,7 +240,7 @@ export class MexcErrorRecoveryService {
               const safeFallbackError = toSafeError(fallbackError);
               console.error(
                 `[MexcErrorRecoveryService] ❌ ${operationName} fallback failed:`,
-                safeFallbackError.message
+                safeFallbackError.message,
               );
             }
           }
@@ -297,7 +259,7 @@ export class MexcErrorRecoveryService {
         // Wait before retry
         if (retryDelay > 0) {
           console.info(
-            `[MexcErrorRecoveryService] Retrying ${operationName} in ${retryDelay}ms...`
+            `[MexcErrorRecoveryService] Retrying ${operationName} in ${retryDelay}ms...`,
           );
           await this.delay(retryDelay);
         }
@@ -321,28 +283,21 @@ export class MexcErrorRecoveryService {
   async handleMexcApiCall<T>(
     apiCall: () => Promise<T>,
     fallbackCall?: () => Promise<T>,
-    operationName = "MEXC API Call"
+    operationName = "MEXC API Call",
   ): Promise<T> {
-    const result = await this.executeWithRecovery(
-      apiCall,
-      fallbackCall,
-      operationName
-    );
+    const result = await this.executeWithRecovery(apiCall, fallbackCall, operationName);
 
     if (result.success && result.data !== undefined) {
       return result.data;
     }
 
     // Log recovery details for debugging
-    console.error(
-      `[MexcErrorRecoveryService] ${operationName} failed after recovery:`,
-      {
-        error: result.error,
-        attempts: result.attempts.length,
-        finalStrategy: result.finalStrategy,
-        totalTime: result.totalTime,
-      }
-    );
+    console.error(`[MexcErrorRecoveryService] ${operationName} failed after recovery:`, {
+      error: result.error,
+      attempts: result.attempts.length,
+      finalStrategy: result.finalStrategy,
+      totalTime: result.totalTime,
+    });
 
     throw new Error(result.error || "API call failed after recovery attempts");
   }
@@ -400,10 +355,7 @@ export class MexcErrorRecoveryService {
    */
   updateConfig(newConfig: Partial<ErrorRecoveryConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    console.info(
-      "[MexcErrorRecoveryService] Configuration updated:",
-      newConfig
-    );
+    console.info("[MexcErrorRecoveryService] Configuration updated:", newConfig);
   }
 }
 
@@ -415,7 +367,7 @@ export class MexcErrorRecoveryService {
  * Create error recovery service with default configuration
  */
 export function createErrorRecoveryService(
-  config?: Partial<ErrorRecoveryConfig>
+  config?: Partial<ErrorRecoveryConfig>,
 ): MexcErrorRecoveryService {
   const defaultConfig: Partial<ErrorRecoveryConfig> = {
     maxRetries: 3,
@@ -458,7 +410,7 @@ export function resetGlobalErrorRecoveryService(): void {
 export async function withMexcRecovery<T>(
   apiCall: () => Promise<T>,
   fallback?: () => Promise<T>,
-  operationName?: string
+  operationName?: string,
 ): Promise<T> {
   const recoveryService = getGlobalErrorRecoveryService();
   return recoveryService.handleMexcApiCall(apiCall, fallback, operationName);
@@ -473,7 +425,7 @@ export function makeRetryable<T extends (...args: any[]) => Promise<any>>(
     maxRetries?: number;
     retryDelay?: number;
     operationName?: string;
-  }
+  },
 ): T {
   const recoveryService = createErrorRecoveryService({
     maxRetries: options?.maxRetries || 3,
@@ -484,7 +436,7 @@ export function makeRetryable<T extends (...args: any[]) => Promise<any>>(
     return recoveryService.handleMexcApiCall(
       () => fn(...args),
       undefined,
-      options?.operationName || fn.name
+      options?.operationName || fn.name,
     );
   }) as T;
 }

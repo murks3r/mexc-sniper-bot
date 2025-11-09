@@ -26,9 +26,7 @@ export class DatabaseOperations {
   /**
    * Get ready snipe targets from database with standardized query
    */
-  static async getReadySnipeTargets(
-    limit: number = 10
-  ): Promise<AutoSnipeTarget[]> {
+  static async getReadySnipeTargets(limit: number = 10): Promise<AutoSnipeTarget[]> {
     try {
       const now = new Date();
       const targets = await db
@@ -37,11 +35,8 @@ export class DatabaseOperations {
         .where(
           and(
             eq(snipeTargets.status, "ready"),
-            or(
-              isNull(snipeTargets.targetExecutionTime),
-              lt(snipeTargets.targetExecutionTime, now)
-            )
-          )
+            or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now)),
+          ),
         )
         .orderBy(snipeTargets.priority, snipeTargets.createdAt)
         .limit(limit);
@@ -49,10 +44,7 @@ export class DatabaseOperations {
       return targets as AutoSnipeTarget[];
     } catch (error) {
       const safeError = toSafeError(error);
-      DatabaseOperations.logger.error(
-        "Failed to fetch ready snipe targets",
-        safeError
-      );
+      DatabaseOperations.logger.error("Failed to fetch ready snipe targets", safeError);
       return [];
     }
   }
@@ -64,7 +56,7 @@ export class DatabaseOperations {
     targetId: number,
     status: string,
     errorMessage?: string,
-    additionalFields?: Record<string, any>
+    additionalFields?: Record<string, any>,
   ): Promise<boolean> {
     try {
       const updateData: Record<string, any> = {
@@ -81,10 +73,7 @@ export class DatabaseOperations {
         updateData.errorMessage = errorMessage;
       }
 
-      await db
-        .update(snipeTargets)
-        .set(updateData)
-        .where(eq(snipeTargets.id, targetId));
+      await db.update(snipeTargets).set(updateData).where(eq(snipeTargets.id, targetId));
 
       return true;
     } catch (error) {
@@ -107,7 +96,7 @@ export class DatabaseOperations {
       status: string;
       errorMessage?: string;
       additionalFields?: Record<string, any>;
-    }>
+    }>,
   ): Promise<{ success: number; failed: number }> {
     let success = 0;
     let failed = 0;
@@ -117,7 +106,7 @@ export class DatabaseOperations {
         update.id,
         update.status,
         update.errorMessage,
-        update.additionalFields
+        update.additionalFields,
       );
 
       if (result) {
@@ -142,35 +131,24 @@ export class DatabaseOperations {
   static async getSnipeTargetsByStatus(
     status: string,
     limit: number = 50,
-    additionalFilters?: any
+    additionalFilters?: any,
   ): Promise<AutoSnipeTarget[]> {
     try {
-      let query = db
-        .select()
-        .from(snipeTargets)
-        .where(eq(snipeTargets.status, status));
+      let query = db.select().from(snipeTargets).where(eq(snipeTargets.status, status));
 
       if (additionalFilters) {
-        query = query.where(
-          and(eq(snipeTargets.status, status), additionalFilters)
-        );
+        query = query.where(and(eq(snipeTargets.status, status), additionalFilters));
       }
 
-      const targets = await query
-        .orderBy(snipeTargets.createdAt)
-        .limit(limit)
-        .execute();
+      const targets = await query.orderBy(snipeTargets.createdAt).limit(limit).execute();
 
       return targets as AutoSnipeTarget[];
     } catch (error) {
       const safeError = toSafeError(error);
-      DatabaseOperations.logger.error(
-        "Failed to fetch snipe targets by status",
-        {
-          status,
-          error: safeError,
-        }
-      );
+      DatabaseOperations.logger.error("Failed to fetch snipe targets by status", {
+        status,
+        error: safeError,
+      });
       return [];
     }
   }
@@ -178,9 +156,7 @@ export class DatabaseOperations {
   /**
    * Get snipe target by ID
    */
-  static async getSnipeTargetById(
-    targetId: number
-  ): Promise<AutoSnipeTarget | null> {
+  static async getSnipeTargetById(targetId: number): Promise<AutoSnipeTarget | null> {
     try {
       const targets = await db
         .select()
@@ -204,7 +180,7 @@ export class DatabaseOperations {
    * Create a new snipe target
    */
   static async createSnipeTarget(
-    targetData: Partial<AutoSnipeTarget>
+    targetData: Partial<AutoSnipeTarget>,
   ): Promise<AutoSnipeTarget | null> {
     try {
       const newTarget = {
@@ -223,10 +199,7 @@ export class DatabaseOperations {
         status: targetData.status || "pending",
       };
 
-      const result = await db
-        .insert(snipeTargets)
-        .values(newTarget)
-        .returning();
+      const result = await db.insert(snipeTargets).values(newTarget).returning();
 
       return result.length > 0 ? (result[0] as AutoSnipeTarget) : null;
     } catch (error) {
@@ -242,9 +215,7 @@ export class DatabaseOperations {
   /**
    * Delete old completed snipe targets for cleanup
    */
-  static async cleanupOldSnipeTargets(
-    olderThanDays: number = 30
-  ): Promise<number> {
+  static async cleanupOldSnipeTargets(olderThanDays: number = 30): Promise<number> {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
@@ -256,18 +227,16 @@ export class DatabaseOperations {
             or(
               eq(snipeTargets.status, "completed"),
               eq(snipeTargets.status, "failed"),
-              eq(snipeTargets.status, "cancelled")
+              eq(snipeTargets.status, "cancelled"),
             ),
-            lt(snipeTargets.updatedAt, cutoffDate)
-          )
+            lt(snipeTargets.updatedAt, cutoffDate),
+          ),
         )
         .execute();
 
       // For Drizzle, result contains metadata about the operation
       const deletedCount =
-        typeof result === "object" && result && "rowCount" in result
-          ? (result as any).rowCount
-          : 0;
+        typeof result === "object" && result && "rowCount" in result ? (result as any).rowCount : 0;
 
       DatabaseOperations.logger.info("Cleanup completed", {
         deletedTargets: deletedCount,
@@ -311,20 +280,15 @@ export class DatabaseOperations {
         total: allTargets.length,
         pending: allTargets.filter((t: any) => t.status === "pending").length,
         ready: allTargets.filter((t: any) => t.status === "ready").length,
-        executing: allTargets.filter((t: any) => t.status === "executing")
-          .length,
-        completed: allTargets.filter((t: any) => t.status === "completed")
-          .length,
+        executing: allTargets.filter((t: any) => t.status === "executing").length,
+        completed: allTargets.filter((t: any) => t.status === "completed").length,
         failed: allTargets.filter((t: any) => t.status === "failed").length,
       };
 
       return stats;
     } catch (error) {
       const safeError = toSafeError(error);
-      DatabaseOperations.logger.error(
-        "Failed to get snipe target statistics",
-        safeError
-      );
+      DatabaseOperations.logger.error("Failed to get snipe target statistics", safeError);
       return {
         total: 0,
         pending: 0,
@@ -342,19 +306,16 @@ export class DatabaseOperations {
   static async executeWithErrorHandling<T>(
     operation: () => Promise<T>,
     operationName: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<T | null> {
     try {
       return await operation();
     } catch (error) {
       const safeError = toSafeError(error);
-      DatabaseOperations.logger.error(
-        `Database operation failed: ${operationName}`,
-        {
-          ...context,
-          error: safeError,
-        }
-      );
+      DatabaseOperations.logger.error(`Database operation failed: ${operationName}`, {
+        ...context,
+        error: safeError,
+      });
       return null;
     }
   }

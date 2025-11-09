@@ -31,9 +31,7 @@ export const AutoSnipingConfigSchema = z.object({
   confidenceThreshold: z.number().min(0).max(100).default(75),
   maxPositionSize: z.number().min(0).max(1).default(0.1), // 10% of portfolio
   stopLossPercentage: z.number().min(0).max(1).default(0.15), // 15% stop loss
-  strategy: z
-    .enum(["conservative", "balanced", "aggressive"])
-    .default("conservative"),
+  strategy: z.enum(["conservative", "balanced", "aggressive"]).default("conservative"),
   paperTradingMode: z.boolean().default(true),
 });
 
@@ -336,35 +334,40 @@ export function validateStatus(status: unknown): AutoSnipingStatus {
 // ============================================================================
 
 export function isSnipeTarget(obj: unknown): obj is SnipeTarget {
+  if (obj === null || typeof obj !== "object") {
+    return false;
+  }
+
+  const record = obj as Record<string, unknown>;
   return (
-    obj !== null &&
-    typeof obj === "object" &&
-    typeof (obj as any).id === "number" &&
-    typeof (obj as any).symbolName === "string" &&
-    typeof (obj as any).confidenceScore === "number" &&
-    typeof (obj as any).status === "string"
+    typeof record.id === "number" &&
+    typeof record.symbolName === "string" &&
+    typeof record.confidenceScore === "number" &&
+    typeof record.status === "string"
   );
 }
 
 export function isTradingPosition(obj: unknown): obj is TradingPosition {
+  if (obj === null || typeof obj !== "object") {
+    return false;
+  }
+
+  const record = obj as Record<string, unknown>;
   return (
-    obj !== null &&
-    typeof obj === "object" &&
-    typeof (obj as any).id === "string" &&
-    typeof (obj as any).symbol === "string" &&
-    typeof (obj as any).entryPrice === "number" &&
-    typeof (obj as any).amount === "number"
+    typeof record.id === "string" &&
+    typeof record.symbol === "string" &&
+    typeof record.entryPrice === "number" &&
+    typeof record.amount === "number"
   );
 }
 
-export function isTradeExecutionResult(
-  obj: unknown
-): obj is TradeExecutionResult {
-  return (
-    obj !== null &&
-    typeof obj === "object" &&
-    typeof (obj as any).success === "boolean"
-  );
+export function isTradeExecutionResult(obj: unknown): obj is TradeExecutionResult {
+  if (obj === null || typeof obj !== "object") {
+    return false;
+  }
+
+  const record = obj as Record<string, unknown>;
+  return typeof record.success === "boolean";
 }
 
 // ============================================================================

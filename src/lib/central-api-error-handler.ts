@@ -22,7 +22,7 @@ export function handleApiError(error: unknown): NextResponse {
         code: "INTERNAL_ERROR",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -32,7 +32,7 @@ export function handleApiError(error: unknown): NextResponse {
       code: "UNKNOWN_ERROR",
       timestamp: new Date().toISOString(),
     },
-    { status: 500 }
+    { status: 500 },
   );
 }
 
@@ -40,7 +40,7 @@ export function createApiError(
   message: string,
   code: string = "API_ERROR",
   status: number = 400,
-  details?: any
+  details?: any,
 ): ApiError {
   return {
     message,
@@ -58,7 +58,7 @@ export function isApiError(error: any): error is ApiError {
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public code: string = "VALIDATION_ERROR"
+    public code: string = "VALIDATION_ERROR",
   ) {
     super(message);
     this.name = "ValidationError";
@@ -67,7 +67,7 @@ export class ValidationError extends Error {
 
 // Missing functions for compatibility
 export function withApiErrorHandling<T extends any[], R>(
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R | NextResponse> {
   return async (...args: T): Promise<R | NextResponse> => {
     try {
@@ -87,17 +87,17 @@ export function validateUserId(userId: string | null | undefined): string {
 
 // Overloaded function for both argument-taking and zero-argument handlers
 export function withDatabaseErrorHandling<T extends any[], R>(
-  handler: (...args: T) => Promise<R>
+  handler: (...args: T) => Promise<R>,
 ): (...args: T) => Promise<R | NextResponse>;
 
 export function withDatabaseErrorHandling<R>(
   handler: () => Promise<R>,
-  operationName?: string
+  operationName?: string,
 ): Promise<R>;
 
 export function withDatabaseErrorHandling<T extends any[], R>(
   handler: (...args: T) => Promise<R> | (() => Promise<R>),
-  operationName?: string
+  operationName?: string,
 ): ((...args: T) => Promise<R | NextResponse>) | Promise<R> {
   if (operationName !== undefined) {
     // Called with operationName - execute immediately
@@ -113,9 +113,7 @@ export function withDatabaseErrorHandling<T extends any[], R>(
             error.message.includes("connection") ||
             error.message.includes("Unknown table"))
         ) {
-          throw new Error(
-            `Database operation failed for ${operationName}: ${error.message}`
-          );
+          throw new Error(`Database operation failed for ${operationName}: ${error.message}`);
         }
         throw error;
       }
@@ -139,7 +137,7 @@ export function withDatabaseErrorHandling<T extends any[], R>(
               code: "DATABASE_ERROR",
               timestamp: new Date().toISOString(),
             },
-            { status: 503 }
+            { status: 503 },
           );
         }
         return handleApiError(error);

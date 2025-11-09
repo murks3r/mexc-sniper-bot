@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: "userId is required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: "Failed to fetch portfolio",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

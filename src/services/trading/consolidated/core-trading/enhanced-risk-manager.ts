@@ -11,12 +11,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
-import type {
-  ModuleContext,
-  Position,
-  ServiceResponse,
-  TradeParameters,
-} from "./types";
+import type { ModuleContext, Position, ServiceResponse, TradeParameters } from "./types";
 
 // ============================================================================
 // Risk Management Types
@@ -68,7 +63,6 @@ export class EnhancedRiskManager {
   private context: ModuleContext;
   private riskLimits: RiskLimits;
   private activeAlerts: RiskAlert[] = [];
-  private lastRiskCheck: Date | null = null;
   private riskMetricsHistory: RiskMetrics[] = [];
   private marketConditions: MarketConditions | null = null;
 
@@ -108,10 +102,7 @@ export class EnhancedRiskManager {
       const currentMetrics = await this.calculateCurrentRiskMetrics();
 
       // Check portfolio risk limit
-      const portfolioRiskCheck = await this.checkPortfolioRisk(
-        params,
-        currentMetrics
-      );
+      const portfolioRiskCheck = await this.checkPortfolioRisk(params, currentMetrics);
       if (!portfolioRiskCheck.passed) {
         approved = false;
         validationResults.push(portfolioRiskCheck.reason);
@@ -139,10 +130,7 @@ export class EnhancedRiskManager {
       }
 
       // Check daily loss limit
-      const dailyLossCheck = await this.checkDailyLossLimit(
-        params,
-        currentMetrics
-      );
+      const dailyLossCheck = await this.checkDailyLossLimit(params, currentMetrics);
       if (!dailyLossCheck.passed) {
         approved = false;
         validationResults.push(dailyLossCheck.reason);
@@ -322,34 +310,25 @@ export class EnhancedRiskManager {
       const activePositions = await this.getActivePositions();
 
       // Calculate portfolio risk
-      const currentPortfolioRisk = this.calculatePortfolioRisk(
-        activePositions,
-        portfolioValue
-      );
+      const currentPortfolioRisk = this.calculatePortfolioRisk(activePositions, portfolioValue);
 
       // Calculate drawdown
-      const currentDrawdown =
-        await this.calculateCurrentDrawdown(portfolioValue);
+      const currentDrawdown = await this.calculateCurrentDrawdown(portfolioValue);
 
       // Calculate daily P&L
       const dailyPnL = await this.calculateDailyPnL();
 
       // Calculate active positions risk
-      const activePositionsRisk =
-        this.calculateActivePositionsRisk(activePositions);
+      const activePositionsRisk = this.calculateActivePositionsRisk(activePositions);
 
       // Calculate correlation risk
-      const correlationRisk =
-        await this.calculateCorrelationRisk(activePositions);
+      const correlationRisk = await this.calculateCorrelationRisk(activePositions);
 
       // Calculate liquidity risk
       const liquidityRisk = await this.calculateLiquidityRisk(activePositions);
 
       // Calculate concentration risk
-      const concentrationRisk = this.calculateConcentrationRisk(
-        activePositions,
-        portfolioValue
-      );
+      const concentrationRisk = this.calculateConcentrationRisk(activePositions, portfolioValue);
 
       // Calculate Sharpe ratio
       const sharpeRatio = this.calculateSharpeRatio();
@@ -388,10 +367,7 @@ export class EnhancedRiskManager {
     }
   }
 
-  private calculatePortfolioRisk(
-    positions: Position[],
-    portfolioValue: number
-  ): number {
+  private calculatePortfolioRisk(positions: Position[], portfolioValue: number): number {
     if (positions.length === 0 || portfolioValue === 0) return 0;
 
     let totalRisk = 0;
@@ -403,8 +379,7 @@ export class EnhancedRiskManager {
       // Add stop-loss risk if available
       if (position.stopLossPrice) {
         const stopLossRisk =
-          Math.abs(position.entryPrice - position.stopLossPrice) /
-          position.entryPrice;
+          Math.abs(position.entryPrice - position.stopLossPrice) / position.entryPrice;
         totalRisk += positionRisk * stopLossRisk;
       } else {
         // Assume 20% risk if no stop loss
@@ -415,9 +390,7 @@ export class EnhancedRiskManager {
     return totalRisk;
   }
 
-  private async calculateCurrentDrawdown(
-    currentValue: number
-  ): Promise<number> {
+  private async calculateCurrentDrawdown(currentValue: number): Promise<number> {
     try {
       // This would typically use historical portfolio values
       // For now, implement a simplified version
@@ -440,8 +413,7 @@ export class EnhancedRiskManager {
       let dailyPnL = 0;
 
       // Get active positions and calculate unrealized P&L
-      const activePositions =
-        this.context.positionManager?.getActivePositions?.() || new Map();
+      const activePositions = this.context.positionManager?.getActivePositions?.() || new Map();
 
       for (const position of activePositions.values()) {
         if (position.realizedPnL) {
@@ -456,9 +428,7 @@ export class EnhancedRiskManager {
           const currentValue = position.currentPrice * position.quantity;
 
           const unrealizedPnL =
-            position.side === "BUY"
-              ? currentValue - entryValue
-              : entryValue - currentValue;
+            position.side === "BUY" ? currentValue - entryValue : entryValue - currentValue;
 
           dailyPnL += unrealizedPnL;
         }
@@ -482,9 +452,7 @@ export class EnhancedRiskManager {
     }, 0);
   }
 
-  private async calculateCorrelationRisk(
-    positions: Position[]
-  ): Promise<number> {
+  private async calculateCorrelationRisk(positions: Position[]): Promise<number> {
     if (positions.length < 2) return 0;
 
     // Simplified correlation risk calculation
@@ -496,7 +464,7 @@ export class EnhancedRiskManager {
       for (let j = i + 1; j < positions.length; j++) {
         const correlation = await this.estimateCorrelation(
           positions[i].symbol,
-          positions[j].symbol
+          positions[j].symbol,
         );
         totalCorrelation += Math.abs(correlation);
         pairCount++;
@@ -511,28 +479,18 @@ export class EnhancedRiskManager {
 
     for (const position of positions) {
       try {
-        const orderBook = await this.context.mexcService.getOrderBook(
-          position.symbol,
-          20
-        );
+        const orderBook = await this.context.mexcService.getOrderBook(position.symbol, 20);
         if (orderBook.success && orderBook.data) {
           const { bids, asks } = orderBook.data;
 
           // Calculate bid-ask spread
           const bestBid = parseFloat(bids[0]?.[0] || "0");
           const bestAsk = parseFloat(asks[0]?.[0] || "0");
-          const spread =
-            bestAsk > 0 && bestBid > 0 ? (bestAsk - bestBid) / bestAsk : 0.1;
+          const spread = bestAsk > 0 && bestBid > 0 ? (bestAsk - bestBid) / bestAsk : 0.1;
 
           // Calculate market depth
-          const bidDepth = bids.reduce(
-            (sum, bid) => sum + parseFloat(bid[1]),
-            0
-          );
-          const askDepth = asks.reduce(
-            (sum, ask) => sum + parseFloat(ask[1]),
-            0
-          );
+          const bidDepth = bids.reduce((sum, bid) => sum + parseFloat(bid[1]), 0);
+          const askDepth = asks.reduce((sum, ask) => sum + parseFloat(ask[1]), 0);
           const totalDepth = bidDepth + askDepth;
 
           // Liquidity risk based on spread and depth
@@ -548,10 +506,7 @@ export class EnhancedRiskManager {
     return positions.length > 0 ? totalLiquidityRisk / positions.length : 0;
   }
 
-  private calculateConcentrationRisk(
-    positions: Position[],
-    portfolioValue: number
-  ): number {
+  private calculateConcentrationRisk(positions: Position[], portfolioValue: number): number {
     if (positions.length === 0 || portfolioValue === 0) return 0;
 
     // Calculate Herfindahl-Hirschman Index
@@ -571,13 +526,11 @@ export class EnhancedRiskManager {
 
     // Calculate returns from daily P&L
     const returns = this.riskMetricsHistory.map((metric) => metric.dailyPnL);
-    const meanReturn =
-      returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
+    const meanReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
 
     // Calculate standard deviation
     const variance =
-      returns.reduce((sum, ret) => sum + (ret - meanReturn) ** 2, 0) /
-      returns.length;
+      returns.reduce((sum, ret) => sum + (ret - meanReturn) ** 2, 0) / returns.length;
     const stdDev = Math.sqrt(variance);
 
     // Risk-free rate assumed to be 0
@@ -607,7 +560,7 @@ export class EnhancedRiskManager {
 
   private async checkPortfolioRisk(
     params: TradeParameters,
-    metrics: RiskMetrics
+    metrics: RiskMetrics,
   ): Promise<{ passed: boolean; reason: string }> {
     const newRisk = await this.estimateTradeRisk(params);
     const totalRisk = metrics.currentPortfolioRisk + newRisk;
@@ -623,7 +576,7 @@ export class EnhancedRiskManager {
   }
 
   private async checkConcentrationRisk(
-    params: TradeParameters
+    params: TradeParameters,
   ): Promise<{ passed: boolean; critical: boolean; reason: string }> {
     const positionValue = params.quoteOrderQty || 0;
     const portfolioValue = await this.getPortfolioValue();
@@ -649,17 +602,14 @@ export class EnhancedRiskManager {
   }
 
   private async checkCorrelationRisk(
-    params: TradeParameters
+    params: TradeParameters,
   ): Promise<{ passed: boolean; critical: boolean; reason: string }> {
     const activePositions = await this.getActivePositions();
     let maxCorrelation = 0;
     let correlatedSymbol = "";
 
     for (const position of activePositions) {
-      const correlation = await this.estimateCorrelation(
-        params.symbol,
-        position.symbol
-      );
+      const correlation = await this.estimateCorrelation(params.symbol, position.symbol);
       if (Math.abs(correlation) > Math.abs(maxCorrelation)) {
         maxCorrelation = correlation;
         correlatedSymbol = position.symbol;
@@ -688,7 +638,7 @@ export class EnhancedRiskManager {
 
   private async checkDailyLossLimit(
     params: TradeParameters,
-    metrics: RiskMetrics
+    metrics: RiskMetrics,
   ): Promise<{ passed: boolean; reason: string }> {
     const potentialLoss = await this.estimateMaxLoss(params);
     const totalPotentialLoss = Math.abs(metrics.dailyPnL) + potentialLoss;
@@ -704,7 +654,7 @@ export class EnhancedRiskManager {
   }
 
   private async checkMarketConditions(
-    _params: TradeParameters
+    _params: TradeParameters,
   ): Promise<{ riskAdjustment: number; warnings: string[] }> {
     await this.updateMarketConditions();
 
@@ -722,9 +672,7 @@ export class EnhancedRiskManager {
           break;
         case "EXTREME":
           riskAdjustment += 30;
-          warnings.push(
-            "Extreme market volatility - consider reducing position size"
-          );
+          warnings.push("Extreme market volatility - consider reducing position size");
           break;
       }
 
@@ -785,13 +733,10 @@ export class EnhancedRiskManager {
           if (asset.asset === "USDT") {
             totalValue += parseFloat(asset.free) + parseFloat(asset.locked);
           } else {
-            const ticker = await this.context.mexcService.getTicker(
-              `${asset.asset}USDT`
-            );
+            const ticker = await this.context.mexcService.getTicker(`${asset.asset}USDT`);
             if (ticker.success && ticker.data?.price) {
               const price = parseFloat(ticker.data.price);
-              const assetBalance =
-                parseFloat(asset.free) + parseFloat(asset.locked);
+              const assetBalance = parseFloat(asset.free) + parseFloat(asset.locked);
               totalValue += assetBalance * price;
             }
           }
@@ -810,10 +755,7 @@ export class EnhancedRiskManager {
     try {
       // Get active positions from position manager
       const positionManager = this.context.positionManager;
-      if (
-        positionManager &&
-        typeof positionManager.getActivePositions === "function"
-      ) {
+      if (positionManager && typeof positionManager.getActivePositions === "function") {
         const activePositions = positionManager.getActivePositions();
         if (activePositions instanceof Map) {
           return Array.from(activePositions.values());
@@ -828,10 +770,7 @@ export class EnhancedRiskManager {
         if (accountResult.success && accountResult.data?.balances) {
           // Convert non-zero balances to positions
           return accountResult.data.balances
-            .filter(
-              (balance) =>
-                parseFloat(balance.free) > 0 || parseFloat(balance.locked) > 0
-            )
+            .filter((balance) => parseFloat(balance.free) > 0 || parseFloat(balance.locked) > 0)
             .map((balance) => ({
               id: `pos-${balance.asset}`,
               symbol: `${balance.asset}USDT`,
@@ -860,10 +799,7 @@ export class EnhancedRiskManager {
     }
   }
 
-  private async estimateCorrelation(
-    symbol1: string,
-    symbol2: string
-  ): Promise<number> {
+  private async estimateCorrelation(symbol1: string, symbol2: string): Promise<number> {
     // Return 1 for identical symbols
     if (symbol1 === symbol2) return 1;
 
@@ -968,26 +904,19 @@ export class EnhancedRiskManager {
 
   private async estimateTradeRisk(params: TradeParameters): Promise<number> {
     const positionValue = params.quoteOrderQty || 0;
-    const stopLossRisk = params.stopLossPercent
-      ? params.stopLossPercent / 100
-      : 0.2;
+    const stopLossRisk = params.stopLossPercent ? params.stopLossPercent / 100 : 0.2;
     return positionValue * stopLossRisk;
   }
 
   private async estimateMaxLoss(params: TradeParameters): Promise<number> {
     const positionValue = params.quoteOrderQty || 0;
-    const maxLossPercent = params.stopLossPercent
-      ? params.stopLossPercent / 100
-      : 0.2;
+    const maxLossPercent = params.stopLossPercent ? params.stopLossPercent / 100 : 0.2;
     return positionValue * maxLossPercent;
   }
 
-  private async calculateSafePositionSize(
-    params: TradeParameters
-  ): Promise<number> {
+  private async calculateSafePositionSize(params: TradeParameters): Promise<number> {
     const portfolioValue = await this.getPortfolioValue();
-    const maxRiskAmount =
-      portfolioValue * (this.riskLimits.maxSinglePositionRisk / 100);
+    const maxRiskAmount = portfolioValue * (this.riskLimits.maxSinglePositionRisk / 100);
 
     // Get current price to calculate safe quantity
     const ticker = await this.context.mexcService.getTicker(params.symbol);
@@ -1100,9 +1029,7 @@ export class EnhancedRiskManager {
    */
   clearAlerts(olderThan?: Date): void {
     if (olderThan) {
-      this.activeAlerts = this.activeAlerts.filter(
-        (alert) => alert.timestamp > olderThan
-      );
+      this.activeAlerts = this.activeAlerts.filter((alert) => alert.timestamp > olderThan);
     } else {
       this.activeAlerts = [];
     }
@@ -1138,31 +1065,20 @@ export class EnhancedRiskManager {
       const recommendations: string[] = [];
 
       // Generate recommendations based on current metrics
-      if (
-        summary.currentPortfolioRisk >
-        this.riskLimits.maxPortfolioRisk * 0.8
-      ) {
-        recommendations.push(
-          "Consider reducing position sizes to lower portfolio risk"
-        );
+      if (summary.currentPortfolioRisk > this.riskLimits.maxPortfolioRisk * 0.8) {
+        recommendations.push("Consider reducing position sizes to lower portfolio risk");
       }
 
       if (summary.correlationRisk > 60) {
-        recommendations.push(
-          "High correlation detected - diversify into uncorrelated assets"
-        );
+        recommendations.push("High correlation detected - diversify into uncorrelated assets");
       }
 
       if (summary.liquidityRisk > 6) {
-        recommendations.push(
-          "Monitor liquidity conditions - consider more liquid assets"
-        );
+        recommendations.push("Monitor liquidity conditions - consider more liquid assets");
       }
 
       if (summary.concentrationRisk > 50) {
-        recommendations.push(
-          "Portfolio is concentrated - spread risk across more positions"
-        );
+        recommendations.push("Portfolio is concentrated - spread risk across more positions");
       }
 
       return {

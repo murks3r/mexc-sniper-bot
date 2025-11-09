@@ -9,10 +9,7 @@ import type {
   EnvironmentValidationResult,
   EnvironmentVariable,
 } from "@/src/config/environment/types";
-import {
-  ENVIRONMENT_VARIABLES,
-  getCriticalMissing,
-} from "@/src/config/environment/variables";
+import { ENVIRONMENT_VARIABLES, getCriticalMissing } from "@/src/config/environment/variables";
 
 export class EnvironmentValidation {
   private static instance: EnvironmentValidation;
@@ -23,12 +20,7 @@ export class EnvironmentValidation {
     warn: (message: string, context?: any) =>
       console.warn("[environment-validation]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[environment-validation]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[environment-validation]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[environment-validation]", message, context || ""),
   };
@@ -74,11 +66,7 @@ export class EnvironmentValidation {
       }
 
       // Collect warnings
-      if (
-        result.message &&
-        result.status === "missing" &&
-        envVar.warningIfMissing
-      ) {
+      if (result.message && result.status === "missing" && envVar.warningIfMissing) {
         warnings.push(envVar.warningIfMissing);
       }
     }
@@ -114,9 +102,7 @@ export class EnvironmentValidation {
 
     // Generate recommendations
     if (criticalMissing.length > 0) {
-      recommendations.push(
-        `Critical: Configure required variables: ${criticalMissing.join(", ")}`
-      );
+      recommendations.push(`Critical: Configure required variables: ${criticalMissing.join(", ")}`);
     }
 
     if (warnings.length > 0) {
@@ -141,7 +127,7 @@ export class EnvironmentValidation {
    * Validate a single environment variable
    */
   private validateSingleVariable(
-    envVar: EnvironmentVariable
+    envVar: EnvironmentVariable,
   ): EnvironmentValidationResult["results"][0] {
     const value = process.env[envVar.key];
 
@@ -163,9 +149,7 @@ export class EnvironmentValidation {
         return {
           key: envVar.key,
           status: "missing",
-          message:
-            envVar.warningIfMissing ||
-            `${envVar.description} is not configured`,
+          message: envVar.warningIfMissing || `${envVar.description} is not configured`,
           category: envVar.category,
           required: envVar.required,
         };
@@ -200,9 +184,7 @@ export class EnvironmentValidation {
    */
   private sanitizeValue(key: string, value: string): string {
     const sensitivePatterns = ["key", "secret", "token", "password", "url"];
-    const isSensitive = sensitivePatterns.some((pattern) =>
-      key.toLowerCase().includes(pattern)
-    );
+    const isSensitive = sensitivePatterns.some((pattern) => key.toLowerCase().includes(pattern));
 
     if (isSensitive) {
       return value.length > 8
@@ -320,9 +302,7 @@ export class EnvironmentValidation {
         .map((r) => r.key);
 
       if (usingDefaults.length > 0) {
-        issues.push(
-          `Using default values in production: ${usingDefaults.join(", ")}`
-        );
+        issues.push(`Using default values in production: ${usingDefaults.join(", ")}`);
       }
     }
 
@@ -393,9 +373,7 @@ export class EnvironmentValidation {
     let template = "# Development Environment Template\n";
     template += "# Copy this file to .env and configure your values\n\n";
 
-    const categories = Array.from(
-      new Set(ENVIRONMENT_VARIABLES.map((v) => v.category))
-    );
+    const categories = Array.from(new Set(ENVIRONMENT_VARIABLES.map((v) => v.category)));
 
     categories.forEach((category) => {
       template += `# ${category.toUpperCase()} SETTINGS\n`;

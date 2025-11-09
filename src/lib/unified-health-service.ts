@@ -101,10 +101,7 @@ export class HealthCheckComponents {
     if (cached) return cached;
 
     try {
-      const [dbHealth, authTables] = await Promise.all([
-        checkDatabaseHealth(),
-        checkAuthTables(),
-      ]);
+      const [dbHealth, authTables] = await Promise.all([checkDatabaseHealth(), checkAuthTables()]);
 
       const isHealthy = dbHealth.healthy && authTables.healthy;
       const result: HealthCheckResult = {
@@ -115,8 +112,7 @@ export class HealthCheckComponents {
           authTables: authTables,
           environment: {
             DATABASE_URL: !!process.env.DATABASE_URL,
-            DATABASE_URL_PROTOCOL:
-              process.env.DATABASE_URL?.split("://")[0] || "unknown",
+            DATABASE_URL_PROTOCOL: process.env.DATABASE_URL?.split("://")[0] || "unknown",
             NODE_ENV: process.env.NODE_ENV || "development",
           },
         },
@@ -155,9 +151,7 @@ export class HealthCheckComponents {
         "KINDE_POST_LOGIN_REDIRECT_URL",
       ];
 
-      const missing = requiredEnvs.filter(
-        (env) => process.env[env] === undefined
-      );
+      const missing = requiredEnvs.filter((env) => process.env[env] === undefined);
 
       if (missing.length > 0) {
         const result: HealthCheckResult = {
@@ -185,27 +179,24 @@ export class HealthCheckComponents {
         authStatus = "error";
         authTestResult = {
           sdk_accessible: false,
-          error:
-            sdkError instanceof Error ? sdkError.message : "Unknown SDK error",
+          error: sdkError instanceof Error ? sdkError.message : "Unknown SDK error",
         };
       }
 
       // Validate configuration values
       const configValidation = {
-        issuer_url_format: HealthCheckComponents.validateUrlFormat(
-          process.env.KINDE_ISSUER_URL,
-          ["https"]
-        ),
-        site_url_format: HealthCheckComponents.validateUrlFormat(
-          process.env.KINDE_SITE_URL,
-          ["http", "https"]
-        ),
+        issuer_url_format: HealthCheckComponents.validateUrlFormat(process.env.KINDE_ISSUER_URL, [
+          "https",
+        ]),
+        site_url_format: HealthCheckComponents.validateUrlFormat(process.env.KINDE_SITE_URL, [
+          "http",
+          "https",
+        ]),
         client_id_format: Boolean(
-          process.env.KINDE_CLIENT_ID && process.env.KINDE_CLIENT_ID.length > 0
+          process.env.KINDE_CLIENT_ID && process.env.KINDE_CLIENT_ID.length > 0,
         ),
         redirect_urls_configured: Boolean(
-          process.env.KINDE_POST_LOGIN_REDIRECT_URL &&
-            process.env.KINDE_POST_LOGOUT_REDIRECT_URL
+          process.env.KINDE_POST_LOGIN_REDIRECT_URL && process.env.KINDE_POST_LOGOUT_REDIRECT_URL,
         ),
       };
 
@@ -263,12 +254,10 @@ export class HealthCheckComponents {
         // FIXED: OpenAI key missing should be warning, not error - auto-sniping works without AI
         const result: HealthCheckResult = {
           status: "warning",
-          message:
-            "OpenAI API key not configured - AI features will be limited",
+          message: "OpenAI API key not configured - AI features will be limited",
           details: {
             configured: false,
-            impact:
-              "Auto-sniping functionality will work without AI enhancement",
+            impact: "Auto-sniping functionality will work without AI enhancement",
           },
         };
         return result;
@@ -327,10 +316,7 @@ export class HealthCheckComponents {
           hasUserCredentials = !!userCredentials;
         } catch (error) {
           // Handle encryption service errors
-          if (
-            error instanceof Error &&
-            error.message.includes("Encryption service unavailable")
-          ) {
+          if (error instanceof Error && error.message.includes("Encryption service unavailable")) {
             return {
               hasCredentials: false,
               credentialsValid: false,
@@ -343,9 +329,7 @@ export class HealthCheckComponents {
       }
 
       // Check environment credentials
-      hasEnvironmentCredentials = !!(
-        process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY
-      );
+      hasEnvironmentCredentials = !!(process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY);
 
       // Determine credential source
       let credentialSource: "database" | "environment" | "none" = "none";
@@ -455,26 +439,17 @@ export class HealthCheckComponents {
       "KINDE_SITE_URL",
     ];
 
-    const optionalVars = [
-      "MEXC_API_KEY",
-      "MEXC_SECRET_KEY",
-      "ENCRYPTION_MASTER_KEY",
-    ];
+    const optionalVars = ["MEXC_API_KEY", "MEXC_SECRET_KEY", "ENCRYPTION_MASTER_KEY"];
 
     const missingRequired = requiredVars.filter((key) => !process.env[key]);
     const missingOptional = optionalVars.filter((key) => !process.env[key]);
     const warnings: string[] = [];
 
     if (missingOptional.length > 0) {
-      warnings.push(
-        `Optional environment variables not set: ${missingOptional.join(", ")}`
-      );
+      warnings.push(`Optional environment variables not set: ${missingOptional.join(", ")}`);
     }
 
-    if (
-      process.env.NODE_ENV === "production" &&
-      !process.env.ENCRYPTION_MASTER_KEY
-    ) {
+    if (process.env.NODE_ENV === "production" && !process.env.ENCRYPTION_MASTER_KEY) {
       warnings.push("ENCRYPTION_MASTER_KEY should be set in production");
     }
 
@@ -524,10 +499,7 @@ export class HealthCheckComponents {
     }
   }
 
-  private static validateUrlFormat(
-    url: string | undefined,
-    allowedProtocols: string[]
-  ): boolean {
+  private static validateUrlFormat(url: string | undefined, allowedProtocols: string[]): boolean {
     if (!url) return false;
 
     try {
@@ -632,15 +604,11 @@ export class UnifiedHealthService {
       const healthyCount = healthStatuses.filter((s) => s === "healthy").length;
       const warningCount = healthStatuses.filter((s) => s === "warning").length;
       const unhealthyCount = healthStatuses.filter(
-        (s) => s === "unhealthy" || s === "error"
+        (s) => s === "unhealthy" || s === "error",
       ).length;
 
       const overallStatus: "healthy" | "warning" | "unhealthy" =
-        unhealthyCount > 0
-          ? "unhealthy"
-          : warningCount > 0
-            ? "warning"
-            : "healthy";
+        unhealthyCount > 0 ? "unhealthy" : warningCount > 0 ? "warning" : "healthy";
 
       return {
         overallStatus,
@@ -679,7 +647,7 @@ export class UnifiedHealthService {
    */
   static async getComponentHealth(
     component: string,
-    userId?: string
+    userId?: string,
   ): Promise<HealthCheckResult | CredentialValidationResult> {
     switch (component.toLowerCase()) {
       case "database":

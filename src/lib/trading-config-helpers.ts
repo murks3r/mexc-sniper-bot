@@ -12,12 +12,12 @@ export function getPaperTradingDefault(): boolean {
   if (process.env.MEXC_PAPER_TRADING !== undefined) {
     return process.env.MEXC_PAPER_TRADING === "true";
   }
-  
+
   // Check PAPER_TRADING_MODE as fallback
   if (process.env.PAPER_TRADING_MODE !== undefined) {
     return process.env.PAPER_TRADING_MODE === "true";
   }
-  
+
   // Default to real trading (false) for production
   return false;
 }
@@ -29,7 +29,7 @@ export function getAutoSnipingDefault(): boolean {
   if (process.env.AUTO_SNIPING_ENABLED !== undefined) {
     return process.env.AUTO_SNIPING_ENABLED !== "false";
   }
-  
+
   // Default to enabled for production
   return true;
 }
@@ -49,9 +49,9 @@ export function getTradingConfigDefaults() {
  * Environment variable keys used for trading configuration
  */
 export const TRADING_ENV_VARS = {
-  MEXC_PAPER_TRADING: 'MEXC_PAPER_TRADING',
-  PAPER_TRADING_MODE: 'PAPER_TRADING_MODE', 
-  AUTO_SNIPING_ENABLED: 'AUTO_SNIPING_ENABLED',
+  MEXC_PAPER_TRADING: "MEXC_PAPER_TRADING",
+  PAPER_TRADING_MODE: "PAPER_TRADING_MODE",
+  AUTO_SNIPING_ENABLED: "AUTO_SNIPING_ENABLED",
 } as const;
 
 /**
@@ -59,13 +59,13 @@ export const TRADING_ENV_VARS = {
  */
 export function logTradingConfig() {
   const config = getTradingConfigDefaults();
-  console.info('[Trading Config]', {
+  console.info("[Trading Config]", {
     paperTradingMode: config.paperTradingMode,
     autoSnipingEnabled: config.autoSnipingEnabled,
     environmentVariables: {
       MEXC_PAPER_TRADING: process.env.MEXC_PAPER_TRADING,
       PAPER_TRADING_MODE: process.env.PAPER_TRADING_MODE,
       AUTO_SNIPING_ENABLED: process.env.AUTO_SNIPING_ENABLED,
-    }
+    },
   });
-} 
+}

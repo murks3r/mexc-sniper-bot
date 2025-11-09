@@ -16,10 +16,7 @@ interface RecentExecutionsProps {
   formatCurrency: (value: string | number) => string;
 }
 
-export function RecentExecutions({
-  recentExecutions,
-  formatCurrency,
-}: RecentExecutionsProps) {
+export function RecentExecutions({ recentExecutions, formatCurrency }: RecentExecutionsProps) {
   if (recentExecutions.length === 0) {
     return null;
   }
@@ -45,11 +42,7 @@ export function RecentExecutions({
                     <Badge variant="outline" className="font-mono">
                       {execution.symbol}
                     </Badge>
-                    <Badge
-                      variant={
-                        execution.status === "CLOSED" ? "default" : "secondary"
-                      }
-                    >
+                    <Badge variant={execution.status === "CLOSED" ? "default" : "secondary"}>
                       {execution.status}
                     </Badge>
                   </div>
@@ -62,8 +55,7 @@ export function RecentExecutions({
                     {formatCurrency(execution.entryPrice)}
                   </div>
                   <div>
-                    <span className="font-medium">Quantity:</span>{" "}
-                    {execution.quantity}
+                    <span className="font-medium">Quantity:</span> {execution.quantity}
                   </div>
                   <div>
                     <span className="font-medium">Pattern:</span>{" "}

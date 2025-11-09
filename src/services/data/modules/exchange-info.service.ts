@@ -47,13 +47,7 @@ export const ExchangeSymbolSchema = z.object({
   quotePrecision: z.number().int().nonnegative(),
   quoteAssetPrecision: z.number().int().nonnegative(),
   orderTypes: z.array(
-    z.enum([
-      "LIMIT",
-      "LIMIT_MAKER",
-      "MARKET",
-      "STOP_LOSS_LIMIT",
-      "TAKE_PROFIT_LIMIT",
-    ])
+    z.enum(["LIMIT", "LIMIT_MAKER", "MARKET", "STOP_LOSS_LIMIT", "TAKE_PROFIT_LIMIT"]),
   ),
   icebergAllowed: z.boolean().optional(),
   ocoAllowed: z.boolean().optional(),
@@ -73,7 +67,7 @@ export const ExchangeInfoSchema = z.object({
         interval: z.string(),
         intervalNum: z.number().int().positive(),
         limit: z.number().int().positive(),
-      })
+      }),
     )
     .optional(),
   symbols: z.array(ExchangeSymbolSchema),
@@ -119,11 +113,7 @@ export interface ExchangeInfoConfig {
     execute: <T>(fn: () => Promise<T>) => Promise<T>;
   };
   performanceMonitor?: {
-    recordMetric: (
-      name: string,
-      value: number,
-      tags?: Record<string, string>
-    ) => void;
+    recordMetric: (name: string, value: number, tags?: Record<string, string>) => void;
   };
   cacheTTL?: number;
 }
@@ -219,9 +209,7 @@ export class ExchangeInfoService {
       return exchangeInfo;
     }
 
-    const symbolInfo = exchangeInfo.data.symbols.find(
-      (s) => s.symbol === symbol.toUpperCase()
-    );
+    const symbolInfo = exchangeInfo.data.symbols.find((s) => s.symbol === symbol.toUpperCase());
 
     return {
       success: true,
@@ -241,9 +229,7 @@ export class ExchangeInfoService {
     methodName: "getFilteredSymbols",
     operationType: "api_call",
   })
-  async getFilteredSymbols(
-    filter: SymbolFilter
-  ): Promise<ExchangeInfoResponse> {
+  async getFilteredSymbols(filter: SymbolFilter): Promise<ExchangeInfoResponse> {
     try {
       // Validate filter input
       const validatedFilter = SymbolFilterSchema.parse(filter);
@@ -254,10 +240,7 @@ export class ExchangeInfoService {
       }
 
       const filteredSymbols = exchangeInfo.data.symbols.filter((symbol) => {
-        if (
-          validatedFilter.symbol &&
-          symbol.symbol !== validatedFilter.symbol.toUpperCase()
-        ) {
+        if (validatedFilter.symbol && symbol.symbol !== validatedFilter.symbol.toUpperCase()) {
           return false;
         }
         if (
@@ -272,10 +255,7 @@ export class ExchangeInfoService {
         ) {
           return false;
         }
-        if (
-          validatedFilter.status &&
-          symbol.status !== validatedFilter.status
-        ) {
+        if (validatedFilter.status && symbol.status !== validatedFilter.status) {
           return false;
         }
         if (
@@ -286,8 +266,7 @@ export class ExchangeInfoService {
         }
         if (
           validatedFilter.isMarginTradingAllowed !== undefined &&
-          symbol.isMarginTradingAllowed !==
-            validatedFilter.isMarginTradingAllowed
+          symbol.isMarginTradingAllowed !== validatedFilter.isMarginTradingAllowed
         ) {
           return false;
         }
@@ -333,9 +312,7 @@ export class ExchangeInfoService {
     methodName: "getSymbolsByBaseAsset",
     operationType: "api_call",
   })
-  async getSymbolsByBaseAsset(
-    baseAsset: string
-  ): Promise<ExchangeInfoResponse> {
+  async getSymbolsByBaseAsset(baseAsset: string): Promise<ExchangeInfoResponse> {
     if (!baseAsset || typeof baseAsset !== "string") {
       return {
         success: false,
@@ -356,9 +333,7 @@ export class ExchangeInfoService {
     serviceName: "exchange-info",
     methodName: "getSymbolsByQuoteAsset",
   })
-  async getSymbolsByQuoteAsset(
-    quoteAsset: string
-  ): Promise<ExchangeInfoResponse> {
+  async getSymbolsByQuoteAsset(quoteAsset: string): Promise<ExchangeInfoResponse> {
     if (!quoteAsset || typeof quoteAsset !== "string") {
       return {
         success: false,
@@ -402,9 +377,7 @@ export class ExchangeInfoService {
     };
   }
 
-  private async getCachedData(
-    cacheKey: string
-  ): Promise<ExchangeInfoResponse | null> {
+  private async getCachedData(cacheKey: string): Promise<ExchangeInfoResponse | null> {
     if (!this.config.cache) return null;
 
     try {
@@ -419,10 +392,7 @@ export class ExchangeInfoService {
     }
   }
 
-  private async cacheData(
-    cacheKey: string,
-    response: ExchangeInfoResponse
-  ): Promise<void> {
+  private async cacheData(cacheKey: string, response: ExchangeInfoResponse): Promise<void> {
     if (!this.config.cache) return;
 
     const cacheData = {
@@ -441,11 +411,7 @@ export class ExchangeInfoService {
     };
   }
 
-  private recordMetric(
-    name: string,
-    value: number,
-    tags?: Record<string, string>
-  ): void {
+  private recordMetric(name: string, value: number, tags?: Record<string, string>): void {
     this.config.performanceMonitor?.recordMetric(name, value, {
       service: "exchange-info",
       ...tags,
@@ -457,9 +423,7 @@ export class ExchangeInfoService {
 // Factory Function
 // ============================================================================
 
-export function createExchangeInfoService(
-  config: ExchangeInfoConfig
-): ExchangeInfoService {
+export function createExchangeInfoService(config: ExchangeInfoConfig): ExchangeInfoService {
   return new ExchangeInfoService(config);
 }
 

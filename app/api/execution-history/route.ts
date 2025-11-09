@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
     const action = searchParams.get("action"); // "buy", "sell", or null for all
     const status = searchParams.get("status"); // "success", "failed", or null for all
     const symbolName = searchParams.get("symbol"); // Filter by specific symbol
@@ -34,15 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (fromDate) {
-      conditions.push(
-        gte(executionHistory.executedAt, new Date(parseInt(fromDate) * 1000))
-      );
+      conditions.push(gte(executionHistory.executedAt, new Date(parseInt(fromDate, 10) * 1000)));
     }
 
     if (toDate) {
-      conditions.push(
-        lte(executionHistory.executedAt, new Date(parseInt(toDate) * 1000))
-      );
+      conditions.push(lte(executionHistory.executedAt, new Date(parseInt(toDate, 10) * 1000)));
     }
 
     // Get execution history with pagination and error handling
@@ -51,12 +47,9 @@ export async function GET(request: NextRequest) {
       const base = db.select().from(executionHistory);
       const filtered = conditions.length ? base.where(and(...conditions)) : base;
       executions = await Promise.race([
-        filtered
-          .orderBy(desc(executionHistory.executedAt))
-          .limit(limit)
-          .offset(offset),
+        filtered.orderBy(desc(executionHistory.executedAt)).limit(limit).offset(offset),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database query timeout")), 10000)
+          setTimeout(() => reject(new Error("Database query timeout")), 10000),
         ),
       ]);
     } catch (dbError) {
@@ -102,31 +95,28 @@ export async function GET(request: NextRequest) {
 
     // Calculate summary statistics
     const buyExecutions = executions.filter(
-      (exec: any) => exec.action === "buy" && exec.status === "success"
+      (exec: any) => exec.action === "buy" && exec.status === "success",
     );
     const sellExecutions = executions.filter(
-      (exec: any) => exec.action === "sell" && exec.status === "success"
+      (exec: any) => exec.action === "sell" && exec.status === "success",
     );
 
     const totalBuyVolume = buyExecutions.reduce(
       (sum: number, exec: any) => sum + (exec.totalCost || 0),
-      0
+      0,
     );
     const totalSellVolume = sellExecutions.reduce(
       (sum: number, exec: any) => sum + (exec.totalCost || 0),
-      0
+      0,
     );
-    const totalFees = executions.reduce(
-      (sum: number, exec: any) => sum + (exec.fees || 0),
-      0
-    );
+    const totalFees = executions.reduce((sum: number, exec: any) => sum + (exec.fees || 0), 0);
 
     const avgExecutionLatency = executions
       .filter((exec: any) => exec.executionLatencyMs)
       .reduce(
         (sum: number, exec: any, _: number, arr: any[]) =>
           sum + (exec.executionLatencyMs || 0) / arr.length,
-        0
+        0,
       );
 
     const avgSlippage = executions
@@ -134,7 +124,7 @@ export async function GET(request: NextRequest) {
       .reduce(
         (sum: number, exec: any, _: number, arr: any[]) =>
           sum + (exec.slippagePercent || 0) / arr.length,
-        0
+        0,
       );
 
     // Group executions by symbol for analysis
@@ -158,17 +148,12 @@ export async function GET(request: NextRequest) {
           acc[symbol].totalVolume += exec.totalCost || 0;
         }
         const executedAtTimestamp =
-          exec.executedAt instanceof Date
-            ? exec.executedAt.getTime() / 1000
-            : exec.executedAt || 0;
-        acc[symbol].lastExecution = Math.max(
-          acc[symbol].lastExecution,
-          executedAtTimestamp
-        );
+          exec.executedAt instanceof Date ? exec.executedAt.getTime() / 1000 : exec.executedAt || 0;
+        acc[symbol].lastExecution = Math.max(acc[symbol].lastExecution, executedAtTimestamp);
 
         return acc;
       },
-      {} as Record<string, any>
+      {} as Record<string, any>,
     );
 
     const response = {
@@ -196,12 +181,8 @@ export async function GET(request: NextRequest) {
       },
       summary: {
         totalExecutions: executions.length,
-        successfulExecutions: executions.filter(
-          (exec: any) => exec.status === "success"
-        ).length,
-        failedExecutions: executions.filter(
-          (exec: any) => exec.status === "failed"
-        ).length,
+        successfulExecutions: executions.filter((exec: any) => exec.status === "success").length,
+        failedExecutions: executions.filter((exec: any) => exec.status === "failed").length,
         totalBuyVolume,
         totalSellVolume,
         totalFees,
@@ -209,8 +190,7 @@ export async function GET(request: NextRequest) {
         avgSlippagePercent: Number(avgSlippage.toFixed(3)),
         successRate:
           executions.length > 0
-            ? (executions.filter((exec: any) => exec.status === "success")
-                .length /
+            ? (executions.filter((exec: any) => exec.status === "success").length /
                 executions.length) *
               100
             : 0,
@@ -246,10 +226,7 @@ export async function GET(request: NextRequest) {
         successRate: 0,
       },
       symbolStats: [],
-      error:
-        error instanceof Error
-          ? error.message
-          : "Service temporarily unavailable",
+      error: error instanceof Error ? error.message : "Service temporarily unavailable",
       fallback: true,
     };
 

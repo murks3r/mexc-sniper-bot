@@ -6,10 +6,7 @@
 
 import type { UnifiedMexcConfig } from "../../schemas/unified/mexc-api-schemas";
 import type { MexcApiConfig } from "./modules/mexc-api-types";
-import {
-  createMexcCoreClient,
-  type MexcCoreClient,
-} from "./modules/mexc-core-client";
+import { createMexcCoreClient, type MexcCoreClient } from "./modules/mexc-core-client";
 
 export class BaseMexcService {
   protected config: UnifiedMexcConfig;
@@ -66,15 +63,13 @@ export class BaseMexcService {
   protected async executeRequest<T>(
     endpoint: string,
     params?: any,
-    method: "GET" | "POST" = "GET"
+    method: "GET" | "POST" = "GET",
   ): Promise<T> {
     const startTime = Date.now();
 
     try {
       // Remove leading slash from endpoint if present
-      const cleanEndpoint = endpoint.startsWith("/")
-        ? endpoint.slice(1)
-        : endpoint;
+      const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
 
       // Build full URL
       const timestamp = Date.now();
@@ -90,7 +85,7 @@ export class BaseMexcService {
           Object.entries(params).reduce((acc: Record<string, string>, [k, v]) => {
             if (v !== undefined && v !== null) acc[k] = String(v);
             return acc;
-          }, {})
+          }, {}),
         ).toString();
         if (queryParams) {
           url += `&${queryParams}`;
@@ -103,19 +98,15 @@ export class BaseMexcService {
         method,
       });
 
-      this.logger.debug(
-        `API request completed in ${Date.now() - startTime}ms`,
-        {
-          endpoint: cleanEndpoint,
-          method,
-          success: true,
-        }
-      );
+      this.logger.debug(`API request completed in ${Date.now() - startTime}ms`, {
+        endpoint: cleanEndpoint,
+        method,
+        success: true,
+      });
 
       return response as T;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       this.logger.error(`API request failed for ${endpoint}:`, {
         error: errorMessage,

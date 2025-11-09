@@ -42,8 +42,7 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: true,
     category: "api",
     example: "mx_your-mexc-api-key",
-    warningIfMissing:
-      "Live trading will be unavailable without MEXC credentials",
+    warningIfMissing: "Live trading will be unavailable without MEXC credentials",
   },
   {
     key: "MEXC_SECRET_KEY",
@@ -68,8 +67,7 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: false,
     category: "api",
     example: "sk-your-openai-api-key",
-    warningIfMissing:
-      "AI-enhanced features will be limited without OpenAI API key",
+    warningIfMissing: "AI-enhanced features will be limited without OpenAI API key",
   },
   {
     key: "ANTHROPIC_API_KEY",
@@ -77,8 +75,7 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: false,
     category: "api",
     example: "sk-ant-your-anthropic-api-key",
-    warningIfMissing:
-      "Enhanced AI capabilities will be limited without Anthropic API key",
+    warningIfMissing: "Enhanced AI capabilities will be limited without Anthropic API key",
   },
   {
     key: "PERPLEXITY_API_KEY",
@@ -104,13 +101,6 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: true,
     category: "database",
     example: "postgresql://user:password@localhost:5432/mexc_sniper",
-  },
-  {
-    key: "NEON_DATABASE_URL",
-    description: "Neon PostgreSQL database URL",
-    required: false,
-    category: "database",
-    example: "postgresql://user:password@region.neon.tech/db",
   },
 
   // Cache Configuration
@@ -259,9 +249,7 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
 ];
 
 // Validation utilities
-export const getVariablesByCategory = (
-  category: string
-): EnvironmentVariable[] => {
+export const getVariablesByCategory = (category: string): EnvironmentVariable[] => {
   return ENVIRONMENT_VARIABLES.filter((env) => env.category === category);
 };
 
@@ -270,7 +258,7 @@ export const getRequiredVariables = (): EnvironmentVariable[] => {
 };
 
 export const getCriticalMissing = (
-  results: Array<{ key: string; status: string; required: boolean }>
+  results: Array<{ key: string; status: string; required: boolean }>,
 ): string[] => {
   return results
     .filter((result) => result.required && result.status === "missing")

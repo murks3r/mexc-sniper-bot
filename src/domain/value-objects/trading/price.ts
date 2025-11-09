@@ -34,7 +34,7 @@ export class Price extends ValueObject<PriceProps> {
     symbol: string,
     source: string = "unknown",
     precision: number = 8,
-    timestamp?: Date
+    timestamp?: Date,
   ): Price {
     const priceProps: PriceProps = {
       value: Math.round(value * 10 ** precision) / 10 ** precision,
@@ -52,15 +52,11 @@ export class Price extends ValueObject<PriceProps> {
     symbol: string,
     source: string = "unknown",
     precision: number = 8,
-    timestamp?: Date
+    timestamp?: Date,
   ): Price {
     const value = parseFloat(valueStr);
     if (Number.isNaN(value)) {
-      throw new DomainValidationError(
-        "value",
-        valueStr,
-        "Invalid numeric format"
-      );
+      throw new DomainValidationError("value", valueStr, "Invalid numeric format");
     }
     return Price.create(value, symbol, source, precision, timestamp);
   }
@@ -77,7 +73,7 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         firstError.path.join("."),
         "invalid value",
-        firstError.message
+        firstError.message,
       );
     }
 
@@ -118,10 +114,7 @@ export class Price extends ValueObject<PriceProps> {
 
   isEqualTo(other: Price): boolean {
     this.ensureSameSymbol(other);
-    return (
-      Math.abs(this.props.value - other.props.value) <
-      10 ** -this.props.precision
-    );
+    return Math.abs(this.props.value - other.props.value) < 10 ** -this.props.precision;
   }
 
   // Calculate percentage difference
@@ -131,7 +124,7 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "other.value",
         0,
-        "Cannot calculate percentage from zero price"
+        "Cannot calculate percentage from zero price",
       );
     }
     return ((this.props.value - other.props.value) / other.props.value) * 100;
@@ -162,17 +155,13 @@ export class Price extends ValueObject<PriceProps> {
   }
 
   // Update price with new value (returns new instance)
-  updateValue(
-    newValue: number,
-    newTimestamp?: Date,
-    newSource?: string
-  ): Price {
+  updateValue(newValue: number, newTimestamp?: Date, newSource?: string): Price {
     return Price.create(
       newValue,
       this.props.symbol,
       newSource || this.props.source,
       this.props.precision,
-      newTimestamp
+      newTimestamp,
     );
   }
 
@@ -182,16 +171,11 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "percentage",
         percentage,
-        "Stop loss percentage must be between 0 and 100"
+        "Stop loss percentage must be between 0 and 100",
       );
     }
     const stopLossValue = this.props.value * (1 - percentage / 100);
-    return Price.create(
-      stopLossValue,
-      this.props.symbol,
-      this.props.source,
-      this.props.precision
-    );
+    return Price.create(stopLossValue, this.props.symbol, this.props.source, this.props.precision);
   }
 
   // Calculate take profit price
@@ -200,7 +184,7 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "percentage",
         percentage,
-        "Take profit percentage must be positive"
+        "Take profit percentage must be positive",
       );
     }
     const takeProfitValue = this.props.value * (1 + percentage / 100);
@@ -208,7 +192,7 @@ export class Price extends ValueObject<PriceProps> {
       takeProfitValue,
       this.props.symbol,
       this.props.source,
-      this.props.precision
+      this.props.precision,
     );
   }
 
@@ -216,17 +200,9 @@ export class Price extends ValueObject<PriceProps> {
   calculateSlippage(expectedPrice: Price): number {
     this.ensureSameSymbol(expectedPrice);
     if (expectedPrice.props.value === 0) {
-      throw new DomainValidationError(
-        "expectedPrice",
-        0,
-        "Expected price cannot be zero"
-      );
+      throw new DomainValidationError("expectedPrice", 0, "Expected price cannot be zero");
     }
-    return (
-      ((this.props.value - expectedPrice.props.value) /
-        expectedPrice.props.value) *
-      100
-    );
+    return ((this.props.value - expectedPrice.props.value) / expectedPrice.props.value) * 100;
   }
 
   // Formatting methods
@@ -249,7 +225,7 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "symbol",
         other.props.symbol,
-        `Symbol mismatch: ${this.props.symbol} vs ${other.props.symbol}`
+        `Symbol mismatch: ${this.props.symbol} vs ${other.props.symbol}`,
       );
     }
   }
@@ -260,13 +236,11 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "prices",
         "empty array",
-        "At least one Price instance required"
+        "At least one Price instance required",
       );
     }
 
-    return prices.reduce((highest, current) =>
-      current.isHigherThan(highest) ? current : highest
-    );
+    return prices.reduce((highest, current) => (current.isHigherThan(highest) ? current : highest));
   }
 
   static findLowest(...prices: Price[]): Price {
@@ -274,13 +248,11 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "prices",
         "empty array",
-        "At least one Price instance required"
+        "At least one Price instance required",
       );
     }
 
-    return prices.reduce((lowest, current) =>
-      current.isLowerThan(lowest) ? current : lowest
-    );
+    return prices.reduce((lowest, current) => (current.isLowerThan(lowest) ? current : lowest));
   }
 
   static calculateAverage(...prices: Price[]): Price {
@@ -288,7 +260,7 @@ export class Price extends ValueObject<PriceProps> {
       throw new DomainValidationError(
         "prices",
         "empty array",
-        "At least one Price instance required"
+        "At least one Price instance required",
       );
     }
 
@@ -302,7 +274,7 @@ export class Price extends ValueObject<PriceProps> {
         throw new DomainValidationError(
           "symbol",
           price.symbol,
-          `All prices must be for the same symbol: ${symbol}`
+          `All prices must be for the same symbol: ${symbol}`,
         );
       }
     }

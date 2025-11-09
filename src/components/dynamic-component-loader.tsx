@@ -135,10 +135,7 @@ const AlertSkeleton = () => (
     </div>
     <div className="space-y-2">
       {Array.from({ length: 6 }, (_, i) => i).map((skeletonId) => (
-        <div
-          key={`loading-skeleton-${skeletonId}`}
-          className="rounded-lg border p-3 space-y-2"
-        >
+        <div key={`loading-skeleton-${skeletonId}`} className="rounded-lg border p-3 space-y-2">
           <div className="flex items-center justify-between">
             <Skeleton className="h-4 w-1/4" />
             <Skeleton className="h-4 w-16" />
@@ -154,7 +151,7 @@ const AlertSkeleton = () => (
 function safeLazy<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T } | any>,
   fallbackName: string,
-  fallback?: ComponentType<any>
+  fallback?: ComponentType<any>,
 ): LazyExoticComponent<T> {
   return lazy(() =>
     factory().catch((error) => {
@@ -168,7 +165,7 @@ function safeLazy<T extends ComponentType<any>>(
             </div>
           )) as unknown as T),
       };
-    })
+    }),
   );
 }
 
@@ -179,7 +176,7 @@ export const OptimizedCoinCalendar = safeLazy(
       default: module.OptimizedCoinCalendar || module.default,
     })),
   "OptimizedCoinCalendar",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const OptimizedAccountBalance = safeLazy(
@@ -188,7 +185,7 @@ export const OptimizedAccountBalance = safeLazy(
       default: module.OptimizedAccountBalance || module.default,
     })),
   "OptimizedAccountBalance",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const OptimizedWebSocketMonitor = safeLazy(
@@ -197,7 +194,7 @@ export const OptimizedWebSocketMonitor = safeLazy(
       default: module.OptimizedWebSocketMonitor || module.default,
     })),
   "OptimizedWebSocketMonitor",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const SafetyMonitoringDashboard = safeLazy(
@@ -206,27 +203,18 @@ export const SafetyMonitoringDashboard = safeLazy(
       default: module.SafetyMonitoringDashboard || module.default,
     })),
   "SafetyMonitoringDashboard",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const PatternSniper = safeLazy(
   () =>
     import("./pattern-sniper").then((module: any) => ({
-      default:
-        module.default || module.PatternSniper || module.PatternSniperComponent,
+      default: module.default || module.PatternSniper || module.PatternSniperComponent,
     })),
   "PatternSniper",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
-export const AgentDashboard = safeLazy(
-  () =>
-    import("./agent-dashboard").then((module: any) => ({
-      default: module.AgentDashboard || module.default,
-    })),
-  "AgentDashboard",
-  () => <CardSkeleton />
-);
 
 export const StrategyManager = safeLazy(
   () =>
@@ -234,7 +222,7 @@ export const StrategyManager = safeLazy(
       default: module.StrategyManager || module.default,
     })),
   "StrategyManager",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const WorkflowManager = safeLazy(
@@ -243,7 +231,7 @@ export const WorkflowManager = safeLazy(
       default: module.WorkflowManager || module.default,
     })),
   "WorkflowManager",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const TradingConfiguration = safeLazy(
@@ -252,7 +240,7 @@ export const TradingConfiguration = safeLazy(
       default: module.TradingConfiguration || module.default,
     })),
   "TradingConfiguration",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const UserPreferences = safeLazy(
@@ -261,7 +249,7 @@ export const UserPreferences = safeLazy(
       default: module.UserPreferences || module.default,
     })),
   "UserPreferences",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 // Dashboard section components with safe loading
@@ -271,7 +259,7 @@ export const CoinListingsBoard = safeLazy(
       default: module.CoinListingsBoard || module.default,
     })),
   "CoinListingsBoard",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const MetricCard = safeLazy(
@@ -285,7 +273,7 @@ export const MetricCard = safeLazy(
       <div className="font-medium">{title}</div>
       <div className="text-2xl font-bold">{value}</div>
     </div>
-  )
+  ),
 );
 
 export const OptimizedActivityFeed = safeLazy(
@@ -294,7 +282,7 @@ export const OptimizedActivityFeed = safeLazy(
       default: module.OptimizedActivityFeed || module.default,
     })),
   "OptimizedActivityFeed",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const OptimizedMetricsGrid = safeLazy(
@@ -303,7 +291,7 @@ export const OptimizedMetricsGrid = safeLazy(
       default: module.OptimizedMetricsGrid || module.default,
     })),
   "OptimizedMetricsGrid",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const OptimizedTradingTargets = safeLazy(
@@ -312,7 +300,7 @@ export const OptimizedTradingTargets = safeLazy(
       default: module.OptimizedTradingTargets || module.default,
     })),
   "OptimizedTradingTargets",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const RecentTradesTable = safeLazy(
@@ -321,7 +309,7 @@ export const RecentTradesTable = safeLazy(
       default: module.RecentTradesTable || module.default,
     })),
   "RecentTradesTable",
-  () => <TableSkeleton />
+  () => <TableSkeleton />,
 );
 
 export const TradingChart = safeLazy(
@@ -330,7 +318,7 @@ export const TradingChart = safeLazy(
       default: module.TradingChart || module.default,
     })),
   "TradingChart",
-  () => <ChartSkeleton />
+  () => <ChartSkeleton />,
 );
 
 export const UpcomingCoinsSection = safeLazy(
@@ -339,7 +327,7 @@ export const UpcomingCoinsSection = safeLazy(
       default: module.UpcomingCoinsSection || module.default,
     })),
   "UpcomingCoinsSection",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const WorkflowStatusCard = safeLazy(
@@ -348,7 +336,7 @@ export const WorkflowStatusCard = safeLazy(
       default: module.WorkflowStatusCard || module.default,
     })),
   "WorkflowStatusCard",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 // TIER 1 HEAVY COMPONENTS: Critical for 70% faster load performance with safe loading
@@ -358,18 +346,16 @@ export const TradingAnalyticsDashboard = safeLazy(
       default: module.TradingAnalyticsDashboard || module.default,
     })),
   "TradingAnalyticsDashboard",
-  () => <TradingSkeleton />
+  () => <TradingSkeleton />,
 );
 
 export const AutoSnipingExecutionDashboard = safeLazy(
   () =>
-    import("./auto-sniping/auto-sniping-execution-dashboard").then(
-      (module: any) => ({
-        default: module.AutoSnipingExecutionDashboard || module.default,
-      })
-    ),
+    import("./auto-sniping/auto-sniping-execution-dashboard").then((module: any) => ({
+      default: module.AutoSnipingExecutionDashboard || module.default,
+    })),
   "AutoSnipingExecutionDashboard",
-  () => <ExecutionSkeleton />
+  () => <ExecutionSkeleton />,
 );
 
 export const AlertCenter = safeLazy(
@@ -378,7 +364,7 @@ export const AlertCenter = safeLazy(
       default: module.AlertCenter || module.default,
     })),
   "AlertCenter",
-  () => <AlertSkeleton />
+  () => <AlertSkeleton />,
 );
 
 export const RealTimeSafetyDashboard = safeLazy(
@@ -387,7 +373,7 @@ export const RealTimeSafetyDashboard = safeLazy(
       default: module.RealTimeSafetyDashboard || module.default,
     })),
   "RealTimeSafetyDashboard",
-  () => <SafetySkeleton />
+  () => <SafetySkeleton />,
 );
 
 export const ComprehensiveSafetyDashboard = safeLazy(
@@ -396,7 +382,7 @@ export const ComprehensiveSafetyDashboard = safeLazy(
       default: module.ComprehensiveSafetyDashboard || module.default,
     })),
   "ComprehensiveSafetyDashboard",
-  () => <SafetySkeleton />
+  () => <SafetySkeleton />,
 );
 
 export const RealTimePerformance = safeLazy(
@@ -405,18 +391,10 @@ export const RealTimePerformance = safeLazy(
       default: module.RealTimePerformance || module.default,
     })),
   "RealTimePerformance",
-  () => <DashboardSkeleton />
+  () => <DashboardSkeleton />,
 );
 
 // TIER 2 HEAVY COMPONENTS: Quick wins for performance with safe loading
-export const RealTimeDashboard = safeLazy(
-  () =>
-    import("./dashboard/real-time-dashboard").then((module: any) => ({
-      default: module.default || module.RealTimeDashboard,
-    })),
-  "RealTimeDashboard",
-  () => <DashboardSkeleton />
-);
 
 export const AlertsDashboard = safeLazy(
   () =>
@@ -424,7 +402,7 @@ export const AlertsDashboard = safeLazy(
       default: module.AlertsDashboard || module.default,
     })),
   "AlertsDashboard",
-  () => <AlertSkeleton />
+  () => <AlertSkeleton />,
 );
 
 export const UnifiedTakeProfitSettings = safeLazy(
@@ -433,7 +411,7 @@ export const UnifiedTakeProfitSettings = safeLazy(
       default: module.UnifiedTakeProfitSettings || module.default,
     })),
   "UnifiedTakeProfitSettings",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const SystemArchitectureOverview = safeLazy(
@@ -442,7 +420,7 @@ export const SystemArchitectureOverview = safeLazy(
       default: module.SystemArchitectureOverview || module.default,
     })),
   "SystemArchitectureOverview",
-  () => <DashboardSkeleton />
+  () => <DashboardSkeleton />,
 );
 
 export const EditableTakeProfitTable = safeLazy(
@@ -451,7 +429,7 @@ export const EditableTakeProfitTable = safeLazy(
       default: module.EditableTakeProfitTable || module.default,
     })),
   "EditableTakeProfitTable",
-  () => <TableSkeleton />
+  () => <TableSkeleton />,
 );
 
 export const ParameterMonitor = safeLazy(
@@ -460,7 +438,7 @@ export const ParameterMonitor = safeLazy(
       default: module.ParameterMonitor || module.default,
     })),
   "ParameterMonitor",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 export const OptimizationControlPanel = safeLazy(
@@ -469,7 +447,7 @@ export const OptimizationControlPanel = safeLazy(
       default: module.OptimizationControlPanel || module.default,
     })),
   "OptimizationControlPanel",
-  () => <CardSkeleton />
+  () => <CardSkeleton />,
 );
 
 // Wrapper components with loading states and error boundaries
@@ -705,7 +683,6 @@ export function preloadDashboardComponents() {
     import("./dashboard/optimized-metrics-grid").catch(() => null),
     import("./dashboard/upcoming-coins-section").catch(() => null),
     import("./optimized-coin-calendar").catch(() => null),
-    import("./dashboard/real-time-dashboard").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -713,8 +690,8 @@ export function preloadDashboardComponents() {
 
 export function preloadAgentComponents() {
   // Preload agent-related components with safe error handling
+  // Removed: agent-dashboard - agents removed
   const preloadPromises = [
-    import("./agent-dashboard").catch(() => null),
     import("./pattern-sniper").catch(() => null),
     import("./safety-monitoring-dashboard").catch(() => null),
     import("./auto-sniping/auto-sniping-execution-dashboard").catch(() => null),
@@ -816,7 +793,7 @@ export async function preloadByRoute(currentRoute: string) {
 
     if (failed > 0) {
       console.warn(
-        `Preloaded ${successful}/${successful + failed} components for route ${currentRoute}. ${failed} failed.`
+        `Preloaded ${successful}/${successful + failed} components for route ${currentRoute}. ${failed} failed.`,
       );
       results.forEach((result, index) => {
         if (result.status === "rejected") {
@@ -824,17 +801,12 @@ export async function preloadByRoute(currentRoute: string) {
         }
       });
     } else {
-      console.info(
-        `Successfully preloaded ${successful} components for route ${currentRoute}`
-      );
+      console.info(`Successfully preloaded ${successful} components for route ${currentRoute}`);
     }
 
     return results;
   } catch (error) {
-    console.error(
-      `Failed to preload components for route ${currentRoute}:`,
-      error
-    );
+    console.error(`Failed to preload components for route ${currentRoute}:`, error);
     return [];
   }
 }

@@ -3,14 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await params;
     const body = await request.json();
-    const targetId = parseInt(resolvedParams.id);
+    const targetId = parseInt(resolvedParams.id, 10);
 
     if (Number.isNaN(targetId)) {
       return NextResponse.json(
@@ -18,7 +15,7 @@ export async function PATCH(
           success: false,
           error: "Invalid snipe target ID",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -60,7 +57,7 @@ export async function PATCH(
           success: false,
           error: "Snipe target not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -76,18 +73,15 @@ export async function PATCH(
         success: false,
         error: "Failed to update snipe target",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await params;
-    const targetId = parseInt(resolvedParams.id);
+    const targetId = parseInt(resolvedParams.id, 10);
 
     if (Number.isNaN(targetId)) {
       return NextResponse.json(
@@ -95,7 +89,7 @@ export async function GET(
           success: false,
           error: "Invalid snipe target ID",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,7 +105,7 @@ export async function GET(
           success: false,
           error: "Snipe target not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -126,18 +120,18 @@ export async function GET(
         success: false,
         error: "Failed to fetch snipe target",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const resolvedParams = await params;
-    const targetId = parseInt(resolvedParams.id);
+    const targetId = parseInt(resolvedParams.id, 10);
 
     if (Number.isNaN(targetId)) {
       return NextResponse.json(
@@ -145,14 +139,11 @@ export async function DELETE(
           success: false,
           error: "Invalid snipe target ID",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const result = await db
-      .delete(snipeTargets)
-      .where(eq(snipeTargets.id, targetId))
-      .returning();
+    const result = await db.delete(snipeTargets).where(eq(snipeTargets.id, targetId)).returning();
 
     if (result.length === 0) {
       return NextResponse.json(
@@ -160,7 +151,7 @@ export async function DELETE(
           success: false,
           error: "Snipe target not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -175,7 +166,7 @@ export async function DELETE(
         success: false,
         error: "Failed to delete snipe target",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

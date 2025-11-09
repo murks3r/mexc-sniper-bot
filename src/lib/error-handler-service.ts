@@ -1,11 +1,5 @@
 import { ErrorLoggingService } from "../services/notification/error-logging-service";
-import {
-  AppError,
-  ErrorCode,
-  ErrorSeverity,
-  isAppError,
-  toAppError,
-} from "./error-types";
+import { AppError, ErrorCode, ErrorSeverity, isAppError, toAppError } from "./error-types";
 export interface ErrorHandlerConfig {
   enableLogging?: boolean;
   enableRetry?: boolean;
@@ -31,22 +25,6 @@ export interface CircuitBreakerOptions {
  * Centralized error handling service with retry logic and circuit breaker pattern
  */
 export class ErrorHandlerService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[error-handler-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[error-handler-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[error-handler-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[error-handler-service]", message, context || ""),
-  };
-
   private static instance: ErrorHandlerService;
   private errorLoggingService: ErrorLoggingService;
   private config: Required<ErrorHandlerConfig>;
@@ -81,7 +59,7 @@ export class ErrorHandlerService {
       userId?: string;
       requestId?: string;
       [key: string]: unknown;
-    }
+    },
   ): Promise<AppError> {
     const appError = toAppError(error);
 
@@ -108,7 +86,7 @@ export class ErrorHandlerService {
   async executeWithRetry<T>(
     operation: () => Promise<T>,
     options: Partial<RetryOptions> = {},
-    context?: { operation: string; [key: string]: unknown }
+    context?: { operation: string; [key: string]: unknown },
   ): Promise<T> {
     const retryOptions: RetryOptions = {
       maxRetries: options.maxRetries ?? this.config.maxRetries,
@@ -140,7 +118,7 @@ export class ErrorHandlerService {
           await this.delay(currentDelay);
           currentDelay = Math.min(
             currentDelay * retryOptions.backoffMultiplier!,
-            retryOptions.maxDelayMs ?? 5000
+            retryOptions.maxDelayMs ?? 5000,
           );
         }
       }
@@ -156,7 +134,7 @@ export class ErrorHandlerService {
     operation: () => Promise<T>,
     circuitKey: string,
     options: Partial<CircuitBreakerOptions> = {},
-    context?: { operation: string; [key: string]: unknown }
+    context?: { operation: string; [key: string]: unknown },
   ): Promise<T> {
     if (!this.config.enableCircuitBreaker) {
       return await operation();
@@ -168,23 +146,16 @@ export class ErrorHandlerService {
       monitoringPeriodMs: options.monitoringPeriodMs ?? 300000,
     };
 
-    const circuitState = this.getCircuitBreakerState(
-      circuitKey,
-      circuitOptions
-    );
+    const circuitState = this.getCircuitBreakerState(circuitKey, circuitOptions);
 
     // Check if circuit is open
     if (circuitState.state === "open") {
-      if (
-        Date.now() - circuitState.lastFailureTime <
-        circuitOptions.resetTimeoutMs
-      ) {
+      if (Date.now() - circuitState.lastFailureTime < circuitOptions.resetTimeoutMs) {
         throw new AppError("Circuit breaker is open", {
           code: ErrorCode.EXTERNAL_SERVICE_ERROR,
           severity: ErrorSeverity.HIGH,
           retryable: true,
-          userMessage:
-            "Service is temporarily unavailable. Please try again later.",
+          userMessage: "Service is temporarily unavailable. Please try again later.",
           context: { ...context, circuitKey, circuitState: "open" },
         });
       }
@@ -222,7 +193,7 @@ export class ErrorHandlerService {
    */
   createErrorResponse(
     error: unknown,
-    context?: { operation?: string; requestId?: string; [key: string]: unknown }
+    context?: { operation?: string; requestId?: string; [key: string]: unknown },
   ): {
     success: false;
     error: string;
@@ -281,8 +252,7 @@ export class ErrorHandlerService {
       summary.byCode[error.code] = (summary.byCode[error.code] || 0) + 1;
 
       // Count by severity
-      summary.bySeverity[error.severity] =
-        (summary.bySeverity[error.severity] || 0) + 1;
+      summary.bySeverity[error.severity] = (summary.bySeverity[error.severity] || 0) + 1;
 
       // Count retryable errors
       if (error.retryable) {
@@ -314,10 +284,7 @@ export class ErrorHandlerService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private getCircuitBreakerState(
-    key: string,
-    options: CircuitBreakerOptions
-  ): CircuitBreakerState {
+  private getCircuitBreakerState(key: string, options: CircuitBreakerOptions): CircuitBreakerState {
     let state = this.circuitBreakers.get(key);
 
     if (!state) {

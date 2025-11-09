@@ -11,15 +11,8 @@ import type { Position } from "../types";
 interface MonitoringConfig {
   checkInterval: number;
   maxRetries: number;
-  onTrigger: (
-    position: Position,
-    triggerType: "stop-loss" | "take-profit"
-  ) => Promise<void>;
-  onError: (
-    error: Error,
-    position: Position,
-    triggerType: "stop-loss" | "take-profit"
-  ) => void;
+  onTrigger: (position: Position, triggerType: "stop-loss" | "take-profit") => Promise<void>;
+  onError: (error: Error, position: Position, triggerType: "stop-loss" | "take-profit") => void;
   getCurrentPrice: (symbol: string) => Promise<number | null>;
 }
 
@@ -49,17 +42,12 @@ export class PositionMonitoringManager {
    */
   setupStopLossMonitoring(position: Position): void {
     const monitoringKey = `${position.id}-stop-loss`;
-    this.setupPriceMonitoring(
-      position,
-      "stop-loss",
-      monitoringKey,
-      (currentPrice) => {
-        if (position.side === "BUY") {
-          return currentPrice <= (position.stopLossPrice || 0);
-        }
-        return currentPrice >= (position.stopLossPrice || 0);
+    this.setupPriceMonitoring(position, "stop-loss", monitoringKey, (currentPrice) => {
+      if (position.side === "BUY") {
+        return currentPrice <= (position.stopLossPrice || 0);
       }
-    );
+      return currentPrice >= (position.stopLossPrice || 0);
+    });
   }
 
   /**
@@ -67,17 +55,12 @@ export class PositionMonitoringManager {
    */
   setupTakeProfitMonitoring(position: Position): void {
     const monitoringKey = `${position.id}-take-profit`;
-    this.setupPriceMonitoring(
-      position,
-      "take-profit",
-      monitoringKey,
-      (currentPrice) => {
-        if (position.side === "BUY") {
-          return currentPrice >= (position.takeProfitPrice || 0);
-        }
-        return currentPrice <= (position.takeProfitPrice || 0);
+    this.setupPriceMonitoring(position, "take-profit", monitoringKey, (currentPrice) => {
+      if (position.side === "BUY") {
+        return currentPrice >= (position.takeProfitPrice || 0);
       }
-    );
+      return currentPrice <= (position.takeProfitPrice || 0);
+    });
   }
 
   /**
@@ -87,7 +70,7 @@ export class PositionMonitoringManager {
     position: Position,
     triggerType: "stop-loss" | "take-profit",
     monitoringKey: string,
-    shouldTrigger: (currentPrice: number) => boolean
+    shouldTrigger: (currentPrice: number) => boolean,
   ): void {
     const monitor = async () => {
       try {
@@ -125,10 +108,7 @@ export class PositionMonitoringManager {
   /**
    * Schedule the next monitoring check
    */
-  private scheduleNextCheck(
-    monitoringKey: string,
-    monitor: () => Promise<void>
-  ): void {
+  private scheduleNextCheck(monitoringKey: string, monitor: () => Promise<void>): void {
     const timer = setTimeout(monitor, this.config.checkInterval);
     this.pendingTimers.set(monitoringKey, timer);
   }
@@ -163,10 +143,7 @@ export class PositionMonitoringManager {
   /**
    * Update stop-loss monitoring for a position
    */
-  updateStopLossMonitoring(
-    position: Position,
-    newStopLossPercent: number
-  ): void {
+  updateStopLossMonitoring(position: Position, newStopLossPercent: number): void {
     // Clear existing stop-loss monitoring
     this.clearMonitoring(`${position.id}-stop-loss`);
 
@@ -174,11 +151,9 @@ export class PositionMonitoringManager {
     position.stopLossPercent = newStopLossPercent;
     if (newStopLossPercent > 0) {
       if (position.side === "BUY") {
-        position.stopLossPrice =
-          position.entryPrice * (1 - newStopLossPercent / 100);
+        position.stopLossPrice = position.entryPrice * (1 - newStopLossPercent / 100);
       } else {
-        position.stopLossPrice =
-          position.entryPrice * (1 + newStopLossPercent / 100);
+        position.stopLossPrice = position.entryPrice * (1 + newStopLossPercent / 100);
       }
 
       // Setup new monitoring

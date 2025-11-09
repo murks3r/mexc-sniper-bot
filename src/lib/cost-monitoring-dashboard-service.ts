@@ -146,8 +146,7 @@ class CostMonitoringDashboardService {
 
   static getInstance(): CostMonitoringDashboardService {
     if (!CostMonitoringDashboardService.instance) {
-      CostMonitoringDashboardService.instance =
-        new CostMonitoringDashboardService();
+      CostMonitoringDashboardService.instance = new CostMonitoringDashboardService();
     }
     return CostMonitoringDashboardService.instance;
   }
@@ -238,11 +237,7 @@ class CostMonitoringDashboardService {
     const endpoints = this.generateEndpointAnalysis(costStats, cacheStats);
 
     // Generate performance metrics
-    const performance = this.generatePerformanceMetrics(
-      costStats,
-      cacheStats,
-      batchStats
-    );
+    const performance = this.generatePerformanceMetrics(costStats, cacheStats, batchStats);
 
     // Generate trends
     const trends = this.generateTrends();
@@ -251,18 +246,10 @@ class CostMonitoringDashboardService {
     const alerts = this.getRecentAlerts();
 
     // Generate recommendations
-    const recommendations = this.generateRecommendations(
-      costStats,
-      cacheStats,
-      batchStats
-    );
+    const recommendations = this.generateRecommendations(costStats, cacheStats, batchStats);
 
     // Generate thresholds
-    const thresholds = this.generateThresholds(
-      costStats,
-      cacheStats,
-      batchStats
-    );
+    const thresholds = this.generateThresholds(costStats, cacheStats, batchStats);
 
     return {
       overview,
@@ -284,8 +271,7 @@ class CostMonitoringDashboardService {
 
     const totalSavings = cachingSavings + batchingSavings;
     const potentialCost = costStats.cost.total + totalSavings;
-    const savingsPercentage =
-      potentialCost > 0 ? (totalSavings / potentialCost) * 100 : 0;
+    const savingsPercentage = potentialCost > 0 ? (totalSavings / potentialCost) * 100 : 0;
 
     return {
       cachingSavings,
@@ -295,9 +281,7 @@ class CostMonitoringDashboardService {
     };
   }
 
-  private determineOverallStatus(
-    costStats: any
-  ): "healthy" | "warning" | "critical" {
+  private determineOverallStatus(costStats: any): "healthy" | "warning" | "critical" {
     if (costStats.emergency.mode) {
       return "critical";
     }
@@ -315,31 +299,23 @@ class CostMonitoringDashboardService {
 
   private generateEndpointAnalysis(
     _costStats: any,
-    cacheStats: any
+    cacheStats: any,
   ): CostDashboardData["endpoints"] {
     const endpointMetrics = globalDatabaseCostProtector.getEndpointMetrics();
     const endpoints: CostDashboardData["endpoints"] = [];
 
     // Handle different return types from getEndpointMetrics
-    const metricsMap =
-      endpointMetrics instanceof Map ? endpointMetrics : new Map();
+    const metricsMap = endpointMetrics instanceof Map ? endpointMetrics : new Map();
 
     for (const [endpoint, metrics] of metricsMap) {
       const endpointCacheStats = cacheStats.endpoints || {};
       const cacheHitRate = endpointCacheStats[endpoint]?.hitRate || 0;
 
       // Calculate optimization score
-      const optimization = this.calculateOptimizationScore(
-        metrics,
-        cacheHitRate
-      );
+      const optimization = this.calculateOptimizationScore(metrics, cacheHitRate);
 
       // Generate recommendations for this endpoint
-      const recommendations = this.generateEndpointRecommendations(
-        endpoint,
-        metrics,
-        cacheHitRate
-      );
+      const recommendations = this.generateEndpointRecommendations(endpoint, metrics, cacheHitRate);
 
       endpoints.push({
         endpoint,
@@ -359,7 +335,7 @@ class CostMonitoringDashboardService {
 
   private calculateOptimizationScore(
     metrics: any,
-    cacheHitRate: number
+    cacheHitRate: number,
   ): "excellent" | "good" | "fair" | "poor" {
     let score = 0;
 
@@ -390,14 +366,12 @@ class CostMonitoringDashboardService {
   private generateEndpointRecommendations(
     _endpoint: string,
     metrics: any,
-    cacheHitRate: number
+    cacheHitRate: number,
   ): string[] {
     const recommendations: string[] = [];
 
     if (cacheHitRate < 50) {
-      recommendations.push(
-        "Increase cache TTL or enable stale-while-revalidate"
-      );
+      recommendations.push("Increase cache TTL or enable stale-while-revalidate");
     }
 
     if (metrics.averageDuration > 1000) {
@@ -405,15 +379,11 @@ class CostMonitoringDashboardService {
     }
 
     if (metrics.totalQueries > 1000) {
-      recommendations.push(
-        "Consider implementing query batching or result aggregation"
-      );
+      recommendations.push("Consider implementing query batching or result aggregation");
     }
 
     if (metrics.totalCost > 1.0) {
-      recommendations.push(
-        "High cost endpoint - prioritize optimization efforts"
-      );
+      recommendations.push("High cost endpoint - prioritize optimization efforts");
     }
 
     return recommendations;
@@ -422,7 +392,7 @@ class CostMonitoringDashboardService {
   private generatePerformanceMetrics(
     costStats: any,
     cacheStats: any,
-    batchStats: any
+    batchStats: any,
   ): CostDashboardData["performance"] {
     return {
       queryMetrics: {
@@ -465,8 +435,7 @@ class CostMonitoringDashboardService {
     }> = [];
 
     // Handle different return types from getEndpointMetrics
-    const metricsMap =
-      endpointMetrics instanceof Map ? endpointMetrics : new Map();
+    const metricsMap = endpointMetrics instanceof Map ? endpointMetrics : new Map();
 
     for (const [endpoint, metrics] of metricsMap) {
       if (metrics.averageDuration > 500) {
@@ -483,8 +452,7 @@ class CostMonitoringDashboardService {
   }
 
   private calculateConnectionEfficiency(costStats: any): number {
-    const utilizationRate =
-      costStats.connections.current / costStats.connections.limit;
+    const utilizationRate = costStats.connections.current / costStats.connections.limit;
     return Math.min(100, utilizationRate * 100);
   }
 
@@ -526,7 +494,7 @@ class CostMonitoringDashboardService {
   }
 
   private calculateHourlyAverage(
-    data: Array<{ queries: number; cost: number; cacheHitRate: number }>
+    data: Array<{ queries: number; cost: number; cacheHitRate: number }>,
   ): {
     queries: number;
     cost: number;
@@ -542,7 +510,7 @@ class CostMonitoringDashboardService {
         cost: acc.cost + item.cost,
         cacheHitRate: acc.cacheHitRate + item.cacheHitRate,
       }),
-      { queries: 0, cost: 0, cacheHitRate: 0 }
+      { queries: 0, cost: 0, cacheHitRate: 0 },
     );
 
     return {
@@ -578,10 +546,7 @@ class CostMonitoringDashboardService {
     return {
       queries: totalQueries,
       cost: parseFloat(totalCost.toFixed(4)),
-      efficiency:
-        dataPoints > 0
-          ? parseFloat((totalCacheHitRate / dataPoints).toFixed(2))
-          : 0,
+      efficiency: dataPoints > 0 ? parseFloat((totalCacheHitRate / dataPoints).toFixed(2)) : 0,
     };
   }
 
@@ -592,7 +557,7 @@ class CostMonitoringDashboardService {
   private generateRecommendations(
     costStats: any,
     cacheStats: any,
-    batchStats: any
+    batchStats: any,
   ): CostDashboardData["recommendations"] {
     const immediate: string[] = [];
     const shortTerm: string[] = [];
@@ -604,45 +569,29 @@ class CostMonitoringDashboardService {
     }
 
     if (cacheStats.cache.hitRate < 30) {
-      immediate.push(
-        "Low cache hit rate - increase TTL values for stable endpoints"
-      );
+      immediate.push("Low cache hit rate - increase TTL values for stable endpoints");
     }
 
     if (batchStats.metrics.batchingRate < 20) {
-      immediate.push(
-        "Low query batching rate - enable batching for read operations"
-      );
+      immediate.push("Low query batching rate - enable batching for read operations");
     }
 
     // Short-term recommendations
     if (costStats.cost.hourlyRate > costStats.cost.hourlyLimit * 0.7) {
-      shortTerm.push(
-        "Approaching cost limits - implement query result caching"
-      );
+      shortTerm.push("Approaching cost limits - implement query result caching");
     }
 
     if (costStats.connections.current > costStats.connections.limit * 0.8) {
-      shortTerm.push(
-        "High connection usage - implement connection pooling optimization"
-      );
+      shortTerm.push("High connection usage - implement connection pooling optimization");
     }
 
     // Long-term recommendations
-    longTerm.push(
-      "Consider implementing read replicas for heavy read workloads"
-    );
-    longTerm.push(
-      "Evaluate query patterns for potential database schema optimizations"
-    );
+    longTerm.push("Consider implementing read replicas for heavy read workloads");
+    longTerm.push("Evaluate query patterns for potential database schema optimizations");
     longTerm.push("Implement automated query performance monitoring");
 
     // Calculate potential savings
-    const potentialSavings = this.calculatePotentialSavings(
-      costStats,
-      cacheStats,
-      batchStats
-    );
+    const potentialSavings = this.calculatePotentialSavings(costStats, cacheStats, batchStats);
 
     return {
       immediate,
@@ -652,14 +601,9 @@ class CostMonitoringDashboardService {
     };
   }
 
-  private calculatePotentialSavings(
-    costStats: any,
-    cacheStats: any,
-    batchStats: any
-  ) {
+  private calculatePotentialSavings(costStats: any, cacheStats: any, batchStats: any) {
     // Calculate potential savings from various optimizations
-    const cachingImprovements =
-      (100 - cacheStats.cache.hitRate) * 0.01 * costStats.cost.total;
+    const cachingImprovements = (100 - cacheStats.cache.hitRate) * 0.01 * costStats.cost.total;
     const batchingImprovements =
       (100 - batchStats.metrics.batchingRate) * 0.005 * costStats.cost.total;
     const queryOptimizations = costStats.cost.total * 0.1; // Assume 10% potential from query optimization
@@ -669,11 +613,7 @@ class CostMonitoringDashboardService {
       batchingImprovements: parseFloat(batchingImprovements.toFixed(2)),
       queryOptimizations: parseFloat(queryOptimizations.toFixed(2)),
       totalPotential: parseFloat(
-        (
-          cachingImprovements +
-          batchingImprovements +
-          queryOptimizations
-        ).toFixed(2)
+        (cachingImprovements + batchingImprovements + queryOptimizations).toFixed(2),
       ),
     };
   }
@@ -681,7 +621,7 @@ class CostMonitoringDashboardService {
   private generateThresholds(
     costStats: any,
     cacheStats: any,
-    batchStats: any
+    batchStats: any,
   ): CostDashboardData["thresholds"] {
     return {
       queries: {
@@ -710,7 +650,7 @@ class CostMonitoringDashboardService {
     title: string,
     message: string,
     endpoint?: string,
-    action?: string
+    action?: string,
   ): void {
     this.alerts.push({
       severity,
@@ -721,9 +661,7 @@ class CostMonitoringDashboardService {
       action,
     });
 
-    console.log(
-      `[COST ALERT] ${severity.toUpperCase()}: ${title} - ${message}`
-    );
+    console.log(`[COST ALERT] ${severity.toUpperCase()}: ${title} - ${message}`);
   }
 
   /**
@@ -737,8 +675,7 @@ class CostMonitoringDashboardService {
     const endpointMetrics = globalDatabaseCostProtector.getEndpointMetrics();
 
     // Handle different return types from getEndpointMetrics
-    const metricsMap =
-      endpointMetrics instanceof Map ? endpointMetrics : new Map();
+    const metricsMap = endpointMetrics instanceof Map ? endpointMetrics : new Map();
     const metrics = metricsMap.get(endpoint);
 
     if (!metrics) {
@@ -752,7 +689,7 @@ class CostMonitoringDashboardService {
     const recommendations = this.generateEndpointRecommendations(
       endpoint,
       metrics,
-      75 // Mock cache hit rate
+      75, // Mock cache hit rate
     );
 
     const potentialSavings = metrics.totalCost * 0.3; // Assume 30% potential savings
@@ -766,8 +703,7 @@ class CostMonitoringDashboardService {
 }
 
 // Global instance
-export const globalCostMonitoringService =
-  CostMonitoringDashboardService.getInstance();
+export const globalCostMonitoringService = CostMonitoringDashboardService.getInstance();
 
 /**
  * Get comprehensive cost monitoring dashboard data
@@ -784,15 +720,9 @@ export function addCostAlert(
   title: string,
   message: string,
   endpoint?: string,
-  action?: string
+  action?: string,
 ): void {
-  globalCostMonitoringService.addAlert(
-    severity,
-    title,
-    message,
-    endpoint,
-    action
-  );
+  globalCostMonitoringService.addAlert(severity, title, message, endpoint, action);
 }
 
 /**

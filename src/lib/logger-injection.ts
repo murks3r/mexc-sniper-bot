@@ -23,12 +23,7 @@ function createSimpleLogger(component: string): SimpleLogger {
     error: (message: string, context?: any, error?: Error) =>
       console.error(`[${component}]`, message, context || "", error || ""),
     fatal: (message: string, context?: any, error?: Error) =>
-      console.error(
-        `[${component}] FATAL:`,
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error(`[${component}] FATAL:`, message, context || "", error || ""),
   };
 }
 
@@ -83,8 +78,7 @@ export class LoggerFactory {
    * Create logger with service name derived from class name
    */
   createLoggerForClass(serviceClass: any): SimpleLogger {
-    const componentName =
-      serviceClass.constructor?.name || serviceClass.name || "unknown-service";
+    const componentName = serviceClass.constructor?.name || serviceClass.name || "unknown-service";
     const kebabCaseName = componentName
       .replace(/([A-Z])/g, "-$1")
       .toLowerCase()

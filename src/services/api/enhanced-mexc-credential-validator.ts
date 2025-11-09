@@ -72,41 +72,11 @@ export interface EnhancedCredentialValidatorConfig {
 // ============================================================================
 
 export class EnhancedCredentialValidator {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info(
-        "[enhanced-mexc-credential-validator]",
-        message,
-        context || ""
-      ),
-    warn: (message: string, context?: any) =>
-      console.warn(
-        "[enhanced-mexc-credential-validator]",
-        message,
-        context || ""
-      ),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[enhanced-mexc-credential-validator]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug(
-        "[enhanced-mexc-credential-validator]",
-        message,
-        context || ""
-      ),
-  };
-
   private config: EnhancedCredentialValidatorConfig;
   private circuitBreaker: CircuitBreakerState;
   private healthMetrics: ConnectionHealthMetrics;
   private recentLatencies: number[] = [];
-  private statusChangeCallbacks: ((
-    status: CredentialValidationResult
-  ) => void)[] = [];
+  private statusChangeCallbacks: ((status: CredentialValidationResult) => void)[] = [];
 
   // Known test/placeholder credential patterns
   // FIXED: Removed hardcoded production credential patterns that were blocking legitimate trading
@@ -186,13 +156,13 @@ export class EnhancedCredentialValidator {
       // Step 3: Check for test credentials
       const isTestCredentials = this.detectTestCredentials(
         credentials.apiKey,
-        credentials.secretKey
+        credentials.secretKey,
       );
 
       // Check for test credentials
       if (isTestCredentials) {
         console.warn(
-          "🔍 Test credentials detected - system will flag as invalid for proper validation"
+          "🔍 Test credentials detected - system will flag as invalid for proper validation",
         );
         return {
           hasCredentials: true,
@@ -234,9 +204,7 @@ export class EnhancedCredentialValidator {
         canAuthenticate: authResult?.canAuthenticate || false,
         error:
           authResult?.error ||
-          (!formatValidation.validFormat
-            ? "Invalid credential format"
-            : undefined),
+          (!formatValidation.validFormat ? "Invalid credential format" : undefined),
         responseTime,
         timestamp,
         details: {
@@ -369,10 +337,7 @@ export class EnhancedCredentialValidator {
 
     try {
       // Test with account info endpoint (requires authentication)
-      const result = await this.makeAuthenticatedRequest(
-        "/api/v3/account",
-        credentials
-      );
+      const result = await this.makeAuthenticatedRequest("/api/v3/account", credentials);
 
       if (result.success) {
         this.recordSuccess();
@@ -470,12 +435,12 @@ export class EnhancedCredentialValidator {
 
       // For now, fall back to environment credentials
       console.info(
-        "[enhanced-mexc-credential-validator] Database credential retrieval prepared, using environment fallback"
+        "[enhanced-mexc-credential-validator] Database credential retrieval prepared, using environment fallback",
       );
     } catch (error) {
       console.warn(
         "[enhanced-mexc-credential-validator] Database credential retrieval failed:",
-        error
+        error,
       );
       // Continue with environment fallback
     }
@@ -490,7 +455,7 @@ export class EnhancedCredentialValidator {
 
   private detectTestCredentials(apiKey: string, secretKey: string): boolean {
     return this.TEST_CREDENTIAL_PATTERNS.some(
-      (pattern) => pattern.test(apiKey) || pattern.test(secretKey)
+      (pattern) => pattern.test(apiKey) || pattern.test(secretKey),
     );
   }
 
@@ -517,7 +482,7 @@ export class EnhancedCredentialValidator {
 
   private async makeAuthenticatedRequest(
     endpoint: string,
-    credentials: { apiKey: string; secretKey: string }
+    credentials: { apiKey: string; secretKey: string },
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     const baseUrl = process.env.MEXC_BASE_URL || "https://api.mexc.com";
     const timestamp = Date.now();
@@ -592,15 +557,14 @@ export class EnhancedCredentialValidator {
   private openCircuitBreaker(): void {
     this.circuitBreaker.isOpen = true;
     this.circuitBreaker.nextAttemptTime = new Date(
-      Date.now() + this.config.circuitBreakerResetTimeout
+      Date.now() + this.config.circuitBreakerResetTimeout,
     );
     this.circuitBreaker.reason = `Too many failures (${this.circuitBreaker.failures})`;
   }
 
   private shouldAttemptReset(): boolean {
     return !!(
-      this.circuitBreaker.nextAttemptTime &&
-      new Date() >= this.circuitBreaker.nextAttemptTime
+      this.circuitBreaker.nextAttemptTime && new Date() >= this.circuitBreaker.nextAttemptTime
     );
   }
 
@@ -615,11 +579,7 @@ export class EnhancedCredentialValidator {
     if (!error) return true;
 
     // Don't retry on authentication errors
-    if (
-      error.includes("401") ||
-      error.includes("403") ||
-      error.includes("signature")
-    ) {
+    if (error.includes("401") || error.includes("403") || error.includes("signature")) {
       return false;
     }
 
@@ -655,16 +615,11 @@ export class EnhancedCredentialValidator {
   }
 
   private updateConnectionQuality(): void {
-    const { successRate, averageLatency, consecutiveFailures } =
-      this.healthMetrics;
+    const { successRate, averageLatency, consecutiveFailures } = this.healthMetrics;
 
     if (consecutiveFailures >= 3 || successRate < 0.5) {
       this.healthMetrics.connectionQuality = "poor";
-    } else if (
-      consecutiveFailures >= 1 ||
-      successRate < 0.8 ||
-      averageLatency > 2000
-    ) {
+    } else if (consecutiveFailures >= 1 || successRate < 0.8 || averageLatency > 2000) {
       this.healthMetrics.connectionQuality = "fair";
     } else if (averageLatency > 1000) {
       this.healthMetrics.connectionQuality = "good";
@@ -680,8 +635,7 @@ export class EnhancedCredentialValidator {
     }
 
     this.healthMetrics.averageLatency =
-      this.recentLatencies.reduce((sum, lat) => sum + lat, 0) /
-      this.recentLatencies.length;
+      this.recentLatencies.reduce((sum, lat) => sum + lat, 0) / this.recentLatencies.length;
   }
 
   // ============================================================================
@@ -750,7 +704,7 @@ export class EnhancedCredentialValidator {
  * Create enhanced credential validator with production-optimized defaults
  */
 export function createEnhancedCredentialValidator(
-  config?: Partial<EnhancedCredentialValidatorConfig>
+  config?: Partial<EnhancedCredentialValidatorConfig>,
 ): EnhancedCredentialValidator {
   const defaultConfig: Partial<EnhancedCredentialValidatorConfig> = {
     circuitBreakerThreshold: 5,

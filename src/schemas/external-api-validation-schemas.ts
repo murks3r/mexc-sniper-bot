@@ -47,7 +47,7 @@ export const MexcExchangeInfoResponseSchema = z.object({
           interval: z.string(),
           intervalNum: z.number(),
           limit: z.number(),
-        })
+        }),
       )
       .optional(),
     symbols: z.array(
@@ -70,10 +70,10 @@ export const MexcExchangeInfoResponseSchema = z.object({
               maxQty: z.string().optional(),
               stepSize: z.string().optional(),
               minNotional: z.string().optional(),
-            })
+            }),
           )
           .optional(),
-      })
+      }),
     ),
   }),
 });
@@ -96,7 +96,7 @@ export const MexcAccountBalanceResponseSchema = z.object({
             asset: z.string(),
             free: z.string(),
             locked: z.string(),
-          })
+          }),
         )
         .optional(),
     })
@@ -118,14 +118,7 @@ export const MexcOrderResponseSchema = z.object({
     origQty: z.string(),
     executedQty: z.string(),
     cummulativeQuoteQty: z.string(),
-    status: z.enum([
-      "NEW",
-      "PARTIALLY_FILLED",
-      "FILLED",
-      "CANCELED",
-      "REJECTED",
-      "EXPIRED",
-    ]),
+    status: z.enum(["NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "REJECTED", "EXPIRED"]),
     timeInForce: z.enum(["GTC", "IOC", "FOK"]),
     type: z.enum([
       "LIMIT",
@@ -143,7 +136,7 @@ export const MexcOrderResponseSchema = z.object({
           qty: z.string(),
           commission: z.string(),
           commissionAsset: z.string(),
-        })
+        }),
       )
       .optional(),
   }),
@@ -173,7 +166,7 @@ export const MexcTickerResponseSchema = z.object({
       bidQty: z.string().optional(),
       askPrice: z.string().optional(),
       askQty: z.string().optional(),
-    })
+    }),
   ),
 });
 
@@ -200,7 +193,7 @@ export const MexcCalendarResponseSchema = z.object({
       symbol: z.string(),
       projectName: z.string(),
       firstOpenTime: z.number(),
-    })
+    }),
   ),
 });
 
@@ -220,7 +213,7 @@ export const MexcSymbolDataResponseSchema = z.object({
       ps: z.number().optional(),
       qs: z.number().optional(),
       ot: z.number().optional(),
-    })
+    }),
   ),
 });
 
@@ -235,7 +228,7 @@ export const MexcActivityResponseSchema = z.object({
       currency: z.string(),
       currencyId: z.string(),
       activityType: z.string(),
-    })
+    }),
   ),
   msg: z.string().optional(),
   timestamp: z.number().optional(),
@@ -246,9 +239,7 @@ export const MexcActivityResponseSchema = z.object({
 // ============================================================================
 
 export const MexcErrorResponseSchema = z.object({
-  code: z
-    .number()
-    .refine((code) => code !== 200, "Error response should not have code 200"),
+  code: z.number().refine((code) => code !== 200, "Error response should not have code 200"),
   msg: z.string(),
   data: z.null().optional(),
 });
@@ -270,10 +261,7 @@ export const MexcRateLimitErrorSchema = z.object({
 /**
  * CoinGecko Price Response Schema
  */
-export const CoinGeckoPriceResponseSchema = z.record(
-  z.string(),
-  z.record(z.string(), z.number())
-);
+export const CoinGeckoPriceResponseSchema = z.record(z.string(), z.record(z.string(), z.number()));
 
 /**
  * Generic HTTP Response Schema
@@ -296,23 +284,15 @@ export const TradingOrderSchema = z.object({
   symbol: z.string().min(1, "Symbol is required"),
   side: z.enum(["BUY", "SELL"]),
   type: z.enum(["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_LIMIT"]),
-  quantity: z
-    .string()
-    .refine((val) => parseFloat(val) > 0, "Quantity must be greater than 0"),
+  quantity: z.string().refine((val) => parseFloat(val) > 0, "Quantity must be greater than 0"),
   price: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || parseFloat(val) > 0,
-      "Price must be greater than 0 if provided"
-    ),
+    .refine((val) => !val || parseFloat(val) > 0, "Price must be greater than 0 if provided"),
   stopPrice: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || parseFloat(val) > 0,
-      "Stop price must be greater than 0 if provided"
-    ),
+    .refine((val) => !val || parseFloat(val) > 0, "Stop price must be greater than 0 if provided"),
   timeInForce: z.enum(["GTC", "IOC", "FOK"]).default("GTC"),
 });
 
@@ -321,12 +301,8 @@ export const TradingOrderSchema = z.object({
  */
 export const AccountBalanceSchema = z.object({
   asset: z.string().min(1, "Asset is required"),
-  free: z
-    .string()
-    .refine((val) => parseFloat(val) >= 0, "Free balance cannot be negative"),
-  locked: z
-    .string()
-    .refine((val) => parseFloat(val) >= 0, "Locked balance cannot be negative"),
+  free: z.string().refine((val) => parseFloat(val) >= 0, "Free balance cannot be negative"),
+  locked: z.string().refine((val) => parseFloat(val) >= 0, "Locked balance cannot be negative"),
   total: z.number().nonnegative("Total balance cannot be negative"),
   usdtValue: z.number().nonnegative("USDT value cannot be negative").optional(),
 });
@@ -348,19 +324,9 @@ export const PortfolioSummarySchema = z.object({
  */
 export const RiskParametersSchema = z.object({
   maxPositionSize: z.number().positive("Max position size must be positive"),
-  stopLossPercentage: z
-    .number()
-    .min(0.1)
-    .max(50, "Stop loss must be between 0.1% and 50%"),
-  takeProfitPercentage: z
-    .number()
-    .min(0.1)
-    .max(1000, "Take profit must be between 0.1% and 1000%"),
-  maxDrawdown: z
-    .number()
-    .min(0)
-    .max(100, "Max drawdown must be between 0% and 100%")
-    .optional(),
+  stopLossPercentage: z.number().min(0.1).max(50, "Stop loss must be between 0.1% and 50%"),
+  takeProfitPercentage: z.number().min(0.1).max(1000, "Take profit must be between 0.1% and 1000%"),
+  maxDrawdown: z.number().min(0).max(100, "Max drawdown must be between 0% and 100%").optional(),
   riskLevel: z.enum(["low", "medium", "high"]).default("medium"),
 });
 
@@ -388,7 +354,7 @@ export const MarketDataSchema = z.object({
 export function validateMexcResponse<T extends z.ZodSchema>(
   schema: T,
   response: unknown,
-  apiEndpoint: string = "unknown"
+  apiEndpoint: string = "unknown",
 ): { success?: boolean; data?: z.infer<T>; error?: string; details?: any } {
   try {
     // First check if it's a MEXC error response
@@ -434,7 +400,7 @@ export function validateMexcResponse<T extends z.ZodSchema>(
 export function validateCriticalTradingData<T extends z.ZodSchema>(
   schema: T,
   data: unknown,
-  dataType: string
+  dataType: string,
 ): z.infer<T> {
   try {
     const result = schema.parse(data);
@@ -446,21 +412,16 @@ export function validateCriticalTradingData<T extends z.ZodSchema>(
         .map((err) => `${(err.path as string[]).join(".")}: ${err.message}`)
         .join(", ");
 
-      console.error(
-        `[CriticalValidation] CRITICAL FAILURE - ${dataType} validation failed:`,
-        {
-          errors: error.errors,
-          data: JSON.stringify(data, null, 2).substring(0, 300),
-        }
-      );
+      console.error(`[CriticalValidation] CRITICAL FAILURE - ${dataType} validation failed:`, {
+        errors: error.errors,
+        data: JSON.stringify(data, null, 2).substring(0, 300),
+      });
 
-      throw new Error(
-        `Critical ${dataType} validation failed: ${errorMessage}`
-      );
+      throw new Error(`Critical ${dataType} validation failed: ${errorMessage}`);
     }
 
     throw new Error(
-      `Critical ${dataType} validation error: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Critical ${dataType} validation error: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
@@ -471,7 +432,7 @@ export function validateCriticalTradingData<T extends z.ZodSchema>(
 export function safeValidateWithDefault<T extends z.ZodSchema>(
   schema: T,
   data: unknown,
-  defaultValue: z.infer<T>
+  defaultValue: z.infer<T>,
 ): z.infer<T> {
   try {
     return schema.parse(data);
@@ -489,12 +450,8 @@ export function safeValidateWithDefault<T extends z.ZodSchema>(
 // ============================================================================
 
 export type MexcBaseResponse = z.infer<typeof MexcBaseResponseSchema>;
-export type MexcServerTimeResponse = z.infer<
-  typeof MexcServerTimeResponseSchema
->;
-export type MexcAccountBalanceResponse = z.infer<
-  typeof MexcAccountBalanceResponseSchema
->;
+export type MexcServerTimeResponse = z.infer<typeof MexcServerTimeResponseSchema>;
+export type MexcAccountBalanceResponse = z.infer<typeof MexcAccountBalanceResponseSchema>;
 export type MexcOrderResponse = z.infer<typeof MexcOrderResponseSchema>;
 export type MexcTickerResponse = z.infer<typeof MexcTickerResponseSchema>;
 export type MexcCalendarResponse = z.infer<typeof MexcCalendarResponseSchema>;

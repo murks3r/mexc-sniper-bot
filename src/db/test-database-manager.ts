@@ -11,10 +11,7 @@
 import { sql } from "drizzle-orm";
 import { getLogger } from "../lib/error-type-utils";
 import { closeDatabase, db } from "./index";
-import {
-  emergencyTransactionCleanup,
-  testTransaction,
-} from "./transaction-helpers";
+import { emergencyTransactionCleanup, testTransaction } from "./transaction-helpers";
 
 export interface TestDatabaseManager {
   setup(): Promise<void>;
@@ -142,10 +139,7 @@ export function createTestDatabaseManager(): TestDatabaseManager {
             await db.execute(query);
           } catch (error) {
             // Log but continue - table might not exist
-            logger.debug(
-              `[TestDB] Cleanup query failed (table might not exist):`,
-              error
-            );
+            logger.debug(`[TestDB] Cleanup query failed (table might not exist):`, error);
           }
         }
 
@@ -166,8 +160,8 @@ export function createTestDatabaseManager(): TestDatabaseManager {
         `);
 
         const row = (result as any)[0];
-        const activeConnections = parseInt(row.active_connections || "0");
-        const maxConnections = parseInt(row.max_connections || "100");
+        const activeConnections = parseInt(row.active_connections || "0", 10);
+        const maxConnections = parseInt(row.max_connections || "100", 10);
         const totalConnections = activeConnections; // Simplified for now
 
         let connectionHealth: "healthy" | "degraded" | "critical" = "healthy";
@@ -218,7 +212,7 @@ export function getTestDatabaseManager(): TestDatabaseManager {
  */
 export async function withDatabaseIsolation<T>(
   testFn: () => Promise<T>,
-  userId?: string
+  userId?: string,
 ): Promise<T> {
   const manager = getTestDatabaseManager();
 
@@ -252,9 +246,7 @@ export async function ensureCleanDatabaseState(): Promise<void> {
     const connectionInfo = await manager.getConnectionInfo();
 
     if (connectionInfo.connectionHealth === "critical") {
-      getLogger().warn(
-        "[TestDB] Critical connection state detected, performing cleanup..."
-      );
+      getLogger().warn("[TestDB] Critical connection state detected, performing cleanup...");
       await manager.cleanup();
       await manager.setup();
     }

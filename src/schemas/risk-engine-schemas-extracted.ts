@@ -212,18 +212,14 @@ export function validateMarketConditions(data: unknown): MarketConditions {
 /**
  * Validate position risk profile data
  */
-export function validatePositionRiskProfile(
-  data: unknown
-): PositionRiskProfile {
+export function validatePositionRiskProfile(data: unknown): PositionRiskProfile {
   return PositionRiskProfileSchema.parse(data);
 }
 
 /**
  * Validate portfolio risk metrics data
  */
-export function validatePortfolioRiskMetrics(
-  data: unknown
-): PortfolioRiskMetrics {
+export function validatePortfolioRiskMetrics(data: unknown): PortfolioRiskMetrics {
   return PortfolioRiskMetricsSchema.parse(data);
 }
 

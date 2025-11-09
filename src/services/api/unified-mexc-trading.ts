@@ -22,6 +22,7 @@ export interface TradingOrderData {
   quantity: string;
   price?: string;
   timeInForce?: "GTC" | "IOC" | "FOK";
+  quoteOrderQty?: string;
 }
 
 export interface SymbolTickerData {
@@ -75,7 +76,7 @@ export class UnifiedMexcTradingModule implements TradingService {
 
   constructor(
     private coreClient: MexcCoreClient,
-    private cacheLayer: MexcCacheLayer
+    private cacheLayer: MexcCacheLayer,
   ) {}
 
   // ============================================================================
@@ -86,7 +87,7 @@ export class UnifiedMexcTradingModule implements TradingService {
    * Place a trading order
    */
   async placeOrder(
-    orderData: TradingOrderData
+    orderData: TradingOrderData,
   ): Promise<MexcServiceResponse<Record<string, unknown>>> {
     try {
       // Delegate to core client for order placement
@@ -105,7 +106,7 @@ export class UnifiedMexcTradingModule implements TradingService {
    * Create a market buy order (alias for convenience)
    */
   async createOrder(
-    orderData: TradingOrderData
+    orderData: TradingOrderData,
   ): Promise<MexcServiceResponse<Record<string, unknown>>> {
     return this.placeOrder(orderData);
   }
@@ -117,13 +118,11 @@ export class UnifiedMexcTradingModule implements TradingService {
   /**
    * Get symbol ticker with price information
    */
-  async getSymbolTicker(
-    symbol: string
-  ): Promise<MexcServiceResponse<SymbolTickerData>> {
+  async getSymbolTicker(symbol: string): Promise<MexcServiceResponse<SymbolTickerData>> {
     const result = await this.cacheLayer.getOrSet(
       `ticker:${symbol}`,
       () => this.coreClient.getTicker(symbol),
-      "realTime" // Short cache for ticker data
+      "realTime", // Short cache for ticker data
     );
 
     // Ensure both price and lastPrice are available for backward compatibility
@@ -148,9 +147,7 @@ export class UnifiedMexcTradingModule implements TradingService {
   /**
    * Get ticker data for a specific symbol
    */
-  async getTicker(
-    symbol: string
-  ): Promise<MexcServiceResponse<SymbolTickerData>> {
+  async getTicker(symbol: string): Promise<MexcServiceResponse<SymbolTickerData>> {
     return this.getSymbolTicker(symbol);
   }
 
@@ -159,12 +156,12 @@ export class UnifiedMexcTradingModule implements TradingService {
    */
   async getOrderBook(
     symbol: string,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<MexcServiceResponse<OrderBookData>> {
     return this.cacheLayer.getOrSet(
       `orderbook:${symbol}:${limit}`,
       () => this.coreClient.getOrderBook(symbol, limit),
-      "realTime" // 5 second cache for order book data
+      "realTime", // 5 second cache for order book data
     );
   }
 
@@ -173,7 +170,7 @@ export class UnifiedMexcTradingModule implements TradingService {
    */
   async getRecentActivity(
     symbol: string,
-    hours: number = 24
+    hours: number = 24,
   ): Promise<MexcServiceResponse<RecentActivityData>> {
     // Check if we're in test environment
     const isTestEnvironment =
@@ -197,7 +194,7 @@ export class UnifiedMexcTradingModule implements TradingService {
         .getHttpClient()
         .makeRequest(
           `${this.coreClient.getConfig().baseUrl}/api/v3/aggTrades?symbol=${symbol}&startTime=${startTime}&endTime=${endTime}&limit=1000`,
-          { method: "GET" }
+          { method: "GET" },
         );
 
       if (!tradesResponse.data || !Array.isArray(tradesResponse.data)) {
@@ -250,23 +247,14 @@ export class UnifiedMexcTradingModule implements TradingService {
         .slice(0, 100); // Limit to last 100 significant activities
 
       // Calculate overall activity score
-      const totalVolume = activities.reduce(
-        (sum, activity) => sum + activity.volume,
-        0
-      );
+      const totalVolume = activities.reduce((sum, activity) => sum + activity.volume, 0);
       const avgSignificance =
         activities.length > 0
-          ? activities.reduce(
-              (sum, activity) => sum + activity.significance,
-              0
-            ) / activities.length
+          ? activities.reduce((sum, activity) => sum + activity.significance, 0) / activities.length
           : 0;
 
       // Score based on volume activity and significance (0-1 scale)
-      const volumeScore = Math.min(
-        totalVolume / (parseFloat(ticker?.volume || "1") * 0.1),
-        1
-      );
+      const volumeScore = Math.min(totalVolume / (parseFloat(ticker?.volume || "1") * 0.1), 1);
       const activityScore = volumeScore * 0.6 + avgSignificance * 0.4;
 
       return {
@@ -283,7 +271,7 @@ export class UnifiedMexcTradingModule implements TradingService {
       // Fallback to basic activity analysis if detailed data unavailable
       this.logger.warn(
         `Failed to get detailed activity data for ${symbol}, using fallback:`,
-        error
+        error,
       );
 
       try {
@@ -325,10 +313,7 @@ export class UnifiedMexcTradingModule implements TradingService {
           });
         }
 
-        const activityScore = Math.min(
-          1,
-          Math.abs(priceChange) / 10 + (volume > 0 ? 0.3 : 0)
-        );
+        const activityScore = Math.min(1, Math.abs(priceChange) / 10 + (volume > 0 ? 0.3 : 0));
 
         return {
           success: true,
@@ -389,30 +374,19 @@ export class UnifiedMexcTradingModule implements TradingService {
 
       // Calculate analysis metrics with safe property access
       const currentPrice = ticker?.price ? parseFloat(ticker.price) : 0;
-      const priceChange24h = ticker?.priceChangePercent
-        ? parseFloat(ticker.priceChangePercent)
-        : 0;
+      const priceChange24h = ticker?.priceChangePercent ? parseFloat(ticker.priceChangePercent) : 0;
       const volume24h = ticker?.volume ? parseFloat(ticker.volume) : 0;
 
       // Calculate order book spread with proper type checking
-      const bestBid = orderBook?.bids?.[0]?.[0]
-        ? parseFloat(orderBook.bids[0][0])
-        : 0;
-      const bestAsk = orderBook?.asks?.[0]?.[0]
-        ? parseFloat(orderBook.asks[0][0])
-        : 0;
+      const bestBid = orderBook?.bids?.[0]?.[0] ? parseFloat(orderBook.bids[0][0]) : 0;
+      const bestAsk = orderBook?.asks?.[0]?.[0] ? parseFloat(orderBook.asks[0][0]) : 0;
       const orderBookSpread =
         bestAsk > 0 && bestBid > 0 ? ((bestAsk - bestBid) / bestAsk) * 100 : 0;
 
       // Calculate liquidity score (simplified)
-      const totalBidVolume =
-        orderBook?.bids.reduce((sum, bid) => sum + parseFloat(bid[1]), 0) || 0;
-      const totalAskVolume =
-        orderBook?.asks.reduce((sum, ask) => sum + parseFloat(ask[1]), 0) || 0;
-      const liquidityScore = Math.min(
-        (totalBidVolume + totalAskVolume) / 1000,
-        10
-      );
+      const totalBidVolume = orderBook?.bids.reduce((sum, bid) => sum + parseFloat(bid[1]), 0) || 0;
+      const totalAskVolume = orderBook?.asks.reduce((sum, ask) => sum + parseFloat(ask[1]), 0) || 0;
+      const liquidityScore = Math.min((totalBidVolume + totalAskVolume) / 1000, 10);
 
       // Calculate volatility score
       const volatilityScore = Math.min(Math.abs(priceChange24h) / 5, 10);
@@ -448,8 +422,7 @@ export class UnifiedMexcTradingModule implements TradingService {
     } catch (error) {
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to analyze symbol",
+        error: error instanceof Error ? error.message : "Failed to analyze symbol",
         timestamp: Date.now(),
         source: "unified-mexc-trading",
       };
@@ -466,20 +439,14 @@ export class UnifiedMexcTradingModule implements TradingService {
         return false;
       }
 
-      const { liquidityScore, volatilityScore, orderBookSpread } =
-        analysis.data || {};
+      const { liquidityScore, volatilityScore, orderBookSpread } = analysis.data || {};
 
       // Good trading symbols have high liquidity, reasonable volatility, and tight spreads
       return (
-        (liquidityScore || 0) > 3 &&
-        (volatilityScore || 0) > 1 &&
-        (orderBookSpread || 100) < 0.5
+        (liquidityScore || 0) > 3 && (volatilityScore || 0) > 1 && (orderBookSpread || 100) < 0.5
       );
     } catch (error) {
-      this.logger.warn(
-        `Failed to check if ${symbol} is good for trading:`,
-        error
-      );
+      this.logger.warn(`Failed to check if ${symbol} is good for trading:`, error);
       return false;
     }
   }
@@ -525,15 +492,14 @@ export class UnifiedMexcTradingModule implements TradingService {
 
     try {
       // Convert interface params to internal TradingOrderData format
+      // For MARKET BUY with quoteOrderQty, pass quoteOrderQty separately (MEXC API requirement)
       const orderData: TradingOrderData = {
         symbol: params.symbol,
         side: params.side,
         type: params.type === "STOP_LIMIT" ? "LIMIT" : params.type,
-        quantity:
-          params.quantity?.toString() ||
-          params.quoteOrderQty?.toString() ||
-          "0",
+        quantity: params.quantity?.toString() || (params.quoteOrderQty && params.side === "BUY" && params.type === "MARKET" ? "" : params.quoteOrderQty?.toString() || "0"),
         price: params.price?.toString(),
+        quoteOrderQty: params.quoteOrderQty && params.side === "BUY" && params.type === "MARKET" ? params.quoteOrderQty.toString() : undefined,
         timeInForce: params.timeInForce,
       };
 
@@ -573,9 +539,7 @@ export class UnifiedMexcTradingModule implements TradingService {
       // Map internal response to interface format with safe property access
       const mappedData = {
         orderId:
-          result.data &&
-          result.data.orderId !== null &&
-          result.data.orderId !== undefined
+          result.data && result.data.orderId !== null && result.data.orderId !== undefined
             ? result.data.orderId.toString()
             : `order_${Date.now()}`,
         clientOrderId:
@@ -589,14 +553,9 @@ export class UnifiedMexcTradingModule implements TradingService {
         type: params.type,
         quantity: orderData.quantity,
         price: orderData.price || "0",
-        status:
-          result.data && typeof result.data.status === "string"
-            ? result.data.status
-            : "NEW",
+        status: result.data && typeof result.data.status === "string" ? result.data.status : "NEW",
         executedQty:
-          result.data &&
-          result.data.executedQty !== null &&
-          result.data.executedQty !== undefined
+          result.data && result.data.executedQty !== null && result.data.executedQty !== undefined
             ? result.data.executedQty.toString()
             : "0",
         timestamp: new Date().toISOString(),
@@ -610,8 +569,7 @@ export class UnifiedMexcTradingModule implements TradingService {
     } catch (error) {
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown execution error",
+        error: error instanceof Error ? error.message : "Unknown execution error",
         executionTime: Date.now() - startTime,
       };
     }
@@ -664,7 +622,7 @@ export class UnifiedMexcTradingModule implements TradingService {
    */
   private generateMockActivityData(
     symbol: string,
-    hours: number = 24
+    hours: number = 24,
   ): MexcServiceResponse<RecentActivityData> {
     const currentTime = Date.now();
     const activities = [];
@@ -688,9 +646,7 @@ export class UnifiedMexcTradingModule implements TradingService {
 
     // Create mock activities
     for (let i = 0; i < activityCount; i++) {
-      const timeOffset = Math.floor(
-        (hours * 60 * 60 * 1000 * (i + 1)) / (activityCount + 1)
-      );
+      const timeOffset = Math.floor((hours * 60 * 60 * 1000 * (i + 1)) / (activityCount + 1));
       activities.push({
         timestamp: currentTime - timeOffset,
         activityType: i === 0 ? "large_trade" : "normal_trade",

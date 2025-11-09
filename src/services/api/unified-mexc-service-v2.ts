@@ -25,11 +25,7 @@ import { MexcCacheLayer } from "../data/modules/mexc-cache-layer";
 import { MexcCoreClient } from "../data/modules/mexc-core-client";
 
 // Import modular components
-import {
-  hasValidCredentials,
-  mergeConfig,
-  type UnifiedMexcConfigV2,
-} from "./unified-mexc-config";
+import { hasValidCredentials, mergeConfig, type UnifiedMexcConfigV2 } from "./unified-mexc-config";
 import { UnifiedMexcCoreModule } from "./unified-mexc-core";
 import { UnifiedMexcPortfolioModule } from "./unified-mexc-portfolio";
 import {
@@ -44,9 +40,7 @@ import {
 // Unified MEXC Service v2
 // ============================================================================
 
-export class UnifiedMexcServiceV2
-  implements PortfolioService, TradingService, MarketService
-{
+export class UnifiedMexcServiceV2 implements PortfolioService, TradingService, MarketService {
   // Simple console logger to avoid webpack bundling issues
   private logger = {
     info: (message: string, context?: any) =>
@@ -90,18 +84,9 @@ export class UnifiedMexcServiceV2
     });
 
     // Initialize modular components
-    this.coreModule = new UnifiedMexcCoreModule(
-      this.coreClient,
-      this.cacheLayer
-    );
-    this.portfolioModule = new UnifiedMexcPortfolioModule(
-      this.coreClient,
-      this.cacheLayer
-    );
-    this.tradingModule = new UnifiedMexcTradingModule(
-      this.coreClient,
-      this.cacheLayer
-    );
+    this.coreModule = new UnifiedMexcCoreModule(this.coreClient, this.cacheLayer);
+    this.portfolioModule = new UnifiedMexcPortfolioModule(this.coreClient, this.cacheLayer);
+    this.tradingModule = new UnifiedMexcTradingModule(this.coreClient, this.cacheLayer);
   }
 
   // ============================================================================
@@ -169,7 +154,10 @@ export class UnifiedMexcServiceV2
     return result as any;
   }
 
-  async getOrderStatus(symbolOrOrderId: string, maybeOrderId?: string): Promise<{
+  async getOrderStatus(
+    symbolOrOrderId: string,
+    maybeOrderId?: string,
+  ): Promise<{
     success: boolean;
     data?: {
       orderId: string;
@@ -196,17 +184,16 @@ export class UnifiedMexcServiceV2
 
       const result = await this.coreClient.getOrderStatus(
         normalizedSymbol,
-        parseInt(orderId) || 0
+        parseInt(orderId, 10) || 0,
       );
       return {
         success: result.success,
         data: result.data
           ? {
               orderId: String(
-                result.data.orderId !== null &&
-                  result.data.orderId !== undefined
+                result.data.orderId !== null && result.data.orderId !== undefined
                   ? result.data.orderId
-                  : orderId
+                  : orderId,
               ),
               symbol: result.data.symbol || "",
               status: result.data.status || "",
@@ -215,16 +202,15 @@ export class UnifiedMexcServiceV2
               quantity: result.data.quantity || "0",
               price: result.data.price,
               executedQuantity: String(
-                result.data.executedQty !== null &&
-                  result.data.executedQty !== undefined
+                result.data.executedQty !== null && result.data.executedQty !== undefined
                   ? result.data.executedQty
-                  : "0"
+                  : "0",
               ),
               cummulativeQuoteQuantity: String(
                 result.data.cummulativeQuoteQty !== null &&
                   result.data.cummulativeQuoteQty !== undefined
                   ? result.data.cummulativeQuoteQty
-                  : "0"
+                  : "0",
               ),
               timeInForce: result.data.timeInForce,
               timestamp: Date.now(),
@@ -242,7 +228,7 @@ export class UnifiedMexcServiceV2
 
   async cancelOrder(
     orderId: string,
-    symbol?: string
+    symbol?: string,
   ): Promise<{
     success: boolean;
     data?: {
@@ -253,19 +239,15 @@ export class UnifiedMexcServiceV2
     error?: string;
   }> {
     try {
-      const result = await this.coreClient.cancelOrder(
-        symbol || "",
-        parseInt(orderId) || 0
-      );
+      const result = await this.coreClient.cancelOrder(symbol || "", parseInt(orderId, 10) || 0);
       return {
         success: result.success,
         data: result.data
           ? {
               orderId: String(
-                result.data.orderId !== null &&
-                  result.data.orderId !== undefined
+                result.data.orderId !== null && result.data.orderId !== undefined
                   ? result.data.orderId
-                  : orderId
+                  : orderId,
               ),
               symbol: result.data.symbol || symbol || "",
               status: result.data.status || "CANCELED",
@@ -283,7 +265,7 @@ export class UnifiedMexcServiceV2
 
   async getTradeHistory(
     symbol?: string,
-    limit?: number
+    limit?: number,
   ): Promise<{
     success: boolean;
     data?: Array<{
@@ -316,9 +298,7 @@ export class UnifiedMexcServiceV2
 
       // Transform the data to match expected format
       const transformedData = (result.data || []).map((trade: any) => ({
-        id: String(
-          trade.id || trade.tradeId || `${Date.now()}-${Math.random()}`
-        ),
+        id: String(trade.id || trade.tradeId || `${Date.now()}-${Math.random()}`),
         orderId: String(trade.orderId || ""),
         symbol: trade.symbol || symbol || "",
         side: (trade.side as "BUY" | "SELL") || "BUY",
@@ -368,17 +348,13 @@ export class UnifiedMexcServiceV2
         data: result.data
           ? result.data.map((order: any) => ({
               orderId: String(
-                order.orderId !== null && order.orderId !== undefined
-                  ? order.orderId
-                  : ""
+                order.orderId !== null && order.orderId !== undefined ? order.orderId : "",
               ),
               symbol: order.symbol || "",
               side: order.side as "BUY" | "SELL",
               type: order.type || "",
               quantity: String(
-                order.quantity !== null && order.quantity !== undefined
-                  ? order.quantity
-                  : "0"
+                order.quantity !== null && order.quantity !== undefined ? order.quantity : "0",
               ),
               price: order.price,
               status: order.status || "",
@@ -467,10 +443,8 @@ export class UnifiedMexcServiceV2
 
         const ticker = {
           symbol: symbols[0],
-          price:
-            tickerResponse.data?.price || tickerResponse.data?.lastPrice || "0",
-          lastPrice:
-            tickerResponse.data?.lastPrice || tickerResponse.data?.price || "0",
+          price: tickerResponse.data?.price || tickerResponse.data?.lastPrice || "0",
+          lastPrice: tickerResponse.data?.lastPrice || tickerResponse.data?.price || "0",
           priceChangePercent: tickerResponse.data?.priceChangePercent || "0",
           volume: tickerResponse.data?.volume || "0",
         };
@@ -488,14 +462,8 @@ export class UnifiedMexcServiceV2
           if (tickerResponse.success && tickerResponse.data) {
             return {
               symbol,
-              price:
-                tickerResponse.data.price ||
-                tickerResponse.data.lastPrice ||
-                "0",
-              lastPrice:
-                tickerResponse.data.lastPrice ||
-                tickerResponse.data.price ||
-                "0",
+              price: tickerResponse.data.price || tickerResponse.data.lastPrice || "0",
+              lastPrice: tickerResponse.data.lastPrice || tickerResponse.data.price || "0",
               priceChangePercent: tickerResponse.data.priceChangePercent || "0",
               volume: tickerResponse.data.volume || "0",
             };
@@ -557,28 +525,22 @@ export class UnifiedMexcServiceV2
       success: true,
       data: {
         symbol,
-        price:
-          tickerResponse.data?.price || tickerResponse.data?.lastPrice || "0",
-        lastPrice:
-          tickerResponse.data?.lastPrice || tickerResponse.data?.price || "0",
+        price: tickerResponse.data?.price || tickerResponse.data?.lastPrice || "0",
+        lastPrice: tickerResponse.data?.lastPrice || tickerResponse.data?.price || "0",
         priceChangePercent: tickerResponse.data?.priceChangePercent || "0",
         volume: tickerResponse.data?.volume || "0",
       },
     };
   }
 
-  async getSymbolStatus(
-    symbol: string
-  ): Promise<{ status: string; trading: boolean }> {
+  async getSymbolStatus(symbol: string): Promise<{ status: string; trading: boolean }> {
     try {
       const exchangeResponse = await this.getExchangeInfo();
       if (!exchangeResponse.success || !exchangeResponse.data) {
         return { status: "ERROR", trading: false };
       }
 
-      const symbolInfo = exchangeResponse.data.symbols?.find(
-        (s) => s.symbol === symbol
-      );
+      const symbolInfo = exchangeResponse.data.symbols?.find((s) => s.symbol === symbol);
       if (!symbolInfo) {
         return { status: "NOT_FOUND", trading: false };
       }
@@ -594,7 +556,7 @@ export class UnifiedMexcServiceV2
 
   async getOrderBookDepth(
     symbol: string,
-    limit = 100
+    limit = 100,
   ): Promise<{
     success: boolean;
     data?: {
@@ -605,10 +567,7 @@ export class UnifiedMexcServiceV2
     error?: string;
   }> {
     // Delegate to trading module's order book functionality
-    const orderBookResponse = await this.tradingModule.getOrderBook(
-      symbol,
-      limit
-    );
+    const orderBookResponse = await this.tradingModule.getOrderBook(symbol, limit);
     if (!orderBookResponse.success) {
       return {
         success: false,
@@ -636,9 +595,7 @@ export class UnifiedMexcServiceV2
   }
 
   // Symbols & Market Data (Core Module)
-  async getSymbolsByVcoinId(
-    vcoinId: string
-  ): Promise<MexcServiceResponse<SymbolEntry[]>> {
+  async getSymbolsByVcoinId(vcoinId: string): Promise<MexcServiceResponse<SymbolEntry[]>> {
     return this.coreModule.getSymbolsByVcoinId(vcoinId);
   }
 
@@ -650,9 +607,7 @@ export class UnifiedMexcServiceV2
     return this.coreModule.getServerTime();
   }
 
-  async getSymbolInfoBasic(
-    symbolName: string
-  ): Promise<MexcServiceResponse<any>> {
+  async getSymbolInfoBasic(symbolName: string): Promise<MexcServiceResponse<any>> {
     return this.coreModule.getSymbolInfoBasic(symbolName);
   }
 
@@ -664,9 +619,7 @@ export class UnifiedMexcServiceV2
     return this.coreModule.getSymbolData(symbol);
   }
 
-  async getSymbolsForVcoins(
-    vcoinIds: string[]
-  ): Promise<MexcServiceResponse<SymbolEntry[]>> {
+  async getSymbolsForVcoins(vcoinIds: string[]): Promise<MexcServiceResponse<SymbolEntry[]>> {
     return this.coreModule.getSymbolsForVcoins(vcoinIds);
   }
 
@@ -705,14 +658,14 @@ export class UnifiedMexcServiceV2
 
   async getBulkActivityData(
     currencies: string[],
-    options?: ActivityQueryOptionsType
+    options?: ActivityQueryOptionsType,
   ): Promise<MexcServiceResponse<any[]>> {
     return this.coreModule.getBulkActivityData(currencies, options);
   }
 
   async hasRecentActivity(
     currency: string,
-    timeframeMs: number = 24 * 60 * 60 * 1000
+    timeframeMs: number = 24 * 60 * 60 * 1000,
   ): Promise<boolean> {
     try {
       const activityResponse = await this.getActivityData(currency);
@@ -786,35 +739,29 @@ export class UnifiedMexcServiceV2
 
   // Trading Methods (Trading Module)
 
-  async getSymbolTicker(
-    symbol: string
-  ): Promise<MexcServiceResponse<SymbolTickerData>> {
+  async getSymbolTicker(symbol: string): Promise<MexcServiceResponse<SymbolTickerData>> {
     return this.tradingModule.getSymbolTicker(symbol);
   }
 
   async getOrderBook(
     symbol: string,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<MexcServiceResponse<OrderBookData>> {
     return this.tradingModule.getOrderBook(symbol, limit);
   }
 
   async getRecentActivity(
     symbol: string,
-    hours: number = 24
+    hours: number = 24,
   ): Promise<MexcServiceResponse<RecentActivityData>> {
     return this.tradingModule.getRecentActivity(symbol, hours);
   }
 
-  async placeOrder(
-    orderData: TradingOrderData
-  ): Promise<MexcServiceResponse<any>> {
+  async placeOrder(orderData: TradingOrderData): Promise<MexcServiceResponse<any>> {
     return this.tradingModule.placeOrder(orderData);
   }
 
-  async createOrder(
-    orderData: TradingOrderData
-  ): Promise<MexcServiceResponse<any>> {
+  async createOrder(orderData: TradingOrderData): Promise<MexcServiceResponse<any>> {
     return this.tradingModule.createOrder(orderData);
   }
 
@@ -854,16 +801,11 @@ export class UnifiedMexcServiceV2
     return this.portfolioModule.getTopAssets(limit);
   }
 
-  async hasSufficientBalance(
-    asset: string,
-    requiredAmount: number
-  ): Promise<boolean> {
+  async hasSufficientBalance(asset: string, requiredAmount: number): Promise<boolean> {
     return this.portfolioModule.hasSufficientBalance(asset, requiredAmount);
   }
 
-  async getAssetBalance(
-    asset: string
-  ): Promise<{ free: string; locked: string } | null> {
+  async getAssetBalance(asset: string): Promise<{ free: string; locked: string } | null> {
     return this.portfolioModule.getAssetBalance(asset);
   }
 
@@ -871,9 +813,7 @@ export class UnifiedMexcServiceV2
   // Core Module - Connectivity & Status
   // ============================================================================
 
-  async testConnectivity(): Promise<
-    MexcServiceResponse<{ serverTime: number; latency: number }>
-  > {
+  async testConnectivity(): Promise<MexcServiceResponse<{ serverTime: number; latency: number }>> {
     return this.coreModule.testConnectivity();
   }
 
@@ -938,9 +878,7 @@ export class UnifiedMexcServiceV2
   /**
    * Ping the MEXC API to test connectivity
    */
-  async ping(): Promise<
-    MexcServiceResponse<{ serverTime: number; latency: number }>
-  > {
+  async ping(): Promise<MexcServiceResponse<{ serverTime: number; latency: number }>> {
     return this.testConnectivity();
   }
 
@@ -996,9 +934,7 @@ export class UnifiedMexcServiceV2
     try {
       const exchangeInfo = await this.getExchangeInfo();
       if (exchangeInfo.success && exchangeInfo.data?.symbols) {
-        const symbolInfo = exchangeInfo.data.symbols.find(
-          (s: any) => s.symbol === symbol
-        );
+        const symbolInfo = exchangeInfo.data.symbols.find((s: any) => s.symbol === symbol);
         return symbolInfo?.status === "TRADING";
       }
       return false;
@@ -1022,7 +958,7 @@ export class UnifiedMexcServiceV2
  * Create a new unified MEXC service instance
  */
 export function createUnifiedMexcServiceV2(
-  config?: Partial<UnifiedMexcConfigV2>
+  config?: Partial<UnifiedMexcConfigV2>,
 ): UnifiedMexcServiceV2 {
   return new UnifiedMexcServiceV2(config);
 }
@@ -1033,7 +969,7 @@ export function createUnifiedMexcServiceV2(
 let globalServiceInstance: UnifiedMexcServiceV2 | null = null;
 
 export function getUnifiedMexcServiceV2(
-  config?: Partial<UnifiedMexcConfigV2>
+  config?: Partial<UnifiedMexcConfigV2>,
 ): UnifiedMexcServiceV2 {
   if (!globalServiceInstance) {
     globalServiceInstance = new UnifiedMexcServiceV2(config);

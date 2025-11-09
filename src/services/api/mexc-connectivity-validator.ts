@@ -49,22 +49,6 @@ export interface ConnectivityValidationResult {
 // ============================================================================
 
 export class MexcConnectivityValidator {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-connectivity-validator]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-connectivity-validator]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-connectivity-validator]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-connectivity-validator]", message, context || ""),
-  };
-
   private timeout = 15000; // 15 seconds
   private minPositionSize = 10; // Minimum USDT for trading
 
@@ -73,8 +57,7 @@ export class MexcConnectivityValidator {
     minPositionSize?: number;
   }) {
     if (options?.timeout) this.timeout = options.timeout;
-    if (options?.minPositionSize)
-      this.minPositionSize = options.minPositionSize;
+    if (options?.minPositionSize) this.minPositionSize = options.minPositionSize;
   }
 
   /**
@@ -110,9 +93,7 @@ export class MexcConnectivityValidator {
       timestamp: new Date().toISOString(),
     };
 
-    console.info(
-      "[MexcConnectivityValidator] Starting comprehensive validation..."
-    );
+    console.info("[MexcConnectivityValidator] Starting comprehensive validation...");
 
     try {
       // Get MEXC service instance
@@ -155,15 +136,10 @@ export class MexcConnectivityValidator {
       return result;
     } catch (error) {
       const safeError = toSafeError(error);
-      console.error(
-        "[MexcConnectivityValidator] Validation failed:",
-        safeError.message
-      );
+      console.error("[MexcConnectivityValidator] Validation failed:", safeError.message);
 
       result.errors.push(`Validation failed: ${safeError.message}`);
-      result.recommendations.push(
-        "Check network connectivity and API credentials"
-      );
+      result.recommendations.push("Check network connectivity and API credentials");
 
       return result;
     }
@@ -175,7 +151,7 @@ export class MexcConnectivityValidator {
 
   private async testBasicConnectivity(
     mexcService: any,
-    result: ConnectivityValidationResult
+    result: ConnectivityValidationResult,
   ): Promise<void> {
     console.info("[MexcConnectivityValidator] Testing basic connectivity...");
 
@@ -193,35 +169,27 @@ export class MexcConnectivityValidator {
           const serverTime = await mexcService.getServerTime();
           result.connectivity.serverTime = serverTime;
         } catch (error) {
-          console.warn(
-            "[MexcConnectivityValidator] Could not get server time:",
-            error
-          );
+          console.warn("[MexcConnectivityValidator] Could not get server time:", error);
         }
 
         console.info(
-          `[MexcConnectivityValidator] ✅ API connectivity successful (${responseTime}ms)`
+          `[MexcConnectivityValidator] ✅ API connectivity successful (${responseTime}ms)`,
         );
       } else {
         result.errors.push("Cannot reach MEXC API endpoints");
-        result.recommendations.push(
-          "Check internet connectivity and DNS resolution"
-        );
+        result.recommendations.push("Check internet connectivity and DNS resolution");
         console.info("[MexcConnectivityValidator] ❌ API connectivity failed");
       }
     } catch (error) {
       const safeError = toSafeError(error);
       result.errors.push(`Connectivity test failed: ${safeError.message}`);
-      console.error(
-        "[MexcConnectivityValidator] Connectivity test error:",
-        safeError.message
-      );
+      console.error("[MexcConnectivityValidator] Connectivity test error:", safeError.message);
     }
   }
 
   private async testAuthentication(
     mexcService: any,
-    result: ConnectivityValidationResult
+    result: ConnectivityValidationResult,
   ): Promise<void> {
     console.info("[MexcConnectivityValidator] Testing authentication...");
 
@@ -231,67 +199,47 @@ export class MexcConnectivityValidator {
       if (accountInfo.success && accountInfo.data) {
         result.authentication.valid = true;
         result.authentication.accountAccessible = true;
-        result.authentication.accountType =
-          accountInfo.data.accountType || "SPOT";
+        result.authentication.accountType = accountInfo.data.accountType || "SPOT";
         result.authentication.canTrade = accountInfo.data.canTrade !== false;
-        result.authentication.permissions = accountInfo.data.permissions || [
-          "SPOT",
-        ];
+        result.authentication.permissions = accountInfo.data.permissions || ["SPOT"];
 
-        console.info(
-          "[MexcConnectivityValidator] ✅ Authentication successful:",
-          {
-            accountType: result.authentication.accountType,
-            canTrade: result.authentication.canTrade,
-            permissions: result.authentication.permissions,
-          }
-        );
+        console.info("[MexcConnectivityValidator] ✅ Authentication successful:", {
+          accountType: result.authentication.accountType,
+          canTrade: result.authentication.canTrade,
+          permissions: result.authentication.permissions,
+        });
 
         // Check for specific trading restrictions
         if (!result.authentication.canTrade) {
           result.warnings.push("Account trading is disabled");
-          result.recommendations.push(
-            "Enable trading permissions in MEXC account settings"
-          );
+          result.recommendations.push("Enable trading permissions in MEXC account settings");
         }
       } else {
-        result.errors.push(
-          `Authentication failed: ${accountInfo.error || "Unknown error"}`
-        );
+        result.errors.push(`Authentication failed: ${accountInfo.error || "Unknown error"}`);
 
         // Provide specific error guidance
         if (accountInfo.error?.includes("signature")) {
           result.recommendations.push(
-            "Check API credentials and ensure server time synchronization"
+            "Check API credentials and ensure server time synchronization",
           );
         } else if (accountInfo.error?.includes("IP")) {
-          result.recommendations.push(
-            "Ensure your IP address is allowlisted for the API key"
-          );
+          result.recommendations.push("Ensure your IP address is allowlisted for the API key");
         } else {
-          result.recommendations.push(
-            "Verify MEXC API credentials are correct and active"
-          );
+          result.recommendations.push("Verify MEXC API credentials are correct and active");
         }
 
-        console.error(
-          "[MexcConnectivityValidator] ❌ Authentication failed:",
-          accountInfo.error
-        );
+        console.error("[MexcConnectivityValidator] ❌ Authentication failed:", accountInfo.error);
       }
     } catch (error) {
       const safeError = toSafeError(error);
       result.errors.push(`Authentication test failed: ${safeError.message}`);
-      console.error(
-        "[MexcConnectivityValidator] Authentication test error:",
-        safeError.message
-      );
+      console.error("[MexcConnectivityValidator] Authentication test error:", safeError.message);
     }
   }
 
   private async testBalanceAccess(
     mexcService: any,
-    result: ConnectivityValidationResult
+    result: ConnectivityValidationResult,
   ): Promise<void> {
     console.info("[MexcConnectivityValidator] Testing balance access...");
 
@@ -300,64 +248,49 @@ export class MexcConnectivityValidator {
 
       if (balanceResponse.success && balanceResponse.data) {
         result.balances.accessible = true;
-        result.balances.totalAssets =
-          balanceResponse.data.balances?.length || 0;
+        result.balances.totalAssets = balanceResponse.data.balances?.length || 0;
 
         // Check USDT balance
-        const usdtBalance = balanceResponse.data.balances?.find(
-          (b: any) => b.asset === "USDT"
-        );
+        const usdtBalance = balanceResponse.data.balances?.find((b: any) => b.asset === "USDT");
         if (usdtBalance) {
           const totalUsdt =
-            parseFloat(usdtBalance.free || "0") +
-            parseFloat(usdtBalance.locked || "0");
+            parseFloat(usdtBalance.free || "0") + parseFloat(usdtBalance.locked || "0");
           result.balances.usdtBalance = totalUsdt;
-          result.balances.sufficientForTrading =
-            totalUsdt >= this.minPositionSize;
+          result.balances.sufficientForTrading = totalUsdt >= this.minPositionSize;
 
           if (!result.balances.sufficientForTrading) {
             result.warnings.push(
-              `USDT balance (${totalUsdt}) below minimum trading amount (${this.minPositionSize})`
+              `USDT balance (${totalUsdt}) below minimum trading amount (${this.minPositionSize})`,
             );
-            result.recommendations.push(
-              "Deposit more USDT or reduce position size"
-            );
+            result.recommendations.push("Deposit more USDT or reduce position size");
           }
         } else {
           result.warnings.push("No USDT balance found");
           result.recommendations.push("Deposit USDT to enable trading");
         }
 
-        console.info(
-          "[MexcConnectivityValidator] ✅ Balance access successful:",
-          {
-            totalAssets: result.balances.totalAssets,
-            usdtBalance: result.balances.usdtBalance,
-            sufficientForTrading: result.balances.sufficientForTrading,
-          }
-        );
+        console.info("[MexcConnectivityValidator] ✅ Balance access successful:", {
+          totalAssets: result.balances.totalAssets,
+          usdtBalance: result.balances.usdtBalance,
+          sufficientForTrading: result.balances.sufficientForTrading,
+        });
       } else {
-        result.errors.push(
-          `Balance access failed: ${balanceResponse.error || "Unknown error"}`
-        );
+        result.errors.push(`Balance access failed: ${balanceResponse.error || "Unknown error"}`);
         console.error(
           "[MexcConnectivityValidator] ❌ Balance access failed:",
-          balanceResponse.error
+          balanceResponse.error,
         );
       }
     } catch (error) {
       const safeError = toSafeError(error);
       result.errors.push(`Balance test failed: ${safeError.message}`);
-      console.error(
-        "[MexcConnectivityValidator] Balance test error:",
-        safeError.message
-      );
+      console.error("[MexcConnectivityValidator] Balance test error:", safeError.message);
     }
   }
 
   private async testTradingCapabilities(
     mexcService: any,
-    result: ConnectivityValidationResult
+    result: ConnectivityValidationResult,
   ): Promise<void> {
     console.info("[MexcConnectivityValidator] Testing trading capabilities...");
 
@@ -374,17 +307,13 @@ export class MexcConnectivityValidator {
 
         // Check if we can potentially place orders
         result.trading.ordersAllowed =
-          (result.authentication.canTrade || false) &&
-          result.trading.hasUsdtPairs;
+          (result.authentication.canTrade || false) && result.trading.hasUsdtPairs;
 
-        console.info(
-          "[MexcConnectivityValidator] ✅ Trading capabilities checked:",
-          {
-            totalSymbols: symbols.length,
-            usdtPairs: usdtPairs.length,
-            ordersAllowed: result.trading.ordersAllowed,
-          }
-        );
+        console.info("[MexcConnectivityValidator] ✅ Trading capabilities checked:", {
+          totalSymbols: symbols.length,
+          usdtPairs: usdtPairs.length,
+          ordersAllowed: result.trading.ordersAllowed,
+        });
 
         if (!result.trading.hasUsdtPairs) {
           result.warnings.push("No USDT trading pairs available");
@@ -392,21 +321,18 @@ export class MexcConnectivityValidator {
         }
       } else {
         result.warnings.push(
-          `Trading capability check failed: ${exchangeInfo.error || "Unknown error"}`
+          `Trading capability check failed: ${exchangeInfo.error || "Unknown error"}`,
         );
         result.trading.tradingStatus = "unknown";
         console.warn(
           "[MexcConnectivityValidator] ⚠️ Trading capability check failed:",
-          exchangeInfo.error
+          exchangeInfo.error,
         );
       }
     } catch (error) {
       const safeError = toSafeError(error);
       result.warnings.push(`Trading test failed: ${safeError.message}`);
-      console.error(
-        "[MexcConnectivityValidator] Trading test error:",
-        safeError.message
-      );
+      console.error("[MexcConnectivityValidator] Trading test error:", safeError.message);
     }
   }
 
@@ -431,17 +357,11 @@ export class MexcConnectivityValidator {
 
     // Add overall recommendations
     if (result.overall === "READY") {
-      result.recommendations.push(
-        "System is ready for auto-sniping operations"
-      );
+      result.recommendations.push("System is ready for auto-sniping operations");
     } else if (result.overall === "PARTIAL") {
-      result.recommendations.push(
-        "Address warnings to ensure optimal trading performance"
-      );
+      result.recommendations.push("Address warnings to ensure optimal trading performance");
     } else {
-      result.recommendations.push(
-        "Resolve critical issues before enabling auto-sniping"
-      );
+      result.recommendations.push("Resolve critical issues before enabling auto-sniping");
     }
   }
 
@@ -505,7 +425,7 @@ export class MexcConnectivityValidator {
    */
   async testCredentials(
     apiKey: string,
-    secretKey: string
+    secretKey: string,
   ): Promise<{
     valid: boolean;
     error?: string;
@@ -559,9 +479,7 @@ export function getGlobalConnectivityValidator(): MexcConnectivityValidator {
   if (!globalValidator) {
     globalValidator = createConnectivityValidator({
       timeout: 15000,
-      minPositionSize: parseFloat(
-        process.env.AUTO_SNIPING_POSITION_SIZE_USDT || "10"
-      ),
+      minPositionSize: parseFloat(process.env.AUTO_SNIPING_POSITION_SIZE_USDT || "10"),
     });
   }
   return globalValidator;

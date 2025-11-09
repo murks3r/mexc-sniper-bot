@@ -21,7 +21,7 @@ interface Channel {
   send(
     message: string,
     recipient: string,
-    urgency: "low" | "medium" | "high" | "critical"
+    urgency: "low" | "medium" | "high" | "critical",
   ): Promise<boolean>;
   isAvailable(): boolean;
 }
@@ -67,12 +67,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
     warn: (message: string, context?: any) =>
       console.warn("[emergency-communication]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[emergency-communication]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[emergency-communication]", message, context || "", error || ""),
   };
 
   constructor() {
@@ -110,7 +105,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
     session: EmergencySession,
     eventType: string,
     communicationPlan: CommunicationPlan,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<CommunicationResult[]> {
     const results: CommunicationResult[] = [];
     const templateData: TemplateData = {
@@ -130,8 +125,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
     });
 
     // Get message template
-    const template =
-      communicationPlan.templates[eventType] || this.templates.get(eventType);
+    const template = communicationPlan.templates[eventType] || this.templates.get(eventType);
     if (!template) {
       this.logger.warn("No template found for event type", { eventType });
       return results;
@@ -157,9 +151,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
       }
 
       // Send via priority channels
-      const sortedChannels = contact.channels.sort(
-        (a, b) => a.priority - b.priority
-      );
+      const sortedChannels = contact.channels.sort((a, b) => a.priority - b.priority);
       let sent = false;
 
       for (const contactChannel of sortedChannels) {
@@ -176,7 +168,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
           const success = await channel.send(
             message,
             contactChannel.value,
-            this.getUrgencyLevel(session.currentLevel)
+            this.getUrgencyLevel(session.currentLevel),
           );
 
           const result: CommunicationResult = {
@@ -263,7 +255,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
     fromLevel: string,
     toLevel: string,
     escalationContacts: string[],
-    reason: string
+    reason: string,
   ): Promise<CommunicationResult[]> {
     const results: CommunicationResult[] = [];
 
@@ -295,11 +287,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
         if (!channel || !channel.isAvailable()) continue;
 
         try {
-          const success = await channel.send(
-            message,
-            contactChannel.value,
-            "critical"
-          );
+          const success = await channel.send(message, contactChannel.value, "critical");
 
           results.push({
             success,
@@ -359,8 +347,8 @@ export class EmergencyCommunicationManager extends EventEmitter {
       if (window.dayOfWeek === dayOfWeek) {
         // Simple time check (in production, would handle timezone conversion)
         const currentTime = now.getHours() * 100 + now.getMinutes();
-        const startTime = parseInt(window.startTime.replace(":", ""));
-        const endTime = parseInt(window.endTime.replace(":", ""));
+        const startTime = parseInt(window.startTime.replace(":", ""), 10);
+        const endTime = parseInt(window.endTime.replace(":", ""), 10);
 
         if (currentTime >= startTime && currentTime <= endTime) {
           return true;
@@ -374,14 +362,11 @@ export class EmergencyCommunicationManager extends EventEmitter {
   /**
    * Get urgency level based on emergency level
    */
-  private getUrgencyLevel(
-    level: string
-  ): "low" | "medium" | "high" | "critical" {
+  private getUrgencyLevel(level: string): "low" | "medium" | "high" | "critical" {
     // In production, this would map emergency levels to urgency
     if (level.includes("level_1")) return "medium";
     if (level.includes("level_2")) return "high";
-    if (level.includes("level_3") || level.includes("containment"))
-      return "critical";
+    if (level.includes("level_3") || level.includes("containment")) return "critical";
     return "medium";
   }
 
@@ -413,15 +398,9 @@ export class EmergencyCommunicationManager extends EventEmitter {
     // Slack channel implementation
     this.channels.set("slack", {
       type: "slack",
-      async send(
-        message: string,
-        recipient: string,
-        urgency: string
-      ): Promise<boolean> {
+      async send(message: string, recipient: string, urgency: string): Promise<boolean> {
         // Mock implementation - replace with real Slack API calls
-        console.log(
-          `[SLACK] ${urgency.toUpperCase()}: ${message} -> ${recipient}`
-        );
+        console.log(`[SLACK] ${urgency.toUpperCase()}: ${message} -> ${recipient}`);
         return true;
       },
       isAvailable(): boolean {
@@ -432,15 +411,9 @@ export class EmergencyCommunicationManager extends EventEmitter {
     // Email channel implementation
     this.channels.set("email", {
       type: "email",
-      async send(
-        message: string,
-        recipient: string,
-        urgency: string
-      ): Promise<boolean> {
+      async send(message: string, recipient: string, urgency: string): Promise<boolean> {
         // Mock implementation - replace with real email service
-        console.log(
-          `[EMAIL] ${urgency.toUpperCase()}: ${message} -> ${recipient}`
-        );
+        console.log(`[EMAIL] ${urgency.toUpperCase()}: ${message} -> ${recipient}`);
         return true;
       },
       isAvailable(): boolean {
@@ -451,15 +424,9 @@ export class EmergencyCommunicationManager extends EventEmitter {
     // SMS channel implementation
     this.channels.set("sms", {
       type: "sms",
-      async send(
-        message: string,
-        recipient: string,
-        urgency: string
-      ): Promise<boolean> {
+      async send(message: string, recipient: string, urgency: string): Promise<boolean> {
         // Mock implementation - replace with real SMS service
-        console.log(
-          `[SMS] ${urgency.toUpperCase()}: ${message} -> ${recipient}`
-        );
+        console.log(`[SMS] ${urgency.toUpperCase()}: ${message} -> ${recipient}`);
         return true;
       },
       isAvailable(): boolean {
@@ -470,15 +437,9 @@ export class EmergencyCommunicationManager extends EventEmitter {
     // Phone channel implementation
     this.channels.set("phone", {
       type: "phone",
-      async send(
-        message: string,
-        recipient: string,
-        urgency: string
-      ): Promise<boolean> {
+      async send(message: string, recipient: string, urgency: string): Promise<boolean> {
         // Mock implementation - replace with real voice call service
-        console.log(
-          `[PHONE] ${urgency.toUpperCase()}: ${message} -> ${recipient}`
-        );
+        console.log(`[PHONE] ${urgency.toUpperCase()}: ${message} -> ${recipient}`);
         return urgency === "critical"; // Only make calls for critical alerts
       },
       isAvailable(): boolean {
@@ -502,7 +463,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
         "Level: {level}\n" +
         "Reason: {reason}\n" +
         "Session: {sessionId}\n" +
-        "Time: {timestamp}"
+        "Time: {timestamp}",
     );
 
     this.templates.set(
@@ -512,7 +473,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
         "From: {fromLevel} → To: {toLevel}\n" +
         "Reason: {reason}\n" +
         "Session: {sessionId}\n" +
-        "IMMEDIATE ATTENTION REQUIRED"
+        "IMMEDIATE ATTENTION REQUIRED",
     );
 
     this.templates.set(
@@ -522,7 +483,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
         "Level: {level}\n" +
         "Session: {sessionId}\n" +
         "Resolution Time: {timestamp}\n" +
-        "Normal operations resumed"
+        "Normal operations resumed",
     );
 
     this.templates.set(
@@ -530,7 +491,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
       "🧪 EMERGENCY PROTOCOL TEST\n" +
         "Protocol: {protocolId}\n" +
         "This is a scheduled test of emergency procedures.\n" +
-        "No action required."
+        "No action required.",
     );
 
     this.logger.info("Message templates initialized", {
@@ -550,9 +511,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
    * Get communication history
    */
   getCommunicationHistory(limit?: number): CommunicationEntry[] {
-    return limit
-      ? this.communicationHistory.slice(-limit)
-      : [...this.communicationHistory];
+    return limit ? this.communicationHistory.slice(-limit) : [...this.communicationHistory];
   }
 
   /**
@@ -601,11 +560,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
       try {
         // Send test message
         const testMessage = "Emergency communication system test";
-        const success = await channel.send(
-          testMessage,
-          "test@example.com",
-          "low"
-        );
+        const success = await channel.send(testMessage, "test@example.com", "low");
         results[channelType] = success && channel.isAvailable();
       } catch (error) {
         results[channelType] = false;
@@ -628,7 +583,7 @@ export class EmergencyCommunicationManager extends EventEmitter {
     const initialLength = this.communicationHistory.length;
 
     this.communicationHistory = this.communicationHistory.filter(
-      (entry) => entry.timestamp > cutoff
+      (entry) => entry.timestamp > cutoff,
     );
 
     const removed = initialLength - this.communicationHistory.length;

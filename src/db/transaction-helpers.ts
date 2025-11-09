@@ -29,7 +29,7 @@ export interface TransactionContext {
  */
 export async function withTransaction<T>(
   operation: (tx: any) => Promise<T>,
-  options: TransactionOptions = {}
+  options: TransactionOptions = {},
 ): Promise<T> {
   const {
     timeout = 10000,
@@ -50,35 +50,31 @@ export async function withTransaction<T>(
 
   while (attempt < retryCount) {
     try {
-      const result = await db.transaction(
-        async (tx: PostgresJsTransaction<any, any>) => {
-          context.isActive = true;
+      const result = await db.transaction(async (tx: PostgresJsTransaction<any, any>) => {
+        context.isActive = true;
 
-          // Set isolation level if specified
-          if (isolationLevel !== "READ_COMMITTED") {
-            await tx.execute(
-              sql`SET TRANSACTION ISOLATION LEVEL ${sql.raw(isolationLevel)}`
-            );
-            context.operations.push(`SET_ISOLATION_${isolationLevel}`);
-          }
-
-          // Set transaction timeout
-          await tx.execute(sql`SET statement_timeout = ${timeout}`);
-          context.operations.push(`SET_TIMEOUT_${timeout}`);
-
-          // Execute the operation
-          const operationResult = await operation(tx);
-
-          context.operations.push("OPERATION_COMPLETED");
-
-          // Call commit callback if provided
-          if (onCommit) {
-            onCommit();
-          }
-
-          return operationResult;
+        // Set isolation level if specified
+        if (isolationLevel !== "READ_COMMITTED") {
+          await tx.execute(sql`SET TRANSACTION ISOLATION LEVEL ${sql.raw(isolationLevel)}`);
+          context.operations.push(`SET_ISOLATION_${isolationLevel}`);
         }
-      );
+
+        // Set transaction timeout
+        await tx.execute(sql`SET statement_timeout = ${timeout}`);
+        context.operations.push(`SET_TIMEOUT_${timeout}`);
+
+        // Execute the operation
+        const operationResult = await operation(tx);
+
+        context.operations.push("OPERATION_COMPLETED");
+
+        // Call commit callback if provided
+        if (onCommit) {
+          onCommit();
+        }
+
+        return operationResult;
+      });
 
       context.isActive = false;
       return result;
@@ -96,8 +92,7 @@ export async function withTransaction<T>(
       }
 
       // If this is a serialization failure or deadlock, retry
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const shouldRetry =
         errorMessage.includes("serialization failure") ||
         errorMessage.includes("deadlock") ||
@@ -108,22 +103,17 @@ export async function withTransaction<T>(
       }
 
       // Wait before retry (exponential backoff)
-      await new Promise((resolve) =>
-        setTimeout(resolve, 100 * 2 ** (attempt - 1))
-      );
+      await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
     }
   }
 
   // If we get here, all attempts failed
   const duration = Date.now() - context.startTime;
-  getLogger().error(
-    `[Transaction] Failed after ${attempt} attempts (${duration}ms)`,
-    {
-      error: lastError,
-      operations: context.operations,
-      duration,
-    }
-  );
+  getLogger().error(`[Transaction] Failed after ${attempt} attempts (${duration}ms)`, {
+    error: lastError,
+    operations: context.operations,
+    duration,
+  });
 
   throw lastError;
 }
@@ -133,7 +123,7 @@ export async function withTransaction<T>(
  */
 export async function withBatchTransaction<T>(
   operations: Array<(tx: any) => Promise<T>>,
-  options: TransactionOptions = {}
+  options: TransactionOptions = {},
 ): Promise<T[]> {
   return withTransaction(async (tx) => {
     const results: T[] = [];
@@ -152,7 +142,7 @@ export async function withBatchTransaction<T>(
  */
 export async function safeTransaction<T>(
   operation: (tx: any) => Promise<T>,
-  cleanup?: () => Promise<void>
+  cleanup?: () => Promise<void>,
 ): Promise<T> {
   try {
     return await withTransaction(operation, {
@@ -176,9 +166,7 @@ export async function safeTransaction<T>(
 /**
  * Test transaction wrapper for unit tests
  */
-export async function testTransaction<T>(
-  operation: (tx: any) => Promise<T>
-): Promise<T> {
+export async function testTransaction<T>(operation: (tx: any) => Promise<T>): Promise<T> {
   return withTransaction(operation, {
     timeout: 2000, // Short timeout for tests
     isolationLevel: "READ_COMMITTED", // Consistent for tests
@@ -194,9 +182,7 @@ export async function testTransaction<T>(
  */
 export async function isInTransaction(): Promise<boolean> {
   try {
-    const result = await db.execute(
-      sql`SELECT txid_current_if_assigned() AS txid`
-    );
+    const result = await db.execute(sql`SELECT txid_current_if_assigned() AS txid`);
     return (result as any)[0]?.txid != null;
   } catch {
     return false;
@@ -228,10 +214,7 @@ export async function getTransactionInfo(): Promise<{
       readOnly: false, // Would need additional query to determine
     };
   } catch (error) {
-    getLogger().warn(
-      "[TransactionInfo] Failed to get transaction info:",
-      error
-    );
+    getLogger().warn("[TransactionInfo] Failed to get transaction info:", error);
     return {
       inTransaction: false,
     };
@@ -253,9 +236,7 @@ export async function emergencyTransactionCleanup(): Promise<void> {
         AND pid != pg_backend_pid()
     `);
 
-    getLogger().info(
-      "[TransactionCleanup] Emergency transaction cleanup completed"
-    );
+    getLogger().info("[TransactionCleanup] Emergency transaction cleanup completed");
   } catch (error) {
     getLogger().warn("[TransactionCleanup] Emergency cleanup failed:", error);
   }

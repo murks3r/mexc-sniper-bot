@@ -19,10 +19,7 @@ const _ResponsiveContainer = lazy(async () => {
     const module = await import("recharts");
     return { default: module.ResponsiveContainer };
   } catch (error) {
-    console.warn(
-      "Failed to load Recharts ResponsiveContainer in chart.tsx:",
-      error
-    );
+    console.warn("Failed to load Recharts ResponsiveContainer in chart.tsx:", error);
     // Return fallback component that renders safely with ResponsiveContainer-compatible interface
     const FallbackComponent = forwardRef<
       HTMLDivElement,
@@ -63,11 +60,7 @@ export function ChartContainer({
         </div>
       }
     >
-      <Suspense
-        fallback={
-          <div className="w-full h-96 animate-pulse bg-gray-100 rounded" />
-        }
-      >
+      <Suspense fallback={<div className="w-full h-96 animate-pulse bg-gray-100 rounded" />}>
         <div className={`w-full h-96 ${className || ""}`}>{children}</div>
       </Suspense>
     </ErrorBoundary>

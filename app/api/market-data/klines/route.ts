@@ -6,33 +6,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const symbol = searchParams.get("symbol") || "BTCUSDT";
     const interval = searchParams.get("interval") || "1d";
-    const limit = parseInt(searchParams.get("limit") || "90");
+    const limit = parseInt(searchParams.get("limit") || "90", 10);
 
     console.log("[API] Fetching klines data:", { symbol, interval, limit });
 
     const mexcService = await getUnifiedMexcService();
 
     // Use the getKlines method to get actual historical candlestick data
-    const klinesResponse = await (mexcService as any).getKlines?.(
-      symbol,
-      interval,
-      limit
-    );
+    const klinesResponse = await (mexcService as any).getKlines?.(symbol, interval, limit);
 
     if (klinesResponse?.success && klinesResponse.data?.length > 0) {
       // Transform MEXC kline data to chart format
       const chartData = klinesResponse.data.map((kline: any) => {
-        const [
-          openTime,
-          _open,
-          _high,
-          _low,
-          close,
-          volume,
-          _closeTime,
-          _quoteAssetVolume,
-          trades,
-        ] = kline;
+        const [openTime, _open, _high, _low, close, volume, _closeTime, _quoteAssetVolume, trades] =
+          kline;
 
         return {
           date: new Date(openTime).toISOString().split("T")[0],
@@ -65,20 +52,15 @@ export async function GET(request: NextRequest) {
           const date = new Date();
           date.setDate(date.getDate() - (limit - i));
 
-          const basePrice = parseFloat(
-            ticker.lastPrice || ticker.price || "100"
-          );
+          const basePrice = parseFloat(ticker.lastPrice || ticker.price || "100");
           const variation = (Math.random() - 0.5) * 0.1; // ±5% variation
           const price = basePrice * (1 + variation);
 
           return {
             date: date.toISOString().split("T")[0],
-            volume:
-              parseFloat(ticker.volume || "1000000") *
-              (0.8 + Math.random() * 0.4),
+            volume: parseFloat(ticker.volume || "1000000") * (0.8 + Math.random() * 0.4),
             trades: Math.floor(
-              parseFloat(String(ticker.count || "5000")) *
-                (0.8 + Math.random() * 0.4)
+              parseFloat(String(ticker.count || "5000")) * (0.8 + Math.random() * 0.4),
             ),
             price: price,
             timestamp: date.getTime(),
@@ -99,9 +81,7 @@ export async function GET(request: NextRequest) {
 
     // Return mock data as final fallback
     const symbol = new URL(request.url).searchParams.get("symbol") || "BTCUSDT";
-    const limit = parseInt(
-      new URL(request.url).searchParams.get("limit") || "90"
-    );
+    const limit = parseInt(new URL(request.url).searchParams.get("limit") || "90", 10);
 
     const mockData = Array.from({ length: limit }, (_, i) => {
       const date = new Date();

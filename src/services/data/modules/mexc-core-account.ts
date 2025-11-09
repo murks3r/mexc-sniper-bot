@@ -13,17 +13,6 @@ import type { MexcCoreHttpClient } from "./mexc-core-http";
 // ============================================================================
 
 export class MexcCoreAccountClient {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-core-account]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-core-account]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[mexc-core-account]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-core-account]", message, context || ""),
-  };
-
   constructor(private httpClient: MexcCoreHttpClient) {}
 
   // ============================================================================
@@ -47,9 +36,9 @@ export class MexcCoreAccountClient {
       // MEXC API response is wrapped by makeRequest: { code, data, success }
       // The actual account data is in response.data
       const responseData = response as any;
-      
+
       // Check if response has the expected structure
-      if (!responseData || typeof responseData !== 'object') {
+      if (!responseData || typeof responseData !== "object") {
         return {
           success: false,
           error: "Invalid response format - response is not an object",
@@ -60,14 +49,13 @@ export class MexcCoreAccountClient {
 
       // Extract the actual account data from the wrapped response
       const accountData = responseData.data || responseData;
-      
+
       // Check if account data has balances array
-      if (accountData && accountData.balances && Array.isArray(accountData.balances)) {
+      if (accountData?.balances && Array.isArray(accountData.balances)) {
         const balances = accountData.balances
           .filter(
             (balance: any) =>
-              Number.parseFloat(balance.free) > 0 ||
-              Number.parseFloat(balance.locked) > 0
+              Number.parseFloat(balance.free) > 0 || Number.parseFloat(balance.locked) > 0,
           )
           .map((balance: any) => ({
             asset: balance.asset,
@@ -89,7 +77,7 @@ export class MexcCoreAccountClient {
         hasBalances: !!(responseData.data?.balances || responseData.balances),
         responseKeys: Object.keys(responseData),
         dataKeys: responseData.data ? Object.keys(responseData.data) : [],
-        responseStructure: JSON.stringify(responseData, null, 2).substring(0, 500)
+        responseStructure: JSON.stringify(responseData, null, 2).substring(0, 500),
       });
 
       return {
@@ -160,11 +148,8 @@ export class MexcCoreAccountClient {
         success: true,
         data: {
           canTrade: permissions.includes("SPOT"),
-          canWithdraw:
-            permissions.includes("WITHDRAWALS") ||
-            permissions.includes("WITHDRAWAL"),
-          canDeposit:
-            permissions.includes("DEPOSITS") || permissions.includes("DEPOSIT"),
+          canWithdraw: permissions.includes("WITHDRAWALS") || permissions.includes("WITHDRAWAL"),
+          canDeposit: permissions.includes("DEPOSITS") || permissions.includes("DEPOSIT"),
           permissions: permissions,
         },
         timestamp: Date.now(),
@@ -172,11 +157,7 @@ export class MexcCoreAccountClient {
         source: "mexc-core-account",
       };
     } catch (error) {
-      return this.httpClient.handleError(
-        error,
-        "checkAccountPermissions",
-        startTime
-      );
+      return this.httpClient.handleError(error, "checkAccountPermissions", startTime);
     }
   }
 
@@ -258,9 +239,7 @@ export class MexcCoreAccountClient {
   /**
    * Get balance for a specific asset
    */
-  async getAssetBalance(
-    asset: string
-  ): Promise<MexcServiceResponse<BalanceEntry | null>> {
+  async getAssetBalance(asset: string): Promise<MexcServiceResponse<BalanceEntry | null>> {
     const startTime = Date.now();
 
     try {
@@ -276,7 +255,7 @@ export class MexcCoreAccountClient {
       }
 
       const assetBalance = balanceResult.data?.find(
-        (balance) => balance.asset.toUpperCase() === asset.toUpperCase()
+        (balance) => balance.asset.toUpperCase() === asset.toUpperCase(),
       );
 
       return {
@@ -299,9 +278,7 @@ export class MexcCoreAccountClient {
 /**
  * Create a new MEXC account client instance
  */
-export function createMexcCoreAccountClient(
-  httpClient: MexcCoreHttpClient
-): MexcCoreAccountClient {
+export function createMexcCoreAccountClient(httpClient: MexcCoreHttpClient): MexcCoreAccountClient {
   return new MexcCoreAccountClient(httpClient);
 }
 

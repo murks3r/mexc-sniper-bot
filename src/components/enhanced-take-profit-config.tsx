@@ -26,13 +26,7 @@ import {
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -56,9 +50,7 @@ export function EnhancedTakeProfitConfig({
   className = "",
 }: EnhancedTakeProfitConfigProps) {
   const [activeTab, setActiveTab] = useState("presets");
-  const [customLevels, setCustomLevels] = useState<TakeProfitLevel[]>(
-    customStrategy?.levels || []
-  );
+  const [customLevels, setCustomLevels] = useState<TakeProfitLevel[]>(customStrategy?.levels || []);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Update custom levels when customStrategy prop changes
@@ -97,12 +89,9 @@ export function EnhancedTakeProfitConfig({
     updateCustomStrategy([...customLevels, newLevel]);
   };
 
-  const handleCustomLevelUpdate = (
-    index: number,
-    updates: Partial<TakeProfitLevel>
-  ) => {
+  const handleCustomLevelUpdate = (index: number, updates: Partial<TakeProfitLevel>) => {
     const updatedLevels = customLevels.map((level, i) =>
-      i === index ? { ...level, ...updates } : level
+      i === index ? { ...level, ...updates } : level,
     );
     setCustomLevels(updatedLevels);
     updateCustomStrategy(updatedLevels);
@@ -163,8 +152,8 @@ export function EnhancedTakeProfitConfig({
             Take Profit Strategy Configuration
           </h3>
           <p className="text-sm text-muted-foreground">
-            Configure your take profit strategy to automatically sell portions
-            of your position at different profit levels.
+            Configure your take profit strategy to automatically sell portions of your position at
+            different profit levels.
           </p>
         </div>
 
@@ -190,17 +179,13 @@ export function EnhancedTakeProfitConfig({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {getStrategyIcon(strategy.id)}
-                        <CardTitle className="text-base">
-                          {strategy.name}
-                        </CardTitle>
+                        <CardTitle className="text-base">{strategy.name}</CardTitle>
                       </div>
                       <Badge className={getRiskBadgeColor(strategy.riskLevel)}>
                         {strategy.riskLevel} risk
                       </Badge>
                     </div>
-                    <CardDescription className="text-xs">
-                      {strategy.description}
-                    </CardDescription>
+                    <CardDescription className="text-xs">{strategy.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
@@ -209,11 +194,7 @@ export function EnhancedTakeProfitConfig({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {strategy.levels.map((level, _index) => (
-                          <Badge
-                            key={level.id}
-                            variant="outline"
-                            className="text-xs"
-                          >
+                          <Badge key={level.id} variant="outline" className="text-xs">
                             {level.profitPercentage}% ({level.sellQuantity}%)
                           </Badge>
                         ))}
@@ -223,9 +204,7 @@ export function EnhancedTakeProfitConfig({
                       <div className="mt-3 p-2 bg-muted/50 rounded text-xs">
                         <div className="flex items-center gap-1 mb-1">
                           <DollarSign className="h-3 w-3" />
-                          <span className="font-medium">
-                            Potential with ${investmentAmount}:
-                          </span>
+                          <span className="font-medium">Potential with ${investmentAmount}:</span>
                         </div>
                         {calculatePotentialProfit(strategy, investmentAmount)
                           .slice(0, 2)
@@ -260,13 +239,11 @@ export function EnhancedTakeProfitConfig({
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <CardTitle className="text-base">Custom Strategy</CardTitle>
                   </div>
-                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                    custom
-                  </Badge>
+                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">custom</Badge>
                 </div>
                 <CardDescription className="text-xs">
-                  Create your own personalized take profit levels with custom
-                  percentages and sell quantities.
+                  Create your own personalized take profit levels with custom percentages and sell
+                  quantities.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
@@ -284,12 +261,9 @@ export function EnhancedTakeProfitConfig({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base">
-                      Custom Take Profit Levels
-                    </CardTitle>
+                    <CardTitle className="text-base">Custom Take Profit Levels</CardTitle>
                     <CardDescription className="text-sm">
-                      Add up to 6 custom take profit levels with your preferred
-                      percentages.
+                      Add up to 6 custom take profit levels with your preferred percentages.
                     </CardDescription>
                   </div>
                   <Button
@@ -339,13 +313,9 @@ export function EnhancedTakeProfitConfig({
                         key={level.id}
                         level={level}
                         index={index}
-                        onUpdate={(updates) =>
-                          handleCustomLevelUpdate(index, updates)
-                        }
+                        onUpdate={(updates) => handleCustomLevelUpdate(index, updates)}
                         onRemove={() => handleCustomLevelRemove(index)}
-                        totalSellQuantity={calculateTotalSellQuantity(
-                          customLevels
-                        )}
+                        totalSellQuantity={calculateTotalSellQuantity(customLevels)}
                       />
                     ))}
                   </div>
@@ -356,23 +326,17 @@ export function EnhancedTakeProfitConfig({
                   <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Info className="h-4 w-4" />
-                      <span className="font-medium text-sm">
-                        Strategy Summary
-                      </span>
+                      <span className="font-medium text-sm">Strategy Summary</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">
-                          Total Levels:
-                        </span>
+                        <span className="text-muted-foreground">Total Levels:</span>
                         <span className="ml-2 font-medium">
                           {customLevels.filter((l) => l.isActive).length}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">
-                          Total Sell Quantity:
-                        </span>
+                        <span className="text-muted-foreground">Total Sell Quantity:</span>
                         <span
                           className={`ml-2 font-medium ${
                             calculateTotalSellQuantity(customLevels) > 100
@@ -504,9 +468,7 @@ function CustomLevelEditor({
       {errors.length > 0 && (
         <Alert variant="destructive" className="mt-2">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="text-xs">
-            {errors.join(", ")}
-          </AlertDescription>
+          <AlertDescription className="text-xs">{errors.join(", ")}</AlertDescription>
         </Alert>
       )}
     </div>

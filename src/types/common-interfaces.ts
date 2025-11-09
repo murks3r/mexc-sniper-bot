@@ -340,11 +340,7 @@ export interface TransactionContext {
   id: string;
   startTime: number;
   operations: string[];
-  isolation?:
-    | "READ_UNCOMMITTED"
-    | "READ_COMMITTED"
-    | "REPEATABLE_READ"
-    | "SERIALIZABLE";
+  isolation?: "READ_UNCOMMITTED" | "READ_COMMITTED" | "REPEATABLE_READ" | "SERIALIZABLE";
 }
 
 // ============================================================================

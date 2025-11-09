@@ -1,6 +1,6 @@
 /**
  * Service Conflict Detector
- * 
+ *
  * Prevents multiple auto-sniping services from running simultaneously
  * to avoid resource conflicts and inconsistent behavior.
  */
@@ -28,15 +28,15 @@ class ServiceConflictDetector {
     if (conflicts.length > 0) {
       console.error(`🚨 SERVICE CONFLICT DETECTED: ${serviceName}`, {
         conflictingServices: conflicts,
-        currentlyActive: Array.from(this.activeServices)
+        currentlyActive: Array.from(this.activeServices),
       });
-      
+
       this.conflictLog.push({
         service: serviceName,
         timestamp: new Date(),
-        action: 'registration_blocked_conflict'
+        action: "registration_blocked_conflict",
       });
-      
+
       return false;
     }
 
@@ -44,11 +44,11 @@ class ServiceConflictDetector {
     this.conflictLog.push({
       service: serviceName,
       timestamp: new Date(),
-      action: 'registered'
+      action: "registered",
     });
 
     console.info(`✅ Service registered: ${serviceName}`, {
-      totalActiveServices: this.activeServices.size
+      totalActiveServices: this.activeServices.size,
     });
 
     return true;
@@ -62,11 +62,11 @@ class ServiceConflictDetector {
     this.conflictLog.push({
       service: serviceName,
       timestamp: new Date(),
-      action: 'unregistered'
+      action: "unregistered",
     });
 
     console.info(`🔄 Service unregistered: ${serviceName}`, {
-      remainingServices: Array.from(this.activeServices)
+      remainingServices: Array.from(this.activeServices),
     });
   }
 
@@ -75,16 +75,16 @@ class ServiceConflictDetector {
    */
   private detectConflicts(serviceName: string): string[] {
     const autoSnipingServices = [
-      'AutoSnipingModule',
-      'CompleteAutoSnipingService', 
-      'UnifiedAutoSnipingOrchestrator',
-      'AutoSnipingCoordinator',
-      'AutoSnipingModuleRefactored'
+      "AutoSnipingModule",
+      "CompleteAutoSnipingService",
+      "UnifiedAutoSnipingOrchestrator",
+      "AutoSnipingCoordinator",
+      "AutoSnipingModuleRefactored",
     ];
 
     if (autoSnipingServices.includes(serviceName)) {
-      return Array.from(this.activeServices).filter(active => 
-        autoSnipingServices.includes(active) && active !== serviceName
+      return Array.from(this.activeServices).filter(
+        (active) => autoSnipingServices.includes(active) && active !== serviceName,
       );
     }
 
@@ -99,7 +99,7 @@ class ServiceConflictDetector {
       activeServices: Array.from(this.activeServices),
       hasConflicts: this.hasActiveConflicts(),
       conflictLog: this.conflictLog.slice(-10), // Last 10 events
-      recommendations: this.getRecommendations()
+      recommendations: this.getRecommendations(),
     };
   }
 
@@ -107,8 +107,8 @@ class ServiceConflictDetector {
    * Check if there are active conflicts
    */
   hasActiveConflicts(): boolean {
-    const autoSnipingServices = Array.from(this.activeServices).filter(service =>
-      service.includes('AutoSniping') || service.includes('Sniping')
+    const autoSnipingServices = Array.from(this.activeServices).filter(
+      (service) => service.includes("AutoSniping") || service.includes("Sniping"),
     );
     return autoSnipingServices.length > 1;
   }
@@ -118,14 +118,18 @@ class ServiceConflictDetector {
    */
   private getRecommendations(): string[] {
     const recommendations = [];
-    
+
     if (this.hasActiveConflicts()) {
-      recommendations.push("Multiple auto-sniping services detected. Use only AutoSnipingModule from consolidated/core-trading.");
+      recommendations.push(
+        "Multiple auto-sniping services detected. Use only AutoSnipingModule from consolidated/core-trading.",
+      );
       recommendations.push("Stop other auto-sniping services to prevent conflicts.");
     }
 
     if (this.activeServices.size === 0) {
-      recommendations.push("No auto-sniping services active. Initialize AutoSnipingModule through CoreTradingService.");
+      recommendations.push(
+        "No auto-sniping services active. Initialize AutoSnipingModule through CoreTradingService.",
+      );
     }
 
     return recommendations;
@@ -137,16 +141,16 @@ class ServiceConflictDetector {
   reset(): void {
     const previousServices = Array.from(this.activeServices);
     this.activeServices.clear();
-    
+
     console.warn(`🔄 FORCED RESET: Cleared all active services`, {
       previousServices,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     this.conflictLog.push({
-      service: 'SYSTEM',
+      service: "SYSTEM",
       timestamp: new Date(),
-      action: 'forced_reset'
+      action: "forced_reset",
     });
   }
 }
@@ -157,15 +161,17 @@ export const serviceConflictDetector = ServiceConflictDetector.getInstance();
  * Decorator to automatically register/unregister services
  */
 export function preventServiceConflicts(serviceName: string) {
-  return function <T extends { new (...args: any[]): {} }>(constructor: T) {
-    return class extends constructor {
+  return <T extends { new (...args: any[]): {} }>(constructor: T) =>
+    class extends constructor {
       constructor(...args: any[]) {
         super(...args);
-        
+
         // Register service
         const registered = serviceConflictDetector.registerService(serviceName);
         if (!registered) {
-          throw new Error(`Service conflict detected: ${serviceName} cannot start because conflicting services are active.`);
+          throw new Error(
+            `Service conflict detected: ${serviceName} cannot start because conflicting services are active.`,
+          );
         }
       }
 
@@ -176,5 +182,4 @@ export function preventServiceConflicts(serviceName: string) {
         }
       }
     };
-  };
-} 
+}

@@ -1,9 +1,9 @@
+import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
-import { createUnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
-import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 import { db } from "@/src/db";
 import { apiCredentials } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { createUnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
+import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 
 // API credentials test endpoint
 export async function POST(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
           error: "User ID is required",
           timestamp: new Date().toISOString(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       userCredentials = await getUserCredentials(userId, provider);
     } catch (error) {
       console.error("[API-Credentials-Test] Failed to get credentials:", error);
-      
+
       if (error instanceof Error && error.message.includes("Encryption service unavailable")) {
         return NextResponse.json(
           {
@@ -43,17 +43,17 @@ export async function POST(request: NextRequest) {
             error: "Encryption service unavailable - please contact support",
             timestamp: new Date().toISOString(),
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
-      
+
       return NextResponse.json(
         {
           success: false,
           error: "Failed to retrieve stored credentials",
           timestamp: new Date().toISOString(),
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
           error: "No credentials found for this user",
           timestamp: new Date().toISOString(),
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -81,31 +81,31 @@ export async function POST(request: NextRequest) {
       // Test basic API connectivity (ping endpoint - no auth required)
       const startTime = Date.now();
       let connectivityTest;
-      
+
       try {
         // Try basic ping first
-        const pingResponse = await fetch('https://api.mexc.com/api/v3/ping', {
-          method: 'GET',
+        const pingResponse = await fetch("https://api.mexc.com/api/v3/ping", {
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'MEXC-Sniper-Bot/1.0'
+            "Content-Type": "application/json",
+            "User-Agent": "MEXC-Sniper-Bot/1.0",
           },
-          signal: AbortSignal.timeout(10000) // 10 second timeout
+          signal: AbortSignal.timeout(10000), // 10 second timeout
         });
-        
+
         const responseTime = Date.now() - startTime;
-        
+
         if (pingResponse.ok) {
           connectivityTest = {
             success: true,
             responseTime,
-            connected: true
+            connected: true,
           };
         } else {
           connectivityTest = {
             success: false,
             error: `HTTP ${pingResponse.status}: ${pingResponse.statusText}`,
-            responseTime
+            responseTime,
           };
         }
       } catch (pingError) {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         connectivityTest = {
           success: false,
           error: pingError instanceof Error ? pingError.message : "Network error",
-          responseTime
+          responseTime,
         };
       }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
             },
             timestamp: new Date().toISOString(),
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -147,9 +147,7 @@ export async function POST(request: NextRequest) {
         accountTest = {
           success: false,
           error:
-            accountError instanceof Error
-              ? accountError.message
-              : "Account info access failed",
+            accountError instanceof Error ? accountError.message : "Account info access failed",
         };
       }
 
@@ -168,8 +166,7 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error:
-              accountTest?.error ||
-              "Authenticated account check failed with provided credentials",
+              accountTest?.error || "Authenticated account check failed with provided credentials",
             details: {
               connectivity: true,
               authentication: false,
@@ -177,7 +174,7 @@ export async function POST(request: NextRequest) {
             },
             timestamp: new Date().toISOString(),
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -195,12 +192,12 @@ export async function POST(request: NextRequest) {
         },
         message: "Credentials tested successfully",
       });
-
     } catch (mexcError) {
       console.error("[API-Credentials-Test] MEXC API error:", mexcError);
-      
-      const errorMessage = mexcError instanceof Error ? mexcError.message : "Unknown MEXC API error";
-      
+
+      const errorMessage =
+        mexcError instanceof Error ? mexcError.message : "Unknown MEXC API error";
+
       return NextResponse.json(
         {
           success: false,
@@ -212,10 +209,9 @@ export async function POST(request: NextRequest) {
           },
           timestamp: new Date().toISOString(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
-
   } catch (error) {
     console.error("[API-Credentials-Test] Unexpected error:", error);
     return NextResponse.json(
@@ -225,7 +221,7 @@ export async function POST(request: NextRequest) {
         details: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

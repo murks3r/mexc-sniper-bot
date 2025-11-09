@@ -23,11 +23,7 @@ import {
 
 export interface EmergencyStopEvent {
   id: string;
-  type:
-    | "circuit_breaker_failure"
-    | "portfolio_decline"
-    | "system_failure"
-    | "manual_trigger";
+  type: "circuit_breaker_failure" | "portfolio_decline" | "system_failure" | "manual_trigger";
   triggeredBy: string;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   timestamp: number;
@@ -84,13 +80,11 @@ export class EmergencyStopCoordinator extends EventEmitter {
   private systemState: SystemState;
   private coordinatedServices = new Map<string, any>();
   private emergencyLock = false;
-  private recoveryQueue: EmergencyRecoveryPlan[] = [];
 
   private constructor() {
     super();
     this.circuitBreakerCoordinator = CircuitBreakerCoordinator.getInstance();
-    this.circuitBreakerRegistry =
-      CoordinatedCircuitBreakerRegistry.getInstance();
+    this.circuitBreakerRegistry = CoordinatedCircuitBreakerRegistry.getInstance();
     this.systemState = {
       emergencyActive: false,
       recoveryInProgress: false,
@@ -112,18 +106,14 @@ export class EmergencyStopCoordinator extends EventEmitter {
   registerService(serviceName: string, service: any): void {
     this.coordinatedServices.set(serviceName, service);
     this.systemState.coordinatedServicesStatus[serviceName] = true;
-    console.log(
-      `🔧 Registered service for emergency coordination: ${serviceName}`
-    );
+    console.log(`🔧 Registered service for emergency coordination: ${serviceName}`);
   }
 
   /**
    * FIXED: Coordinated emergency stop with proper synchronization
    * Prevents multiple services from triggering emergency stop simultaneously
    */
-  async triggerEmergencyStop(
-    event: EmergencyStopEvent
-  ): Promise<EmergencyStopResult> {
+  async triggerEmergencyStop(event: EmergencyStopEvent): Promise<EmergencyStopResult> {
     const startTime = Date.now();
 
     // Acquire emergency lock to prevent race conditions
@@ -145,9 +135,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
     const errors: string[] = [];
 
     try {
-      console.log(
-        `🚨 EMERGENCY STOP TRIGGERED: ${event.type} - ${event.reason}`
-      );
+      console.log(`🚨 EMERGENCY STOP TRIGGERED: ${event.type} - ${event.reason}`);
 
       // Update system state
       this.systemState.emergencyActive = true;
@@ -166,14 +154,12 @@ export class EmergencyStopCoordinator extends EventEmitter {
         coordinatedServices.push("circuit-breakers");
       } catch (error) {
         errors.push(
-          `Circuit breaker coordination failed: ${error instanceof Error ? error.message : "Unknown error"}`
+          `Circuit breaker coordination failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
       }
 
       // PHASE 3: Coordinate service-specific emergency actions
-      for (const [serviceName, service] of Array.from(
-        this.coordinatedServices
-      )) {
+      for (const [serviceName, service] of Array.from(this.coordinatedServices)) {
         try {
           if (typeof service.emergencyStop === "function") {
             await service.emergencyStop(event);
@@ -188,7 +174,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
           }
         } catch (error) {
           errors.push(
-            `Service ${serviceName} emergency stop failed: ${error instanceof Error ? error.message : "Unknown error"}`
+            `Service ${serviceName} emergency stop failed: ${error instanceof Error ? error.message : "Unknown error"}`,
           );
         }
       }
@@ -209,7 +195,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
       this.emit("emergency_stop_completed", result);
 
       console.log(
-        `🚨 Emergency stop completed: ${result.success ? "SUCCESS" : "PARTIAL"} (${result.duration}ms)`
+        `🚨 Emergency stop completed: ${result.success ? "SUCCESS" : "PARTIAL"} (${result.duration}ms)`,
       );
       return result;
     } finally {
@@ -220,9 +206,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
   /**
    * FIXED: Coordinated circuit breaker emergency stop with proper synchronization
    */
-  private async coordinateCircuitBreakerEmergencyStop(
-    severity: string
-  ): Promise<void> {
+  private async coordinateCircuitBreakerEmergencyStop(severity: string): Promise<void> {
     const serviceId = "emergency-stop-coordinator";
 
     // Force open all circuit breakers based on severity
@@ -230,27 +214,19 @@ export class EmergencyStopCoordinator extends EventEmitter {
 
     for (const breakerName of breakerNames) {
       try {
-        const breaker = this.circuitBreakerRegistry.getBreaker(
-          breakerName,
-          serviceId,
-          {
-            enableCoordination: true,
-          }
-        );
+        const breaker = this.circuitBreakerRegistry.getBreaker(breakerName, serviceId, {
+          enableCoordination: true,
+        });
 
         if (severity === "CRITICAL") {
           await breaker.forceOpen();
           this.systemState.circuitBreakersStatus[breakerName] = "FORCE_OPEN";
         } else {
           // For non-critical emergencies, let circuit breakers manage their own state
-          this.systemState.circuitBreakersStatus[breakerName] =
-            breaker.getState();
+          this.systemState.circuitBreakersStatus[breakerName] = breaker.getState();
         }
       } catch (error) {
-        console.error(
-          `Failed to coordinate circuit breaker ${breakerName}:`,
-          error
-        );
+        console.error(`Failed to coordinate circuit breaker ${breakerName}:`, error);
         this.systemState.circuitBreakersStatus[breakerName] = "ERROR";
       }
     }
@@ -259,9 +235,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
   /**
    * FIXED: Coordinated emergency recovery with proper validation
    */
-  async startEmergencyRecovery(
-    plan?: EmergencyRecoveryPlan
-  ): Promise<EmergencyStopResult> {
+  async startEmergencyRecovery(plan?: EmergencyRecoveryPlan): Promise<EmergencyStopResult> {
     if (!this.systemState.emergencyActive) {
       throw new Error("No emergency state to recover from");
     }
@@ -297,7 +271,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
           }
         } catch (error) {
           errors.push(
-            `Recovery stage error: ${stage.name} - ${error instanceof Error ? error.message : "Unknown error"}`
+            `Recovery stage error: ${stage.name} - ${error instanceof Error ? error.message : "Unknown error"}`,
           );
         }
       }
@@ -341,16 +315,12 @@ export class EmergencyStopCoordinator extends EventEmitter {
   /**
    * Execute a recovery stage with timeout and retry logic
    */
-  private async executeRecoveryStage(
-    stage: EmergencyRecoveryStage
-  ): Promise<boolean> {
+  private async executeRecoveryStage(stage: EmergencyRecoveryStage): Promise<boolean> {
     let attempts = 0;
 
     while (attempts < stage.retryCount) {
       try {
-        const stagePromise = Promise.all(
-          stage.actions.map((action) => action())
-        );
+        const stagePromise = Promise.all(stage.actions.map((action) => action()));
         const timeoutPromise = new Promise<boolean[]>((_, reject) => {
           setTimeout(() => reject(new Error("Stage timeout")), stage.timeout);
         });
@@ -362,10 +332,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
           return true;
         }
       } catch (error) {
-        console.warn(
-          `Recovery stage ${stage.name} attempt ${attempts + 1} failed:`,
-          error
-        );
+        console.warn(`Recovery stage ${stage.name} attempt ${attempts + 1} failed:`, error);
       }
 
       attempts++;
@@ -413,13 +380,8 @@ export class EmergencyStopCoordinator extends EventEmitter {
                 await this.circuitBreakerRegistry.resetAll(serviceId);
 
                 // Update circuit breaker status
-                for (const breakerName of [
-                  "mexc-api",
-                  "mexc-websocket",
-                  "database",
-                ]) {
-                  this.systemState.circuitBreakersStatus[breakerName] =
-                    "CLOSED";
+                for (const breakerName of ["mexc-api", "mexc-websocket", "database"]) {
+                  this.systemState.circuitBreakersStatus[breakerName] = "CLOSED";
                 }
 
                 return true;
@@ -459,8 +421,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
       // Check circuit breaker states
       const breakerHealth = this.circuitBreakerRegistry.getHealthStatus();
       const allBreakersHealthy = Object.values(breakerHealth).every(
-        (status: any) =>
-          status.state === "CLOSED" || status.state === "HALF_OPEN"
+        (status: any) => status.state === "CLOSED" || status.state === "HALF_OPEN",
       );
 
       if (!allBreakersHealthy) {
@@ -469,9 +430,9 @@ export class EmergencyStopCoordinator extends EventEmitter {
       }
 
       // Check coordinated services
-      const allServicesReady = Object.values(
-        this.systemState.coordinatedServicesStatus
-      ).every((status) => status === true);
+      const allServicesReady = Object.values(this.systemState.coordinatedServicesStatus).every(
+        (status) => status === true,
+      );
 
       if (!allServicesReady) {
         console.warn("⚠️ Not all coordinated services are ready after recovery");
@@ -523,8 +484,7 @@ export class EmergencyStopCoordinator extends EventEmitter {
       lastEmergencyTime: this.systemState.emergencyTriggeredAt,
       averageRecoveryTime: 0, // Would calculate this from historical data
       coordinatedServicesCount: this.coordinatedServices.size,
-      circuitBreakersCount: Object.keys(this.systemState.circuitBreakersStatus)
-        .length,
+      circuitBreakersCount: Object.keys(this.systemState.circuitBreakersStatus).length,
     };
   }
 

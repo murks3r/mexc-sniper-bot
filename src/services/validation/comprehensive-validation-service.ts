@@ -154,7 +154,7 @@ export class ComprehensiveValidationService {
   async validateMexcApiResponse<T>(
     apiEndpoint: string,
     response: unknown,
-    expectedSchema: keyof typeof MEXC_API_SCHEMAS
+    expectedSchema: keyof typeof MEXC_API_SCHEMAS,
   ): Promise<EnhancedValidationResult<T>> {
     const startTime = Date.now();
 
@@ -174,26 +174,20 @@ export class ComprehensiveValidationService {
         }
       }
 
-      const validationResult = validateExternalMexcResponse(
-        schema,
-        response,
-        apiEndpoint
-      );
+      const validationResult = validateExternalMexcResponse(schema, response, apiEndpoint);
       const validationTime = Date.now() - startTime;
 
       if (this.config.enableMetrics) {
         ValidationHealthMonitor.recordValidation(
           validationResult.success,
           validationTime,
-          validationResult.success ? undefined : validationResult.error
+          validationResult.success ? undefined : validationResult.error,
         );
       }
 
       const result: EnhancedValidationResult<T> = {
         success: validationResult.success,
-        data: validationResult.success
-          ? (validationResult.data as T)
-          : undefined,
+        data: validationResult.success ? (validationResult.data as T) : undefined,
         error: validationResult.success ? undefined : validationResult.error,
         statusCode: validationResult.success ? 200 : 502,
         metrics: {
@@ -224,7 +218,7 @@ export class ComprehensiveValidationService {
         ValidationHealthMonitor.recordValidation(
           false,
           validationTime,
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : "Unknown error",
         );
       }
 
@@ -254,14 +248,11 @@ export class ComprehensiveValidationService {
     try {
       const validated = CriticalDataValidator.validateCriticalData(
         CRITICAL_DATA_SCHEMAS.tradingOrder,
-        orderData
+        orderData,
       );
 
       if (!validated.success || !validated.data) {
-        throw new ValidationError(
-          "Trading order validation failed",
-          validated.error
-        );
+        throw new ValidationError("Trading order validation failed", validated.error);
       }
 
       this.logger.info("Trading order validation successful", {
@@ -283,14 +274,11 @@ export class ComprehensiveValidationService {
     try {
       const validated = CriticalDataValidator.validateCriticalData(
         CRITICAL_DATA_SCHEMAS.accountBalance,
-        balanceData
+        balanceData,
       );
 
       if (!validated.success || !validated.data) {
-        throw new ValidationError(
-          "Account balance validation failed",
-          validated.error
-        );
+        throw new ValidationError("Account balance validation failed", validated.error);
       }
 
       this.logger.debug("Account balance validation successful", {
@@ -311,14 +299,11 @@ export class ComprehensiveValidationService {
     try {
       const validated = CriticalDataValidator.validateCriticalData(
         CRITICAL_DATA_SCHEMAS.portfolioSummary,
-        portfolioData
+        portfolioData,
       );
 
       if (!validated.success || !validated.data) {
-        throw new ValidationError(
-          "Portfolio validation failed",
-          validated.error
-        );
+        throw new ValidationError("Portfolio validation failed", validated.error);
       }
 
       this.logger.info("Portfolio validation successful", {
@@ -341,11 +326,7 @@ export class ComprehensiveValidationService {
     this.logger.debug("Safe validation of market data");
 
     try {
-      return safeValidateWithDefault(
-        CRITICAL_DATA_SCHEMAS.marketData,
-        marketData,
-        fallback
-      );
+      return safeValidateWithDefault(CRITICAL_DATA_SCHEMAS.marketData, marketData, fallback);
     } catch (error) {
       this.logger.warn("Market data validation failed, using fallback", error);
       return fallback;
@@ -359,21 +340,14 @@ export class ComprehensiveValidationService {
       stopLossPercentage: 5,
       takeProfitPercentage: 15,
       riskLevel: "medium" as const,
-    }
+    },
   ): any {
     this.logger.debug("Safe validation of risk parameters");
 
     try {
-      return safeValidateWithDefault(
-        CRITICAL_DATA_SCHEMAS.riskParameters,
-        riskData,
-        fallback
-      );
+      return safeValidateWithDefault(CRITICAL_DATA_SCHEMAS.riskParameters, riskData, fallback);
     } catch (error) {
-      this.logger.warn(
-        "Risk parameters validation failed, using fallback",
-        error
-      );
+      this.logger.warn("Risk parameters validation failed, using fallback", error);
       return fallback;
     }
   }
@@ -388,7 +362,7 @@ export class ComprehensiveValidationService {
     options: {
       continueOnError?: boolean;
       maxParallel?: number;
-    } = {}
+    } = {},
   ): Promise<{
     successful: T[];
     failed: { index: number; error: string; data: unknown }[];
@@ -419,9 +393,7 @@ export class ComprehensiveValidationService {
         } catch (error) {
           const errorMessage =
             error instanceof z.ZodError
-              ? error.errors
-                  .map((e) => `${e.path.join(".")}: ${e.message}`)
-                  .join(", ")
+              ? error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")
               : error instanceof Error
                 ? error.message
                 : "Unknown error";
@@ -440,9 +412,7 @@ export class ComprehensiveValidationService {
 
       // Stop on first error if failFast is enabled
       if (!continueOnError && failed.length > 0) {
-        this.logger.warn(
-          `Batch validation stopped at first error (item ${failed[0].index})`
-        );
+        this.logger.warn(`Batch validation stopped at first error (item ${failed[0].index})`);
         break;
       }
     }
@@ -516,7 +486,7 @@ export class ComprehensiveValidationService {
 let validationServiceInstance: ComprehensiveValidationService | null = null;
 
 export function getValidationService(
-  config?: Partial<ValidationConfig>
+  config?: Partial<ValidationConfig>,
 ): ComprehensiveValidationService {
   if (!validationServiceInstance) {
     validationServiceInstance = new ComprehensiveValidationService(config);
@@ -535,7 +505,7 @@ export function resetValidationService(): void {
 export async function validateMexcResponse<T>(
   endpoint: string,
   response: unknown,
-  schema: keyof typeof MEXC_API_SCHEMAS
+  schema: keyof typeof MEXC_API_SCHEMAS,
 ): Promise<EnhancedValidationResult<T>> {
   const service = getValidationService();
   return service.validateMexcApiResponse<T>(endpoint, response, schema);

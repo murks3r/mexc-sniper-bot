@@ -5,10 +5,13 @@ import { defineConfig } from 'drizzle-kit';
 config({ path: '.env.local' });
 
 // Force PostgreSQL usage - no SQLite fallback
-const hasNeonConfig = process.env.DATABASE_URL?.startsWith('postgresql://');
+// Support both postgresql:// (NeonDB) and postgres:// (Supabase) protocols
+const hasPostgresConfig = 
+  process.env.DATABASE_URL?.startsWith('postgresql://') ||
+  process.env.DATABASE_URL?.startsWith('postgres://');
 
-if (!hasNeonConfig) {
-  throw new Error('DATABASE_URL must be configured with a PostgreSQL connection string');
+if (!hasPostgresConfig) {
+  throw new Error('DATABASE_URL must be configured with a PostgreSQL connection string (postgresql:// or postgres://)');
 }
 
 export default defineConfig({

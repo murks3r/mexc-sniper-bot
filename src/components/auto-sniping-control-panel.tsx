@@ -1,31 +1,17 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Pause,
-  Play,
-  RefreshCw,
-  Settings,
-  Shield,
-  Target,
-} from "lucide-react";
+import { AlertTriangle, Pause, Play, RefreshCw, Settings, Shield, Target } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { queryKeys } from "../lib/query-client";
 import { useStatusRefresh } from "../hooks/use-status-refresh";
+import { queryKeys } from "../lib/query-client";
 import { StreamlinedCredentialStatus } from "./streamlined-credential-status";
 import { StreamlinedWorkflowStatus } from "./streamlined-workflow-status";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { useToast } from "./ui/use-toast";
@@ -63,9 +49,7 @@ interface AutoSnipingControlPanelProps {
   className?: string;
 }
 
-export function AutoSnipingControlPanel({
-  className = "",
-}: AutoSnipingControlPanelProps) {
+export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPanelProps) {
   const queryClient = useQueryClient();
   const { refreshAllStatus } = useStatusRefresh();
   const { toast } = useToast();
@@ -127,18 +111,20 @@ export function AutoSnipingControlPanel({
     mutationFn: async (enabled: boolean) => {
       const response = await fetch("/api/auto-sniping/control", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
+        headers: {
+          "Content-Type": "application/json",
         },
         credentials: "include", // Include cookies for authentication
         body: JSON.stringify({ action: enabled ? "start" : "stop" }),
       });
-      
+
       // Handle authentication errors specifically
       if (response.status === 401) {
-        throw new Error("Please sign in to use auto-sniping functionality. Redirecting to login...");
+        throw new Error(
+          "Please sign in to use auto-sniping functionality. Redirecting to login...",
+        );
       }
-      
+
       const result = await response.json();
 
       if (!result.success) {
@@ -146,12 +132,12 @@ export function AutoSnipingControlPanel({
         if (result.error?.includes("Authentication required")) {
           throw new Error("Authentication required. Please refresh the page and sign in again.");
         } else if (result.error?.includes("initialization")) {
-          throw new Error("Service initialization failed. Check your MEXC API credentials in environment settings.");
+          throw new Error(
+            "Service initialization failed. Check your MEXC API credentials in environment settings.",
+          );
         }
-        
-        throw new Error(
-          result.error || `Failed to ${enabled ? "start" : "stop"} auto-sniping`
-        );
+
+        throw new Error(result.error || `Failed to ${enabled ? "start" : "stop"} auto-sniping`);
       }
 
       // Return both the data and the enabled state for immediate UI update
@@ -169,19 +155,21 @@ export function AutoSnipingControlPanel({
       return { previousStatus: prev } as { previousStatus?: SnipingStatus };
     },
     onSuccess: async (data, enabled) => {
-      console.log(`✅ Auto-sniping ${enabled ? 'started' : 'stopped'} successfully`, data);
-      
+      console.log(`✅ Auto-sniping ${enabled ? "started" : "stopped"} successfully`, data);
+
       // Immediately update the status query with the returned status from the control endpoint
       const serverIsActive = data?.status?.isActive;
       queryClient.setQueryData(queryKeys.autoSniping.status(), (old: any) => ({
         ...(old || {}),
         isActive: typeof serverIsActive === "boolean" ? serverIsActive : enabled,
-        ...(data.status ? {
-          activeTargets: data.status.activeTargets || old?.activeTargets || 0,
-          readyTargets: data.status.readyTargets || old?.readyTargets || 0,
-        } : {}),
+        ...(data.status
+          ? {
+              activeTargets: data.status.activeTargets || old?.activeTargets || 0,
+              readyTargets: data.status.readyTargets || old?.readyTargets || 0,
+            }
+          : {}),
       }));
-      
+
       // Invalidate to fetch fresh data in the background
       await queryClient.invalidateQueries({ queryKey: queryKeys.autoSniping.status() });
     },
@@ -196,19 +184,19 @@ export function AutoSnipingControlPanel({
         description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
-      
+
       // Handle authentication errors by redirecting to login
       if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
         // Redirect to auth page after a brief delay
         setTimeout(() => {
-          window.location.href = "/auth?redirect_to=" + encodeURIComponent(window.location.pathname);
+          window.location.href = `/auth?redirect_to=${encodeURIComponent(window.location.pathname)}`;
         }, 2000);
       }
     },
     onSettled: async () => {
       setIntendedEnabled(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.autoSniping.status() });
-    }
+    },
   });
 
   const updateConfigMutation = useMutation({
@@ -237,44 +225,42 @@ export function AutoSnipingControlPanel({
     mutationFn: async () => {
       const response = await fetch("/api/snipe-targets?fromPatterns=true", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
+        headers: {
+          "Content-Type": "application/json",
         },
         credentials: "include", // Include cookies for authentication
       });
-      
+
       // Handle authentication errors specifically
       if (response.status === 401) {
         throw new Error("Please sign in to create snipe targets. Redirecting to login...");
       }
-      
+
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result.error || "Failed to create snipe targets from pattern detection"
-        );
+        throw new Error(result.error || "Failed to create snipe targets from pattern detection");
       }
 
       return result.data;
     },
     onSuccess: async (data) => {
       console.log(`✅ Created ${data.targetsCreated} snipe targets from pattern detection`, data);
-      
+
       // Refresh all status and invalidate snipe targets queries
       await refreshAllStatus();
       queryClient.invalidateQueries({ queryKey: ["snipe-targets"] });
     },
     onError: (error) => {
       console.error("Create targets from patterns error:", error);
-      
+
       // Handle authentication errors by redirecting to login
       if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
         setTimeout(() => {
-          window.location.href = "/auth?redirect_to=" + encodeURIComponent(window.location.pathname);
+          window.location.href = `/auth?redirect_to=${encodeURIComponent(window.location.pathname)}`;
         }, 2000);
       }
-    }
+    },
   });
 
   const handleToggleSniping = () => {
@@ -283,7 +269,7 @@ export function AutoSnipingControlPanel({
     toggleSnipingMutation.mutate(next);
   };
 
-  const handleCreateTargetsFromPatterns = () => {
+  const _handleCreateTargetsFromPatterns = () => {
     createTargetsFromPatternsMutation.mutate();
   };
 
@@ -357,9 +343,7 @@ export function AutoSnipingControlPanel({
                 }
                 disabled={statusLoading}
               >
-                <RefreshCw
-                  className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`}
-                />
+                <RefreshCw className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`} />
               </Button>
             </div>
           </div>
@@ -386,9 +370,7 @@ export function AutoSnipingControlPanel({
               onClick={handleToggleSniping}
               disabled={toggleSnipingMutation.isPending || statusLoading}
               className={
-                status?.isActive
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-green-600 hover:bg-green-700"
+                status?.isActive ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
               }
             >
               {toggleSnipingMutation.isPending ? (
@@ -408,30 +390,22 @@ export function AutoSnipingControlPanel({
                 </>
               )}
             </Button>
-          {/* Errors are now surfaced via toast; no inline error block to avoid layout shift */}
-            
-
+            {/* Errors are now surfaced via toast; no inline error block to avoid layout shift */}
           </div>
 
           {/* Status Metrics */}
           {status && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="text-center p-3 border rounded">
-                <div className="font-bold text-lg text-blue-600">
-                  {status.activeTargets}
-                </div>
+                <div className="font-bold text-lg text-blue-600">{status.activeTargets}</div>
                 <div className="text-muted-foreground">Active Targets</div>
               </div>
               <div className="text-center p-3 border rounded">
-                <div className="font-bold text-lg text-green-600">
-                  {status.readyTargets}
-                </div>
+                <div className="font-bold text-lg text-green-600">{status.readyTargets}</div>
                 <div className="text-muted-foreground">Ready Targets</div>
               </div>
               <div className="text-center p-3 border rounded">
-                <div className="font-bold text-lg text-purple-600">
-                  {status.executedToday}
-                </div>
+                <div className="font-bold text-lg text-purple-600">{status.executedToday}</div>
                 <div className="text-muted-foreground">Trades Today</div>
               </div>
               <div className="text-center p-3 border rounded">
@@ -448,9 +422,7 @@ export function AutoSnipingControlPanel({
             className={`p-3 border rounded-lg bg-${safetyConfig.color}-50 dark:bg-${safetyConfig.color}-950/20 border-${safetyConfig.color}-200 dark:border-${safetyConfig.color}-800`}
           >
             <div className="flex items-center space-x-2">
-              <SafetyIcon
-                className={`h-4 w-4 text-${safetyConfig.color}-600`}
-              />
+              <SafetyIcon className={`h-4 w-4 text-${safetyConfig.color}-600`} />
               <span
                 className={`font-medium text-${safetyConfig.color}-700 dark:text-${safetyConfig.color}-300`}
               >
@@ -464,11 +436,7 @@ export function AutoSnipingControlPanel({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Quick Configuration</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
                   <Settings className="h-4 w-4 mr-1" />
                   {showAdvanced ? "Hide" : "Show"} Advanced
                 </Button>
@@ -482,9 +450,7 @@ export function AutoSnipingControlPanel({
                   <Switch
                     id="safety-checks"
                     checked={config.enableSafetyChecks}
-                    onCheckedChange={(checked) =>
-                      handleConfigUpdate("enableSafetyChecks", checked)
-                    }
+                    onCheckedChange={(checked) => handleConfigUpdate("enableSafetyChecks", checked)}
                     disabled={updateConfigMutation.isPending}
                   />
                 </div>
@@ -507,27 +473,19 @@ export function AutoSnipingControlPanel({
                 <div className="grid grid-cols-2 gap-4 pt-3 border-t">
                   <div className="space-y-2">
                     <Label className="text-sm">Take Profit %</Label>
-                    <div className="text-lg font-medium">
-                      {config.takeProfitPercentage}%
-                    </div>
+                    <div className="text-lg font-medium">{config.takeProfitPercentage}%</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">Stop Loss %</Label>
-                    <div className="text-lg font-medium">
-                      {config.stopLossPercentage}%
-                    </div>
+                    <div className="text-lg font-medium">{config.stopLossPercentage}%</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">Confidence Threshold</Label>
-                    <div className="text-lg font-medium">
-                      {config.patternConfidenceThreshold}%
-                    </div>
+                    <div className="text-lg font-medium">{config.patternConfidenceThreshold}%</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">Max Concurrent</Label>
-                    <div className="text-lg font-medium">
-                      {config.maxConcurrentTrades}
-                    </div>
+                    <div className="text-lg font-medium">{config.maxConcurrentTrades}</div>
                   </div>
                 </div>
               )}

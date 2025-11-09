@@ -21,9 +21,7 @@ export interface JsonParseResult<T = any> {
  * Enhanced JSON parsing with comprehensive error handling
  * Handles malformed JSON, empty bodies, and edge cases consistently
  */
-export async function parseJsonRequest<T = any>(
-  request: NextRequest
-): Promise<JsonParseResult<T>> {
+export async function parseJsonRequest<T = any>(request: NextRequest): Promise<JsonParseResult<T>> {
   try {
     // Check if body exists
     if (!request.body) {
@@ -115,8 +113,7 @@ export async function parseJsonRequest<T = any>(
       success: false,
       error: "Request processing failed",
       errorCode: "PROCESSING_ERROR",
-      details:
-        error instanceof Error ? error.message : "Unknown error occurred",
+      details: error instanceof Error ? error.message : "Unknown error occurred",
     };
   }
 }
@@ -126,7 +123,7 @@ export async function parseJsonRequest<T = any>(
  */
 export function validateRequiredFields(
   body: any,
-  requiredFields: string[]
+  requiredFields: string[],
 ): { success: boolean; missingField?: string; error?: string } {
   if (!body || typeof body !== "object") {
     return {
@@ -158,10 +155,7 @@ export function validateRequiredFields(
  */
 export function validateFieldTypes(
   body: any,
-  fieldTypes: Record<
-    string,
-    "string" | "number" | "boolean" | "object" | "array"
-  >
+  fieldTypes: Record<string, "string" | "number" | "boolean" | "object" | "array">,
 ): { success: boolean; invalidField?: string; error?: string } {
   if (!body || typeof body !== "object") {
     return {
@@ -186,10 +180,7 @@ export function validateFieldTypes(
           isValid = typeof value === "boolean";
           break;
         case "object":
-          isValid =
-            value !== null &&
-            typeof value === "object" &&
-            !Array.isArray(value);
+          isValid = value !== null && typeof value === "object" && !Array.isArray(value);
           break;
         case "array":
           isValid = Array.isArray(value);
@@ -224,19 +215,16 @@ export function createJsonErrorResponse(parseResult: JsonParseResult) {
  * Wrapper for API routes that need JSON parsing with consistent error handling
  */
 export function withJsonParsing<T = any>(
-  handler: (request: NextRequest, body: T, ...args: any[]) => Promise<Response>
+  handler: (request: NextRequest, body: T, ...args: any[]) => Promise<Response>,
 ) {
   return async (request: NextRequest, ...args: any[]): Promise<Response> => {
     const parseResult = await parseJsonRequest<T>(request);
 
     if (!parseResult.success) {
-      return new Response(
-        JSON.stringify(createJsonErrorResponse(parseResult)),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createJsonErrorResponse(parseResult)), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     return handler(request, parseResult.data!, ...args);

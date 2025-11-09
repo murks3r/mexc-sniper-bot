@@ -10,12 +10,7 @@ import { createLogger } from "../../lib/unified-logger";
 import { MexcRateLimiter } from "./mexc-rate-limiter";
 import { SlidingWindowManager } from "./sliding-window";
 import { TokenBucketManager } from "./token-bucket";
-import type {
-  EndpointMetrics,
-  RateLimitConfig,
-  RateLimitResult,
-  UserLimits,
-} from "./types";
+import type { EndpointMetrics, RateLimitConfig, RateLimitResult, UserLimits } from "./types";
 
 const logger = createLogger("adaptive-rate-limiter", {
   enableStructuredLogging: process.env.NODE_ENV === "production",
@@ -85,7 +80,7 @@ export class AdaptiveRateLimiterService {
     endpoint: string,
     userId?: string,
     userAgent?: string,
-    _metadata?: Record<string, any>
+    _metadata?: Record<string, any>,
   ): Promise<RateLimitResult> {
     const _startTime = Date.now();
 
@@ -99,9 +94,7 @@ export class AdaptiveRateLimiterService {
 
       // Check circuit breaker first
       if (config.circuitBreakerEnabled) {
-        const circuitBreaker = circuitBreakerRegistry.getBreaker(
-          `rate-limit-${endpoint}`
-        );
+        const circuitBreaker = circuitBreakerRegistry.getBreaker(`rate-limit-${endpoint}`);
         const cbStats = circuitBreaker.getStats();
 
         if (cbStats.state === "OPEN") {
@@ -127,17 +120,9 @@ export class AdaptiveRateLimiterService {
       let result: RateLimitResult;
 
       if (config.tokenBucketEnabled) {
-        result = await this.tokenBucketManager.checkTokenBucket(
-          key,
-          config,
-          metrics
-        );
+        result = await this.tokenBucketManager.checkTokenBucket(key, config, metrics);
       } else {
-        result = await this.slidingWindowManager.checkSlidingWindow(
-          key,
-          config,
-          metrics
-        );
+        result = await this.slidingWindowManager.checkSlidingWindow(key, config, metrics);
       }
 
       // Add adaptive delay suggestion
@@ -153,7 +138,7 @@ export class AdaptiveRateLimiterService {
       logger.error(
         "Check failed:",
         { endpoint, userId, userAgent },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
 
       await this.errorLogger.logError(error as Error, {
@@ -190,7 +175,7 @@ export class AdaptiveRateLimiterService {
     responseTime: number,
     success: boolean,
     statusCode?: number,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): Promise<void> {
     const key = this.generateKey(endpoint, userId);
     const metrics = this.getOrCreateMetrics(key);
@@ -201,8 +186,7 @@ export class AdaptiveRateLimiterService {
 
     // Calculate moving average
     const alpha = 0.1; // Smoothing factor
-    metrics.averageResponseTime =
-      (1 - alpha) * metrics.averageResponseTime + alpha * responseTime;
+    metrics.averageResponseTime = (1 - alpha) * metrics.averageResponseTime + alpha * responseTime;
 
     // Update success metrics
     if (success) {
@@ -215,11 +199,7 @@ export class AdaptiveRateLimiterService {
 
     // Process MEXC rate limiting headers to respect actual API limits
     if (headers && success) {
-      this.mexcRateLimiter.processMexcRateLimitHeaders(
-        endpoint,
-        headers,
-        metrics
-      );
+      this.mexcRateLimiter.processMexcRateLimitHeaders(endpoint, headers, metrics);
     }
 
     // Handle 429 rate limit responses
@@ -230,16 +210,12 @@ export class AdaptiveRateLimiterService {
     // Adaptive adjustment
     if (Date.now() - metrics.lastAdaptation > 30000) {
       // Adapt every 30 seconds
-      const newFactor = this.calculateAdaptationFactor(
-        metrics,
-        responseTime,
-        success
-      );
+      const newFactor = this.calculateAdaptationFactor(metrics, responseTime, success);
 
       if (Math.abs(newFactor - metrics.adaptationFactor) > 0.1) {
         logger.info(
           `Adapting ${key}: ${metrics.adaptationFactor.toFixed(2)} -> ${newFactor.toFixed(2)}`,
-          { key, oldFactor: metrics.adaptationFactor, newFactor }
+          { key, oldFactor: metrics.adaptationFactor, newFactor },
         );
 
         metrics.adaptationFactor = newFactor;
@@ -247,11 +223,7 @@ export class AdaptiveRateLimiterService {
 
         // Update user adaptation history
         if (userId) {
-          this.updateUserAdaptationHistory(
-            userId,
-            newFactor,
-            success ? "performance" : "failure"
-          );
+          this.updateUserAdaptationHistory(userId, newFactor, success ? "performance" : "failure");
         }
 
         // Update circuit breaker if needed
@@ -260,9 +232,7 @@ export class AdaptiveRateLimiterService {
     }
 
     // Update circuit breaker status
-    const circuitBreaker = circuitBreakerRegistry.getBreaker(
-      `rate-limit-${endpoint}`
-    );
+    const circuitBreaker = circuitBreakerRegistry.getBreaker(`rate-limit-${endpoint}`);
     metrics.circuitBreakerState = circuitBreaker.getState();
   }
 
@@ -273,14 +243,9 @@ export class AdaptiveRateLimiterService {
     let delay = 0;
 
     // Base delay on response time
-    if (
-      metrics.averageResponseTime >
-      this.adaptationThresholds.verySlowResponseTime
-    ) {
+    if (metrics.averageResponseTime > this.adaptationThresholds.verySlowResponseTime) {
       delay = 5000; // 5 seconds
-    } else if (
-      metrics.averageResponseTime > this.adaptationThresholds.slowResponseTime
-    ) {
+    } else if (metrics.averageResponseTime > this.adaptationThresholds.slowResponseTime) {
       delay = 2000; // 2 seconds
     }
 
@@ -303,7 +268,7 @@ export class AdaptiveRateLimiterService {
   private calculateAdaptationFactor(
     metrics: EndpointMetrics,
     responseTime: number,
-    success: boolean
+    success: boolean,
   ): number {
     let factor = metrics.adaptationFactor;
 
@@ -405,11 +370,7 @@ export class AdaptiveRateLimiterService {
     }
   }
 
-  private updateUserAdaptationHistory(
-    userId: string,
-    factor: number,
-    reason: string
-  ): void {
+  private updateUserAdaptationHistory(userId: string, factor: number, reason: string): void {
     let userLimits = this.userLimits.get(userId);
 
     if (!userLimits) {
@@ -437,13 +398,8 @@ export class AdaptiveRateLimiterService {
   /**
    * Update circuit breaker thresholds based on adaptation
    */
-  private updateCircuitBreakerThresholds(
-    endpoint: string,
-    metrics: EndpointMetrics
-  ): void {
-    const circuitBreaker = circuitBreakerRegistry.getBreaker(
-      `rate-limit-${endpoint}`
-    );
+  private updateCircuitBreakerThresholds(endpoint: string, metrics: EndpointMetrics): void {
+    const circuitBreaker = circuitBreakerRegistry.getBreaker(`rate-limit-${endpoint}`);
 
     // Adjust failure threshold based on adaptation factor
     // If we're being adaptive due to poor performance, make circuit breaker more sensitive
@@ -465,10 +421,7 @@ export class AdaptiveRateLimiterService {
 
     // Clean old metrics
     for (const [key, metrics] of this.endpointMetrics.entries()) {
-      if (
-        now - metrics.lastAdaptation > maxAge &&
-        metrics.totalRequests === 0
-      ) {
+      if (now - metrics.lastAdaptation > maxAge && metrics.totalRequests === 0) {
         this.endpointMetrics.delete(key);
       }
     }
@@ -481,10 +434,7 @@ export class AdaptiveRateLimiterService {
   /**
    * Public API methods
    */
-  public setUserPriority(
-    userId: string,
-    priority: "low" | "medium" | "high" | "premium"
-  ): void {
+  public setUserPriority(userId: string, priority: "low" | "medium" | "high" | "premium"): void {
     let userLimits = this.userLimits.get(userId);
 
     if (!userLimits) {
@@ -505,11 +455,7 @@ export class AdaptiveRateLimiterService {
     });
   }
 
-  public setCustomLimits(
-    userId: string,
-    endpoint: string,
-    config: Partial<RateLimitConfig>
-  ): void {
+  public setCustomLimits(userId: string, endpoint: string, config: Partial<RateLimitConfig>): void {
     let userLimits = this.userLimits.get(userId);
 
     if (!userLimits) {
@@ -531,9 +477,7 @@ export class AdaptiveRateLimiterService {
     });
   }
 
-  public getMetrics(
-    key?: string
-  ): EndpointMetrics | Map<string, EndpointMetrics> {
+  public getMetrics(key?: string): EndpointMetrics | Map<string, EndpointMetrics> {
     if (key) {
       return this.endpointMetrics.get(key) || this.getOrCreateMetrics(key);
     }
@@ -554,16 +498,13 @@ export class AdaptiveRateLimiterService {
     const metrics = Array.from(this.endpointMetrics.values());
     const avgAdaptationFactor =
       metrics.length > 0
-        ? metrics.reduce((sum, m) => sum + m.adaptationFactor, 0) /
-          metrics.length
+        ? metrics.reduce((sum, m) => sum + m.adaptationFactor, 0) / metrics.length
         : 1.0;
 
-    const adaptedEndpoints = metrics.filter(
-      (m) => Math.abs(m.adaptationFactor - 1.0) > 0.1
-    ).length;
+    const adaptedEndpoints = metrics.filter((m) => Math.abs(m.adaptationFactor - 1.0) > 0.1).length;
 
     const recentAdaptations = metrics.filter(
-      (m) => Date.now() - m.lastAdaptation < 300000 // Last 5 minutes
+      (m) => Date.now() - m.lastAdaptation < 300000, // Last 5 minutes
     ).length;
 
     const tokenBucketStats = this.tokenBucketManager.getStats();

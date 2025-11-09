@@ -1,33 +1,15 @@
 import { eq, sql } from "drizzle-orm";
 import { db, executeWithRetry } from "./index";
-import {
-  type NewPatternEmbedding,
-  patternEmbeddings,
-  patternSimilarityCache,
-} from "./schema";
+import { type NewPatternEmbedding, patternEmbeddings, patternSimilarityCache } from "./schema";
 
-// Vector similarity functions for PostgreSQL/NeonDB
+// Vector similarity functions for PostgreSQL
 export class VectorUtils {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[vector-utils]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[vector-utils]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[vector-utils]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[vector-utils]", message, context || ""),
-  };
-
   /**
    * Calculate cosine similarity between two embeddings
    * Note: For PostgreSQL compatibility, we calculate this in JavaScript
    * In production with pgvector extension, this could be done in SQL
    */
-  static calculateCosineSimilarity(
-    embedding1: number[],
-    embedding2: number[]
-  ): number {
+  static calculateCosineSimilarity(embedding1: number[], embedding2: number[]): number {
     if (embedding1.length !== embedding2.length) {
       throw new Error("Embeddings must have the same dimension");
     }
@@ -55,10 +37,7 @@ export class VectorUtils {
   /**
    * Calculate Euclidean distance between two embeddings
    */
-  static calculateEuclideanDistance(
-    embedding1: number[],
-    embedding2: number[]
-  ): number {
+  static calculateEuclideanDistance(embedding1: number[], embedding2: number[]): number {
     if (embedding1.length !== embedding2.length) {
       throw new Error("Embeddings must have the same dimension");
     }
@@ -76,7 +55,7 @@ export class VectorUtils {
    * Store a pattern embedding in the database
    */
   static async storePatternEmbedding(
-    pattern: Omit<NewPatternEmbedding, "embedding"> & { embedding: number[] }
+    pattern: Omit<NewPatternEmbedding, "embedding"> & { embedding: number[] },
   ) {
     return executeWithRetry(async () => {
       const embeddingJson = JSON.stringify(pattern.embedding);
@@ -100,7 +79,7 @@ export class VectorUtils {
       threshold?: number;
       patternType?: string;
       symbolName?: string;
-    } = {}
+    } = {},
   ) {
     const { limit = 10, threshold = 0.85, patternType, symbolName } = options;
 
@@ -133,17 +112,9 @@ export class VectorUtils {
       // Calculate similarities client-side
       const results = candidates
         .map((candidate: any) => {
-          const candidateEmbedding = JSON.parse(
-            candidate.embedding
-          ) as number[];
-          const similarity = VectorUtils.calculateCosineSimilarity(
-            embedding,
-            candidateEmbedding
-          );
-          const distance = VectorUtils.calculateEuclideanDistance(
-            embedding,
-            candidateEmbedding
-          );
+          const candidateEmbedding = JSON.parse(candidate.embedding) as number[];
+          const similarity = VectorUtils.calculateCosineSimilarity(embedding, candidateEmbedding);
+          const distance = VectorUtils.calculateEuclideanDistance(embedding, candidateEmbedding);
 
           return {
             ...candidate,
@@ -167,7 +138,7 @@ export class VectorUtils {
     patternId2: string,
     cosineSimilarity: number,
     euclideanDistance: number,
-    cacheHours = 24
+    cacheHours = 24,
   ) {
     return executeWithRetry(async () => {
       const now = new Date();
@@ -187,10 +158,7 @@ export class VectorUtils {
           expiresAt,
         })
         .onConflictDoUpdate({
-          target: [
-            patternSimilarityCache.patternId1,
-            patternSimilarityCache.patternId2,
-          ],
+          target: [patternSimilarityCache.patternId1, patternSimilarityCache.patternId2],
           set: {
             cosineSimilarity,
             euclideanDistance,
@@ -220,9 +188,7 @@ export class VectorUtils {
           expiresAt: patternSimilarityCache.expiresAt,
         })
         .from(patternSimilarityCache)
-        .where(
-          sql`pattern_id_1 = ${id1} AND pattern_id_2 = ${id2} AND expires_at > ${now}`
-        )
+        .where(sql`pattern_id_1 = ${id1} AND pattern_id_2 = ${id2} AND expires_at > ${now}`)
         .limit(1);
 
       return result[0] || null;
@@ -255,7 +221,7 @@ export class VectorUtils {
       avgProfit?: number;
       truePositive?: boolean;
       falsePositive?: boolean;
-    }
+    },
   ) {
     return executeWithRetry(async () => {
       const updates: any = {
@@ -283,10 +249,7 @@ export class VectorUtils {
         updates.falsePositives = sql`false_positives + 1`;
       }
 
-      await db
-        .update(patternEmbeddings)
-        .set(updates)
-        .where(sql`pattern_id = ${patternId}`);
+      await db.update(patternEmbeddings).set(updates).where(sql`pattern_id = ${patternId}`);
     }, "Update pattern metrics");
   }
 
@@ -321,7 +284,7 @@ export class VectorUtils {
       limit?: number;
       threshold?: number;
       useCache?: boolean;
-    } = {}
+    } = {},
   ) {
     const { limit = 5, threshold = 0.85, useCache = true } = options;
     const results: Record<string, any[]> = {};
@@ -337,10 +300,7 @@ export class VectorUtils {
           .limit(20);
 
         for (const pattern of patterns) {
-          const cached = await VectorUtils.getCachedSimilarity(
-            id,
-            pattern.patternId
-          );
+          const cached = await VectorUtils.getCachedSimilarity(id, pattern.patternId);
           if (cached && cached.cosineSimilarity >= threshold) {
             cachedResults.push({
               patternId: pattern.patternId,
@@ -352,9 +312,7 @@ export class VectorUtils {
         }
 
         if (cachedResults.length >= limit) {
-          results[id] = cachedResults
-            .sort((a, b) => b.similarity - a.similarity)
-            .slice(0, limit);
+          results[id] = cachedResults.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
           continue;
         }
       }
@@ -372,7 +330,7 @@ export class VectorUtils {
             id,
             similar.patternId,
             similar.similarity,
-            similar.distance
+            similar.distance,
           );
         }
       }
@@ -390,11 +348,7 @@ export class VectorUtils {
   /**
    * Get patterns by type and date range
    */
-  static async getPatternsByTypeAndDate(
-    patternType: string,
-    afterDate: Date,
-    beforeDate?: Date
-  ) {
+  static async getPatternsByTypeAndDate(patternType: string, afterDate: Date, beforeDate?: Date) {
     return executeWithRetry(async () => {
       const conditions = [
         sql`pattern_type = ${patternType}`,
@@ -417,11 +371,7 @@ export class VectorUtils {
   /**
    * Get patterns by date range with optional type filter
    */
-  static async getPatternsByDateRange(
-    startDate: Date,
-    endDate: Date,
-    patternType?: string
-  ) {
+  static async getPatternsByDateRange(startDate: Date, endDate: Date, patternType?: string) {
     return executeWithRetry(async () => {
       const conditions = [
         sql`is_active = 1`,
@@ -460,7 +410,7 @@ export class VectorUtils {
    */
   static async deactivateOldPatterns(
     cutoffDate: Date,
-    lowConfidenceThreshold: number
+    lowConfidenceThreshold: number,
   ): Promise<number> {
     return executeWithRetry(async () => {
       const result = await db
@@ -470,7 +420,7 @@ export class VectorUtils {
           updatedAt: new Date(),
         })
         .where(
-          sql`(last_seen_at <= ${cutoffDate.getTime() / 1000} OR confidence < ${lowConfidenceThreshold}) AND is_active = 1`
+          sql`(last_seen_at <= ${cutoffDate.getTime() / 1000} OR confidence < ${lowConfidenceThreshold}) AND is_active = 1`,
         );
 
       return (result as any).changes || (result as any).rowsAffected || 0;
@@ -490,7 +440,7 @@ export class VectorUtils {
       beforeDate?: Date;
       minConfidence?: number;
       maxResults?: number;
-    } = {}
+    } = {},
   ) {
     const {
       limit = 10,
@@ -535,14 +485,8 @@ export class VectorUtils {
       for (const pattern of patterns) {
         try {
           const patternEmbedding = JSON.parse(pattern.embedding) as number[];
-          const similarity = VectorUtils.calculateCosineSimilarity(
-            embedding,
-            patternEmbedding
-          );
-          const distance = VectorUtils.calculateEuclideanDistance(
-            embedding,
-            patternEmbedding
-          );
+          const similarity = VectorUtils.calculateCosineSimilarity(embedding, patternEmbedding);
+          const distance = VectorUtils.calculateEuclideanDistance(embedding, patternEmbedding);
 
           if (similarity >= threshold) {
             similarities.push({
@@ -553,16 +497,11 @@ export class VectorUtils {
             });
           }
         } catch (error) {
-          console.warn(
-            `[VectorUtils] Failed to process pattern ${pattern.patternId}:`,
-            error
-          );
+          console.warn(`[VectorUtils] Failed to process pattern ${pattern.patternId}:`, error);
         }
       }
 
-      return similarities
-        .sort((a, b) => b.cosineSimilarity - a.cosineSimilarity)
-        .slice(0, limit);
+      return similarities.sort((a, b) => b.cosineSimilarity - a.cosineSimilarity).slice(0, limit);
     }, "Enhanced similarity search");
   }
 }

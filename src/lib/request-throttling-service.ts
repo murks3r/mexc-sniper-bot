@@ -14,7 +14,6 @@ interface ThrottleRequest {
 export class RequestThrottlingService {
   private queue: ThrottleRequest[] = [];
   private processing = false;
-  private maxConcurrent: number;
   private delayMs: number;
 
   constructor(maxConcurrent: number = 5, delayMs: number = 100) {
@@ -22,11 +21,7 @@ export class RequestThrottlingService {
     this.delayMs = delayMs;
   }
 
-  async throttle<T>(
-    callback: () => Promise<T>,
-    priority: number = 1,
-    id?: string
-  ): Promise<T> {
+  async throttle<T>(callback: () => Promise<T>, priority: number = 1, id?: string): Promise<T> {
     return new Promise((resolve, reject) => {
       const request: ThrottleRequest = {
         id: id || Math.random().toString(36),

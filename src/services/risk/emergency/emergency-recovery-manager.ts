@@ -65,12 +65,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
     warn: (message: string, context?: any) =>
       console.warn("[emergency-recovery-manager]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[emergency-recovery-manager]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[emergency-recovery-manager]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[emergency-recovery-manager]", message, context || ""),
   };
@@ -105,7 +100,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
   async startRecovery(
     sessionId: string,
     planId: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<string> {
     const plan = this.recoveryPlans.get(planId);
     if (!plan) {
@@ -114,7 +109,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
 
     // Check if recovery is already active for this session
     const existingRecovery = Array.from(this.activeRecoveries.values()).find(
-      (r) => r.sessionId === sessionId
+      (r) => r.sessionId === sessionId,
     );
 
     if (existingRecovery) {
@@ -166,7 +161,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
    */
   private async executeRecoveryPlan(
     recoveryId: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<void> {
     const recovery = this.activeRecoveries.get(recoveryId);
     if (!recovery) return;
@@ -237,7 +232,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
   private async executeRecoveryPhase(
     recoveryId: string,
     phase: SimpleRecoveryPhase,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<void> {
     const recovery = this.activeRecoveries.get(recoveryId);
     if (!recovery) return;
@@ -279,7 +274,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
   private async executeRecoveryAction(
     recoveryId: string,
     action: SimpleRecoveryAction,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<void> {
     const recovery = this.activeRecoveries.get(recoveryId);
     if (!recovery) return;
@@ -334,7 +329,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
    */
   private async simulateRecoveryAction(
     action: SimpleRecoveryAction,
-    _context?: Record<string, any>
+    _context?: Record<string, any>,
   ): Promise<any> {
     // Add artificial delay to simulate real execution
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -419,10 +414,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
   /**
    * Get next phase ID in sequence
    */
-  private getNextPhaseId(
-    plan: SimpleRecoveryPlan,
-    currentPhaseId: string
-  ): string | null {
+  private getNextPhaseId(plan: SimpleRecoveryPlan, currentPhaseId: string): string | null {
     const currentIndex = plan.phases.findIndex((p) => p.id === currentPhaseId);
     if (currentIndex === -1 || currentIndex >= plan.phases.length - 1) {
       return null;
@@ -531,9 +523,7 @@ export class EmergencyRecoveryManager extends EventEmitter {
    * Get recovery history
    */
   getRecoveryHistory(limit?: number): SimpleRecoveryExecution[] {
-    return limit
-      ? this.recoveryHistory.slice(-limit)
-      : [...this.recoveryHistory];
+    return limit ? this.recoveryHistory.slice(-limit) : [...this.recoveryHistory];
   }
 
   /**
@@ -546,10 +536,9 @@ export class EmergencyRecoveryManager extends EventEmitter {
     averageDuration: number;
     planUsage: Record<string, number>;
   } {
-    const totalRecoveries =
-      this.recoveryHistory.length + this.activeRecoveries.size;
+    const totalRecoveries = this.recoveryHistory.length + this.activeRecoveries.size;
     const successfulRecoveries = this.recoveryHistory.filter(
-      (r) => r.status === "completed"
+      (r) => r.status === "completed",
     ).length;
 
     const planUsage: Record<string, number> = {};
@@ -560,18 +549,15 @@ export class EmergencyRecoveryManager extends EventEmitter {
     const completedRecoveries = this.recoveryHistory.filter((r) => r.endTime);
     const totalDuration = completedRecoveries.reduce(
       (sum, r) => sum + ((r.endTime || 0) - r.startTime),
-      0
+      0,
     );
 
     return {
       activeRecoveries: this.activeRecoveries.size,
       totalRecoveries,
-      successRate:
-        totalRecoveries > 0 ? successfulRecoveries / totalRecoveries : 0,
+      successRate: totalRecoveries > 0 ? successfulRecoveries / totalRecoveries : 0,
       averageDuration:
-        completedRecoveries.length > 0
-          ? totalDuration / completedRecoveries.length
-          : 0,
+        completedRecoveries.length > 0 ? totalDuration / completedRecoveries.length : 0,
       planUsage,
     };
   }

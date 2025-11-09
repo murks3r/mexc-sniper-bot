@@ -10,12 +10,7 @@
  * - Secure key storage patterns
  */
 
-import {
-  createCipheriv,
-  createDecipheriv,
-  pbkdf2Sync,
-  randomBytes,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
 
 // Constants for cryptographic operations
 const ALGORITHM = "aes-256-gcm";
@@ -53,12 +48,7 @@ export class SecureEncryptionService {
         warn: (message: string, context?: any) =>
           console.warn("[secure-encryption-service]", message, context || ""),
         error: (message: string, context?: any, error?: Error) =>
-          console.error(
-            "[secure-encryption-service]",
-            message,
-            context || "",
-            error || ""
-          ),
+          console.error("[secure-encryption-service]", message, context || "", error || ""),
         debug: (message: string, context?: any) =>
           console.debug("[secure-encryption-service]", message, context || ""),
       };
@@ -67,7 +57,6 @@ export class SecureEncryptionService {
   }
 
   private masterKey: Buffer;
-  private keyId: string;
 
   constructor() {
     // Validate and load master key from environment
@@ -76,7 +65,7 @@ export class SecureEncryptionService {
     if (!envKey) {
       throw new Error(
         "ENCRYPTION_MASTER_KEY environment variable is required. " +
-          "Generate a secure key using: openssl rand -base64 32"
+          "Generate a secure key using: openssl rand -base64 32",
       );
     }
 
@@ -87,7 +76,7 @@ export class SecureEncryptionService {
       throw new Error(
         "Invalid ENCRYPTION_MASTER_KEY format. " +
           "Key must be base64 encoded. " +
-          "Generate using: openssl rand -base64 32"
+          "Generate using: openssl rand -base64 32",
       );
     }
 
@@ -114,17 +103,14 @@ export class SecureEncryptionService {
         salt,
         PBKDF2_ITERATIONS,
         KEY_LENGTH,
-        PBKDF2_DIGEST
+        PBKDF2_DIGEST,
       );
 
       // Create cipher
       const cipher = createCipheriv(ALGORITHM, derivedKey, nonce);
 
       // Encrypt data
-      const ciphertext = Buffer.concat([
-        cipher.update(plaintext, "utf8"),
-        cipher.final(),
-      ]);
+      const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
 
       // Get authentication tag
       const tag = cipher.getAuthTag();
@@ -153,14 +139,12 @@ export class SecureEncryptionService {
     try {
       // Parse the encrypted data structure
       const encryptedData: EncryptedData = JSON.parse(
-        Buffer.from(encryptedText, "base64").toString("utf8")
+        Buffer.from(encryptedText, "base64").toString("utf8"),
       );
 
       // Version check for future compatibility
       if (encryptedData.version !== CURRENT_VERSION) {
-        throw new Error(
-          `Unsupported encryption version: ${encryptedData.version}`
-        );
+        throw new Error(`Unsupported encryption version: ${encryptedData.version}`);
       }
 
       // Decode components
@@ -175,7 +159,7 @@ export class SecureEncryptionService {
         salt,
         PBKDF2_ITERATIONS,
         KEY_LENGTH,
-        PBKDF2_DIGEST
+        PBKDF2_DIGEST,
       );
 
       // Create decipher
@@ -183,10 +167,7 @@ export class SecureEncryptionService {
       decipher.setAuthTag(tag);
 
       // Decrypt and verify authentication
-      const plaintext = Buffer.concat([
-        decipher.update(ciphertext),
-        decipher.final(),
-      ]);
+      const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
       return plaintext.toString("utf8");
     } catch (error) {
@@ -217,9 +198,7 @@ export class SecureEncryptionService {
    */
   isValidEncryptedFormat(encryptedText: string): boolean {
     try {
-      const data = JSON.parse(
-        Buffer.from(encryptedText, "base64").toString("utf8")
-      );
+      const data = JSON.parse(Buffer.from(encryptedText, "base64").toString("utf8"));
 
       return (
         typeof data.version === "number" &&
@@ -236,10 +215,7 @@ export class SecureEncryptionService {
   /**
    * Masks sensitive data for display (shows first/last 4 chars)
    */
-  static maskSensitiveData(
-    data: string | undefined | null,
-    visibleChars = 4
-  ): string {
+  static maskSensitiveData(data: string | undefined | null, visibleChars = 4): string {
     // Handle undefined/null data
     if (data === undefined || data === null || typeof data !== "string") {
       return "***undefined***";

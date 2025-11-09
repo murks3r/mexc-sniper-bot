@@ -2,13 +2,7 @@
 
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 
 type SupabaseAuthContextType = {
@@ -19,14 +13,10 @@ type SupabaseAuthContextType = {
   signOut: () => Promise<AuthError | null>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithProvider: (
-    provider: "google" | "github"
-  ) => Promise<{ error: any }>;
+  signInWithProvider: (provider: "google" | "github") => Promise<{ error: any }>;
 };
 
-const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(
-  undefined
-);
+const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
 
 interface SupabaseAuthProviderProps {
   children: ReactNode;
@@ -105,10 +95,7 @@ export function SupabaseAuthProvider({
           });
 
           if (!response.ok) {
-            console.warn(
-              "Failed to sync user with database:",
-              response.statusText
-            );
+            console.warn("Failed to sync user with database:", response.statusText);
           }
         } catch (error) {
           console.warn("Failed to sync user with database:", error);
@@ -129,9 +116,7 @@ export function SupabaseAuthProvider({
   const signOut = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      return new Error(
-        "Supabase client not available (SSR environment)"
-      ) as AuthError;
+      return new Error("Supabase client not available (SSR environment)") as AuthError;
     }
 
     try {
@@ -226,19 +211,13 @@ export function SupabaseAuthProvider({
     signInWithProvider,
   };
 
-  return (
-    <SupabaseAuthContext.Provider value={value}>
-      {children}
-    </SupabaseAuthContext.Provider>
-  );
+  return <SupabaseAuthContext.Provider value={value}>{children}</SupabaseAuthContext.Provider>;
 }
 
 export function useSupabaseAuth() {
   const context = useContext(SupabaseAuthContext);
   if (context === undefined) {
-    throw new Error(
-      "useSupabaseAuth must be used within a SupabaseAuthProvider"
-    );
+    throw new Error("useSupabaseAuth must be used within a SupabaseAuthProvider");
   }
   return context;
 }

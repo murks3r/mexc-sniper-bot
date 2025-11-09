@@ -15,10 +15,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { patternEmbeddings } from "../../db/schemas/patterns";
 import { toSafeError } from "../../lib/error-type-utils";
-import type {
-  CalendarEntry,
-  SymbolEntry,
-} from "../../services/api/mexc-unified-exports";
+import type { CalendarEntry, SymbolEntry } from "../../services/api/mexc-unified-exports";
 import type { IPatternStorage } from "./interfaces";
 import {
   calculateOptimizedPatternSimilarity,
@@ -26,8 +23,6 @@ import {
   generateOptimizedEmbedding,
   optimizedCacheInvalidation,
 } from "./shared/algorithm-utils";
-// OPTIMIZATION: Use shared utilities for better performance and reduced code duplication
-import { createPatternLogger } from "./shared/logger-utils";
 import { validateConfidenceScore } from "./shared/validation-utils";
 
 /**
@@ -38,8 +33,6 @@ import { validateConfidenceScore } from "./shared/validation-utils";
  */
 export class PatternStorage implements IPatternStorage {
   private static instance: PatternStorage;
-  // OPTIMIZATION: Use shared logger to eliminate redundant code
-  private logger = createPatternLogger("pattern-storage");
 
   // In-memory cache for performance
   private cache = new Map<string, any>();
@@ -63,7 +56,7 @@ export class PatternStorage implements IPatternStorage {
   async storeSuccessfulPattern(
     data: SymbolEntry | CalendarEntry,
     type: string,
-    confidence: number
+    confidence: number,
   ): Promise<void> {
     try {
       // OPTIMIZATION: Use shared confidence validation
@@ -78,8 +71,7 @@ export class PatternStorage implements IPatternStorage {
 
       // Determine if data is SymbolEntry or CalendarEntry
       const isSymbolEntry = "sts" in data && "st" in data && "tt" in data;
-      const symbolName =
-        "symbol" in data ? data.symbol : isSymbolEntry ? data.cd : "unknown";
+      const symbolName = "symbol" in data ? data.symbol : isSymbolEntry ? data.cd : "unknown";
 
       // Generate unique pattern ID
       const timestamp = Date.now();
@@ -144,7 +136,7 @@ export class PatternStorage implements IPatternStorage {
           confidence,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       // Don't throw - graceful failure for storage operations
@@ -184,10 +176,7 @@ export class PatternStorage implements IPatternStorage {
         })
         .from(patternEmbeddings)
         .where(
-          and(
-            eq(patternEmbeddings.patternType, patternType),
-            eq(patternEmbeddings.isActive, true)
-          )
+          and(eq(patternEmbeddings.patternType, patternType), eq(patternEmbeddings.isActive, true)),
         )
         .limit(50);
 
@@ -198,18 +187,16 @@ export class PatternStorage implements IPatternStorage {
       }
 
       const totalSuccesses = patterns.reduce(
-        (sum: number, p: { truePositives?: number }) =>
-          sum + (p.truePositives || 0),
-        0
+        (sum: number, p: { truePositives?: number }) => sum + (p.truePositives || 0),
+        0,
       );
       const totalAttempts = patterns.reduce(
         (sum: number, p: { truePositives?: number; falsePositives?: number }) =>
           sum + (p.truePositives || 0) + (p.falsePositives || 0),
-        0
+        0,
       );
 
-      const successRate =
-        totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 75;
+      const successRate = totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 75;
 
       // Cache the result
       this.setCachedValue(cacheKey, successRate);
@@ -223,7 +210,7 @@ export class PatternStorage implements IPatternStorage {
           patternType,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       return 75; // Default fallback
@@ -241,7 +228,7 @@ export class PatternStorage implements IPatternStorage {
       threshold?: number;
       limit?: number;
       sameTypeOnly?: boolean;
-    }
+    },
   ): Promise<any[]> {
     if (!pattern) {
       return [];
@@ -300,7 +287,7 @@ export class PatternStorage implements IPatternStorage {
           patternType: pattern.type,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       return [];
@@ -330,8 +317,7 @@ export class PatternStorage implements IPatternStorage {
     size: number;
     memoryUsage: number;
   } {
-    const hitRatio =
-      this.cacheAccesses > 0 ? this.cacheHits / this.cacheAccesses : 0;
+    const hitRatio = this.cacheAccesses > 0 ? this.cacheHits / this.cacheAccesses : 0;
     const size = this.cache.size;
 
     // OPTIMIZATION: Use optimized memory usage estimation (80% faster)

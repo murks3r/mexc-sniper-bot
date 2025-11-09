@@ -69,42 +69,30 @@ export class TradingMetricsCollector {
     unit: "USD",
   });
 
-  private executionLatencyHistogram = this.meter.createHistogram(
-    "trade_execution_latency_ms",
-    {
-      description: "Trade execution latency in milliseconds",
-      unit: "ms",
-    }
-  );
+  private executionLatencyHistogram = this.meter.createHistogram("trade_execution_latency_ms", {
+    description: "Trade execution latency in milliseconds",
+    unit: "ms",
+  });
 
   private slippageHistogram = this.meter.createHistogram("trade_slippage_bp", {
     description: "Trade slippage in basis points",
     unit: "bp",
   });
 
-  private patternAccuracyHistogram = this.meter.createHistogram(
-    "pattern_accuracy_percent",
-    {
-      description: "Pattern detection accuracy percentage",
-      unit: "percent",
-    }
-  );
+  private patternAccuracyHistogram = this.meter.createHistogram("pattern_accuracy_percent", {
+    description: "Pattern detection accuracy percentage",
+    unit: "percent",
+  });
 
-  private riskExposureGauge = this.meter.createUpDownCounter(
-    "risk_exposure_percent",
-    {
-      description: "Current risk exposure as percentage of portfolio",
-      unit: "percent",
-    }
-  );
+  private riskExposureGauge = this.meter.createUpDownCounter("risk_exposure_percent", {
+    description: "Current risk exposure as percentage of portfolio",
+    unit: "percent",
+  });
 
-  private marketDataLatencyHistogram = this.meter.createHistogram(
-    "market_data_latency_ms",
-    {
-      description: "Market data latency in milliseconds",
-      unit: "ms",
-    }
-  );
+  private marketDataLatencyHistogram = this.meter.createHistogram("market_data_latency_ms", {
+    description: "Market data latency in milliseconds",
+    unit: "ms",
+  });
 
   private readonly metricsCache = new Map<string, any>();
   private readonly realtimeMetrics = {
@@ -151,8 +139,7 @@ export class TradingMetricsCollector {
 
       // Calculate rolling averages
       this.realtimeMetrics.averageExecutionTime =
-        this.realtimeMetrics.averageExecutionTime * 0.9 +
-        metrics.executionTime * 0.1;
+        this.realtimeMetrics.averageExecutionTime * 0.9 + metrics.executionTime * 0.1;
 
       this.realtimeMetrics.averageSlippage =
         this.realtimeMetrics.averageSlippage * 0.9 + metrics.slippage * 0.1;
@@ -161,15 +148,11 @@ export class TradingMetricsCollector {
       this.metricsCache.set(`trade_${Date.now()}`, metrics);
 
       // Track with enhanced performance monitor
-      enhancedPerformanceMonitor.trackTradingExecution(
-        "trade_execution",
-        async () => metrics,
-        {
-          symbol: metrics.symbol,
-          order_type: metrics.orderType,
-          side: metrics.side,
-        }
-      );
+      enhancedPerformanceMonitor.trackTradingExecution("trade_execution", async () => metrics, {
+        symbol: metrics.symbol,
+        order_type: metrics.orderType,
+        side: metrics.side,
+      });
 
       span.setAttributes({
         "trading.symbol": metrics.symbol,
@@ -199,7 +182,7 @@ export class TradingMetricsCollector {
       enhancedPerformanceMonitor.trackPatternDetection(
         metrics.processingTime,
         metrics.confidence,
-        1 // single symbol
+        1, // single symbol
       );
 
       span.setAttributes({
@@ -228,12 +211,9 @@ export class TradingMetricsCollector {
    * Update risk exposure metrics
    */
   updateRiskExposure(exposure: number): void {
-    this.riskExposureGauge.add(
-      exposure - this.realtimeMetrics.currentExposure,
-      {
-        timestamp: Date.now().toString(),
-      }
-    );
+    this.riskExposureGauge.add(exposure - this.realtimeMetrics.currentExposure, {
+      timestamp: Date.now().toString(),
+    });
 
     this.realtimeMetrics.currentExposure = exposure;
   }
@@ -246,10 +226,7 @@ export class TradingMetricsCollector {
       data_quality: metrics.dataQuality.toString(),
     });
 
-    enhancedPerformanceMonitor.trackWebSocketLatency(
-      metrics.latency,
-      "market_data"
-    );
+    enhancedPerformanceMonitor.trackWebSocketLatency(metrics.latency, "market_data");
   }
 
   /**
@@ -343,7 +320,7 @@ export class TradingMetricsCollector {
   // Private helper methods
   private getProfitableTradesCount(): number {
     return Array.from(this.metricsCache.entries()).filter(
-      ([key, trade]) => key.startsWith("trade_") && trade.pnl > 0
+      ([key, trade]) => key.startsWith("trade_") && trade.pnl > 0,
     ).length;
   }
 
@@ -368,8 +345,7 @@ export class TradingMetricsCollector {
     const today = new Date().toDateString();
     return Array.from(this.metricsCache.entries()).filter(
       ([key, data]) =>
-        key.startsWith("pattern_") &&
-        new Date(data.timestamp).toDateString() === today
+        key.startsWith("pattern_") && new Date(data.timestamp).toDateString() === today,
     ).length;
   }
 

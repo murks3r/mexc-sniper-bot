@@ -9,10 +9,7 @@
  * - Price data and market updates
  */
 
-import type {
-  RealtimeChannel,
-  RealtimePostgresChangesPayload,
-} from "@supabase/supabase-js";
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "@/src/db";
 
 // Type definitions for real-time events
@@ -101,19 +98,17 @@ export class SupabaseRealtimeManager {
    */
   private async checkConnectionHealth() {
     try {
-      const testChannel = supabase
-        .channel("health_check")
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            this.isConnected = true;
-            this.reconnectAttempts = 0;
-          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            this.isConnected = false;
-            this.handleReconnect();
-          }
-          // Clean up test channel
-          testChannel.unsubscribe();
-        });
+      const testChannel = supabase.channel("health_check").subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          this.isConnected = true;
+          this.reconnectAttempts = 0;
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          this.isConnected = false;
+          this.handleReconnect();
+        }
+        // Clean up test channel
+        testChannel.unsubscribe();
+      });
     } catch (error) {
       console.error("[Realtime] Connection health check failed:", error);
       this.isConnected = false;
@@ -134,7 +129,7 @@ export class SupabaseRealtimeManager {
     const delay = this.reconnectDelay * 2 ** (this.reconnectAttempts - 1);
 
     console.log(
-      `[Realtime] Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
+      `[Realtime] Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`,
     );
 
     setTimeout(() => {
@@ -152,10 +147,7 @@ export class SupabaseRealtimeManager {
         channel.unsubscribe();
         // The individual subscribe methods will recreate the channels
       } catch (error) {
-        console.error(
-          `[Realtime] Error resubscribing to ${channelName}:`,
-          error
-        );
+        console.error(`[Realtime] Error resubscribing to ${channelName}:`, error);
       }
     }
   }
@@ -163,10 +155,7 @@ export class SupabaseRealtimeManager {
   /**
    * Subscribe to trading transactions in real-time
    */
-  subscribeToTransactions(
-    userId: string,
-    callback: TradingDataCallback
-  ): () => void {
+  subscribeToTransactions(userId: string, callback: TradingDataCallback): () => void {
     const channelName = `transactions:${userId}`;
 
     const channel = supabase
@@ -188,7 +177,7 @@ export class SupabaseRealtimeManager {
             timestamp: new Date().toISOString(),
           };
           callback(update);
-        }
+        },
       )
       .subscribe((status) => {
         console.log(`[Realtime] Transactions subscription status: ${status}`);
@@ -205,10 +194,7 @@ export class SupabaseRealtimeManager {
   /**
    * Subscribe to portfolio balance updates
    */
-  subscribeToPortfolio(
-    userId: string,
-    callback: PortfolioUpdateCallback
-  ): () => void {
+  subscribeToPortfolio(userId: string, callback: PortfolioUpdateCallback): () => void {
     const channelName = `portfolio:${userId}`;
 
     const channel = supabase
@@ -233,7 +219,7 @@ export class SupabaseRealtimeManager {
             };
             callback(update);
           }
-        }
+        },
       )
       .subscribe((status) => {
         console.log(`[Realtime] Portfolio subscription status: ${status}`);
@@ -250,10 +236,7 @@ export class SupabaseRealtimeManager {
   /**
    * Subscribe to snipe target updates
    */
-  subscribeToSnipeTargets(
-    userId: string,
-    callback: SnipeTargetCallback
-  ): () => void {
+  subscribeToSnipeTargets(userId: string, callback: SnipeTargetCallback): () => void {
     const channelName = `snipe_targets:${userId}`;
 
     const channel = supabase
@@ -278,7 +261,7 @@ export class SupabaseRealtimeManager {
             };
             callback(update);
           }
-        }
+        },
       )
       .subscribe((status) => {
         console.log(`[Realtime] Snipe targets subscription status: ${status}`);
@@ -295,10 +278,7 @@ export class SupabaseRealtimeManager {
   /**
    * Subscribe to execution history updates
    */
-  subscribeToExecutionHistory(
-    userId: string,
-    callback: TradingDataCallback
-  ): () => void {
+  subscribeToExecutionHistory(userId: string, callback: TradingDataCallback): () => void {
     const channelName = `execution_history:${userId}`;
 
     const channel = supabase
@@ -320,12 +300,10 @@ export class SupabaseRealtimeManager {
             timestamp: new Date().toISOString(),
           };
           callback(update);
-        }
+        },
       )
       .subscribe((status) => {
-        console.log(
-          `[Realtime] Execution history subscription status: ${status}`
-        );
+        console.log(`[Realtime] Execution history subscription status: ${status}`);
       });
 
     this.channels.set(channelName, channel);
@@ -340,10 +318,7 @@ export class SupabaseRealtimeManager {
    * Subscribe to price updates via broadcast
    * Note: Price data typically comes from external sources and is broadcast
    */
-  subscribeToPriceUpdates(
-    symbols: string[],
-    callback: PriceUpdateCallback
-  ): () => void {
+  subscribeToPriceUpdates(symbols: string[], callback: PriceUpdateCallback): () => void {
     const channelName = `price_updates:${symbols.join(",")}`;
 
     const channel = supabase
@@ -369,10 +344,7 @@ export class SupabaseRealtimeManager {
   /**
    * Subscribe to system alerts and notifications
    */
-  subscribeToSystemAlerts(
-    userId: string,
-    callback: SystemAlertCallback
-  ): () => void {
+  subscribeToSystemAlerts(userId: string, callback: SystemAlertCallback): () => void {
     const channelName = `system_alerts:${userId}`;
 
     const channel = supabase
@@ -451,10 +423,7 @@ export class SupabaseRealtimeManager {
       try {
         channel.unsubscribe();
       } catch (error) {
-        console.error(
-          `[Realtime] Error unsubscribing from ${channelName}:`,
-          error
-        );
+        console.error(`[Realtime] Error unsubscribing from ${channelName}:`, error);
       }
     }
 
@@ -473,38 +442,28 @@ export class SupabaseRealtimeManager {
       onSnipeTarget?: SnipeTargetCallback;
       onExecution?: TradingDataCallback;
       onAlert?: SystemAlertCallback;
-    }
+    },
   ): () => void {
     const unsubscribeFunctions: (() => void)[] = [];
 
     if (callbacks.onTransaction) {
-      unsubscribeFunctions.push(
-        this.subscribeToTransactions(userId, callbacks.onTransaction)
-      );
+      unsubscribeFunctions.push(this.subscribeToTransactions(userId, callbacks.onTransaction));
     }
 
     if (callbacks.onPortfolio) {
-      unsubscribeFunctions.push(
-        this.subscribeToPortfolio(userId, callbacks.onPortfolio)
-      );
+      unsubscribeFunctions.push(this.subscribeToPortfolio(userId, callbacks.onPortfolio));
     }
 
     if (callbacks.onSnipeTarget) {
-      unsubscribeFunctions.push(
-        this.subscribeToSnipeTargets(userId, callbacks.onSnipeTarget)
-      );
+      unsubscribeFunctions.push(this.subscribeToSnipeTargets(userId, callbacks.onSnipeTarget));
     }
 
     if (callbacks.onExecution) {
-      unsubscribeFunctions.push(
-        this.subscribeToExecutionHistory(userId, callbacks.onExecution)
-      );
+      unsubscribeFunctions.push(this.subscribeToExecutionHistory(userId, callbacks.onExecution));
     }
 
     if (callbacks.onAlert) {
-      unsubscribeFunctions.push(
-        this.subscribeToSystemAlerts(userId, callbacks.onAlert)
-      );
+      unsubscribeFunctions.push(this.subscribeToSystemAlerts(userId, callbacks.onAlert));
     }
 
     // Return a function that unsubscribes from all

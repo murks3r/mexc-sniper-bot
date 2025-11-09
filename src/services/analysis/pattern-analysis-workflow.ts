@@ -139,8 +139,7 @@ export class PatternAnalysisWorkflow {
         includeHistorical: request.includeHistoricalAnalysis,
       };
 
-      const detectionResult =
-        await this.patternDetectionCore.analyzePatterns(detectionRequest);
+      const detectionResult = await this.patternDetectionCore.analyzePatterns(detectionRequest);
       componentsExecuted.push("pattern-detection");
 
       // Initialize result object
@@ -155,54 +154,35 @@ export class PatternAnalysisWorkflow {
       };
 
       // Phase 2: Embedding Analysis (if requested and patterns found)
-      if (
-        request.includeEmbeddingAnalysis &&
-        detectionResult.matches.length > 0
-      ) {
+      if (request.includeEmbeddingAnalysis && detectionResult.matches.length > 0) {
         try {
-          result.embeddingAnalysis = await this.performEmbeddingAnalysis(
-            detectionResult.matches
-          );
+          result.embeddingAnalysis = await this.performEmbeddingAnalysis(detectionResult.matches);
           componentsExecuted.push("embedding-analysis");
         } catch (error) {
-          console.warn(
-            "Embedding analysis failed, continuing without it",
-            toSafeError(error)
-          );
+          console.warn("Embedding analysis failed, continuing without it", toSafeError(error));
         }
       }
 
       // Phase 3: Trend Analysis (if requested)
       if (request.includeTrendAnalysis && detectionResult.matches.length > 0) {
         try {
-          result.trendAnalysis = await this.performTrendAnalysis(
-            detectionResult.matches
-          );
+          result.trendAnalysis = await this.performTrendAnalysis(detectionResult.matches);
           componentsExecuted.push("trend-analysis");
         } catch (error) {
-          console.warn(
-            "Trend analysis failed, continuing without it",
-            toSafeError(error)
-          );
+          console.warn("Trend analysis failed, continuing without it", toSafeError(error));
         }
       }
 
       // Phase 4: Historical Analysis (if requested)
-      if (
-        request.includeHistoricalAnalysis &&
-        detectionResult.matches.length > 0
-      ) {
+      if (request.includeHistoricalAnalysis && detectionResult.matches.length > 0) {
         try {
           result.historicalAnalysis = await this.performHistoricalAnalysis(
             detectionResult.matches,
-            request.timeRange
+            request.timeRange,
           );
           componentsExecuted.push("historical-analysis");
         } catch (error) {
-          console.warn(
-            "Historical analysis failed, continuing without it",
-            toSafeError(error)
-          );
+          console.warn("Historical analysis failed, continuing without it", toSafeError(error));
         }
       }
 
@@ -279,9 +259,7 @@ export class PatternAnalysisWorkflow {
           id: `${match.symbol}-${match.patternType}-${Date.now()}`,
           type: this.mapPatternTypeToEmbeddingType(match.patternType),
           timestamp:
-            typeof match.detectedAt === "number"
-              ? match.detectedAt
-              : match.detectedAt.getTime(),
+            typeof match.detectedAt === "number" ? match.detectedAt : match.detectedAt.getTime(),
           confidence: match.confidence / 100, // Convert to 0-1 range
           data: {
             symbol: match.symbol,
@@ -292,17 +270,15 @@ export class PatternAnalysisWorkflow {
           },
         };
 
-        const embedding =
-          await this.patternEmbeddingService.generateEmbedding(patternData);
+        const embedding = await this.patternEmbeddingService.generateEmbedding(patternData);
         return { pattern: match, embedding, patternData };
-      })
+      }),
     );
 
     // Find similar patterns for each detected pattern
     for (const { pattern, embedding, patternData } of embeddings) {
       try {
-        const _storedEmbedding =
-          await this.patternEmbeddingService.storePattern(patternData);
+        const _storedEmbedding = await this.patternEmbeddingService.storePattern(patternData);
 
         // For now, add self as similar pattern (in real implementation, this would query a database)
         similarPatterns.push({
@@ -311,18 +287,14 @@ export class PatternAnalysisWorkflow {
           historicalSuccess: pattern.historicalSuccess || 0.7,
         });
       } catch (error) {
-        console.warn(
-          "Failed to process embedding for pattern",
-          pattern.symbol,
-          error
-        );
+        console.warn("Failed to process embedding for pattern", pattern.symbol, error);
       }
     }
 
     // Simple clustering based on pattern types
     const patternTypes = Array.from(new Set(matches.map((m) => m.patternType)));
     const patternGroups = patternTypes.map((type) =>
-      matches.filter((m) => m.patternType === type).map((m) => m.symbol)
+      matches.filter((m) => m.patternType === type).map((m) => m.symbol),
     );
 
     return {
@@ -368,11 +340,10 @@ export class PatternAnalysisWorkflow {
       }));
 
       try {
-        const trendResult =
-          await this.patternEmbeddingService.detectPatternTrends(
-            patternType,
-            timeWindows
-          );
+        const trendResult = await this.patternEmbeddingService.detectPatternTrends(
+          patternType,
+          timeWindows,
+        );
 
         if (trendResult.trends.length > 0) {
           const avgTrend = trendResult.trends[trendResult.trends.length - 1]; // Most recent trend
@@ -384,10 +355,7 @@ export class PatternAnalysisWorkflow {
           });
         }
       } catch (error) {
-        console.warn(
-          `Trend analysis failed for pattern type ${patternType}`,
-          error
-        );
+        console.warn(`Trend analysis failed for pattern type ${patternType}`, error);
       }
     }
 
@@ -397,15 +365,11 @@ export class PatternAnalysisWorkflow {
 
     for (const trend of trends) {
       if (trend.strength > 0.7) {
-        insights.push(
-          `Strong ${trend.direction} trend detected for ${trend.patternType} patterns`
-        );
+        insights.push(`Strong ${trend.direction} trend detected for ${trend.patternType} patterns`);
       }
 
       if (trend.direction === "decreasing" && trend.strength > 0.6) {
-        alerts.push(
-          `Declining trend alert: ${trend.patternType} pattern confidence decreasing`
-        );
+        alerts.push(`Declining trend alert: ${trend.patternType} pattern confidence decreasing`);
       }
     }
 
@@ -417,7 +381,7 @@ export class PatternAnalysisWorkflow {
    */
   private async performHistoricalAnalysis(
     matches: PatternMatch[],
-    timeRange?: HistoricalTimeRange
+    timeRange?: HistoricalTimeRange,
   ) {
     const patternPerformance = new Map<
       string,
@@ -437,17 +401,14 @@ export class PatternAnalysisWorkflow {
     const analysisTimeRange = timeRange || defaultTimeRange;
 
     // Analyze each unique pattern type
-    const uniquePatternTypes = Array.from(
-      new Set(matches.map((m) => m.patternType))
-    );
+    const uniquePatternTypes = Array.from(new Set(matches.map((m) => m.patternType)));
 
     for (const patternType of uniquePatternTypes) {
       try {
-        const analysis =
-          await this.patternEmbeddingService.analyzeHistoricalPerformance(
-            patternType,
-            analysisTimeRange
-          );
+        const analysis = await this.patternEmbeddingService.analyzeHistoricalPerformance(
+          patternType,
+          analysisTimeRange,
+        );
 
         patternPerformance.set(patternType, {
           successRate: analysis.summary.successRate,
@@ -455,10 +416,7 @@ export class PatternAnalysisWorkflow {
           recommendations: analysis.recommendations,
         });
       } catch (error) {
-        console.warn(
-          `Historical analysis failed for pattern ${patternType}`,
-          error
-        );
+        console.warn(`Historical analysis failed for pattern ${patternType}`, error);
       }
     }
 
@@ -483,7 +441,7 @@ export class PatternAnalysisWorkflow {
    * Map pattern types to embedding types
    */
   private mapPatternTypeToEmbeddingType(
-    patternType: string
+    patternType: string,
   ): "price" | "volume" | "technical" | "market" {
     switch (patternType) {
       case "ready_state":
@@ -503,18 +461,14 @@ export class PatternAnalysisWorkflow {
    */
   private assessAnalysisQuality(
     result: WorkflowResult,
-    duration: number
+    duration: number,
   ): "high" | "medium" | "low" {
     let qualityScore = 0;
 
     // Pattern detection quality
     if (result.detectionResult.matches.length > 0) qualityScore += 3;
-    if (result.detectionResult.summary.averageConfidence > 80)
-      qualityScore += 2;
-    if (
-      result.detectionResult.correlations &&
-      result.detectionResult.correlations.length > 0
-    )
+    if (result.detectionResult.summary.averageConfidence > 80) qualityScore += 2;
+    if (result.detectionResult.correlations && result.detectionResult.correlations.length > 0)
       qualityScore += 1;
 
     // Additional analysis quality

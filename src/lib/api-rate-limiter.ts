@@ -18,7 +18,7 @@ export class ApiRateLimiter {
   }
 
   async checkLimit(
-    key: string
+    key: string,
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
     const now = Date.now();
     const limit = rateLimitMap.get(key);
@@ -71,7 +71,7 @@ export const RATE_LIMIT_CONFIGS = {
 // Rate limit wrapper function
 export function withRateLimit<T extends (...args: any[]) => any>(
   fn: T,
-  config?: RateLimitConfig
+  config?: RateLimitConfig,
 ): T {
   const rateLimiter = new ApiRateLimiter(config);
 
@@ -81,7 +81,7 @@ export function withRateLimit<T extends (...args: any[]) => any>(
 
     if (!result.allowed) {
       throw new Error(
-        `Rate limit exceeded. Try again in ${Math.ceil((result.resetTime - Date.now()) / 1000)} seconds`
+        `Rate limit exceeded. Try again in ${Math.ceil((result.resetTime - Date.now()) / 1000)} seconds`,
       );
     }
 

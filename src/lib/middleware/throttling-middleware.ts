@@ -34,7 +34,7 @@ export function createThrottlingMiddleware(config: ThrottleConfig) {
           error: "Too many requests",
           retryAfter: Math.ceil((record.resetTime - now) / 1000),
         },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -45,9 +45,7 @@ export function createThrottlingMiddleware(config: ThrottleConfig) {
 
 function getClientId(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded
-    ? forwarded.split(",")[0]
-    : request.headers.get("x-real-ip") || "unknown";
+  const ip = forwarded ? forwarded.split(",")[0] : request.headers.get("x-real-ip") || "unknown";
   return ip;
 }
 
@@ -60,9 +58,6 @@ export const defaultThrottlingMiddleware = createThrottlingMiddleware({
 export const connectionTracker = {
   getActiveConnections: () => requestMap.size,
   getTotalRequests: () =>
-    Array.from(requestMap.values()).reduce(
-      (total, record) => total + record.count,
-      0
-    ),
+    Array.from(requestMap.values()).reduce((total, record) => total + record.count, 0),
   clearTracking: () => requestMap.clear(),
 };

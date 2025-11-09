@@ -7,7 +7,6 @@
  * Architecture:
  * - Type-safe confidence scoring (0-100 range)
  * - Activity data enhancement
- * - AI integration capabilities
  * - Comprehensive validation framework
  */
 
@@ -17,10 +16,7 @@ import {
   calculateActivityBoost,
   hasHighPriorityActivity,
 } from "../../schemas/unified/mexc-api-schemas";
-import type {
-  CalendarEntry,
-  SymbolEntry,
-} from "../../services/api/mexc-unified-exports";
+import type { CalendarEntry, SymbolEntry } from "../../services/api/mexc-unified-exports";
 import type { IConfidenceCalculator } from "./interfaces";
 
 /**
@@ -37,12 +33,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
     warn: (message: string, context?: any) =>
       console.warn("[confidence-calculator]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[confidence-calculator]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[confidence-calculator]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[confidence-calculator]", message, context || ""),
   };
@@ -58,7 +49,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
    * Calculate Ready State Confidence
    *
    * Core confidence calculation for ready state patterns.
-   * Includes activity enhancement and AI integration.
+   * Includes activity enhancement.
    */
   async calculateReadyStateConfidence(symbol: SymbolEntry): Promise<number> {
     if (!symbol) {
@@ -81,10 +72,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
       try {
         const activities = await this.getActivityDataForSymbol(symbol);
         if (activities && activities.length > 0) {
-          confidence = this.enhanceConfidenceWithActivity(
-            confidence,
-            activities
-          );
+          confidence = this.enhanceConfidenceWithActivity(confidence, activities);
         }
       } catch (error) {
         const safeError = toSafeError(error);
@@ -94,16 +82,6 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
           errorStack: safeError.stack,
         });
         // Continue without activity enhancement
-      }
-
-      // AI Enhancement (future integration)
-      try {
-        const aiEnhancement = await this.getAIEnhancement(symbol, confidence);
-        if (aiEnhancement > 0) {
-          confidence += Math.min(aiEnhancement, 20); // Cap AI boost at 20 points
-        }
-      } catch (_error) {
-        // AI enhancement is optional - continue without it
       }
 
       // Historical success rate (minimal weight since ML provides better analysis)
@@ -124,7 +102,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
           symbol: symbol.cd || "unknown",
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       // Return base confidence on error
@@ -139,7 +117,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
    */
   async calculateAdvanceOpportunityConfidence(
     entry: CalendarEntry,
-    advanceHours: number
+    advanceHours: number,
   ): Promise<number> {
     if (!entry || typeof advanceHours !== "number") {
       return 0;
@@ -152,9 +130,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
       confidence += this.calculateAdvanceNoticeScore(advanceHours);
 
       // Project type assessment
-      const projectScore = this.getProjectTypeScore(
-        entry.projectName || entry.symbol
-      );
+      const projectScore = this.getProjectTypeScore(entry.projectName || entry.symbol);
       confidence += projectScore * 0.3;
 
       // Data completeness
@@ -180,7 +156,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
       const timing = this.assessLaunchTiming(
         typeof entry.firstOpenTime === "number"
           ? entry.firstOpenTime
-          : new Date(entry.firstOpenTime).getTime()
+          : new Date(entry.firstOpenTime).getTime(),
       );
 
       if (!timing.isWeekend) confidence += 5;
@@ -197,7 +173,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
           advanceHours,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       return 40; // Return base confidence on error
@@ -245,7 +221,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
           symbol: symbol.cd || "unknown",
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
 
       return { isPreReady: false, confidence: 0, estimatedTimeToReady: 0 };
@@ -268,14 +244,8 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
    *
    * Applies activity-based confidence enhancement.
    */
-  enhanceConfidenceWithActivity(
-    baseConfidence: number,
-    activities: ActivityData[]
-  ): number {
-    if (
-      !this.validateConfidenceScore(baseConfidence) ||
-      !Array.isArray(activities)
-    ) {
+  enhanceConfidenceWithActivity(baseConfidence: number, activities: ActivityData[]): number {
+    if (!this.validateConfidenceScore(baseConfidence) || !Array.isArray(activities)) {
       return baseConfidence;
     }
 
@@ -333,8 +303,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
     let score = 0;
 
     if (entry.projectName) score += 5;
-    if ((entry as any).tradingPairs && (entry as any).tradingPairs.length > 1)
-      score += 5;
+    if ((entry as any).tradingPairs && (entry as any).tradingPairs.length > 1) score += 5;
     if ((entry as any).sts !== undefined) score += 10;
 
     return score;
@@ -366,8 +335,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
     if (name.includes("defi") || name.includes("swap")) return "DeFi";
     if (name.includes("ai") || name.includes("artificial")) return "AI";
     if (name.includes("game") || name.includes("metaverse")) return "GameFi";
-    if (name.includes("layer") || name.includes("chain"))
-      return "Infrastructure";
+    if (name.includes("layer") || name.includes("chain")) return "Infrastructure";
     if (name.includes("meme")) return "Meme";
 
     return "Other";
@@ -392,7 +360,7 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
   }
 
   private async getActivityDataForSymbol(
-    symbolOrEntry: SymbolEntry | CalendarEntry
+    symbolOrEntry: SymbolEntry | CalendarEntry,
   ): Promise<ActivityData[]> {
     try {
       // Real implementation: fetch activity data from database or cache
@@ -408,25 +376,20 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
       if (!symbol) return [];
 
       // Import activity service dynamically to avoid circular dependencies
-      const { unifiedMexcService } = await import(
-        "../../services/api/unified-mexc-service-v2"
-      );
-      const activityResponse =
-        await unifiedMexcService.getRecentActivity(symbol);
+      const { unifiedMexcService } = await import("../../services/api/unified-mexc-service-v2");
+      const activityResponse = await unifiedMexcService.getRecentActivity(symbol);
       const recentActivities = activityResponse.success
         ? activityResponse.data?.activities || []
         : [];
 
       // Transform RecentActivityData structure to ActivityData structure
-      const activities: ActivityData[] = recentActivities.map(
-        (activity, index) => ({
-          currency: symbol.replace("USDT", ""),
-          activityId: `activity-${activity.timestamp}-${index}`,
-          currencyId: `${symbol.replace("USDT", "")}-id`,
-          activityType: activity.activityType.toUpperCase(),
-          symbol: symbol,
-        })
-      );
+      const activities: ActivityData[] = recentActivities.map((activity, index) => ({
+        currency: symbol.replace("USDT", ""),
+        activityId: `activity-${activity.timestamp}-${index}`,
+        currencyId: `${symbol.replace("USDT", "")}-id`,
+        activityType: activity.activityType.toUpperCase(),
+        symbol: symbol,
+      }));
 
       return activities;
     } catch (error) {
@@ -445,46 +408,11 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
     }
   }
 
-  private async getAIEnhancement(
-    symbol: SymbolEntry,
-    currentConfidence: number
-  ): Promise<number> {
-    try {
-      // Real implementation: integrate with AI intelligence service
-      const { aiIntelligenceService } = await import(
-        "../../services/ai/ai-intelligence-service"
-      );
 
-      const enhancement = await aiIntelligenceService.enhanceConfidence({
-        symbol: symbol.symbol || symbol.cd,
-        currentConfidence,
-        symbolData: symbol,
-        enhancementType: "confidence_boost",
-      });
-
-      // Cap enhancement between -10 and +15 points
-      return Math.max(-10, Math.min(15, enhancement.confidenceAdjustment || 0));
-    } catch (error) {
-      this.logger.warn("AI enhancement failed, using fallback", {
-        symbol: symbol.symbol || symbol.cd,
-        error: toSafeError(error).message,
-      });
-
-      // Fallback: small boost for symbols with good technical indicators
-      if (symbol.ps && symbol.ps > 80) return 3;
-      if (symbol.qs && symbol.qs > 70) return 2;
-      return 0;
-    }
-  }
-
-  private async getMarketConditionsAdjustment(
-    symbol: SymbolEntry
-  ): Promise<number> {
+  private async getMarketConditionsAdjustment(symbol: SymbolEntry): Promise<number> {
     try {
       // Get market conditions from risk engine
-      const { AdvancedRiskEngine } = await import(
-        "../../services/risk/advanced-risk-engine"
-      );
+      const { AdvancedRiskEngine } = await import("../../services/risk/advanced-risk-engine");
 
       // Create a new instance that might have been updated with market conditions
       const riskEngine = new AdvancedRiskEngine({
@@ -507,13 +435,10 @@ export class ConfidenceCalculator implements IConfidenceCalculator {
           symbolCode.includes("PUMPDUMP"))
       ) {
         adjustment -= 25; // Major confidence reduction for extreme volatility symbols
-        this.logger.warn(
-          "Extreme volatility symbol detected, reducing confidence",
-          {
-            symbolCode,
-            adjustment,
-          }
-        );
+        this.logger.warn("Extreme volatility symbol detected, reducing confidence", {
+          symbolCode,
+          adjustment,
+        });
       }
 
       // Additional checks for emergency conditions

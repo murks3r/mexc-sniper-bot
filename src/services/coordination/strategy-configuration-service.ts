@@ -13,7 +13,7 @@
 import { EventEmitter } from "node:events";
 import type { UserTradingPreferences } from "@/src/hooks/use-user-preferences";
 import { toSafeError } from "../../lib/error-type-utils";
-import type { EnhancedMexcOrchestrator } from "../../mexc-agents/coordination/enhanced-orchestrator";
+// Removed: EnhancedMexcOrchestrator - agents removed
 import { getCoreTrading } from "../trading/consolidated/core-trading/base-service";
 import { UserPreferencesService } from "../user/user-preferences-service";
 
@@ -67,11 +67,10 @@ export interface StrategyPerformanceMetrics {
 export class StrategyConfigurationService extends EventEmitter {
   private static instance: StrategyConfigurationService;
   private coreTrading: Record<string, unknown>;
-  private orchestrator: EnhancedMexcOrchestrator;
+  // Removed: orchestrator - agents removed
   private userPrefsService: UserPreferencesService;
   private currentStrategyContext: Map<string, StrategyContext> = new Map();
-  private performanceMetrics: Map<string, StrategyPerformanceMetrics> =
-    new Map();
+  private performanceMetrics: Map<string, StrategyPerformanceMetrics> = new Map();
 
   private logger = {
     info: (message: string, context?: unknown) =>
@@ -79,20 +78,14 @@ export class StrategyConfigurationService extends EventEmitter {
     warn: (message: string, context?: unknown) =>
       console.warn("[strategy-config-service]", message, context || ""),
     error: (message: string, context?: unknown, error?: Error) =>
-      console.error(
-        "[strategy-config-service]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[strategy-config-service]", message, context || "", error || ""),
     debug: (message: string, context?: unknown) =>
       console.debug("[strategy-config-service]", message, context || ""),
   };
 
   static getInstance(): StrategyConfigurationService {
     if (!StrategyConfigurationService.instance) {
-      StrategyConfigurationService.instance =
-        new StrategyConfigurationService();
+      StrategyConfigurationService.instance = new StrategyConfigurationService();
     }
     return StrategyConfigurationService.instance;
   }
@@ -100,21 +93,7 @@ export class StrategyConfigurationService extends EventEmitter {
   private constructor() {
     super();
     this.coreTrading = getCoreTrading() as any;
-    // Initialize orchestrator with proper fallback
-    try {
-      // EnhancedMexcOrchestrator requires dependencies that aren't available here
-      // Use mock orchestrator for now to avoid dependency issues
-      this.logger.warn(
-        "Using mock orchestrator due to dependency requirements"
-      );
-      this.orchestrator = this.createMockOrchestrator();
-    } catch (error) {
-      this.logger.warn(
-        "Failed to initialize EnhancedMexcOrchestrator, using mock",
-        { error }
-      );
-      this.orchestrator = this.createMockOrchestrator();
-    }
+    // Removed: orchestrator initialization - agents removed
     this.userPrefsService = new UserPreferencesService();
     this.setupEventListeners();
   }
@@ -137,7 +116,7 @@ export class StrategyConfigurationService extends EventEmitter {
         {
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
       throw safeError;
     }
@@ -146,10 +125,7 @@ export class StrategyConfigurationService extends EventEmitter {
   /**
    * Update strategy configuration for a user
    */
-  async updateUserStrategy(
-    userId: string,
-    preferences: UserTradingPreferences
-  ): Promise<void> {
+  async updateUserStrategy(userId: string, preferences: UserTradingPreferences): Promise<void> {
     try {
       this.logger.info("Updating user strategy", {
         userId,
@@ -163,11 +139,9 @@ export class StrategyConfigurationService extends EventEmitter {
       // 2. Update Core Trading Service configuration
       await this.syncCoreTrading(userId, strategyContext);
 
-      // 3. Update agent configurations
-      await this.syncAgentConfigurations(strategyContext);
+      // 3. Removed: Update agent configurations - agents removed
 
-      // 4. Update workflow parameters
-      await this.syncWorkflowParameters(strategyContext);
+      // 4. Removed: Update workflow parameters - agents removed
 
       // 5. Persist user preferences
       await this.userPrefsService.updateUserPreferences(userId, preferences);
@@ -190,7 +164,7 @@ export class StrategyConfigurationService extends EventEmitter {
           userId,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
       throw safeError;
     }
@@ -206,9 +180,7 @@ export class StrategyConfigurationService extends EventEmitter {
   /**
    * Get strategy performance metrics
    */
-  getStrategyPerformance(
-    strategyId: string
-  ): StrategyPerformanceMetrics | null {
+  getStrategyPerformance(strategyId: string): StrategyPerformanceMetrics | null {
     return this.performanceMetrics.get(strategyId) || null;
   }
 
@@ -227,8 +199,7 @@ export class StrategyConfigurationService extends EventEmitter {
     executionTimeMs: number;
   }): Promise<void> {
     try {
-      const { strategyId, success, pnlPercent, pnlUsdt, executionTimeMs } =
-        execution;
+      const { strategyId, success, pnlPercent, pnlUsdt, executionTimeMs } = execution;
 
       // Get or create performance metrics
       const metrics = this.performanceMetrics.get(strategyId) || {
@@ -253,16 +224,13 @@ export class StrategyConfigurationService extends EventEmitter {
         metrics.failedExecutions++;
       }
 
-      metrics.successRate =
-        (metrics.successfulExecutions / metrics.totalExecutions) * 100;
+      metrics.successRate = (metrics.successfulExecutions / metrics.totalExecutions) * 100;
       metrics.totalPnlUsdt += pnlUsdt;
       metrics.averagePnlPercent =
-        (metrics.averagePnlPercent * (metrics.totalExecutions - 1) +
-          pnlPercent) /
+        (metrics.averagePnlPercent * (metrics.totalExecutions - 1) + pnlPercent) /
         metrics.totalExecutions;
       metrics.averageExecutionTimeMs =
-        (metrics.averageExecutionTimeMs * (metrics.totalExecutions - 1) +
-          executionTimeMs) /
+        (metrics.averageExecutionTimeMs * (metrics.totalExecutions - 1) + executionTimeMs) /
         metrics.totalExecutions;
       metrics.lastUpdated = new Date();
 
@@ -288,7 +256,7 @@ export class StrategyConfigurationService extends EventEmitter {
           strategyId: execution.strategyId,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
     }
   }
@@ -306,9 +274,7 @@ export class StrategyConfigurationService extends EventEmitter {
     try {
       const strategyContext = this.getStrategyContext(userId);
       const coreStatus = await (this.coreTrading as any).getStatus();
-      const performanceData = await (
-        this.coreTrading as any
-      ).getPerformanceMetrics();
+      const performanceData = await (this.coreTrading as any).getPerformanceMetrics();
 
       return {
         currentStrategy: strategyContext?.strategyId || "unknown",
@@ -325,7 +291,7 @@ export class StrategyConfigurationService extends EventEmitter {
           userId,
           error: safeError.message,
         },
-        safeError
+        safeError,
       );
       throw safeError;
     }
@@ -350,9 +316,7 @@ export class StrategyConfigurationService extends EventEmitter {
     // });
   }
 
-  private convertPreferencesToContext(
-    preferences: UserTradingPreferences
-  ): StrategyContext {
+  private convertPreferencesToContext(preferences: UserTradingPreferences): StrategyContext {
     // Map UI preferences to strategy context
     const strategyMap = {
       conservative: {
@@ -383,9 +347,8 @@ export class StrategyConfigurationService extends EventEmitter {
     };
 
     const strategy =
-      strategyMap[
-        preferences.selectedExitStrategy as keyof typeof strategyMap
-      ] || strategyMap.normal;
+      strategyMap[preferences.selectedExitStrategy as keyof typeof strategyMap] ||
+      strategyMap.normal;
 
     return {
       strategyId: preferences.selectedExitStrategy || "normal",
@@ -399,10 +362,7 @@ export class StrategyConfigurationService extends EventEmitter {
     };
   }
 
-  private async syncCoreTrading(
-    userId: string,
-    context: StrategyContext
-  ): Promise<void> {
+  private async syncCoreTrading(userId: string, context: StrategyContext): Promise<void> {
     try {
       await (this.coreTrading as any).updateConfig({
         userId,
@@ -419,15 +379,11 @@ export class StrategyConfigurationService extends EventEmitter {
         strategy: context.strategyId,
       });
     } catch (error) {
-      throw new Error(
-        `Failed to sync Core Trading Service: ${toSafeError(error).message}`
-      );
+      throw new Error(`Failed to sync Core Trading Service: ${toSafeError(error).message}`);
     }
   }
 
-  private async syncAgentConfigurations(
-    context: StrategyContext
-  ): Promise<void> {
+  private async syncAgentConfigurations(context: StrategyContext): Promise<void> {
     try {
       const agentConfigs: AgentConfiguration = {
         "strategy-agent": {
@@ -486,15 +442,11 @@ export class StrategyConfigurationService extends EventEmitter {
         strategy: context.strategyId,
       });
     } catch (error) {
-      throw new Error(
-        `Failed to sync agent configurations: ${toSafeError(error).message}`
-      );
+      throw new Error(`Failed to sync agent configurations: ${toSafeError(error).message}`);
     }
   }
 
-  private async syncWorkflowParameters(
-    context: StrategyContext
-  ): Promise<void> {
+  private async syncWorkflowParameters(context: StrategyContext): Promise<void> {
     try {
       const workflowParams = {
         strategy: context.strategyId,
@@ -521,15 +473,8 @@ export class StrategyConfigurationService extends EventEmitter {
         strategy: context.strategyId,
       });
     } catch (error) {
-      throw new Error(
-        `Failed to sync workflow parameters: ${toSafeError(error).message}`
-      );
+      throw new Error(`Failed to sync workflow parameters: ${toSafeError(error).message}`);
     }
-  }
-
-  private handleAgentPerformanceUpdate(performance: any): void {
-    // Update agent routing based on performance
-    this.emit("agent-performance-updated", performance);
   }
 
   private createMockOrchestrator(): EnhancedMexcOrchestrator {
@@ -544,9 +489,7 @@ export class StrategyConfigurationService extends EventEmitter {
     } as any;
   }
 
-  private updateAgentConfigurationsFallback(
-    agentConfigs: AgentConfiguration
-  ): void {
+  private updateAgentConfigurationsFallback(agentConfigs: AgentConfiguration): void {
     // Store configurations for future reference
     this.logger.info("Using fallback agent configuration storage", {
       agentTypes: Object.keys(agentConfigs),

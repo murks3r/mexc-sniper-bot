@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "API key and secret key are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         error: "Credential test failed",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

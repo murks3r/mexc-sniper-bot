@@ -9,9 +9,7 @@ interface PatternMonitoringDashboardProps {
   className?: string;
 }
 
-export function PatternMonitoringDashboard({
-  className,
-}: PatternMonitoringDashboardProps) {
+export function PatternMonitoringDashboard({ className }: PatternMonitoringDashboardProps) {
   const [isMonitoring, setIsMonitoring] = useState(false);
 
   return (

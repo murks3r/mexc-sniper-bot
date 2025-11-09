@@ -13,22 +13,6 @@ import type {
 } from "./mexc-api-types";
 
 export class MexcRetryService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-retry-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-retry-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-retry-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-retry-service]", message, context || ""),
-  };
-
   private retryConfig: RetryConfig;
   private recentErrors: Error[] = [];
   private successRate = 1.0;
@@ -40,9 +24,7 @@ export class MexcRetryService {
       baseDelay: retryConfig.baseDelay || 1000,
       maxDelay: retryConfig.maxDelay || 30000,
       backoffMultiplier: retryConfig.backoffMultiplier || 2,
-      retryableStatusCodes: retryConfig.retryableStatusCodes || [
-        429, 500, 502, 503, 504,
-      ],
+      retryableStatusCodes: retryConfig.retryableStatusCodes || [429, 500, 502, 503, 504],
       jitterFactor: retryConfig.jitterFactor || 0.1,
       adaptiveRetry: retryConfig.adaptiveRetry ?? true,
     };
@@ -179,10 +161,7 @@ export class MexcRetryService {
   /**
    * Calculate retry delay with error classification
    */
-  calculateRetryDelayWithClassification(
-    attempt: number,
-    lastError: Error | null
-  ): number {
+  calculateRetryDelayWithClassification(attempt: number, lastError: Error | null): number {
     const baseDelay = this.calculateRetryDelay(attempt);
 
     if (!lastError) {
@@ -204,8 +183,7 @@ export class MexcRetryService {
       delay = Math.min(delay, this.retryConfig.maxDelay);
 
       // Add jitter
-      const jitter =
-        delay * this.retryConfig.jitterFactor * (Math.random() * 2 - 1);
+      const jitter = delay * this.retryConfig.jitterFactor * (Math.random() * 2 - 1);
       delay += jitter;
 
       return Math.max(delay, this.retryConfig.baseDelay);
@@ -260,7 +238,7 @@ export class MexcRetryService {
     delay = Math.min(delay, this.retryConfig.maxDelay);
 
     console.warn(
-      `Rate limited. Waiting ${delay}ms before retry. Remaining: ${rateLimitInfo.remaining}/${rateLimitInfo.limit}`
+      `Rate limited. Waiting ${delay}ms before retry. Remaining: ${rateLimitInfo.remaining}/${rateLimitInfo.limit}`,
     );
 
     await this.sleep(delay);
@@ -286,7 +264,7 @@ export class MexcRetryService {
 
     // Calculate success rate over recent requests
     const recentFailures = this.recentErrors.filter(
-      (error) => Date.now() - error.name.length < 300000 // Last 5 minutes
+      (error) => Date.now() - error.name.length < 300000, // Last 5 minutes
     ).length;
 
     // Approximate success rate based on recent failures
@@ -317,7 +295,7 @@ export class MexcRetryService {
   async executeWithRetry<T>(
     operation: () => Promise<T>,
     context: RequestContext,
-    maxRetries?: number
+    maxRetries?: number,
   ): Promise<T> {
     const retries = maxRetries || this.retryConfig.maxRetries;
     let lastError: Error | null = null;
@@ -337,10 +315,7 @@ export class MexcRetryService {
         }
 
         // Calculate delay for next retry
-        const baseDelay = this.calculateRetryDelayWithClassification(
-          attempt,
-          lastError
-        );
+        const baseDelay = this.calculateRetryDelayWithClassification(attempt, lastError);
         const adaptiveMultiplier = this.getAdaptiveRetryMultiplier();
         const delay = baseDelay * adaptiveMultiplier;
 
@@ -350,7 +325,7 @@ export class MexcRetryService {
             error: lastError.message,
             endpoint: context.endpoint,
             requestId: context.requestId,
-          }
+          },
         );
 
         await this.sleep(delay);

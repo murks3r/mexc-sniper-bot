@@ -7,12 +7,7 @@
 
 import { toSafeError } from "@/src/lib/error-type-utils";
 import type { TradingOrderData } from "@/src/services/api/unified-mexc-trading";
-import type {
-  ModuleContext,
-  Position,
-  TradeParameters,
-  TradeResult,
-} from "../types";
+import type { ModuleContext, Position, TradeParameters, TradeResult } from "../types";
 
 export class OrderExecutor {
   private context: ModuleContext;
@@ -24,9 +19,7 @@ export class OrderExecutor {
   /**
    * Execute trade via manual trading module
    */
-  async executeTradeViaManualModule(
-    params: TradeParameters
-  ): Promise<TradeResult> {
+  async executeTradeViaManualModule(params: TradeParameters): Promise<TradeResult> {
     try {
       this.context.logger.info("Executing trade via manual module", {
         symbol: params.symbol,
@@ -38,8 +31,7 @@ export class OrderExecutor {
         throw new Error("Manual trading module not available");
       }
 
-      const result =
-        await this.context.manualTradingModule.executeTrade(params);
+      const result = await this.context.manualTradingModule.executeTrade(params);
 
       this.context.logger.info("Manual trade execution completed", {
         success: result.success,
@@ -75,9 +67,7 @@ export class OrderExecutor {
       });
 
       // Simulate execution delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.random() * 100 + 50)
-      );
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 100 + 50));
 
       // Simulate success/failure based on market conditions
       const simulatedSuccess = Math.random() > 0.1; // 90% success rate for paper trading
@@ -174,9 +164,7 @@ export class OrderExecutor {
   /**
    * Perform pre-trade validation
    */
-  private async performPreTradeValidation(
-    params: TradeParameters
-  ): Promise<void> {
+  private async performPreTradeValidation(params: TradeParameters): Promise<void> {
     // Check account balance
     const balance = await this.context.mexcService.getAccountBalance();
     if (!balance.success) {
@@ -185,8 +173,7 @@ export class OrderExecutor {
 
     // Check if we have sufficient balance
     const requiredBalance = (params.quantity || 0) * (params.price || 0);
-    const assetToCheck =
-      params.side === "BUY" ? "USDT" : params.symbol.replace("USDT", "");
+    const assetToCheck = params.side === "BUY" ? "USDT" : params.symbol.replace("USDT", "");
     // balance.data is already an array of balance entries
     const balanceEntry = Array.isArray(balance.data)
       ? balance.data.find((b: any) => b.asset === assetToCheck)
@@ -195,14 +182,12 @@ export class OrderExecutor {
 
     if (availableBalance < requiredBalance) {
       throw new Error(
-        `Insufficient balance. Required: ${requiredBalance}, Available: ${availableBalance}`
+        `Insufficient balance. Required: ${requiredBalance}, Available: ${availableBalance}`,
       );
     }
 
     // Check symbol trading status
-    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(
-      params.symbol
-    );
+    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol);
     if (!symbolInfo.success) {
       throw new Error(`Failed to get symbol info for ${params.symbol}`);
     }
@@ -210,9 +195,7 @@ export class OrderExecutor {
     // Check market data availability
     const currentPrice = await this.getCurrentMarketPrice(params.symbol);
     if (!currentPrice) {
-      throw new Error(
-        `Unable to get current market price for ${params.symbol}`
-      );
+      throw new Error(`Unable to get current market price for ${params.symbol}`);
     }
 
     // Validate price is within reasonable bounds
@@ -220,14 +203,11 @@ export class OrderExecutor {
       const priceDiff = Math.abs(params.price - currentPrice) / currentPrice;
       if (priceDiff > 0.05) {
         // 5% price difference threshold
-        this.context.logger.warn(
-          "Order price significantly different from market price",
-          {
-            orderPrice: params.price,
-            marketPrice: currentPrice,
-            difference: priceDiff,
-          }
-        );
+        this.context.logger.warn("Order price significantly different from market price", {
+          orderPrice: params.price,
+          marketPrice: currentPrice,
+          difference: priceDiff,
+        });
       }
     }
   }
@@ -235,13 +215,9 @@ export class OrderExecutor {
   /**
    * Validate order parameters
    */
-  private async validateOrderParameters(
-    params: TradeParameters
-  ): Promise<void> {
+  private async validateOrderParameters(params: TradeParameters): Promise<void> {
     // Get symbol trading rules
-    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(
-      params.symbol
-    );
+    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol);
     if (!symbolInfo.success || !symbolInfo.data) {
       throw new Error(`Failed to get symbol info for ${params.symbol}`);
     }
@@ -270,37 +246,28 @@ export class OrderExecutor {
   /**
    * Execute order with retry logic
    */
-  private async executeOrderWithRetry(
-    params: TradeParameters
-  ): Promise<TradeResult> {
+  private async executeOrderWithRetry(params: TradeParameters): Promise<TradeResult> {
     const maxRetries = this.context.config.maxRetries || 3;
     const retryDelay = 1000; // Fixed retry delay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        this.context.logger.info(
-          `Order execution attempt ${attempt}/${maxRetries}`,
-          {
-            symbol: params.symbol,
-            side: params.side,
-            quantity: params.quantity,
-          }
-        );
+        this.context.logger.info(`Order execution attempt ${attempt}/${maxRetries}`, {
+          symbol: params.symbol,
+          side: params.side,
+          quantity: params.quantity,
+        });
 
         const orderData: TradingOrderData = {
           symbol: params.symbol,
           side: params.side.toUpperCase() as "BUY" | "SELL",
-          type:
-            params.type === "MARKET" || params.type === "LIMIT"
-              ? params.type
-              : "MARKET",
+          type: params.type === "MARKET" || params.type === "LIMIT" ? params.type : "MARKET",
           quantity: params.quantity?.toString() || "0",
           price: params.price?.toString(),
           timeInForce: params.timeInForce,
         };
 
-        const orderResult =
-          await this.context.mexcService.placeOrder(orderData);
+        const orderResult = await this.context.mexcService.placeOrder(orderData);
 
         if (orderResult.success && orderResult.data) {
           return {
@@ -310,14 +277,10 @@ export class OrderExecutor {
               symbol: params.symbol,
               side: params.side,
               type: orderResult.data.type || params.type || "MARKET",
-              quantity:
-                orderResult.data.quantity || params.quantity?.toString() || "0",
+              quantity: orderResult.data.quantity || params.quantity?.toString() || "0",
               price: orderResult.data.price || params.price?.toString() || "0",
               status: orderResult.data.status || "FILLED",
-              executedQty:
-                orderResult.data.executedQty ||
-                params.quantity?.toString() ||
-                "0",
+              executedQty: orderResult.data.executedQty || params.quantity?.toString() || "0",
               timestamp: new Date().toISOString(),
             },
             timestamp: new Date().toISOString(),
@@ -329,25 +292,19 @@ export class OrderExecutor {
         const safeError = toSafeError(error);
 
         if (attempt === maxRetries) {
-          this.context.logger.error(
-            "Order execution failed after all retries",
-            {
-              params,
-              attempt,
-              error: safeError,
-            }
-          );
+          this.context.logger.error("Order execution failed after all retries", {
+            params,
+            attempt,
+            error: safeError,
+          });
           throw error;
         }
 
-        this.context.logger.warn(
-          `Order execution attempt ${attempt} failed, retrying...`,
-          {
-            params,
-            error: safeError,
-            nextAttemptIn: retryDelay,
-          }
-        );
+        this.context.logger.warn(`Order execution attempt ${attempt} failed, retrying...`, {
+          params,
+          error: safeError,
+          nextAttemptIn: retryDelay,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
@@ -424,17 +381,13 @@ export class OrderExecutor {
   /**
    * Create position entry after successful trade
    */
-  async createPositionEntry(
-    params: TradeParameters,
-    result: TradeResult
-  ): Promise<Position> {
+  async createPositionEntry(params: TradeParameters, result: TradeResult): Promise<Position> {
     const position: Position = {
       id: result.data?.orderId || `pos_${Date.now()}`,
       symbol: params.symbol,
       side: params.side,
       orderId: result.data?.orderId || "",
-      quantity:
-        parseFloat(result.data?.executedQty || "0") || params.quantity || 0,
+      quantity: parseFloat(result.data?.executedQty || "0") || params.quantity || 0,
       entryPrice: parseFloat(result.data?.price || "0") || params.price || 0,
       currentPrice: parseFloat(result.data?.price || "0") || params.price || 0,
       timestamp: new Date().toISOString(),

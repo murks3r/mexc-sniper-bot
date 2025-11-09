@@ -62,11 +62,7 @@ export interface ApiContext {
   /** Success response helper */
   success: <T>(data: T, meta?: ApiResponse<T>["meta"]) => Response;
   /** Error response helper */
-  error: (
-    message: string,
-    status?: number,
-    meta?: ApiResponse["meta"]
-  ) => Response;
+  error: (message: string, status?: number, meta?: ApiResponse["meta"]) => Response;
   /** Validation error response helper */
   validationError: (field: string, message: string) => Response;
 }
@@ -108,10 +104,7 @@ export interface CacheConfig {
   /** Cache key generator function */
   keyGenerator?: (request: NextRequest, context: Partial<ApiContext>) => string;
   /** Cache bypass condition */
-  bypassCondition?: (
-    request: NextRequest,
-    context: Partial<ApiContext>
-  ) => boolean;
+  bypassCondition?: (request: NextRequest, context: Partial<ApiContext>) => boolean;
   /** Cache invalidation dependencies */
   dependencies?: string[];
   /** Cache freshness requirement */
@@ -119,16 +112,11 @@ export interface CacheConfig {
 }
 
 export type ValidationSchema = Record<string, ValidationRule>;
-export type ValidationRule =
-  | "required"
-  | "string"
-  | "number"
-  | "email"
-  | ValidationFunction;
+export type ValidationRule = "required" | "string" | "number" | "email" | ValidationFunction;
 export type ValidationFunction = (value: any, field: string, data: any) => any;
 export type MiddlewareFunction = (
   request: NextRequest,
-  context: Partial<ApiContext>
+  context: Partial<ApiContext>,
 ) => Promise<void>;
 
 export interface CorsConfig {
@@ -144,10 +132,7 @@ export interface LoggingConfig {
   logLevel?: "info" | "debug" | "warn" | "error";
 }
 
-export type ApiHandler = (
-  request: NextRequest,
-  context: ApiContext
-) => Promise<Response>;
+export type ApiHandler = (request: NextRequest, context: ApiContext) => Promise<Response>;
 
 // =======================
 // Core Middleware Factory
@@ -179,27 +164,19 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
           const rateLimitResponse = await applyRateLimitMiddleware(
             request,
             context,
-            config.rateLimit
+            config.rateLimit,
           );
           if (rateLimitResponse) return rateLimitResponse;
         }
 
         // Apply authentication
         if (config.auth && config.auth !== "none") {
-          const authResponse = await applyAuthMiddleware(
-            request,
-            context,
-            config.auth
-          );
+          const authResponse = await applyAuthMiddleware(request, context, config.auth);
           if (authResponse) return authResponse;
         }
 
         // Parse request body if needed
-        if (
-          config.parseBody ||
-          config.validation ||
-          config.userAccess === "body"
-        ) {
+        if (config.parseBody || config.validation || config.userAccess === "body") {
           context.body = await parseRequestBody(request);
         }
 
@@ -208,17 +185,14 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
           const userAccessResponse = await applyUserAccessMiddleware(
             request,
             context,
-            config.userAccess
+            config.userAccess,
           );
           if (userAccessResponse) return userAccessResponse;
         }
 
         // Apply request validation
         if (config.validation) {
-          const validationResponse = await applyValidationMiddleware(
-            context,
-            config.validation
-          );
+          const validationResponse = await applyValidationMiddleware(context, config.validation);
           if (validationResponse) return validationResponse;
         }
 
@@ -238,14 +212,14 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
           error: (
             message: string,
             status = HTTP_STATUS.BAD_REQUEST,
-            meta?: ApiResponse["meta"]
+            meta?: ApiResponse["meta"],
           ) => {
             return apiResponse(createErrorResponse(message, meta), status);
           },
           validationError: (field: string, message: string) => {
             return apiResponse(
               createValidationErrorResponse(field, message),
-              HTTP_STATUS.BAD_REQUEST
+              HTTP_STATUS.BAD_REQUEST,
             );
           },
         };
@@ -257,17 +231,9 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
 
         // Check cache before executing handler
         if (config.cache && request.method === "GET") {
-          const cachedResponse = await applyCacheMiddleware(
-            request,
-            completeContext,
-            config.cache
-          );
+          const cachedResponse = await applyCacheMiddleware(request, completeContext, config.cache);
           if (cachedResponse) {
-            logResponse(
-              completeContext,
-              cachedResponse,
-              Date.now() - startTime
-            );
+            logResponse(completeContext, cachedResponse, Date.now() - startTime);
             return cachedResponse;
           }
         }
@@ -276,11 +242,7 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
         const response = await handler(request, completeContext);
 
         // Cache response if caching is enabled
-        if (
-          config.cache &&
-          request.method === "GET" &&
-          response.status === 200
-        ) {
+        if (config.cache && request.method === "GET" && response.status === 200) {
           await cacheResponse(request, completeContext, response, config.cache);
         }
 
@@ -302,7 +264,7 @@ export function createApiHandler(config: MiddlewareConfig = {}) {
 async function applyCacheMiddleware(
   request: NextRequest,
   context: Partial<ApiContext>,
-  cacheConfig: CacheConfig | boolean
+  cacheConfig: CacheConfig | boolean,
 ): Promise<Response | null> {
   try {
     const config = typeof cacheConfig === "boolean" ? {} : cacheConfig;
@@ -333,7 +295,7 @@ async function applyCacheMiddleware(
         method: request.method,
         acceptStale: true,
         requiredFreshness: config.freshnessRequirement,
-      }
+      },
     );
 
     if (cached) {
@@ -342,10 +304,7 @@ async function applyCacheMiddleware(
       headers.set("Content-Type", "application/json");
       headers.set("X-Cache-Status", "HIT");
       headers.set("X-Cache-Level", cached.metadata.cacheLevel);
-      headers.set(
-        "X-Cache-Timestamp",
-        new Date(cached.metadata.timestamp).toISOString()
-      );
+      headers.set("X-Cache-Timestamp", new Date(cached.metadata.timestamp).toISOString());
       headers.set("X-Cache-Freshness", cached.metadata.freshness);
 
       return new Response(JSON.stringify(cached.data), {
@@ -365,7 +324,7 @@ async function cacheResponse(
   request: NextRequest,
   context: Partial<ApiContext>,
   response: Response,
-  cacheConfig: CacheConfig | boolean
+  cacheConfig: CacheConfig | boolean,
 ): Promise<void> {
   try {
     const config = typeof cacheConfig === "boolean" ? {} : cacheConfig;
@@ -401,10 +360,7 @@ async function cacheResponse(
   }
 }
 
-function generateDefaultCacheKey(
-  request: NextRequest,
-  context: Partial<ApiContext>
-): string {
+function generateDefaultCacheKey(request: NextRequest, context: Partial<ApiContext>): string {
   const url = new URL(request.url);
   const components = [
     request.method,
@@ -418,23 +374,21 @@ function generateDefaultCacheKey(
 
 async function applyCorsMiddleware(
   request: NextRequest,
-  corsConfig: CorsConfig | boolean
+  corsConfig: CorsConfig | boolean,
 ): Promise<Response | null> {
   if (request.method === "OPTIONS") {
     const config = typeof corsConfig === "boolean" ? {} : corsConfig;
     const headers = new Headers();
 
-    const origin = Array.isArray(config.origin)
-      ? config.origin[0]
-      : config.origin;
+    const origin = Array.isArray(config.origin) ? config.origin[0] : config.origin;
     headers.set("Access-Control-Allow-Origin", origin || "*");
     headers.set(
       "Access-Control-Allow-Methods",
-      config.methods?.join(", ") || "GET, POST, PUT, DELETE, OPTIONS"
+      config.methods?.join(", ") || "GET, POST, PUT, DELETE, OPTIONS",
     );
     headers.set(
       "Access-Control-Allow-Headers",
-      config.headers?.join(", ") || "Content-Type, Authorization"
+      config.headers?.join(", ") || "Content-Type, Authorization",
     );
 
     if (config.credentials) {
@@ -449,12 +403,10 @@ async function applyCorsMiddleware(
 async function applyRateLimitMiddleware(
   _request: NextRequest,
   context: Partial<ApiContext>,
-  rateLimitConfig: NonNullable<MiddlewareConfig["rateLimit"]>
+  rateLimitConfig: NonNullable<MiddlewareConfig["rateLimit"]>,
 ): Promise<Response | null> {
   const config =
-    typeof rateLimitConfig === "string"
-      ? { type: rateLimitConfig, skip: false }
-      : rateLimitConfig;
+    typeof rateLimitConfig === "string" ? { type: rateLimitConfig, skip: false } : rateLimitConfig;
 
   if (config.skip) return null;
 
@@ -464,7 +416,7 @@ async function applyRateLimitMiddleware(
     context.endpoint!,
     rateLimitType as "general" | "auth" | "authStrict",
     context.userAgent,
-    context.user?.id
+    context.user?.id,
   );
 
   if (!rateLimitResult.success) {
@@ -490,7 +442,7 @@ async function applyRateLimitMiddleware(
 async function applyAuthMiddleware(
   request: NextRequest,
   context: Partial<ApiContext>,
-  authConfig: NonNullable<MiddlewareConfig["auth"]>
+  authConfig: NonNullable<MiddlewareConfig["auth"]>,
 ): Promise<Response | null> {
   try {
     switch (authConfig) {
@@ -513,9 +465,7 @@ async function applyAuthMiddleware(
         // Basic admin check - for now, any authenticated user with valid credentials
         // Future: Implement proper role-based access control with admin role in database
         if (!context.user || !context.user.id) {
-          throw new Error(
-            "Admin authentication failed - no valid user context"
-          );
+          throw new Error("Admin authentication failed - no valid user context");
         }
 
         // Additional admin validation could be added here
@@ -553,14 +503,12 @@ async function applyAuthMiddleware(
 async function applyUserAccessMiddleware(
   request: NextRequest,
   context: Partial<ApiContext>,
-  userAccessConfig: "query" | "body"
+  userAccessConfig: "query" | "body",
 ): Promise<Response | null> {
   if (!context.user) {
     return apiResponse(
-      createAuthErrorResponse(
-        "Authentication required for user access validation"
-      ),
-      HTTP_STATUS.UNAUTHORIZED
+      createAuthErrorResponse("Authentication required for user access validation"),
+      HTTP_STATUS.UNAUTHORIZED,
     );
   }
 
@@ -586,7 +534,7 @@ async function applyUserAccessMiddleware(
 
 async function applyValidationMiddleware(
   context: Partial<ApiContext>,
-  validation: ValidationSchema | ValidationFunction
+  validation: ValidationSchema | ValidationFunction,
 ): Promise<Response | null> {
   try {
     if (typeof validation === "function") {
@@ -600,11 +548,8 @@ async function applyValidationMiddleware(
   } catch (error) {
     if (error instanceof ValidationError) {
       return apiResponse(
-        createValidationErrorResponse(
-          error.field || "validation",
-          error.message
-        ),
-        HTTP_STATUS.BAD_REQUEST
+        createValidationErrorResponse(error.field || "validation", error.message),
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
     throw error;
@@ -637,17 +582,11 @@ async function parseRequestBody(request: NextRequest): Promise<any> {
   }
 }
 
-function validateWithSchema(
-  data: Record<string, any>,
-  schema: ValidationSchema
-): void {
+function validateWithSchema(data: Record<string, any>, schema: ValidationSchema): void {
   for (const [field, rule] of Object.entries(schema)) {
     const value = data[field];
 
-    if (
-      rule === "required" &&
-      (value === undefined || value === null || value === "")
-    ) {
+    if (rule === "required" && (value === undefined || value === null || value === "")) {
       throw new ValidationError(`${field} is required`, field);
     }
 
@@ -674,37 +613,9 @@ function isValidEmail(email: string): boolean {
 }
 
 class ValidationError extends Error {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-
-  private get logger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[api-middleware]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[api-middleware]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error(
-            "[api-middleware]",
-            message,
-            context || "",
-            error || ""
-          ),
-        debug: (message: string, context?: any) =>
-          console.debug("[api-middleware]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
-
   constructor(
     message: string,
-    public field?: string
+    public field?: string,
   ) {
     super(message);
     this.name = "ValidationError";
@@ -714,7 +625,7 @@ class ValidationError extends Error {
 function logRequest(
   request: NextRequest,
   context: ApiContext,
-  loggingConfig: boolean | LoggingConfig
+  loggingConfig: boolean | LoggingConfig,
 ): void {
   const config = typeof loggingConfig === "boolean" ? {} : loggingConfig;
   const logData: any = {
@@ -736,11 +647,7 @@ function logRequest(
   console.info("[API Request]", logData);
 }
 
-function logResponse(
-  context: ApiContext,
-  response: Response,
-  duration: number
-): void {
+function logResponse(context: ApiContext, response: Response, duration: number): void {
   console.info("[API Response]", {
     endpoint: context.endpoint,
     status: response.status,
@@ -752,7 +659,7 @@ function logResponse(
 function handleMiddlewareError(
   error: unknown,
   context: Partial<ApiContext>,
-  duration: number
+  duration: number,
 ): Response {
   console.error("[API Middleware Error]", {
     endpoint: context.endpoint,
@@ -777,16 +684,15 @@ export const publicHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
 /**
  * Creates an authenticated API handler
  */
-export const authenticatedHandler = (
-  config: Omit<MiddlewareConfig, "auth"> = {}
-) => createApiHandler({ ...config, auth: "required" });
+export const authenticatedHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
+  createApiHandler({ ...config, auth: "required" });
 
 /**
  * Creates a user-specific API handler (validates user access)
  */
 export const userHandler = (
   userAccess: "query" | "body" = "query",
-  config: Omit<MiddlewareConfig, "auth" | "userAccess"> = {}
+  config: Omit<MiddlewareConfig, "auth" | "userAccess"> = {},
 ) => createApiHandler({ ...config, auth: "user-access", userAccess });
 
 /**
@@ -798,9 +704,7 @@ export const adminHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
 /**
  * Creates a handler for sensitive data operations
  */
-export const sensitiveDataHandler = (
-  config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}
-) =>
+export const sensitiveDataHandler = (config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}) =>
   createApiHandler({
     ...config,
     auth: "required",
@@ -811,9 +715,7 @@ export const sensitiveDataHandler = (
 /**
  * Creates a trading API handler with enhanced security
  */
-export const tradingHandler = (
-  config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}
-) =>
+export const tradingHandler = (config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}) =>
   createApiHandler({
     ...config,
     auth: "required",
@@ -827,7 +729,7 @@ export const tradingHandler = (
  */
 export const cachedHandler = (
   cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "cache"> = {}
+  config: Omit<MiddlewareConfig, "cache"> = {},
 ) =>
   createApiHandler({
     ...config,
@@ -839,7 +741,7 @@ export const cachedHandler = (
  */
 export const cachedPublicHandler = (
   cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "auth" | "cache"> = {}
+  config: Omit<MiddlewareConfig, "auth" | "cache"> = {},
 ) =>
   createApiHandler({
     ...config,
@@ -852,7 +754,7 @@ export const cachedPublicHandler = (
  */
 export const cachedAuthenticatedHandler = (
   cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "auth" | "cache"> = {}
+  config: Omit<MiddlewareConfig, "auth" | "cache"> = {},
 ) =>
   createApiHandler({
     ...config,
@@ -864,7 +766,7 @@ export const cachedAuthenticatedHandler = (
  * Creates a high-performance cached handler for frequently accessed data
  */
 export const highPerformanceHandler = (
-  config: Omit<MiddlewareConfig, "cache" | "rateLimit"> = {}
+  config: Omit<MiddlewareConfig, "cache" | "rateLimit"> = {},
 ) =>
   createApiHandler({
     ...config,
@@ -872,8 +774,7 @@ export const highPerformanceHandler = (
       enabled: true,
       ttl: 5 * 60 * 1000, // 5 minutes
       freshnessRequirement: "moderate",
-      bypassCondition: (request) =>
-        request.headers.get("cache-control") === "no-cache",
+      bypassCondition: (request) => request.headers.get("cache-control") === "no-cache",
     },
     rateLimit: "general",
   });
@@ -897,9 +798,7 @@ export const realTimeHandler = (config: Omit<MiddlewareConfig, "cache"> = {}) =>
 /**
  * Creates a data-heavy handler with aggressive caching
  */
-export const dataHeavyHandler = (
-  config: Omit<MiddlewareConfig, "cache"> = {}
-) =>
+export const dataHeavyHandler = (config: Omit<MiddlewareConfig, "cache"> = {}) =>
   createApiHandler({
     ...config,
     cache: {

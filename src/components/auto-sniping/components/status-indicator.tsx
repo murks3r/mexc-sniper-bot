@@ -4,13 +4,7 @@
  * Displays execution status with appropriate icon and styling
  */
 
-import {
-  Clock,
-  PauseCircle,
-  PlayCircle,
-  StopCircle,
-  XCircle,
-} from "lucide-react";
+import { Clock, PauseCircle, PlayCircle, StopCircle, XCircle } from "lucide-react";
 
 interface StatusIndicatorProps {
   status: string;
@@ -41,9 +35,7 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
   return (
     <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bg}`}>
       <Icon className={`h-5 w-5 ${color}`} />
-      <span className={`text-sm font-medium ${color}`}>
-        {status.toUpperCase()}
-      </span>
+      <span className={`text-sm font-medium ${color}`}>{status.toUpperCase()}</span>
     </div>
   );
 }

@@ -22,10 +22,7 @@ const StartSnipingInputSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
   symbol: z.string().min(1, "Symbol is required"),
   strategy: z.string().optional(),
-  confidenceScore: z
-    .number()
-    .min(0)
-    .max(100, "Confidence score must be between 0-100"),
+  confidenceScore: z.number().min(0).max(100, "Confidence score must be between 0-100"),
   positionSizeUsdt: z.number().positive("Position size must be positive"),
   stopLossPercent: z.number().positive().max(100).optional(),
   takeProfitPercent: z.number().positive().optional(),
@@ -53,7 +50,7 @@ export class StartSnipingUseCase {
       warn: (message: string, context?: any) => void;
       error: (message: string, context?: any) => void;
       debug: (message: string, context?: any) => void;
-    }
+    },
   ) {}
 
   async execute(input: StartSnipingInput): Promise<StartSnipingOutput> {
@@ -73,10 +70,7 @@ export class StartSnipingUseCase {
       const savedTrade = await this.tradingRepository.saveTrade(trade);
 
       // Start execution
-      const _executionResult = await this.executeTradeStart(
-        savedTrade,
-        validatedInput
-      );
+      const _executionResult = await this.executeTradeStart(savedTrade, validatedInput);
 
       // Update trade with execution details
       const updatedTrade = savedTrade.startExecution();
@@ -120,11 +114,7 @@ export class StartSnipingUseCase {
 
     if (!result.success) {
       const firstError = result.error.errors[0];
-      throw new DomainValidationError(
-        firstError.path.join("."),
-        input,
-        firstError.message
-      );
+      throw new DomainValidationError(firstError.path.join("."), input, firstError.message);
     }
 
     return result.data;
@@ -136,21 +126,22 @@ export class StartSnipingUseCase {
     if (!canTrade) {
       throw new BusinessRuleViolationError(
         `Symbol ${input.symbol} is not available for trading`,
-        `StartSniping: ${input.symbol}`
+        `StartSniping: ${input.symbol}`,
       );
     }
 
     // Check for active trades on the same symbol for the user
-    const activeTradesForSymbol =
-      await this.tradingRepository.findActiveTradesByUserId(input.userId);
+    const activeTradesForSymbol = await this.tradingRepository.findActiveTradesByUserId(
+      input.userId,
+    );
     const existingTradeForSymbol = activeTradesForSymbol.find(
-      (trade) => trade.symbol === input.symbol && trade.isAutoSnipe
+      (trade) => trade.symbol === input.symbol && trade.isAutoSnipe,
     );
 
     if (existingTradeForSymbol) {
       throw new BusinessRuleViolationError(
         `Auto-sniping already active for symbol ${input.symbol}`,
-        `User: ${input.userId}, Existing Trade: ${existingTradeForSymbol.id}`
+        `User: ${input.userId}, Existing Trade: ${existingTradeForSymbol.id}`,
       );
     }
 
@@ -158,19 +149,17 @@ export class StartSnipingUseCase {
     if (input.confidenceScore < 50) {
       throw new BusinessRuleViolationError(
         "Confidence score too low for auto-sniping (minimum 50%)",
-        `Confidence: ${input.confidenceScore}%`
+        `Confidence: ${input.confidenceScore}%`,
       );
     }
 
     // Check maximum concurrent positions
-    const activeTrades = await this.tradingRepository.findActiveTradesByUserId(
-      input.userId
-    );
+    const activeTrades = await this.tradingRepository.findActiveTradesByUserId(input.userId);
     if (activeTrades.length >= 10) {
       // Business rule: max 10 concurrent positions
       throw new BusinessRuleViolationError(
         "Maximum concurrent positions reached (10)",
-        `User: ${input.userId}, Active: ${activeTrades.length}`
+        `User: ${input.userId}, Active: ${activeTrades.length}`,
       );
     }
   }
@@ -189,15 +178,10 @@ export class StartSnipingUseCase {
     });
   }
 
-  private async executeTradeStart(
-    trade: Trade,
-    input: StartSnipingInput
-  ): Promise<void> {
+  private async executeTradeStart(trade: Trade, input: StartSnipingInput): Promise<void> {
     try {
       // Get current market price for reference
-      const currentPrice = await this.tradingService.getCurrentPrice(
-        input.symbol
-      );
+      const currentPrice = await this.tradingService.getCurrentPrice(input.symbol);
 
       this.logger.info("Trade execution initialized", {
         tradeId: trade.id,
@@ -213,7 +197,7 @@ export class StartSnipingUseCase {
       const safeError = toSafeError(error);
       throw new InvalidTradeParametersError(
         "executionSetup",
-        `Failed to initialize trade execution: ${safeError.message}`
+        `Failed to initialize trade execution: ${safeError.message}`,
       );
     }
   }
@@ -226,11 +210,8 @@ export class StartSnipingUseCase {
     maxAllowed: number;
   }> {
     try {
-      const activeTrades =
-        await this.tradingRepository.findActiveTradesByUserId(userId);
-      const activeSnipeTrades = activeTrades.filter(
-        (trade) => trade.isAutoSnipe
-      );
+      const activeTrades = await this.tradingRepository.findActiveTradesByUserId(userId);
+      const activeSnipeTrades = activeTrades.filter((trade) => trade.isAutoSnipe);
       const maxAllowed = 10;
 
       if (activeSnipeTrades.length >= maxAllowed) {

@@ -132,13 +132,9 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
   private performanceMonitoring?: PerformanceMonitoringService;
   private analytics: CacheAnalytics;
   private eventCallbacks: Map<string, CacheEventCallback[]> = new Map();
-  private accessPatterns: Map<
-    string,
-    { count: number; lastAccess: number; frequency: number }
-  > = new Map();
-  private warmingQueue: Set<string> = new Set();
-  private compressionCache: Map<string, { compressed: string; original: any }> =
+  private accessPatterns: Map<string, { count: number; lastAccess: number; frequency: number }> =
     new Map();
+  private warmingQueue: Set<string> = new Set();
   private nodeId: string;
   private timeSeriesBuffer: Array<{
     timestamp: number;
@@ -162,8 +158,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
       eventInvalidation: options.eventInvalidation ?? true,
       invalidationPatterns: options.invalidationPatterns ?? [],
       analyticsEnabled: options.analyticsEnabled ?? true,
-      metricsRetentionPeriod:
-        options.metricsRetentionPeriod ?? 24 * 60 * 60 * 1000, // 24 hours
+      metricsRetentionPeriod: options.metricsRetentionPeriod ?? 24 * 60 * 60 * 1000, // 24 hours
       distributedEnabled: options.distributedEnabled ?? false,
       nodeId: options.nodeId ?? `node-${Date.now()}`,
       serializationEnabled: options.serializationEnabled ?? false,
@@ -204,10 +199,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
   /**
    * Enhanced get method with performance monitoring and analytics
    */
-  async get<T>(
-    key: string,
-    category: string = "default"
-  ): Promise<T | undefined> {
+  async get<T>(key: string, category: string = "default"): Promise<T | undefined> {
     const startTime = performance.now();
 
     try {
@@ -236,10 +228,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
         this.currentMetrics.misses++;
 
         // Trigger warming if enabled
-        if (
-          this.options.warmingEnabled &&
-          this.options.warmingStrategy === "predictive"
-        ) {
+        if (this.options.warmingEnabled && this.options.warmingStrategy === "predictive") {
           this.scheduleWarming(key, category);
         }
       }
@@ -249,10 +238,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
 
       // Performance monitoring
       if (this.performanceMonitoring) {
-        this.performanceMonitoring.recordMetric(
-          "cache_operation_time",
-          duration
-        );
+        this.performanceMonitoring.recordMetric("cache_operation_time", duration);
       }
 
       return result;
@@ -261,10 +247,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
 
       if (this.performanceMonitoring) {
         this.performanceMonitoring.incrementCounter("cache_errors");
-        this.performanceMonitoring.recordMetric(
-          "cache_operation_time",
-          duration
-        );
+        this.performanceMonitoring.recordMetric("cache_operation_time", duration);
       }
 
       throw error;
@@ -274,17 +257,12 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
   /**
    * Enhanced set method with compression and analytics
    */
-  async set<T>(
-    key: string,
-    value: T,
-    category: string = "default",
-    ttl?: number
-  ): Promise<void> {
+  async set<T>(key: string, value: T, category: string = "default", ttl?: number): Promise<void> {
     const startTime = performance.now();
 
     try {
       let finalValue = value;
-      let compressedSize: number | undefined;
+      let _compressedSize: number | undefined;
       let originalSize: number | undefined;
 
       // Apply compression if enabled
@@ -292,7 +270,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
         const compressed = await this.compressValue(value);
         if (compressed) {
           finalValue = compressed.compressed as T;
-          compressedSize = compressed.compressedSize;
+          _compressedSize = compressed.compressedSize;
           originalSize = compressed.originalSize;
         }
       }
@@ -340,7 +318,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
    * Cache warming functionality
    */
   async warmCache(
-    keys: Array<{ key: string; category: string; loader: () => Promise<any> }>
+    keys: Array<{ key: string; category: string; loader: () => Promise<any> }>,
   ): Promise<void> {
     if (!this.options.warmingEnabled) return;
 
@@ -372,7 +350,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
     if (!this.eventCallbacks.has(event)) {
       this.eventCallbacks.set(event, []);
     }
-    this.eventCallbacks.get(event)!.push(callback);
+    this.eventCallbacks.get(event)?.push(callback);
   }
 
   /**
@@ -392,14 +370,14 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
    * Bulk cache operations
    */
   async getMultiple<T>(
-    keys: Array<{ key: string; category?: string }>
+    keys: Array<{ key: string; category?: string }>,
   ): Promise<Array<{ key: string; value: T | undefined; category: string }>> {
     const results = await Promise.all(
       keys.map(async ({ key, category = "default" }) => ({
         key,
         value: await this.get<T>(key, category),
         category,
-      }))
+      })),
     );
 
     return results;
@@ -409,12 +387,12 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
    * Set multiple cache entries at once
    */
   async setMultiple<T>(
-    entries: Array<{ key: string; value: T; category?: string; ttl?: number }>
+    entries: Array<{ key: string; value: T; category?: string; ttl?: number }>,
   ): Promise<void> {
     await Promise.all(
       entries.map(({ key, value, category = "default", ttl }) =>
-        this.set(key, value, category, ttl)
-      )
+        this.set(key, value, category, ttl),
+      ),
     );
   }
 
@@ -461,30 +439,22 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
 
     if (hitRate < 0.7) {
       status = "warning";
-      recommendations.push(
-        "Consider cache warming or reviewing cache strategy"
-      );
+      recommendations.push("Consider cache warming or reviewing cache strategy");
     }
 
     if (responseTime > 100) {
       status = "warning";
-      recommendations.push(
-        "High response times detected - consider optimization"
-      );
+      recommendations.push("High response times detected - consider optimization");
     }
 
     if (errorRate > 0.05) {
       status = "critical";
-      recommendations.push(
-        "High error rate detected - investigate immediately"
-      );
+      recommendations.push("High error rate detected - investigate immediately");
     }
 
     if (memoryUsage > 0.8) {
       status = "critical";
-      recommendations.push(
-        "Memory usage is high - consider increasing cache size or reducing TTL"
-      );
+      recommendations.push("Memory usage is high - consider increasing cache size or reducing TTL");
     }
 
     return {
@@ -528,10 +498,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
   /**
    * Import cache data
    */
-  async importCache(exportData: {
-    data: Record<string, any>;
-    timestamp: number;
-  }): Promise<void> {
+  async importCache(exportData: { data: Record<string, any>; timestamp: number }): Promise<void> {
     for (const [category, categoryData] of Object.entries(exportData.data)) {
       for (const [key, value] of Object.entries(categoryData)) {
         await this.set(key, value, category);
@@ -554,10 +521,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
     this.accessPatterns.set(patternKey, {
       count: existing.count + 1,
       lastAccess: now,
-      frequency:
-        timeSinceLastAccess > 0
-          ? existing.count / (timeSinceLastAccess / 1000)
-          : 0,
+      frequency: timeSinceLastAccess > 0 ? existing.count / (timeSinceLastAccess / 1000) : 0,
     });
   }
 
@@ -601,11 +565,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
     }
   }
 
-  private updateCategoryStats(
-    category: string,
-    action: "get" | "set",
-    duration: number
-  ): void {
+  private updateCategoryStats(category: string, _action: "get" | "set", duration: number): void {
     if (!this.analytics.categoryStats[category]) {
       this.analytics.categoryStats[category] = {
         hits: 0,
@@ -634,9 +594,7 @@ export class EnhancedUnifiedCacheSystem extends UnifiedCacheSystem {
 
     // Keep only recent data
     const cutoff = Date.now() - this.options.metricsRetentionPeriod;
-    this.timeSeriesBuffer = this.timeSeriesBuffer.filter(
-      (entry) => entry.timestamp > cutoff
-    );
+    this.timeSeriesBuffer = this.timeSeriesBuffer.filter((entry) => entry.timestamp > cutoff);
 
     this.analytics.timeSeriesData = [...this.timeSeriesBuffer];
 
@@ -686,7 +644,7 @@ export function getEnhancedUnifiedCache(): EnhancedUnifiedCacheSystem {
  * Create a new enhanced cache instance
  */
 export function createEnhancedUnifiedCache(
-  options?: EnhancedCacheOptions
+  options?: EnhancedCacheOptions,
 ): EnhancedUnifiedCacheSystem {
   return new EnhancedUnifiedCacheSystem(options);
 }

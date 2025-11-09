@@ -12,11 +12,7 @@
  */
 
 import { z } from "zod";
-import type {
-  ActivityData,
-  CalendarEntry,
-  SymbolEntry,
-} from "./mexc-api-schemas";
+import type { ActivityData, CalendarEntry, SymbolEntry } from "./mexc-api-schemas";
 
 // ============================================================================
 // Core Pattern Types
@@ -44,12 +40,7 @@ export const ActivityInfoSchema = z.object({
 });
 
 export const PatternMatchSchema = z.object({
-  patternType: z.enum([
-    "ready_state",
-    "pre_ready",
-    "launch_sequence",
-    "risk_warning",
-  ]),
+  patternType: z.enum(["ready_state", "pre_ready", "launch_sequence", "risk_warning"]),
   confidence: z.number().min(0).max(100).describe("0-100 confidence score"),
   symbol: z.string(),
   vcoinId: z.string().optional(),
@@ -64,13 +55,7 @@ export const PatternMatchSchema = z.object({
   detectedAt: z.date(),
   advanceNoticeHours: z.number(),
   riskLevel: z.enum(["low", "medium", "high"]),
-  recommendation: z.enum([
-    "immediate_action",
-    "monitor_closely",
-    "prepare_entry",
-    "wait",
-    "avoid",
-  ]),
+  recommendation: z.enum(["immediate_action", "monitor_closely", "prepare_entry", "wait", "avoid"]),
 
   // Historical context
   similarPatterns: z.array(z.unknown()).optional(),
@@ -89,12 +74,7 @@ export type PatternMatch = z.infer<typeof PatternMatchSchema>;
 export const PatternAnalysisRequestSchema = z.object({
   symbols: z.array(z.unknown()).optional(), // SymbolEntry[] - using unknown to avoid circular dependency
   calendarEntries: z.array(z.unknown()).optional(), // CalendarEntry[]
-  analysisType: z.enum([
-    "discovery",
-    "monitoring",
-    "validation",
-    "correlation",
-  ]),
+  analysisType: z.enum(["discovery", "monitoring", "validation", "correlation"]),
   timeframe: z.string().optional(),
   confidenceThreshold: z.number().min(0).max(100).optional(),
   includeHistorical: z.boolean().optional(),
@@ -102,11 +82,7 @@ export const PatternAnalysisRequestSchema = z.object({
 
 export const CorrelationAnalysisSchema = z.object({
   symbols: z.array(z.string()),
-  correlationType: z.enum([
-    "launch_timing",
-    "market_sector",
-    "pattern_similarity",
-  ]),
+  correlationType: z.enum(["launch_timing", "market_sector", "pattern_similarity"]),
   strength: z.number().min(0).max(1).describe("0-1 correlation strength"),
   insights: z.array(z.string()),
   recommendations: z.array(z.string()),
@@ -140,9 +116,7 @@ export const PatternAnalysisResultSchema = z.object({
   analysisMetadata: PatternAnalysisMetadataSchema,
 });
 
-export type PatternAnalysisRequest = z.infer<
-  typeof PatternAnalysisRequestSchema
->;
+export type PatternAnalysisRequest = z.infer<typeof PatternAnalysisRequestSchema>;
 export type CorrelationAnalysis = z.infer<typeof CorrelationAnalysisSchema>;
 export type PatternAnalysisResult = z.infer<typeof PatternAnalysisResultSchema>;
 
@@ -169,9 +143,7 @@ export const PatternDetectionConfigSchema = z.object({
   logValidationErrors: z.boolean().default(true),
 });
 
-export type PatternDetectionConfig = z.infer<
-  typeof PatternDetectionConfigSchema
->;
+export type PatternDetectionConfig = z.infer<typeof PatternDetectionConfigSchema>;
 
 // ============================================================================
 // Pattern Detection Metrics
@@ -198,9 +170,7 @@ export const PatternDetectionMetricsSchema = z.object({
     .optional(),
 });
 
-export type PatternDetectionMetrics = z.infer<
-  typeof PatternDetectionMetricsSchema
->;
+export type PatternDetectionMetrics = z.infer<typeof PatternDetectionMetricsSchema>;
 
 // ============================================================================
 // Pattern Storage
@@ -303,7 +273,7 @@ export class PatternDetectionError extends Error {
   constructor(
     message: string,
     public code: string,
-    public context?: any
+    public context?: any,
   ) {
     super(message);
     this.name = "PatternDetectionError";
@@ -314,7 +284,7 @@ export class PatternValidationError extends PatternDetectionError {
   constructor(
     message: string,
     public validationErrors: string[],
-    context?: any
+    context?: any,
   ) {
     super(message, "VALIDATION_ERROR", context);
     this.name = "PatternValidationError";
@@ -325,7 +295,7 @@ export class PatternAnalysisError extends PatternDetectionError {
   constructor(
     message: string,
     public analysisType: string,
-    context?: any
+    context?: any,
   ) {
     super(message, "ANALYSIS_ERROR", context);
     this.name = "PatternAnalysisError";
@@ -337,16 +307,10 @@ export class PatternAnalysisError extends PatternDetectionError {
 // ============================================================================
 
 export interface IPatternAnalyzer {
-  detectReadyStatePattern(
-    symbolData: SymbolEntry | SymbolEntry[]
-  ): Promise<PatternMatch[]>;
-  detectAdvanceOpportunities(
-    calendarEntries: CalendarEntry[]
-  ): Promise<PatternMatch[]>;
+  detectReadyStatePattern(symbolData: SymbolEntry | SymbolEntry[]): Promise<PatternMatch[]>;
+  detectAdvanceOpportunities(calendarEntries: CalendarEntry[]): Promise<PatternMatch[]>;
   detectPreReadyPatterns(symbolData: SymbolEntry[]): Promise<PatternMatch[]>;
-  analyzeSymbolCorrelations(
-    symbolData: SymbolEntry[]
-  ): Promise<CorrelationAnalysis[]>;
+  analyzeSymbolCorrelations(symbolData: SymbolEntry[]): Promise<CorrelationAnalysis[]>;
   validateExactReadyState(symbol: SymbolEntry): boolean;
 }
 
@@ -354,27 +318,21 @@ export interface IConfidenceCalculator {
   calculateReadyStateConfidence(symbol: SymbolEntry): Promise<number>;
   calculateAdvanceOpportunityConfidence(
     entry: CalendarEntry,
-    advanceHours: number
+    advanceHours: number,
   ): Promise<number>;
   calculatePreReadyScore(symbol: SymbolEntry): Promise<PreReadyPatternResult>;
   validateConfidenceScore(score: number): boolean;
-  enhanceConfidenceWithActivity(
-    baseConfidence: number,
-    activities: ActivityData[]
-  ): number;
+  enhanceConfidenceWithActivity(baseConfidence: number, activities: ActivityData[]): number;
 }
 
 export interface IPatternStorage {
   storeSuccessfulPattern(
     data: SymbolEntry | CalendarEntry,
     type: string,
-    confidence: number
+    confidence: number,
   ): Promise<void>;
   getHistoricalSuccessRate(patternType: string): Promise<number>;
-  findSimilarPatterns(
-    pattern: any,
-    options?: PatternServiceOptions
-  ): Promise<StoredPattern[]>;
+  findSimilarPatterns(pattern: any, options?: PatternServiceOptions): Promise<StoredPattern[]>;
   clearCache(): void;
   getCacheStats(): PatternCacheStats;
 }
@@ -432,7 +390,7 @@ export const PATTERN_DETECTION_SCHEMAS = {
  */
 export function validatePatternData<T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: boolean; data?: T; error?: string } {
   try {
     const result = schema.parse(data);
@@ -446,10 +404,7 @@ export function validatePatternData<T>(
     }
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown pattern validation error",
+      error: error instanceof Error ? error.message : "Unknown pattern validation error",
     };
   }
 }
@@ -457,9 +412,7 @@ export function validatePatternData<T>(
 /**
  * Validate pattern match completeness
  */
-export function validatePatternMatchCompleteness(
-  match: PatternMatch
-): ValidationResult {
+export function validatePatternMatchCompleteness(match: PatternMatch): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 

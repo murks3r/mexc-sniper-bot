@@ -30,36 +30,28 @@ const createTransactionSchema = z.object({
   profitLoss: z.number().optional(),
   profitLossPercentage: z.number().optional(),
   fees: z.number().min(0).optional(),
-  status: z
-    .enum(["pending", "completed", "failed", "cancelled"])
-    .default("pending"),
+  status: z.enum(["pending", "completed", "failed", "cancelled"]).default("pending"),
   snipeTargetId: z.number().optional(),
   notes: z.string().optional(),
 });
 
 const querySchema = z.object({
   userId: z.string().min(1).optional(),
-  status: z
-    .enum(["pending", "completed", "failed", "cancelled"])
-    .nullable()
-    .optional(),
+  status: z.enum(["pending", "completed", "failed", "cancelled"]).nullable().optional(),
   symbolName: z.string().nullable().optional(),
-  transactionType: z
-    .enum(["buy", "sell", "complete_trade"])
-    .nullable()
-    .optional(),
+  transactionType: z.enum(["buy", "sell", "complete_trade"]).nullable().optional(),
   fromDate: z.string().nullable().optional(), // ISO date string
   toDate: z.string().nullable().optional(), // ISO date string
   limit: z
     .string()
     .nullable()
     .optional()
-    .transform((val) => (val ? parseInt(val) : 50)),
+    .transform((val) => (val ? parseInt(val, 10) : 50)),
   offset: z
     .string()
     .nullable()
     .optional()
-    .transform((val) => (val ? parseInt(val) : 0)),
+    .transform((val) => (val ? parseInt(val, 10) : 0)),
 });
 
 // GET /api/transactions - Fetch user transactions
@@ -81,20 +73,12 @@ export async function GET(request: NextRequest) {
     if (!parsed.success) {
       return apiResponse(
         createValidationErrorResponse("query", "Invalid query parameters"),
-        HTTP_STATUS.BAD_REQUEST
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
 
-    const {
-      userId,
-      status,
-      symbolName,
-      transactionType,
-      fromDate,
-      toDate,
-      limit,
-      offset,
-    } = parsed.data;
+    const { userId, status, symbolName, transactionType, fromDate, toDate, limit, offset } =
+      parsed.data;
 
     // Build query conditions
     const conditions: any[] = [];
@@ -119,11 +103,8 @@ export async function GET(request: NextRequest) {
         const fromTimestamp = new Date(fromDate);
         if (Number.isNaN(fromTimestamp.getTime())) {
           return apiResponse(
-            createValidationErrorResponse(
-              "fromDate",
-              "Invalid fromDate format"
-            ),
-            HTTP_STATUS.BAD_REQUEST
+            createValidationErrorResponse("fromDate", "Invalid fromDate format"),
+            HTTP_STATUS.BAD_REQUEST,
           );
         }
         conditions.push(gte(transactions.transactionTime, fromTimestamp));
@@ -134,7 +115,7 @@ export async function GET(request: NextRequest) {
         });
         return apiResponse(
           createValidationErrorResponse("fromDate", "Invalid fromDate format"),
-          HTTP_STATUS.BAD_REQUEST
+          HTTP_STATUS.BAD_REQUEST,
         );
       }
     }
@@ -145,7 +126,7 @@ export async function GET(request: NextRequest) {
         if (Number.isNaN(toTimestamp.getTime())) {
           return apiResponse(
             createValidationErrorResponse("toDate", "Invalid toDate format"),
-            HTTP_STATUS.BAD_REQUEST
+            HTTP_STATUS.BAD_REQUEST,
           );
         }
         conditions.push(lte(transactions.transactionTime, toTimestamp));
@@ -153,7 +134,7 @@ export async function GET(request: NextRequest) {
         console.error("Error parsing toDate:", { toDate, error: dateError });
         return apiResponse(
           createValidationErrorResponse("toDate", "Invalid toDate format"),
-          HTTP_STATUS.BAD_REQUEST
+          HTTP_STATUS.BAD_REQUEST,
         );
       }
     }
@@ -164,12 +145,9 @@ export async function GET(request: NextRequest) {
       const base = db.select().from(transactions);
       const filtered = conditions.length ? base.where(and(...conditions)) : base;
       userTransactions = await Promise.race([
-        filtered
-          .orderBy(desc(transactions.transactionTime))
-          .limit(limit)
-          .offset(offset),
+        filtered.orderBy(desc(transactions.transactionTime)).limit(limit).offset(offset),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database query timeout")), 10000)
+          setTimeout(() => reject(new Error("Database query timeout")), 10000),
         ),
       ]);
     } catch (dbError) {
@@ -206,36 +184,31 @@ export async function GET(request: NextRequest) {
           {
             pagination: { limit, offset, hasMore: false },
             count: 0,
-            error: isDbConnectivityError
-              ? "Database temporarily unavailable"
-              : "Query failed",
+            error: isDbConnectivityError ? "Database temporarily unavailable" : "Query failed",
             fallback: true,
             retryable: isDbConnectivityError,
-          }
-        )
+          },
+        ),
       );
     }
 
     // Calculate summary statistics
     const completedTrades = userTransactions.filter(
       (t: (typeof userTransactions)[0]) =>
-        t.status === "completed" && t.transactionType === "complete_trade"
+        t.status === "completed" && t.transactionType === "complete_trade",
     );
     const totalProfitLoss = completedTrades.reduce(
-      (sum: number, t: (typeof completedTrades)[0]) =>
-        sum + (t.profitLoss || 0),
-      0
+      (sum: number, t: (typeof completedTrades)[0]) => sum + (t.profitLoss || 0),
+      0,
     );
     const profitableTrades = completedTrades.filter(
-      (t: (typeof completedTrades)[0]) => (t.profitLoss || 0) > 0
+      (t: (typeof completedTrades)[0]) => (t.profitLoss || 0) > 0,
     );
     const losingTrades = completedTrades.filter(
-      (t: (typeof completedTrades)[0]) => (t.profitLoss || 0) < 0
+      (t: (typeof completedTrades)[0]) => (t.profitLoss || 0) < 0,
     );
     const winRate =
-      completedTrades.length > 0
-        ? (profitableTrades.length / completedTrades.length) * 100
-        : 0;
+      completedTrades.length > 0 ? (profitableTrades.length / completedTrades.length) * 100 : 0;
 
     const summary = {
       totalTransactions: userTransactions.length,
@@ -244,10 +217,7 @@ export async function GET(request: NextRequest) {
       profitableTrades: profitableTrades.length,
       losingTrades: losingTrades.length,
       winRate: Math.round(winRate * 100) / 100,
-      averageProfitLoss:
-        completedTrades.length > 0
-          ? totalProfitLoss / completedTrades.length
-          : 0,
+      averageProfitLoss: completedTrades.length > 0 ? totalProfitLoss / completedTrades.length : 0,
     };
 
     return apiResponse(
@@ -263,16 +233,14 @@ export async function GET(request: NextRequest) {
             hasMore: userTransactions.length === limit,
           },
           count: userTransactions.length,
-        }
-      )
+        },
+      ),
     );
   } catch (error) {
     console.error("Error fetching transactions:", { error });
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }
@@ -286,7 +254,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return apiResponse(
         createValidationErrorResponse("body", "Invalid transaction data"),
-        HTTP_STATUS.BAD_REQUEST
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
 
@@ -299,8 +267,7 @@ export async function POST(request: NextRequest) {
       transactionData.sellTotalRevenue &&
       !transactionData.profitLoss
     ) {
-      transactionData.profitLoss =
-        transactionData.sellTotalRevenue - transactionData.buyTotalCost;
+      transactionData.profitLoss = transactionData.sellTotalRevenue - transactionData.buyTotalCost;
       transactionData.profitLossPercentage =
         (transactionData.profitLoss / transactionData.buyTotalCost) * 100;
     }
@@ -319,9 +286,7 @@ export async function POST(request: NextRequest) {
             try {
               const date = new Date(transactionData.buyTimestamp!);
               if (Number.isNaN(date.getTime())) {
-                throw new Error(
-                  `Invalid buyTimestamp: ${transactionData.buyTimestamp}`
-                );
+                throw new Error(`Invalid buyTimestamp: ${transactionData.buyTimestamp}`);
               }
               return date;
             } catch (error) {
@@ -342,9 +307,7 @@ export async function POST(request: NextRequest) {
             try {
               const date = new Date(transactionData.sellTimestamp!);
               if (Number.isNaN(date.getTime())) {
-                throw new Error(
-                  `Invalid sellTimestamp: ${transactionData.sellTimestamp}`
-                );
+                throw new Error(`Invalid sellTimestamp: ${transactionData.sellTimestamp}`);
               }
               return date;
             } catch (error) {
@@ -372,7 +335,7 @@ export async function POST(request: NextRequest) {
       [created] = await Promise.race([
         db.insert(transactions).values(insertData).returning(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database insert timeout")), 10000)
+          setTimeout(() => reject(new Error("Database insert timeout")), 10000),
         ),
       ]);
     } catch (dbError) {
@@ -401,7 +364,7 @@ export async function POST(request: NextRequest) {
           retryable: isDbConnectivityError,
           code: "DB_INSERT_ERROR",
         }),
-        HTTP_STATUS.OK
+        HTTP_STATUS.OK,
       );
     }
 
@@ -409,15 +372,13 @@ export async function POST(request: NextRequest) {
       createSuccessResponse(created, {
         message: "Transaction created successfully",
       }),
-      HTTP_STATUS.CREATED
+      HTTP_STATUS.CREATED,
     );
   } catch (error) {
     console.error("Error creating transaction:", { error });
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }
@@ -431,7 +392,7 @@ export async function PUT(request: NextRequest) {
     if (!id) {
       return apiResponse(
         createValidationErrorResponse("id", "Transaction ID is required"),
-        HTTP_STATUS.BAD_REQUEST
+        HTTP_STATUS.BAD_REQUEST,
       );
     }
 
@@ -442,13 +403,9 @@ export async function PUT(request: NextRequest) {
     let updated;
     try {
       [updated] = await Promise.race([
-        db
-          .update(transactions)
-          .set(updateData)
-          .where(eq(transactions.id, id))
-          .returning(),
+        db.update(transactions).set(updateData).where(eq(transactions.id, id)).returning(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database update timeout")), 10000)
+          setTimeout(() => reject(new Error("Database update timeout")), 10000),
         ),
       ]);
     } catch (dbError) {
@@ -476,29 +433,24 @@ export async function PUT(request: NextRequest) {
           retryable: isDbConnectivityError,
           code: "DB_UPDATE_ERROR",
         }),
-        HTTP_STATUS.OK
+        HTTP_STATUS.OK,
       );
     }
 
     if (!updated) {
-      return apiResponse(
-        createErrorResponse("Transaction not found"),
-        HTTP_STATUS.NOT_FOUND
-      );
+      return apiResponse(createErrorResponse("Transaction not found"), HTTP_STATUS.NOT_FOUND);
     }
 
     return apiResponse(
       createSuccessResponse(updated, {
         message: "Transaction updated successfully",
-      })
+      }),
     );
   } catch (error) {
     console.error("Error updating transaction:", { error });
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }

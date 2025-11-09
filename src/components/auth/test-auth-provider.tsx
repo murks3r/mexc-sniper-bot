@@ -31,14 +31,10 @@ type TestAuthContextType = {
   signOut: () => Promise<any>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithProvider: (
-    provider: "google" | "github"
-  ) => Promise<{ error: any }>;
+  signInWithProvider: (provider: "google" | "github") => Promise<{ error: any }>;
 };
 
-const TestAuthContext = createContext<TestAuthContextType | undefined>(
-  undefined
-);
+const TestAuthContext = createContext<TestAuthContextType | undefined>(undefined);
 
 interface TestAuthProviderProps {
   children: ReactNode;
@@ -60,11 +56,7 @@ export function TestAuthProvider({ children }: TestAuthProviderProps) {
     signInWithProvider: async () => ({ error: null }),
   };
 
-  return (
-    <TestAuthContext.Provider value={authValue}>
-      {children}
-    </TestAuthContext.Provider>
-  );
+  return <TestAuthContext.Provider value={authValue}>{children}</TestAuthContext.Provider>;
 }
 
 export function useTestAuth() {

@@ -2,23 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Lock,
-  Unlock,
-  XCircle,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, Lock, Unlock, XCircle } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface TransactionLock {
   lockId: string;
@@ -170,9 +157,7 @@ export function TransactionLockMonitor() {
             <CardTitle className="text-sm">Expired</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-yellow-600">
-              {stats.expiredLocks}
-            </div>
+            <div className="text-2xl font-bold text-yellow-600">{stats.expiredLocks}</div>
           </CardContent>
         </Card>
 
@@ -181,9 +166,7 @@ export function TransactionLockMonitor() {
             <CardTitle className="text-sm">Completed</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-green-600">
-              {stats.recentlyCompleted}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{stats.recentlyCompleted}</div>
           </CardContent>
         </Card>
 
@@ -192,9 +175,7 @@ export function TransactionLockMonitor() {
             <CardTitle className="text-sm">Failed</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-red-600">
-              {stats.recentlyFailed}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{stats.recentlyFailed}</div>
           </CardContent>
         </Card>
       </div>
@@ -209,9 +190,7 @@ export function TransactionLockMonitor() {
         </CardHeader>
         <CardContent>
           {locks.filter((lock) => lock.status === "active").length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No active locks
-            </p>
+            <p className="text-muted-foreground text-center py-4">No active locks</p>
           ) : (
             <div className="space-y-2">
               {locks
@@ -248,11 +227,7 @@ export function TransactionLockMonitor() {
                           )}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => releaseLock(lock.lockId)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => releaseLock(lock.lockId)}>
                         <Unlock className="h-4 w-4 mr-1" />
                         Release
                       </Button>
@@ -268,15 +243,11 @@ export function TransactionLockMonitor() {
       <Card>
         <CardHeader>
           <CardTitle>Transaction Queue</CardTitle>
-          <CardDescription>
-            Pending transactions waiting for lock acquisition
-          </CardDescription>
+          <CardDescription>Pending transactions waiting for lock acquisition</CardDescription>
         </CardHeader>
         <CardContent>
           {queue.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              Queue is empty
-            </p>
+            <p className="text-muted-foreground text-center py-4">Queue is empty</p>
           ) : (
             <div className="space-y-2">
               {queue.map((item, index) => {
@@ -294,8 +265,7 @@ export function TransactionLockMonitor() {
                           {resource.type}: {resource.symbol} {resource.side}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Owner: {item.ownerId} • Priority: {item.priority} •
-                          Queued:{" "}
+                          Owner: {item.ownerId} • Priority: {item.priority} • Queued:{" "}
                           {formatDistanceToNow(new Date(item.queuedAt), {
                             addSuffix: true,
                           })}
@@ -318,15 +288,11 @@ export function TransactionLockMonitor() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Lock History</CardTitle>
-          <CardDescription>
-            Recently completed or failed transactions
-          </CardDescription>
+          <CardDescription>Recently completed or failed transactions</CardDescription>
         </CardHeader>
         <CardContent>
           {locks.filter((lock) => lock.status !== "active").length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No recent history
-            </p>
+            <p className="text-muted-foreground text-center py-4">No recent history</p>
           ) : (
             <div className="space-y-2">
               {locks

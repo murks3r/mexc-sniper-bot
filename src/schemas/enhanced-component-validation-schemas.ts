@@ -60,12 +60,8 @@ export const EnhancedAutoSnipingConfigSchema = z.object({
     .max(20, "Cannot exceed 20 concurrent trades")
     .describe("Maximum number of concurrent trades"),
   enableSafetyChecks: z.boolean().describe("Whether safety checks are enabled"),
-  enablePatternDetection: z
-    .boolean()
-    .describe("Whether pattern detection is enabled"),
-  riskLevel: z
-    .enum(["conservative", "moderate", "aggressive"])
-    .default("moderate"),
+  enablePatternDetection: z.boolean().describe("Whether pattern detection is enabled"),
+  riskLevel: z.enum(["conservative", "moderate", "aggressive"]).default("moderate"),
   tradingHours: z
     .object({
       enabled: z.boolean().default(false),
@@ -77,19 +73,10 @@ export const EnhancedAutoSnipingConfigSchema = z.object({
 });
 
 export const EnhancedExecutionStatusSchema = z.enum(
-  [
-    "idle",
-    "initializing",
-    "running",
-    "paused",
-    "stopping",
-    "stopped",
-    "error",
-    "maintenance",
-  ],
+  ["idle", "initializing", "running", "paused", "stopping", "stopped", "error", "maintenance"],
   {
     errorMap: () => ({ message: "Invalid execution status" }),
-  }
+  },
 );
 
 export const EnhancedExecutionMetricsSchema = z.object({
@@ -123,24 +110,23 @@ export const EnhancedDashboardPropsSchema = BaseComponentPropsSchema.extend({
   .merge(LoadingStateSchema)
   .merge(ErrorStateSchema);
 
-export const EnhancedExecutionControlsPropsSchema =
-  BaseComponentPropsSchema.extend({
-    isExecutionActive: z.boolean(),
-    executionStatus: EnhancedExecutionStatusSchema,
-    metrics: EnhancedExecutionMetricsSchema.optional(),
-    showControls: z.boolean().default(true),
-    showMetrics: z.boolean().default(true),
-    allowEmergencyStop: z.boolean().default(true),
-    confirmActions: z.boolean().default(true),
-  })
-    .merge(LoadingStateSchema)
-    .extend({
-      isStartingExecution: z.boolean().default(false),
-      isPausingExecution: z.boolean().default(false),
-      isResumingExecution: z.boolean().default(false),
-      isStoppingExecution: z.boolean().default(false),
-      isUpdatingConfig: z.boolean().default(false),
-    });
+export const EnhancedExecutionControlsPropsSchema = BaseComponentPropsSchema.extend({
+  isExecutionActive: z.boolean(),
+  executionStatus: EnhancedExecutionStatusSchema,
+  metrics: EnhancedExecutionMetricsSchema.optional(),
+  showControls: z.boolean().default(true),
+  showMetrics: z.boolean().default(true),
+  allowEmergencyStop: z.boolean().default(true),
+  confirmActions: z.boolean().default(true),
+})
+  .merge(LoadingStateSchema)
+  .extend({
+    isStartingExecution: z.boolean().default(false),
+    isPausingExecution: z.boolean().default(false),
+    isResumingExecution: z.boolean().default(false),
+    isStoppingExecution: z.boolean().default(false),
+    isUpdatingConfig: z.boolean().default(false),
+  });
 
 export const EnhancedConfigEditorPropsSchema = BaseComponentPropsSchema.extend({
   config: EnhancedAutoSnipingConfigSchema,
@@ -176,7 +162,7 @@ export const EnhancedConfigFormSchema = EnhancedAutoSnipingConfigSchema.extend({
   {
     message: "Must confirm risky settings when using high-risk parameters",
     path: ["confirmRiskySettings"],
-  }
+  },
 );
 
 export const EnhancedPositionFormSchema = z.object({
@@ -187,9 +173,7 @@ export const EnhancedPositionFormSchema = z.object({
   side: z.enum(["BUY", "SELL"]),
   quantity: z.coerce.number().positive("Quantity must be positive"),
   price: z.coerce.number().positive("Price must be positive").optional(),
-  orderType: z
-    .enum(["MARKET", "LIMIT", "STOP_LOSS", "TAKE_PROFIT"])
-    .default("MARKET"),
+  orderType: z.enum(["MARKET", "LIMIT", "STOP_LOSS", "TAKE_PROFIT"]).default("MARKET"),
   timeInForce: z.enum(["GTC", "IOC", "FOK"]).default("GTC"),
   stopPrice: z.coerce.number().positive().optional(),
   takeProfitPrice: z.coerce.number().positive().optional(),
@@ -204,7 +188,7 @@ export const EnhancedAlertSeveritySchema = z.enum(
   ["info", "success", "warning", "error", "critical"],
   {
     errorMap: () => ({ message: "Invalid alert severity level" }),
-  }
+  },
 );
 
 export const EnhancedExecutionAlertSchema = z.object({
@@ -221,10 +205,7 @@ export const EnhancedExecutionAlertSchema = z.object({
   ]),
   severity: EnhancedAlertSeveritySchema,
   title: z.string().min(1).max(200, "Alert title cannot exceed 200 characters"),
-  message: z
-    .string()
-    .min(1)
-    .max(1000, "Alert message cannot exceed 1000 characters"),
+  message: z.string().min(1).max(1000, "Alert message cannot exceed 1000 characters"),
   timestamp: z.string().datetime().or(z.date()),
   symbol: z.string().optional(),
   acknowledged: z.boolean().default(false),
@@ -238,10 +219,8 @@ export const EnhancedExecutionAlertSchema = z.object({
         id: z.string(),
         label: z.string(),
         action: z.string(),
-        variant: z
-          .enum(["primary", "secondary", "danger"])
-          .default("secondary"),
-      })
+        variant: z.enum(["primary", "secondary", "danger"]).default("secondary"),
+      }),
     )
     .default([]),
 });
@@ -259,14 +238,7 @@ export const EnhancedExecutionPositionSchema = z.object({
   quantity: z.coerce.number().positive("Quantity must be positive"),
   notionalValue: z.coerce.number().positive("Notional value must be positive"),
   entryTime: z.string().datetime().or(z.date()),
-  status: z.enum([
-    "open",
-    "partially_filled",
-    "filled",
-    "cancelled",
-    "expired",
-    "rejected",
-  ]),
+  status: z.enum(["open", "partially_filled", "filled", "cancelled", "expired", "rejected"]),
   pnl: z.coerce.number().optional(),
   pnlPercentage: z.coerce.number().optional(),
   unrealizedPnl: z.coerce.number().optional(),
@@ -352,7 +324,7 @@ export const EnhancedPerformanceMetricsSchema = z.object({
 export function validateComponentProps<T extends z.ZodSchema>(
   schema: T,
   props: unknown,
-  componentName?: string
+  componentName?: string,
 ): { success: true; data: z.infer<T> } | { success: false; error: string } {
   try {
     const result = schema.parse(props);
@@ -362,9 +334,7 @@ export function validateComponentProps<T extends z.ZodSchema>(
       const errorMessage = error.errors
         .map((err) => `${err.path.join(".")}: ${err.message}`)
         .join(", ");
-      const componentPrefix = componentName
-        ? `${componentName} component: `
-        : "";
+      const componentPrefix = componentName ? `${componentName} component: ` : "";
       return {
         success: false,
         error: `${componentPrefix}Props validation failed: ${errorMessage}`,
@@ -377,7 +347,7 @@ export function validateComponentProps<T extends z.ZodSchema>(
 export function validateFormData<T extends z.ZodSchema>(
   schema: T,
   formData: unknown,
-  formName?: string
+  formName?: string,
 ):
   | { success: true; data: z.infer<T> }
   | { success: false; error: string; fieldErrors?: Record<string, string> } {
@@ -411,36 +381,16 @@ export function validateFormData<T extends z.ZodSchema>(
 // Type Exports
 // ============================================================================
 
-export type EnhancedAutoSnipingConfig = z.infer<
-  typeof EnhancedAutoSnipingConfigSchema
->;
-export type EnhancedExecutionStatus = z.infer<
-  typeof EnhancedExecutionStatusSchema
->;
-export type EnhancedExecutionMetrics = z.infer<
-  typeof EnhancedExecutionMetricsSchema
->;
-export type EnhancedDashboardProps = z.infer<
-  typeof EnhancedDashboardPropsSchema
->;
-export type EnhancedExecutionControlsProps = z.infer<
-  typeof EnhancedExecutionControlsPropsSchema
->;
-export type EnhancedConfigEditorProps = z.infer<
-  typeof EnhancedConfigEditorPropsSchema
->;
+export type EnhancedAutoSnipingConfig = z.infer<typeof EnhancedAutoSnipingConfigSchema>;
+export type EnhancedExecutionStatus = z.infer<typeof EnhancedExecutionStatusSchema>;
+export type EnhancedExecutionMetrics = z.infer<typeof EnhancedExecutionMetricsSchema>;
+export type EnhancedDashboardProps = z.infer<typeof EnhancedDashboardPropsSchema>;
+export type EnhancedExecutionControlsProps = z.infer<typeof EnhancedExecutionControlsPropsSchema>;
+export type EnhancedConfigEditorProps = z.infer<typeof EnhancedConfigEditorPropsSchema>;
 export type EnhancedConfigForm = z.infer<typeof EnhancedConfigFormSchema>;
 export type EnhancedPositionForm = z.infer<typeof EnhancedPositionFormSchema>;
 export type EnhancedAlertSeverity = z.infer<typeof EnhancedAlertSeveritySchema>;
-export type EnhancedExecutionAlert = z.infer<
-  typeof EnhancedExecutionAlertSchema
->;
-export type EnhancedExecutionPosition = z.infer<
-  typeof EnhancedExecutionPositionSchema
->;
-export type EnhancedWebSocketEvent = z.infer<
-  typeof EnhancedWebSocketEventSchema
->;
-export type EnhancedPerformanceMetrics = z.infer<
-  typeof EnhancedPerformanceMetricsSchema
->;
+export type EnhancedExecutionAlert = z.infer<typeof EnhancedExecutionAlertSchema>;
+export type EnhancedExecutionPosition = z.infer<typeof EnhancedExecutionPositionSchema>;
+export type EnhancedWebSocketEvent = z.infer<typeof EnhancedWebSocketEventSchema>;
+export type EnhancedPerformanceMetrics = z.infer<typeof EnhancedPerformanceMetricsSchema>;

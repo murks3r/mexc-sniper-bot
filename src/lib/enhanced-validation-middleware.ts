@@ -24,7 +24,7 @@ export interface EnhancedValidationResult<T> extends ValidationResult<T> {
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public details?: any
+    public details?: any,
   ) {
     super(message);
     this.name = "ValidationError";
@@ -49,11 +49,7 @@ export class ValidationHealthMonitor {
     // Reset validation metrics
   }
 
-  static recordValidation(
-    _success: boolean,
-    _duration: number,
-    _error?: string
-  ): void {
+  static recordValidation(_success: boolean, _duration: number, _error?: string): void {
     // Record validation metrics
     // Implementation would track success/failure rates and performance
   }
@@ -72,10 +68,7 @@ export class CriticalDataValidator {
     }
   }
 
-  static validateCriticalData<T>(
-    schema: z.ZodSchema<T>,
-    data: any
-  ): ValidationResult<T> {
+  static validateCriticalData<T>(schema: z.ZodSchema<T>, data: any): ValidationResult<T> {
     return CriticalDataValidator.validate(schema, data);
   }
 
@@ -87,7 +80,7 @@ export class CriticalDataValidator {
 export function validateExternalApiResponse<T>(
   schema: z.ZodSchema<T>,
   response: any,
-  apiName: string
+  apiName: string,
 ): ValidationResult<T> {
   try {
     const validatedData = schema.parse(response);
@@ -96,17 +89,12 @@ export function validateExternalApiResponse<T>(
     console.warn(`[Validation] ${apiName} response validation failed:`, error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "API response validation failed",
+      error: error instanceof Error ? error.message : "API response validation failed",
     };
   }
 }
 
-export function withEnhancedValidation<
-  T extends (...args: any[]) => Promise<any>,
->(handler: T): T {
+export function withEnhancedValidation<T extends (...args: any[]) => Promise<any>>(handler: T): T {
   return (async (...args: Parameters<T>) => {
     // Simple pass-through implementation - actual validation would go here
     return await handler(...args);

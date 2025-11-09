@@ -33,12 +33,7 @@ export function getLogger() {
       warn: (message: string, context?: any) =>
         console.warn("[error-type-utils]", message, context || ""),
       error: (message: string, context?: any, error?: Error) =>
-        console.error(
-          "[error-type-utils]",
-          message,
-          context || "",
-          error || ""
-        ),
+        console.error("[error-type-utils]", message, context || "", error || ""),
       debug: (message: string, context?: any) =>
         console.debug("[error-type-utils]", message, context || ""),
     };
@@ -164,9 +159,7 @@ export function getErrorDetails(error: unknown): {
 /**
  * Wraps async functions with proper error handling
  */
-export function wrapAsyncErrors<T extends (...args: any[]) => Promise<any>>(
-  fn: T
-): T {
+export function wrapAsyncErrors<T extends (...args: any[]) => Promise<any>>(fn: T): T {
   return (async (...args: any[]) => {
     try {
       return await fn(...args);
@@ -199,12 +192,8 @@ export function withErrorLogging<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   context: string,
   logger?: {
-    error: (
-      message: string,
-      error: SafeError,
-      context?: Record<string, unknown>
-    ) => void;
-  }
+    error: (message: string, error: SafeError, context?: Record<string, unknown>) => void;
+  },
 ): T {
   return (async (...args: any[]) => {
     try {
@@ -305,9 +294,7 @@ export function isTimeoutError(error: unknown): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return (
-      message.includes("timeout") ||
-      message.includes("timed out") ||
-      error.name === "TimeoutError"
+      message.includes("timeout") || message.includes("timed out") || error.name === "TimeoutError"
     );
   }
   return false;

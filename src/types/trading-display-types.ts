@@ -42,13 +42,7 @@ export interface TradingTargetDisplay {
   updatedAt?: Date;
   positionSizeUsdt?: number;
   stopLossPercent?: number;
-  status?:
-    | "pending"
-    | "ready"
-    | "executing"
-    | "completed"
-    | "failed"
-    | "cancelled";
+  status?: "pending" | "ready" | "executing" | "completed" | "failed" | "cancelled";
 
   // Additional fields for flexibility
   [key: string]: unknown;
@@ -91,13 +85,7 @@ export interface AutoSnipeTarget {
   symbolName: string;
   positionSizeUsdt: number;
   stopLossPercent: number;
-  status:
-    | "pending"
-    | "ready"
-    | "executing"
-    | "completed"
-    | "failed"
-    | "cancelled";
+  status: "pending" | "ready" | "executing" | "completed" | "failed" | "cancelled";
   [key: string]: unknown;
 }
 
@@ -115,29 +103,24 @@ export interface OrderParameters {
  * Type guards for runtime type checking
  */
 export function isCalendarEntry(data: unknown): data is CalendarEntry {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "vcoinId" in data &&
-    "symbol" in data &&
-    "projectName" in data &&
-    "firstOpenTime" in data
-  );
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+  return "vcoinId" in obj && "symbol" in obj && "projectName" in obj && "firstOpenTime" in obj;
 }
 
 export function isAutoSnipeTarget(data: unknown): data is AutoSnipeTarget {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "id" in data &&
-    "symbolName" in data &&
-    "status" in data
-  );
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+  return "id" in obj && "symbolName" in obj && "status" in obj;
 }
 
-export function isTradingTargetDisplay(
-  data: unknown
-): data is TradingTargetDisplay {
+export function isTradingTargetDisplay(data: unknown): data is TradingTargetDisplay {
   return (
     typeof data === "object" &&
     data !== null &&

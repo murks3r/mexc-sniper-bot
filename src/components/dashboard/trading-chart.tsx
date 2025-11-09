@@ -2,24 +2,11 @@
 
 import { useEffect, useState } from "react";
 // Direct imports for Recharts - since TradingChart is already lazy-loaded by dynamic-component-loader
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useLivePrices } from "@/src/hooks/use-live-prices";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { ChartContainer } from "../ui/chart";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import { useLivePrices } from "@/src/hooks/use-live-prices";
 
 interface TradingChartProps {
   className?: string;
@@ -69,7 +56,7 @@ const getIntervalAndLimit = (range: TimeRange) => {
 const fetchMarketData = async (
   symbol: string = "BTCUSDT",
   interval: string = "1d",
-  limit: number = 90
+  limit: number = 90,
 ): Promise<ChartDataPoint[]> => {
   try {
     console.log("[TradingChart] Fetching market data from API");
@@ -83,18 +70,12 @@ const fetchMarketData = async (
     const response = await fetch(`/api/market-data/klines?${params}`);
 
     if (!response.ok) {
-      throw new Error(
-        `API request failed: ${response.status} ${response.statusText}`
-      );
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
 
-    if (
-      result.success &&
-      Array.isArray(result.data) &&
-      result.data.length > 0
-    ) {
+    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       console.log("[TradingChart] Successfully fetched market data", {
         dataPoints: result.data.length,
         isFallback: result.fallback || false,
@@ -120,29 +101,17 @@ const fetchMarketData = async (
 };
 
 // Convert MEXC klines data to chart data format
-const _convertKlinesToChartData = (
-  klinesData: MexcKlineData[]
-): ChartDataPoint[] => {
+const _convertKlinesToChartData = (klinesData: MexcKlineData[]): ChartDataPoint[] => {
   const data: ChartDataPoint[] = [];
 
   // MEXC kline data format: [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, trades, buyBaseAssetVolume, buyQuoteAssetVolume]
   klinesData.forEach((kline, _index) => {
-    const [
-      openTime,
-      _open,
-      _high,
-      _low,
-      close,
-      volume,
-      _closeTime,
-      _quoteAssetVolume,
-      trades,
-    ] = kline;
+    const [openTime, _open, _high, _low, close, volume, _closeTime, _quoteAssetVolume, trades] =
+      kline;
 
     const date = new Date(openTime);
     const volumeNum = parseFloat(volume);
-    const tradesNum =
-      typeof trades === "number" ? trades : parseInt(String(trades), 10) || 0;
+    const tradesNum = typeof trades === "number" ? trades : parseInt(String(trades), 10) || 0;
     const closePrice = parseFloat(close);
 
     data.push({
@@ -160,30 +129,20 @@ const _convertKlinesToChartData = (
   // Sort by timestamp to ensure chronological order
   data.sort((a, b) => a.timestamp - b.timestamp);
 
-  console.log(
-    "[TradingChart] Converted",
-    klinesData.length,
-    "klines to chart data"
-  );
+  console.log("[TradingChart] Converted", klinesData.length, "klines to chart data");
   return data;
 };
 
 // Generate historical-looking data from current ticker
-const _generateHistoricalDataFromTicker = (
-  ticker: any,
-  days: number
-): ChartDataPoint[] => {
+const _generateHistoricalDataFromTicker = (ticker: any, days: number): ChartDataPoint[] => {
   const data: ChartDataPoint[] = [];
   const today = new Date();
 
   // Extract data from MEXC ticker format
   const currentVolume = parseFloat(ticker.volume || ticker.v || "50000");
-  const currentPrice = parseFloat(
-    ticker.lastPrice || ticker.price || ticker.c || "50000"
-  );
+  const currentPrice = parseFloat(ticker.lastPrice || ticker.price || ticker.c || "50000");
   const currentTrades =
-    parseInt(String(ticker.count || ticker.t || "0"), 10) ||
-    Math.floor(currentVolume / 100);
+    parseInt(String(ticker.count || ticker.t || "0"), 10) || Math.floor(currentVolume / 100);
 
   console.log("[TradingChart] Ticker data:", {
     symbol: ticker.symbol,
@@ -237,9 +196,7 @@ const generateRealisticDemoData = (days: number): ChartDataPoint[] => {
     const marketCycle = Math.sin((i / days) * Math.PI * 2) * 15000; // Weekly cycle
     const dailyVariation = (Math.random() - 0.5) * 10000;
 
-    const volume = Math.floor(
-      Math.max(1000, baseVolume + marketCycle + dailyVariation)
-    );
+    const volume = Math.floor(Math.max(1000, baseVolume + marketCycle + dailyVariation));
 
     data.push({
       date: date.toLocaleDateString("en-US", {
@@ -267,22 +224,14 @@ const chartConfig = {
   },
 };
 
-export function TradingChart({
-  className,
-  symbol = "BTCUSDT",
-}: TradingChartProps) {
+export function TradingChart({ className, symbol = "BTCUSDT" }: TradingChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("90d");
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<"real" | "ticker" | "demo">(
-    "real"
-  );
+  const [dataSource, setDataSource] = useState<"real" | "ticker" | "demo">("real");
   // Live SSE prices for immediate updates
-  const { prices: livePrices, connected: liveConnected } = useLivePrices(
-    [symbol],
-    true
-  );
+  const { prices: livePrices, connected: liveConnected } = useLivePrices([symbol], true);
 
   // Fetch market data when component mounts or time range changes
   useEffect(() => {
@@ -354,18 +303,14 @@ export function TradingChart({
             )}
           </CardTitle>
           <CardDescription>
-            {symbol} volume for the last {getDaysDescription()} {" "}
-            {getDataSourceIndicator()} {" "}
+            {symbol} volume for the last {getDaysDescription()} {getDataSourceIndicator()}{" "}
             {liveConnected && livePrices[symbol]?.price
               ? `(live: ${livePrices[symbol].price.toLocaleString()})`
               : ""}
             {error && <span className="text-destructive ml-2">({error})</span>}
           </CardDescription>
         </div>
-        <Tabs
-          value={timeRange}
-          onValueChange={(v) => setTimeRange(v as typeof timeRange)}
-        >
+        <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
           <TabsList>
             <TabsTrigger value="90d">Last 3 months</TabsTrigger>
             <TabsTrigger value="30d">Last 30 days</TabsTrigger>
@@ -379,16 +324,8 @@ export function TradingChart({
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="hsl(var(--chart-1))"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="hsl(var(--chart-1))"
-                    stopOpacity={0.1}
-                  />
+                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -406,11 +343,7 @@ export function TradingChart({
                 tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                content={(props: {
-                  active?: boolean;
-                  payload?: any[];
-                  label?: string;
-                }) => {
+                content={(props: { active?: boolean; payload?: any[]; label?: string }) => {
                   const { active, payload, label } = props;
                   if (active && payload && payload.length) {
                     const data = payload[0].payload as ChartDataPoint;
@@ -421,25 +354,19 @@ export function TradingChart({
                             <span className="text-[0.70rem] uppercase text-muted-foreground">
                               Date
                             </span>
-                            <span className="font-bold text-muted-foreground">
-                              {label}
-                            </span>
+                            <span className="font-bold text-muted-foreground">{label}</span>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-[0.70rem] uppercase text-muted-foreground">
                               Volume
                             </span>
-                            <span className="font-bold">
-                              {(data.volume ?? 0).toLocaleString()}
-                            </span>
+                            <span className="font-bold">{(data.volume ?? 0).toLocaleString()}</span>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-[0.70rem] uppercase text-muted-foreground">
                               Trades
                             </span>
-                            <span className="font-bold">
-                              {(data.trades ?? 0).toLocaleString()}
-                            </span>
+                            <span className="font-bold">{(data.trades ?? 0).toLocaleString()}</span>
                           </div>
                           {data.price && (
                             <div className="flex flex-col">

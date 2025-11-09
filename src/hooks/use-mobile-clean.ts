@@ -43,7 +43,7 @@ export function useIsMobile(breakpoint = MOBILE_BREAKPOINT): MobileDetection {
       isTouch = Boolean(
         "ontouchstart" in window ||
           (navigator?.maxTouchPoints && navigator.maxTouchPoints > 0) ||
-          (navigator as any)?.msMaxTouchPoints > 0
+          (navigator as any)?.msMaxTouchPoints > 0,
       );
     } catch {
       // Fallback if navigator is not available
@@ -164,9 +164,7 @@ export function useOrientation(): Orientation {
 
     const updateOrientation = () => {
       if (typeof window === "undefined") return;
-      setOrientation(
-        window.innerHeight > window.innerWidth ? "portrait" : "landscape"
-      );
+      setOrientation(window.innerHeight > window.innerWidth ? "portrait" : "landscape");
     };
 
     updateOrientation();
@@ -300,7 +298,7 @@ export function useTouchGestures(): TouchGesture {
  */
 export function useViewportHeight(): number {
   const [viewportHeight, setViewportHeight] = useState(
-    typeof window !== "undefined" ? window.innerHeight : 800
+    typeof window !== "undefined" ? window.innerHeight : 800,
   );
   const [isClient, setIsClient] = useState(false);
 
@@ -315,10 +313,7 @@ export function useViewportHeight(): number {
 
       // Set CSS custom property safely
       if (typeof document !== "undefined") {
-        document.documentElement.style.setProperty(
-          "--vh",
-          `${height * 0.01}px`
-        );
+        document.documentElement.style.setProperty("--vh", `${height * 0.01}px`);
       }
     };
 
@@ -340,15 +335,12 @@ export function useViewportHeight(): number {
         () => {
           setTimeout(updateViewportHeight, 100);
         },
-        { passive: true }
+        { passive: true },
       );
 
       return () => {
         if (window.visualViewport) {
-          window.visualViewport.removeEventListener(
-            "resize",
-            updateViewportHeight
-          );
+          window.visualViewport.removeEventListener("resize", updateViewportHeight);
         } else {
           window.removeEventListener("resize", updateViewportHeight);
         }
@@ -414,7 +406,7 @@ export function useIsTouchDevice(): boolean {
       const hasTouch = Boolean(
         "ontouchstart" in window ||
           (navigator?.maxTouchPoints && navigator.maxTouchPoints > 0) ||
-          (navigator as any)?.msMaxTouchPoints > 0
+          (navigator as any)?.msMaxTouchPoints > 0,
       );
 
       setIsTouch(hasTouch);

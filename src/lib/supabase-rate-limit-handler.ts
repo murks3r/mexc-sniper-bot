@@ -11,8 +11,6 @@
  * 7. Automatic retry logic with adaptive thresholds
  */
 
-import { AuthError } from "@supabase/supabase-js";
-
 export interface RateLimitInfo {
   isRateLimited: boolean;
   retryAfter?: number;
@@ -147,11 +145,7 @@ export class SupabaseRateLimitHandler {
       console.warn(`[SupabaseRateLimitHandler] ${message}`, context || "");
     },
     error: (message: string, context?: any, error?: Error) => {
-      console.error(
-        `[SupabaseRateLimitHandler] ${message}`,
-        context || "",
-        error || ""
-      );
+      console.error(`[SupabaseRateLimitHandler] ${message}`, context || "", error || "");
     },
     debug: (message: string, context?: any) => {
       if (process.env.NODE_ENV === "development") {
@@ -175,7 +169,7 @@ export class SupabaseRateLimitHandler {
 
     // Check for explicit rate limit errors
     const hasRateLimitError = SupabaseRateLimitHandler.RATE_LIMIT_ERRORS.some(
-      (pattern) => message.includes(pattern) || code.includes(pattern)
+      (pattern) => message.includes(pattern) || code.includes(pattern),
     );
 
     // Check for HTTP status codes
@@ -197,7 +191,7 @@ export class SupabaseRateLimitHandler {
     ].some((keyword) => message.includes(keyword));
 
     // Check for network-level rate limiting
-    const hasNetworkRateLimit = [
+    const _hasNetworkRateLimit = [
       "network request failed",
       "connection timeout",
       "request timeout",
@@ -207,11 +201,10 @@ export class SupabaseRateLimitHandler {
     // Check for Supabase specific patterns
     const hasSupabaseRateLimit =
       ["supabase", "gotrue", "auth", "realtime", "database"].some((service) =>
-        message.includes(service)
+        message.includes(service),
       ) && hasRateLimitKeywords;
 
-    const isRateLimited =
-      hasRateLimitError || hasRateLimitStatus || hasSupabaseRateLimit;
+    const isRateLimited = hasRateLimitError || hasRateLimitStatus || hasSupabaseRateLimit;
 
     if (isRateLimited) {
       SupabaseRateLimitHandler.metrics.rateLimitedRequests++;
@@ -247,9 +240,7 @@ export class SupabaseRateLimitHandler {
     // Detect specific rate limit type with priority order
     let limitType: RateLimitInfo["limitType"] = "api"; // Default to api
 
-    for (const [type, pattern] of Object.entries(
-      SupabaseRateLimitHandler.LIMIT_PATTERNS
-    )) {
+    for (const [type, pattern] of Object.entries(SupabaseRateLimitHandler.LIMIT_PATTERNS)) {
       if (pattern.test(message) || pattern.test(code)) {
         limitType = type as RateLimitInfo["limitType"];
         break;
@@ -260,10 +251,7 @@ export class SupabaseRateLimitHandler {
     const retryAfter = SupabaseRateLimitHandler.extractRetryAfter(error);
 
     // Determine severity based on limit type and retry time
-    const severity = SupabaseRateLimitHandler.determineSeverity(
-      limitType,
-      retryAfter
-    );
+    const severity = SupabaseRateLimitHandler.determineSeverity(limitType, retryAfter);
 
     // Update metrics by type
     if (!SupabaseRateLimitHandler.metrics.rateLimitsByType[limitType]) {
@@ -276,10 +264,7 @@ export class SupabaseRateLimitHandler {
       isRateLimited: true,
       retryAfter,
       limitType,
-      message: SupabaseRateLimitHandler.getFriendlyMessage(
-        limitType,
-        retryAfter
-      ),
+      message: SupabaseRateLimitHandler.getFriendlyMessage(limitType, retryAfter),
       suggestion: SupabaseRateLimitHandler.getSuggestion(limitType),
       severity,
       errorCode: code || SupabaseRateLimitHandler.mapErrorCode(error),
@@ -289,17 +274,13 @@ export class SupabaseRateLimitHandler {
         originalMessage: error.message,
         status,
         headers: error.headers || {},
-        userAgent:
-          typeof window !== "undefined" ? window.navigator.userAgent : "server",
+        userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "server",
         retryCount: error.retryCount || 0,
         circuitBreakerState: SupabaseRateLimitHandler.circuitBreaker.state,
       },
     };
 
-    SupabaseRateLimitHandler.logger.error(
-      "Rate limit analysis complete",
-      rateLimitInfo
-    );
+    SupabaseRateLimitHandler.logger.error("Rate limit analysis complete", rateLimitInfo);
 
     return rateLimitInfo;
   }
@@ -362,7 +343,7 @@ export class SupabaseRateLimitHandler {
    */
   private static determineSeverity(
     limitType: string,
-    retryAfter?: number
+    retryAfter?: number,
   ): "low" | "medium" | "high" | "critical" {
     if (!retryAfter) return "medium";
 
@@ -412,9 +393,7 @@ export class SupabaseRateLimitHandler {
    * Detect rate limit type from message
    */
   private static detectLimitType(message: string): RateLimitInfo["limitType"] {
-    for (const [type, pattern] of Object.entries(
-      SupabaseRateLimitHandler.LIMIT_PATTERNS
-    )) {
+    for (const [type, pattern] of Object.entries(SupabaseRateLimitHandler.LIMIT_PATTERNS)) {
       if (pattern.test(message)) {
         return type as RateLimitInfo["limitType"];
       }
@@ -427,11 +406,9 @@ export class SupabaseRateLimitHandler {
    */
   private static getFriendlyMessage(
     limitType?: RateLimitInfo["limitType"],
-    retryAfter?: number
+    retryAfter?: number,
   ): string {
-    const timeStr = retryAfter
-      ? ` Please try again in ${Math.ceil(retryAfter / 60)} minutes.`
-      : "";
+    const timeStr = retryAfter ? ` Please try again in ${Math.ceil(retryAfter / 60)} minutes.` : "";
 
     switch (limitType) {
       case "email":
@@ -474,46 +451,37 @@ export class SupabaseRateLimitHandler {
    */
   static calculateBackoffDelay(
     attempt: number,
-    config: RetryConfig = SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG
+    config: RetryConfig = SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG,
   ): number {
     // Base exponential backoff
     const exponentialDelay = Math.min(
       config.baseDelay * config.backoffMultiplier ** attempt,
-      config.maxDelay
+      config.maxDelay,
     );
 
     // Add jitter to prevent thundering herd
-    const jitter = config.enableJitter
-      ? Math.random() * exponentialDelay * 0.1
-      : 0;
+    const jitter = config.enableJitter ? Math.random() * exponentialDelay * 0.1 : 0;
 
     // Adaptive retry: increase delay based on recent failures
     let adaptiveMultiplier = 1;
     if (config.adaptiveRetry) {
-      const recentFailures =
-        SupabaseRateLimitHandler.metrics.rateLimitedRequests;
+      const recentFailures = SupabaseRateLimitHandler.metrics.rateLimitedRequests;
       const recentSuccess = SupabaseRateLimitHandler.metrics.successfulRetries;
-      const failureRate =
-        recentFailures / Math.max(1, recentFailures + recentSuccess);
+      const failureRate = recentFailures / Math.max(1, recentFailures + recentSuccess);
 
       // Increase delay by up to 50% if failure rate is high
       adaptiveMultiplier = 1 + failureRate * 0.5;
     }
 
-    const finalDelay = Math.floor(
-      (exponentialDelay + jitter) * adaptiveMultiplier
-    );
+    const finalDelay = Math.floor((exponentialDelay + jitter) * adaptiveMultiplier);
 
-    SupabaseRateLimitHandler.logger.debug(
-      `Calculated backoff delay: ${finalDelay}ms`,
-      {
-        attempt,
-        exponentialDelay,
-        jitter,
-        adaptiveMultiplier,
-        config,
-      }
-    );
+    SupabaseRateLimitHandler.logger.debug(`Calculated backoff delay: ${finalDelay}ms`, {
+      attempt,
+      exponentialDelay,
+      jitter,
+      adaptiveMultiplier,
+      config,
+    });
 
     return finalDelay;
   }
@@ -533,9 +501,7 @@ export class SupabaseRateLimitHandler {
         if (now >= SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime) {
           SupabaseRateLimitHandler.circuitBreaker.state = "half-open";
           SupabaseRateLimitHandler.circuitBreaker.successCount = 0;
-          SupabaseRateLimitHandler.logger.info(
-            "Circuit breaker transitioning to half-open state"
-          );
+          SupabaseRateLimitHandler.logger.info("Circuit breaker transitioning to half-open state");
           return false;
         }
         return true;
@@ -559,9 +525,7 @@ export class SupabaseRateLimitHandler {
       if (SupabaseRateLimitHandler.circuitBreaker.successCount >= 3) {
         SupabaseRateLimitHandler.circuitBreaker.state = "closed";
         SupabaseRateLimitHandler.circuitBreaker.failureCount = 0;
-        SupabaseRateLimitHandler.logger.info(
-          "Circuit breaker closed - service recovered"
-        );
+        SupabaseRateLimitHandler.logger.info("Circuit breaker closed - service recovered");
       }
     } else if (SupabaseRateLimitHandler.circuitBreaker.state === "closed") {
       // Reset failure count on success
@@ -582,32 +546,21 @@ export class SupabaseRateLimitHandler {
     const timeWindow = 60000; // 1 minute
 
     if (
-      SupabaseRateLimitHandler.circuitBreaker.failureCount >=
-        failureThreshold &&
+      SupabaseRateLimitHandler.circuitBreaker.failureCount >= failureThreshold &&
       now - SupabaseRateLimitHandler.circuitBreaker.lastFailureTime < timeWindow
     ) {
       SupabaseRateLimitHandler.circuitBreaker.state = "open";
       SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime =
         now +
         60000 *
-          2 **
-            Math.min(
-              SupabaseRateLimitHandler.circuitBreaker.failureCount -
-                failureThreshold,
-              4
-            ); // Max 16 minutes
+          2 ** Math.min(SupabaseRateLimitHandler.circuitBreaker.failureCount - failureThreshold, 4); // Max 16 minutes
       SupabaseRateLimitHandler.metrics.circuitBreakerTrips++;
 
-      SupabaseRateLimitHandler.logger.warn(
-        "Circuit breaker opened due to repeated failures",
-        {
-          failureCount: SupabaseRateLimitHandler.circuitBreaker.failureCount,
-          nextAttemptTime:
-            SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime,
-          waitTime:
-            SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime - now,
-        }
-      );
+      SupabaseRateLimitHandler.logger.warn("Circuit breaker opened due to repeated failures", {
+        failureCount: SupabaseRateLimitHandler.circuitBreaker.failureCount,
+        nextAttemptTime: SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime,
+        waitTime: SupabaseRateLimitHandler.circuitBreaker.nextAttemptTime - now,
+      });
     }
   }
 
@@ -617,15 +570,12 @@ export class SupabaseRateLimitHandler {
   static shouldRetry(
     rateLimitInfo: RateLimitInfo,
     attempt: number,
-    config: RetryConfig = SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG
+    config: RetryConfig = SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG,
   ): boolean {
     if (!rateLimitInfo.isRateLimited) return false;
 
     // Check circuit breaker first
-    if (
-      config.circuitBreakerEnabled &&
-      SupabaseRateLimitHandler.isCircuitBreakerOpen()
-    ) {
+    if (config.circuitBreakerEnabled && SupabaseRateLimitHandler.isCircuitBreakerOpen()) {
       SupabaseRateLimitHandler.logger.debug("Retry blocked by circuit breaker");
       return false;
     }
@@ -638,9 +588,7 @@ export class SupabaseRateLimitHandler {
 
     // Don't retry critical severity errors for too long
     if (rateLimitInfo.severity === "critical" && attempt > 1) {
-      SupabaseRateLimitHandler.logger.debug(
-        "Critical severity - limited retries"
-      );
+      SupabaseRateLimitHandler.logger.debug("Critical severity - limited retries");
       return false;
     }
 
@@ -651,10 +599,7 @@ export class SupabaseRateLimitHandler {
     }
 
     // Don't retry if wait time is too long
-    if (
-      rateLimitInfo.retryAfter &&
-      rateLimitInfo.retryAfter > config.maxDelay / 1000
-    ) {
+    if (rateLimitInfo.retryAfter && rateLimitInfo.retryAfter > config.maxDelay / 1000) {
       SupabaseRateLimitHandler.logger.debug("Retry delay too long");
       return false;
     }
@@ -746,14 +691,12 @@ export async function withRateLimitHandling<T>(
     onRetry?: (attempt: number, delay: number) => void;
     onSuccess?: (result: T) => void;
     onFailure?: (error: any) => void;
-  } = {}
+  } = {},
 ): Promise<T> {
   const config: RetryConfig = {
     ...SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG,
     ...options.config,
-    maxRetries:
-      options.maxRetries ||
-      SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG.maxRetries,
+    maxRetries: options.maxRetries || SupabaseRateLimitHandler.DEFAULT_RETRY_CONFIG.maxRetries,
   };
 
   let lastError: any;
@@ -762,13 +705,8 @@ export async function withRateLimitHandling<T>(
   for (let attempt = 0; attempt < config.maxRetries; attempt++) {
     try {
       // Check circuit breaker before attempting operation
-      if (
-        config.circuitBreakerEnabled &&
-        SupabaseRateLimitHandler.isCircuitBreakerOpen()
-      ) {
-        throw new Error(
-          "Circuit breaker is open - service temporarily unavailable"
-        );
+      if (config.circuitBreakerEnabled && SupabaseRateLimitHandler.isCircuitBreakerOpen()) {
+        throw new Error("Circuit breaker is open - service temporarily unavailable");
       }
 
       const result = await operation();
@@ -788,8 +726,7 @@ export async function withRateLimitHandling<T>(
     } catch (error) {
       lastError = error;
 
-      const rateLimitInfo =
-        SupabaseRateLimitHandler.analyzeRateLimitError(error);
+      const rateLimitInfo = SupabaseRateLimitHandler.analyzeRateLimitError(error);
 
       // Record failure for circuit breaker
       if (rateLimitInfo.isRateLimited) {
@@ -802,9 +739,7 @@ export async function withRateLimitHandling<T>(
       }
 
       // Check if we should retry
-      if (
-        !SupabaseRateLimitHandler.shouldRetry(rateLimitInfo, attempt, config)
-      ) {
+      if (!SupabaseRateLimitHandler.shouldRetry(rateLimitInfo, attempt, config)) {
         if (options.onFailure) {
           options.onFailure(error);
         }
@@ -833,7 +768,7 @@ export async function withRateLimitHandling<T>(
           attempt,
           delay,
           totalTime: Date.now() - startTime,
-        }
+        },
       );
 
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -853,11 +788,11 @@ export async function withRateLimitHandling<T>(
  */
 export async function bypassRateLimitInDev(
   email: string,
-  strategy: "email" | "admin" | "direct" = "email"
+  strategy: "email" | "admin" | "direct" = "email",
 ): Promise<boolean> {
   if (!SupabaseRateLimitHandler.canBypassInDevelopment()) {
     SupabaseRateLimitHandler.logger.warn(
-      "Rate limit bypass is only available in development with bypass flag enabled"
+      "Rate limit bypass is only available in development with bypass flag enabled",
     );
     return false;
   }
@@ -883,20 +818,17 @@ export async function bypassRateLimitInDev(
 
     if (success) {
       SupabaseRateLimitHandler.logger.info(
-        `✅ Successfully bypassed rate limit for: ${email} using strategy: ${strategy}`
+        `✅ Successfully bypassed rate limit for: ${email} using strategy: ${strategy}`,
       );
     } else {
       SupabaseRateLimitHandler.logger.error(
-        `❌ Failed to bypass rate limit for: ${email} using strategy: ${strategy}`
+        `❌ Failed to bypass rate limit for: ${email} using strategy: ${strategy}`,
       );
     }
 
     return success;
   } catch (error) {
-    SupabaseRateLimitHandler.logger.error(
-      "❌ Error bypassing rate limit:",
-      error
-    );
+    SupabaseRateLimitHandler.logger.error("❌ Error bypassing rate limit:", error);
     return false;
   }
 }
@@ -950,15 +882,10 @@ async function bypassWithDirectDatabase(email: string): Promise<boolean> {
   try {
     // This would require direct database access and is highly specific to the implementation
     // For now, just log the attempt
-    SupabaseRateLimitHandler.logger.info(
-      `Direct database bypass attempted for: ${email}`
-    );
+    SupabaseRateLimitHandler.logger.info(`Direct database bypass attempted for: ${email}`);
     return false; // Not implemented yet
   } catch (error) {
-    SupabaseRateLimitHandler.logger.error(
-      "Direct database bypass error:",
-      error
-    );
+    SupabaseRateLimitHandler.logger.error("Direct database bypass error:", error);
     return false;
   }
 }
@@ -969,16 +896,12 @@ async function bypassWithDirectDatabase(email: string): Promise<boolean> {
 export function createRateLimitError(
   limitType: RateLimitInfo["limitType"] = "email",
   retryAfter?: number,
-  customMessage?: string
+  customMessage?: string,
 ): Error {
-  const error = new Error(
-    customMessage || `Rate limit exceeded for ${limitType}`
-  );
+  const error = new Error(customMessage || `Rate limit exceeded for ${limitType}`);
   (error as any).code = "rate_limit_exceeded";
   (error as any).status = 429;
-  (error as any).headers = retryAfter
-    ? { "retry-after": retryAfter.toString() }
-    : {};
+  (error as any).headers = retryAfter ? { "retry-after": retryAfter.toString() } : {};
   return error;
 }
 
@@ -995,34 +918,26 @@ export function getRateLimitStatus(): {
   const circuitBreaker = SupabaseRateLimitHandler.getCircuitBreakerState();
 
   const failureRate =
-    metrics.totalRequests > 0
-      ? metrics.rateLimitedRequests / metrics.totalRequests
-      : 0;
+    metrics.totalRequests > 0 ? metrics.rateLimitedRequests / metrics.totalRequests : 0;
 
   const recommendations: string[] = [];
 
   if (failureRate > 0.1) {
     recommendations.push(
-      "High rate limit failure rate detected - consider implementing request throttling"
+      "High rate limit failure rate detected - consider implementing request throttling",
     );
   }
 
   if (circuitBreaker.state === "open") {
-    recommendations.push(
-      "Circuit breaker is open - service may be experiencing issues"
-    );
+    recommendations.push("Circuit breaker is open - service may be experiencing issues");
   }
 
   if (metrics.averageRetryDelay > 10000) {
-    recommendations.push(
-      "High average retry delay - consider optimizing retry strategy"
-    );
+    recommendations.push("High average retry delay - consider optimizing retry strategy");
   }
 
   if (Object.values(metrics.rateLimitsByType).some((count) => count > 5)) {
-    recommendations.push(
-      "High rate limits in specific categories - review usage patterns"
-    );
+    recommendations.push("High rate limits in specific categories - review usage patterns");
   }
 
   return {

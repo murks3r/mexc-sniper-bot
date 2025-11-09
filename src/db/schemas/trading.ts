@@ -32,19 +32,12 @@ export const apiCredentials = pgTable(
     lastUsed: timestamp("last_used"),
 
     // Timestamps
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
-    userProviderIdx: index("api_credentials_user_provider_idx").on(
-      table.userId,
-      table.provider
-    ),
-  })
+    userProviderIdx: index("api_credentials_user_provider_idx").on(table.userId, table.provider),
+  }),
 );
 
 // Snipe Targets Table
@@ -87,31 +80,27 @@ export const snipeTargets = pgTable(
     riskLevel: text("risk_level").notNull().default("medium"),
 
     // Timestamps
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
     userIdx: index("snipe_targets_user_idx").on(table.userId),
     statusIdx: index("snipe_targets_status_idx").on(table.status),
     priorityIdx: index("snipe_targets_priority_idx").on(table.priority),
-    executionTimeIdx: index("snipe_targets_execution_time_idx").on(
-      table.targetExecutionTime
-    ),
+    executionTimeIdx: index("snipe_targets_execution_time_idx").on(table.targetExecutionTime),
+    vcoinIdIdx: index("snipe_targets_vcoin_id_idx").on(table.vcoinId), // Performance optimization
     // Compound indexes for optimization
     userStatusPriorityIdx: index("snipe_targets_user_status_priority_idx").on(
       table.userId,
       table.status,
-      table.priority
+      table.priority,
     ),
     statusExecutionTimeIdx: index("snipe_targets_status_execution_time_idx").on(
       table.status,
-      table.targetExecutionTime
+      table.targetExecutionTime,
     ),
-  })
+    userVcoinIdIdx: index("snipe_targets_user_vcoin_id_idx").on(table.userId, table.vcoinId), // Common query pattern
+  }),
 );
 
 // Execution History Table
@@ -120,12 +109,10 @@ export const executionHistory = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: text("user_id").notNull(),
-    snipeTargetId: integer("snipe_target_id").references(
-      () => snipeTargets.id,
-      {
-        onDelete: "set null",
-      }
-    ),
+    snipeTargetId: integer("snipe_target_id").references(() => snipeTargets.id, {
+      onDelete: "set null",
+    }),
+    positionId: integer("position_id"),
 
     // Execution Details
     vcoinId: text("vcoin_id").notNull(),
@@ -161,35 +148,81 @@ export const executionHistory = pgTable(
     // Timestamps
     requestedAt: timestamp("requested_at").notNull(),
     executedAt: timestamp("executed_at"),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
     userIdx: index("execution_history_user_idx").on(table.userId),
-    snipeTargetIdx: index("execution_history_snipe_target_idx").on(
-      table.snipeTargetId
-    ),
+    snipeTargetIdx: index("execution_history_snipe_target_idx").on(table.snipeTargetId),
     symbolIdx: index("execution_history_symbol_idx").on(table.symbolName),
     statusIdx: index("execution_history_status_idx").on(table.status),
-    executedAtIdx: index("execution_history_executed_at_idx").on(
-      table.executedAt
-    ),
+    executedAtIdx: index("execution_history_executed_at_idx").on(table.executedAt),
     // Compound indexes for optimization
     userSymbolTimeIdx: index("execution_history_user_symbol_time_idx").on(
       table.userId,
       table.symbolName,
-      table.executedAt
+      table.executedAt,
     ),
     userStatusActionIdx: index("execution_history_user_status_action_idx").on(
       table.userId,
       table.status,
-      table.action
+      table.action,
     ),
-    snipeTargetActionStatusIdx: index(
-      "execution_history_snipe_target_action_status_idx"
-    ).on(table.snipeTargetId, table.action, table.status),
-  })
+    snipeTargetActionStatusIdx: index("execution_history_snipe_target_action_status_idx").on(
+      table.snipeTargetId,
+      table.action,
+      table.status,
+    ),
+    positionIdx: index("execution_history_position_idx").on(table.positionId),
+  }),
+);
+
+// Positions Table - Tracks open positions for monitoring and auto-selling
+// Defined after executionHistory to avoid circular reference
+export const positions = pgTable(
+  "positions",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    snipeTargetId: integer("snipe_target_id").references(() => snipeTargets.id, {
+      onDelete: "set null",
+    }),
+    symbolName: text("symbol_name").notNull(),
+    vcoinId: text("vcoin_id"),
+
+    // Entry details
+    entryPrice: real("entry_price").notNull(),
+    quantity: real("quantity").notNull(),
+    entryTime: timestamp("entry_time").notNull().default(sql`CURRENT_TIMESTAMP`),
+    buyExecutionId: integer("buy_execution_id"),
+
+    // Exit configuration
+    stopLossPrice: real("stop_loss_price").notNull(),
+    takeProfitPrice: real("take_profit_price").notNull(),
+    maxHoldUntil: timestamp("max_hold_until").notNull(),
+
+    // Exit details (when closed)
+    exitPrice: real("exit_price"),
+    exitTime: timestamp("exit_time"),
+    sellExecutionId: integer("sell_execution_id"),
+
+    // Status
+    status: text("status").notNull().default("open"), // "open", "closed", "partial"
+
+    // P&L
+    realizedPnl: real("realized_pnl"),
+    realizedPnlPercent: real("realized_pnl_percent"),
+
+    // Timestamps
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => ({
+    userStatusIdx: index("positions_user_status_idx").on(table.userId, table.status),
+    statusIdx: index("positions_status_idx").on(table.status),
+    snipeTargetIdx: index("positions_snipe_target_idx").on(table.snipeTargetId),
+    maxHoldIdx: index("positions_max_hold_idx").on(table.maxHoldUntil),
+    symbolIdx: index("positions_symbol_idx").on(table.symbolName),
+  }),
 );
 
 // Transactions Table - Simplified profit/loss tracking
@@ -227,47 +260,30 @@ export const transactions = pgTable(
     status: text("status").notNull().default("pending"), // "pending", "completed", "failed", "cancelled"
 
     // Metadata
-    snipeTargetId: integer("snipe_target_id").references(
-      () => snipeTargets.id,
-      {
-        onDelete: "set null",
-      }
-    ),
+    snipeTargetId: integer("snipe_target_id").references(() => snipeTargets.id, {
+      onDelete: "set null",
+    }),
     notes: text("notes"), // Optional notes about the transaction
 
     // Timestamps
-    transactionTime: timestamp("transaction_time")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    transactionTime: timestamp("transaction_time").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
     userIdx: index("transactions_user_idx").on(table.userId),
     symbolIdx: index("transactions_symbol_idx").on(table.symbolName),
     statusIdx: index("transactions_status_idx").on(table.status),
-    transactionTimeIdx: index("transactions_transaction_time_idx").on(
-      table.transactionTime
-    ),
+    transactionTimeIdx: index("transactions_transaction_time_idx").on(table.transactionTime),
     typeIdx: index("transactions_type_idx").on(table.transactionType),
     // Compound indexes for optimization
-    userStatusIdx: index("transactions_user_status_idx").on(
-      table.userId,
-      table.status
-    ),
-    userTimeIdx: index("transactions_user_time_idx").on(
-      table.userId,
-      table.transactionTime
-    ),
+    userStatusIdx: index("transactions_user_status_idx").on(table.userId, table.status),
+    userTimeIdx: index("transactions_user_time_idx").on(table.userId, table.transactionTime),
     symbolTimeIdx: index("transactions_symbol_time_idx").on(
       table.symbolName,
-      table.transactionTime
+      table.transactionTime,
     ),
-  })
+  }),
 );
 
 // Transaction Lock Tables
@@ -284,9 +300,7 @@ export const transactionLocks = pgTable(
     ownerType: text("owner_type").notNull(), // "user", "system", "workflow"
 
     // Lock timing
-    acquiredAt: timestamp("acquired_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    acquiredAt: timestamp("acquired_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     expiresAt: timestamp("expires_at").notNull(),
     releasedAt: timestamp("released_at"),
 
@@ -308,33 +322,22 @@ export const transactionLocks = pgTable(
     errorMessage: text("error_message"),
 
     // Timestamps
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
-    resourceIdIdx: index("transaction_locks_resource_id_idx").on(
-      table.resourceId
-    ),
+    resourceIdIdx: index("transaction_locks_resource_id_idx").on(table.resourceId),
     statusIdx: index("transaction_locks_status_idx").on(table.status),
     expiresAtIdx: index("transaction_locks_expires_at_idx").on(table.expiresAt),
-    idempotencyKeyIdx: index("transaction_locks_idempotency_key_idx").on(
-      table.idempotencyKey
-    ),
+    idempotencyKeyIdx: index("transaction_locks_idempotency_key_idx").on(table.idempotencyKey),
     ownerIdIdx: index("transaction_locks_owner_id_idx").on(table.ownerId),
     // Compound indexes for common queries
     resourceStatusIdx: index("transaction_locks_resource_status_idx").on(
       table.resourceId,
-      table.status
+      table.status,
     ),
-    ownerStatusIdx: index("transaction_locks_owner_status_idx").on(
-      table.ownerId,
-      table.status
-    ),
-  })
+    ownerStatusIdx: index("transaction_locks_owner_status_idx").on(table.ownerId, table.status),
+  }),
 );
 
 // Transaction Queue Table
@@ -374,34 +377,26 @@ export const transactionQueue = pgTable(
     ownerType: text("owner_type").notNull(),
 
     // Timestamps
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
-    resourceIdIdx: index("transaction_queue_resource_id_idx").on(
-      table.resourceId
-    ),
+    resourceIdIdx: index("transaction_queue_resource_id_idx").on(table.resourceId),
     statusIdx: index("transaction_queue_status_idx").on(table.status),
     priorityIdx: index("transaction_queue_priority_idx").on(table.priority),
     queuedAtIdx: index("transaction_queue_queued_at_idx").on(table.queuedAt),
-    idempotencyKeyIdx: index("transaction_queue_idempotency_key_idx").on(
-      table.idempotencyKey
-    ),
+    idempotencyKeyIdx: index("transaction_queue_idempotency_key_idx").on(table.idempotencyKey),
     // Compound indexes
     statusPriorityIdx: index("transaction_queue_status_priority_idx").on(
       table.status,
       table.priority,
-      table.queuedAt
+      table.queuedAt,
     ),
     resourceStatusIdx: index("transaction_queue_resource_status_idx").on(
       table.resourceId,
-      table.status
+      table.status,
     ),
-  })
+  }),
 );
 
 // Balance Snapshots Table - Critical for balance data persistence
@@ -428,9 +423,7 @@ export const balanceSnapshots = pgTable(
 
     // Timestamps
     timestamp: timestamp("timestamp").notNull().default(sql`CURRENT_TIMESTAMP`),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
     // Primary indexes for performance
@@ -439,28 +432,18 @@ export const balanceSnapshots = pgTable(
     timestampIdx: index("balance_snapshots_timestamp_idx").on(table.timestamp),
 
     // Compound indexes for common queries
-    userTimeIdx: index("balance_snapshots_user_time_idx").on(
-      table.userId,
-      table.timestamp
-    ),
+    userTimeIdx: index("balance_snapshots_user_time_idx").on(table.userId, table.timestamp),
     userAssetTimeIdx: index("balance_snapshots_user_asset_time_idx").on(
       table.userId,
       table.asset,
-      table.timestamp
+      table.timestamp,
     ),
-    assetTimeIdx: index("balance_snapshots_asset_time_idx").on(
-      table.asset,
-      table.timestamp
-    ),
+    assetTimeIdx: index("balance_snapshots_asset_time_idx").on(table.asset, table.timestamp),
 
     // Performance indexes
-    snapshotTypeIdx: index("balance_snapshots_snapshot_type_idx").on(
-      table.snapshotType
-    ),
-    dataSourceIdx: index("balance_snapshots_data_source_idx").on(
-      table.dataSource
-    ),
-  })
+    snapshotTypeIdx: index("balance_snapshots_snapshot_type_idx").on(table.snapshotType),
+    dataSourceIdx: index("balance_snapshots_data_source_idx").on(table.dataSource),
+  }),
 );
 
 // Portfolio Summary Table - Aggregated balance tracking
@@ -482,27 +465,17 @@ export const portfolioSummary = pgTable(
 
     // Update tracking
     lastBalanceUpdate: timestamp("last_balance_update").notNull(),
-    lastCalculated: timestamp("last_calculated")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    lastCalculated: timestamp("last_calculated").notNull().default(sql`CURRENT_TIMESTAMP`),
 
     // Timestamps
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => ({
     userIdx: index("portfolio_summary_user_idx").on(table.userId),
-    lastUpdatedIdx: index("portfolio_summary_last_updated_idx").on(
-      table.lastBalanceUpdate
-    ),
-    lastCalculatedIdx: index("portfolio_summary_last_calculated_idx").on(
-      table.lastCalculated
-    ),
-  })
+    lastUpdatedIdx: index("portfolio_summary_last_updated_idx").on(table.lastBalanceUpdate),
+    lastCalculatedIdx: index("portfolio_summary_last_calculated_idx").on(table.lastCalculated),
+  }),
 );
 
 // Trading Types
@@ -511,6 +484,9 @@ export type NewApiCredentials = typeof apiCredentials.$inferInsert;
 
 export type SnipeTarget = typeof snipeTargets.$inferSelect;
 export type NewSnipeTarget = typeof snipeTargets.$inferInsert;
+
+export type Position = typeof positions.$inferSelect;
+export type NewPosition = typeof positions.$inferInsert;
 
 export type ExecutionHistory = typeof executionHistory.$inferSelect;
 export type NewExecutionHistory = typeof executionHistory.$inferInsert;

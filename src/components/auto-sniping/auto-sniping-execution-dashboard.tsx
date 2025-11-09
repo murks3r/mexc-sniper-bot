@@ -9,9 +9,7 @@ interface AutoSnipingExecutionDashboardProps {
   className?: string;
 }
 
-export function AutoSnipingExecutionDashboard({
-  className,
-}: AutoSnipingExecutionDashboardProps) {
+export function AutoSnipingExecutionDashboard({ className }: AutoSnipingExecutionDashboardProps) {
   const [isActive, setIsActive] = useState(false);
 
   return (

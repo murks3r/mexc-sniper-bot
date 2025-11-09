@@ -71,7 +71,7 @@ export class BatchInsertService {
    */
   async batchInsertPatternEmbeddings(
     embeddings: PatternEmbeddingBatch[],
-    options: Partial<BatchInsertOptions> = {}
+    options: Partial<BatchInsertOptions> = {},
   ): Promise<{
     success: boolean;
     inserted: number;
@@ -100,15 +100,11 @@ export class BatchInsertService {
 
       // Process in chunks
       const chunks = this.chunkArray(embeddings, opts.chunkSize);
-      this.logger.info(
-        `Processing ${embeddings.length} embeddings in ${chunks.length} chunks`
-      );
+      this.logger.info(`Processing ${embeddings.length} embeddings in ${chunks.length} chunks`);
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        this.logger.debug(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`
-        );
+        this.logger.debug(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`);
 
         try {
           const result = await this.insertEmbeddingChunk(chunk, opts);
@@ -163,7 +159,7 @@ export class BatchInsertService {
    */
   async batchInsertSnipeTargets(
     targets: SnipeTargetBatch[],
-    options: Partial<BatchInsertOptions> = {}
+    options: Partial<BatchInsertOptions> = {},
   ): Promise<{
     success: boolean;
     inserted: number;
@@ -195,22 +191,16 @@ export class BatchInsertService {
       if (opts.enableDeduplication) {
         processedTargets = await this.deduplicateSnipeTargets(targets);
         totalDuplicates = targets.length - processedTargets.length;
-        this.logger.debug(
-          `Deduplication removed ${totalDuplicates} duplicate targets`
-        );
+        this.logger.debug(`Deduplication removed ${totalDuplicates} duplicate targets`);
       }
 
       // Process in chunks
       const chunks = this.chunkArray(processedTargets, opts.chunkSize);
-      this.logger.info(
-        `Processing ${processedTargets.length} targets in ${chunks.length} chunks`
-      );
+      this.logger.info(`Processing ${processedTargets.length} targets in ${chunks.length} chunks`);
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        this.logger.debug(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`
-        );
+        this.logger.debug(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`);
 
         try {
           const result = await this.insertTargetChunk(chunk, opts);
@@ -264,7 +254,7 @@ export class BatchInsertService {
    */
   private async insertEmbeddingChunk(
     chunk: PatternEmbeddingBatch[],
-    options: BatchInsertOptions
+    options: BatchInsertOptions,
   ): Promise<{ inserted: number; duplicates: number; errors: string[] }> {
     const errors: string[] = [];
 
@@ -285,12 +275,8 @@ export class BatchInsertService {
 
       if (options.onConflictStrategy === "ignore") {
         result = await executeWithRetry(
-          () =>
-            db
-              .insert(patternEmbeddings)
-              .values(insertData)
-              .onConflictDoNothing(),
-          "Insert pattern embeddings"
+          () => db.insert(patternEmbeddings).values(insertData).onConflictDoNothing(),
+          "Insert pattern embeddings",
         );
       } else if (options.onConflictStrategy === "update") {
         result = await executeWithRetry(
@@ -307,12 +293,12 @@ export class BatchInsertService {
                   updatedAt: sql`excluded.updated_at`,
                 },
               }),
-          "Insert pattern embeddings with update"
+          "Insert pattern embeddings with update",
         );
       } else {
         result = await executeWithRetry(
           () => db.insert(patternEmbeddings).values(insertData),
-          "Insert pattern embeddings"
+          "Insert pattern embeddings",
         );
       }
 
@@ -332,7 +318,7 @@ export class BatchInsertService {
    */
   private async insertTargetChunk(
     chunk: SnipeTargetBatch[],
-    options: BatchInsertOptions
+    options: BatchInsertOptions,
   ): Promise<{ inserted: number; errors: string[] }> {
     const errors: string[] = [];
 
@@ -361,9 +347,8 @@ export class BatchInsertService {
 
       if (options.onConflictStrategy === "ignore") {
         result = await executeWithRetry(
-          () =>
-            db.insert(snipeTargets).values(insertData).onConflictDoNothing(),
-          "Insert snipe targets"
+          () => db.insert(snipeTargets).values(insertData).onConflictDoNothing(),
+          "Insert snipe targets",
         );
       } else if (options.onConflictStrategy === "update") {
         result = await executeWithRetry(
@@ -381,12 +366,12 @@ export class BatchInsertService {
                   updatedAt: sql`excluded.updated_at`,
                 },
               }),
-          "Insert snipe targets with update"
+          "Insert snipe targets with update",
         );
       } else {
         result = await executeWithRetry(
           () => db.insert(snipeTargets).values(insertData),
-          "Insert snipe targets"
+          "Insert snipe targets",
         );
       }
 
@@ -431,10 +416,7 @@ export class BatchInsertService {
         errors.push(`Item ${i}: Invalid confidence (must be 0-100)`);
       }
 
-      if (
-        !embedding.discoveredAt ||
-        !(embedding.discoveredAt instanceof Date)
-      ) {
+      if (!embedding.discoveredAt || !(embedding.discoveredAt instanceof Date)) {
         errors.push(`Item ${i}: Invalid discoveredAt (must be Date)`);
       }
     }
@@ -469,13 +451,8 @@ export class BatchInsertService {
         errors.push(`Item ${i}: Invalid vcoinId`);
       }
 
-      if (
-        typeof target.positionSizeUsdt !== "number" ||
-        target.positionSizeUsdt <= 0
-      ) {
-        errors.push(
-          `Item ${i}: Invalid positionSizeUsdt (must be positive number)`
-        );
+      if (typeof target.positionSizeUsdt !== "number" || target.positionSizeUsdt <= 0) {
+        errors.push(`Item ${i}: Invalid positionSizeUsdt (must be positive number)`);
       }
 
       if (
@@ -490,11 +467,7 @@ export class BatchInsertService {
         errors.push(`Item ${i}: Invalid status`);
       }
 
-      if (
-        typeof target.priority !== "number" ||
-        target.priority < 1 ||
-        target.priority > 5
-      ) {
+      if (typeof target.priority !== "number" || target.priority < 1 || target.priority > 5) {
         errors.push(`Item ${i}: Invalid priority (must be 1-5)`);
       }
     }
@@ -508,9 +481,7 @@ export class BatchInsertService {
   /**
    * Deduplicate snipe targets based on userId, symbolName, and vcoinId
    */
-  private async deduplicateSnipeTargets(
-    targets: SnipeTargetBatch[]
-  ): Promise<SnipeTargetBatch[]> {
+  private async deduplicateSnipeTargets(targets: SnipeTargetBatch[]): Promise<SnipeTargetBatch[]> {
     // Create a set of existing combinations
     const existingTargets = await db
       .select({
@@ -521,9 +492,7 @@ export class BatchInsertService {
       .from(snipeTargets);
 
     const existingSet = new Set(
-      existingTargets.map(
-        (t: any) => `${t.userId}:${t.symbolName}:${t.vcoinId}`
-      )
+      existingTargets.map((t: any) => `${t.userId}:${t.symbolName}:${t.vcoinId}`),
     );
 
     // Filter out duplicates

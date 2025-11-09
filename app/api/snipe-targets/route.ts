@@ -2,8 +2,8 @@ import { and, desc, eq, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
-import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
 import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
 
 // Create snipe target endpoint
 export async function POST(request: NextRequest) {
@@ -20,23 +20,26 @@ export async function POST(request: NextRequest) {
         message: "Targets are created automatically by the system",
         code: "SNIPE_TARGET_CREATION_DISABLED",
       },
-      { status: 403 }
+      { status: 403 },
     );
 
     // Note: legacy manual creation code removed intentionally
   } catch (error) {
     console.error("Error creating snipe target:", error);
-    
+
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
-      return NextResponse.json({
-        success: false,
-        error: "Authentication required",
-        message: "Please sign in to create snipe targets",
-        code: "AUTHENTICATION_REQUIRED",
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Authentication required",
+          message: "Please sign in to create snipe targets",
+          code: "AUTHENTICATION_REQUIRED",
+        },
+        { status: 401 },
+      );
     }
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
         details: error instanceof Error ? error.message : "Unknown error",
         debug: process.env.NODE_ENV === "development" ? error : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -62,14 +65,24 @@ export async function GET(request: NextRequest) {
     const includeSystem = searchParams.get("includeSystem") !== "false";
 
     // Build where clause
-    let whereCond: any | undefined = undefined;
+    let whereCond: any | undefined;
     if (includeAll) {
+      // When includeAll=true, filter by status if provided, otherwise get all
       whereCond = status ? eq(snipeTargets.status, status) : undefined;
     } else {
+      // When includeAll=false, filter by user ownership and optionally by status
       const ownerCond = includeSystem
         ? or(eq(snipeTargets.userId, user.id), eq(snipeTargets.userId, "system"))
         : eq(snipeTargets.userId, user.id);
-      whereCond = status ? and(ownerCond, eq(snipeTargets.status, status)) : ownerCond;
+      // Support "active" status which includes both "active" and "executing"
+      if (status === "active") {
+        whereCond = and(
+          ownerCond,
+          or(eq(snipeTargets.status, "active"), eq(snipeTargets.status, "executing")),
+        );
+      } else {
+        whereCond = status ? and(ownerCond, eq(snipeTargets.status, status)) : ownerCond;
+      }
     }
 
     // Fetch targets from database
@@ -77,9 +90,7 @@ export async function GET(request: NextRequest) {
     if (whereCond) {
       query = query.where(whereCond);
     }
-    const targets = await query
-      .orderBy(desc(snipeTargets.createdAt))
-      .limit(100);
+    const targets = await query.orderBy(desc(snipeTargets.createdAt)).limit(100);
 
     return NextResponse.json({
       success: true,
@@ -88,29 +99,32 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching snipe targets:", error);
-    
+
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
-      return NextResponse.json({
-        success: false,
-        error: "Authentication required",
-        message: "Please sign in to view snipe targets",
-        code: "AUTHENTICATION_REQUIRED",
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Authentication required",
+          message: "Please sign in to view snipe targets",
+          code: "AUTHENTICATION_REQUIRED",
+        },
+        { status: 401 },
+      );
     }
-    
+
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch snipe targets",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 // Helper function to create snipe targets using real data (calendar sync/patterns)
-async function createFromPatternDetection(userId: string) {
+async function _createFromPatternDetection(userId: string) {
   try {
     console.log(`[Pattern Detection] Creating targets for user: ${userId} using real data`);
 
@@ -132,14 +146,16 @@ async function createFromPatternDetection(userId: string) {
         errors: syncResult.errors,
       },
     });
-
   } catch (error) {
     console.error("Error creating snipe targets from patterns:", error);
-    
-    return NextResponse.json({
-      success: false,
-      error: "Failed to create snipe targets from patterns",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to create snipe targets from patterns",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
   }
 }

@@ -46,7 +46,7 @@ class DatabaseInstrumentation {
 export const databaseInstrumentation = new DatabaseInstrumentation();
 
 export function initializeDatabaseInstrumentation(
-  config?: Partial<DatabaseInstrumentationConfig>
+  config?: Partial<DatabaseInstrumentationConfig>,
 ): void {
   databaseInstrumentation.initialize(config);
 }
@@ -79,7 +79,7 @@ export async function instrumentDatabaseQuery<T>(
     tableName?: string;
     queryName?: string;
     includeQuery?: boolean;
-  }
+  },
 ): Promise<T> {
   const startTime = Date.now();
 

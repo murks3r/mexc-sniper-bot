@@ -63,8 +63,7 @@ export class MexcConfigValidator {
         hasSecretKey: !!envSecretKey,
         apiKeyLength: envApiKey?.length || 0,
         secretKeyLength: envSecretKey?.length || 0,
-        hasValidLength:
-          (envApiKey?.length || 0) >= 10 && (envSecretKey?.length || 0) >= 10,
+        hasValidLength: (envApiKey?.length || 0) >= 10 && (envSecretKey?.length || 0) >= 10,
       };
 
       if (!this.mexcService.hasValidCredentials()) {
@@ -81,17 +80,16 @@ export class MexcConfigValidator {
       // Test API connectivity with timeout
       const connectivityTest = await Promise.race([
         this.mexcService.testConnectivityWithResponse(),
-        new Promise<{ success: false; error: string; responseTime: number }>(
-          (resolve) =>
-            setTimeout(
-              () =>
-                resolve({
-                  success: false,
-                  error: "Connectivity test timeout after 10 seconds",
-                  responseTime: 10000,
-                }),
-              10000
-            )
+        new Promise<{ success: false; error: string; responseTime: number }>((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                success: false,
+                error: "Connectivity test timeout after 10 seconds",
+                responseTime: 10000,
+              }),
+            10000,
+          ),
         ),
       ]);
 
@@ -104,8 +102,7 @@ export class MexcConfigValidator {
           details: {
             error: connectivityTest.error,
             responseTime:
-              (connectivityTest as any).responseTime ||
-              (connectivityTest as any).latency,
+              (connectivityTest as any).responseTime || (connectivityTest as any).latency,
             credentialDetails,
           },
           timestamp,
@@ -122,8 +119,8 @@ export class MexcConfigValidator {
                 success: false,
                 error: "Server time check timeout after 8 seconds",
               }),
-            8000
-          )
+            8000,
+          ),
         ),
       ]);
       if (!serverTimeResponse.success) {
@@ -167,9 +164,7 @@ export class MexcConfigValidator {
         status: "valid",
         message: "MEXC API credentials validated successfully",
         details: {
-          responseTime:
-            connectivityTest.data?.latency ||
-            (connectivityTest as any).responseTime,
+          responseTime: connectivityTest.data?.latency || (connectivityTest as any).responseTime,
           timeDifference: timeDiff,
           serverTime,
         },
@@ -209,8 +204,7 @@ export class MexcConfigValidator {
         qs: 50, // quality score (optional)
       };
 
-      const testPatterns =
-        await this.patternEngine.detectReadyStatePattern(mockSymbol);
+      const testPatterns = await this.patternEngine.detectReadyStatePattern(mockSymbol);
 
       // If we get here without throwing, pattern detection is working
       const _isOperational = Array.isArray(testPatterns);
@@ -264,9 +258,7 @@ export class MexcConfigValidator {
 
     try {
       // Check safety coordinator status
-      const safetyStatus = (
-        this.safetyCoordinator as any
-      ).getCurrentStatus?.() || {
+      const safetyStatus = (this.safetyCoordinator as any).getCurrentStatus?.() || {
         overall: { systemStatus: "unknown" },
       };
 
@@ -289,10 +281,7 @@ export class MexcConfigValidator {
         data: { status: "CLOSED" },
       };
 
-      if (
-        !circuitBreakerStatus.success ||
-        circuitBreakerStatus.data?.status === "OPEN"
-      ) {
+      if (!circuitBreakerStatus.success || circuitBreakerStatus.data?.status === "OPEN") {
         return {
           isValid: false,
           component,
@@ -347,31 +336,21 @@ export class MexcConfigValidator {
 
       // Validate numeric values are within acceptable ranges
       const maxPositionSize = Number.parseFloat(requiredConfig.maxPositionSize);
-      const maxPortfolioRisk = Number.parseFloat(
-        requiredConfig.maxPortfolioRisk
-      );
-      const stopLossPercentage = Number.parseFloat(
-        requiredConfig.stopLossPercentage
-      );
+      const maxPortfolioRisk = Number.parseFloat(requiredConfig.maxPortfolioRisk);
+      const stopLossPercentage = Number.parseFloat(requiredConfig.stopLossPercentage);
 
       const configIssues: string[] = [];
 
       if (maxPositionSize <= 0 || maxPositionSize > 0.5) {
-        configIssues.push(
-          "Max position size should be between 0.01 and 0.50 (1%-50%)"
-        );
+        configIssues.push("Max position size should be between 0.01 and 0.50 (1%-50%)");
       }
 
       if (maxPortfolioRisk <= 0 || maxPortfolioRisk > 0.5) {
-        configIssues.push(
-          "Max portfolio risk should be between 0.01 and 0.50 (1%-50%)"
-        );
+        configIssues.push("Max portfolio risk should be between 0.01 and 0.50 (1%-50%)");
       }
 
       if (stopLossPercentage <= 0 || stopLossPercentage > 0.3) {
-        configIssues.push(
-          "Stop loss percentage should be between 0.01 and 0.30 (1%-30%)"
-        );
+        configIssues.push("Stop loss percentage should be between 0.01 and 0.30 (1%-30%)");
       }
 
       if (configIssues.length > 0) {
@@ -423,31 +402,20 @@ export class MexcConfigValidator {
     const recommendations: string[] = [];
 
     // Run all validations in parallel for faster results
-    const [
-      mexcValidation,
-      patternValidation,
-      safetyValidation,
-      tradingValidation,
-    ] = await Promise.all([
-      this.validateMexcCredentials(),
-      this.validatePatternDetection(),
-      this.validateSafetySystems(),
-      this.validateTradingConfiguration(),
-    ]);
+    const [mexcValidation, patternValidation, safetyValidation, tradingValidation] =
+      await Promise.all([
+        this.validateMexcCredentials(),
+        this.validatePatternDetection(),
+        this.validateSafetySystems(),
+        this.validateTradingConfiguration(),
+      ]);
 
-    validationResults.push(
-      mexcValidation,
-      patternValidation,
-      safetyValidation,
-      tradingValidation
-    );
+    validationResults.push(mexcValidation, patternValidation, safetyValidation, tradingValidation);
 
     // Calculate readiness score
     const validComponents = validationResults.filter((r) => r.isValid).length;
     const totalComponents = validationResults.length;
-    const readinessScore = Math.round(
-      (validComponents / totalComponents) * 100
-    );
+    const readinessScore = Math.round((validComponents / totalComponents) * 100);
 
     // Determine overall status
     let overallStatus: "ready" | "not_ready" | "partial" = "not_ready";
@@ -469,24 +437,17 @@ export class MexcConfigValidator {
     // Add general recommendations
     if (overallStatus === "ready") {
       recommendations.push("System ready for auto-sniping operations");
-      recommendations.push(
-        "Monitor performance metrics and adjust parameters as needed"
-      );
+      recommendations.push("Monitor performance metrics and adjust parameters as needed");
     } else {
-      recommendations.push(
-        "Complete all system validations before enabling auto-sniping"
-      );
+      recommendations.push("Complete all system validations before enabling auto-sniping");
       if (readinessScore >= 75) {
-        recommendations.push(
-          "Consider enabling limited auto-sniping with reduced position sizes"
-        );
+        recommendations.push("Consider enabling limited auto-sniping with reduced position sizes");
       }
     }
 
     // Check both system readiness and environment variable setting
     const autoSnipingEnabled =
-      overallStatus === "ready" &&
-      process.env.AUTO_SNIPING_ENABLED?.toLowerCase() !== "false";
+      overallStatus === "ready" && process.env.AUTO_SNIPING_ENABLED?.toLowerCase() !== "false";
 
     return {
       overallStatus,
@@ -526,7 +487,7 @@ export class MexcConfigValidator {
       return { healthy, score, issues };
     } catch (error) {
       issues.push(
-        `Health check failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Health check failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       return { healthy: false, score: 0, issues };
     }

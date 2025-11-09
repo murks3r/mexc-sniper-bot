@@ -56,14 +56,7 @@ export {
 };
 
 // Core types for trading and market data
-export type {
-  CalendarEntry,
-  SymbolEntry,
-  BalanceEntry,
-  ExchangeSymbol,
-  Ticker,
-  OrderResult,
-};
+export type { CalendarEntry, SymbolEntry, BalanceEntry, ExchangeSymbol, Ticker, OrderResult };
 
 // Advanced analytics and trading types (removed non-existent types)
 // export type { MarketStats, PatternAnalysis, TradingOpportunity, Portfolio, RiskAssessment };
@@ -88,7 +81,7 @@ export function getMexcService(config?: {
  * Create a new MEXC service instance with specific configuration
  */
 export function createMexcService(
-  config: { apiKey?: string; secretKey?: string } = {}
+  config: { apiKey?: string; secretKey?: string } = {},
 ): UnifiedMexcClient {
   return getUnifiedMexcClientFactory(config);
 }
@@ -96,10 +89,7 @@ export function createMexcService(
 /**
  * Get MEXC client (alias for backward compatibility)
  */
-export function getMexcClient(config?: {
-  apiKey?: string;
-  secretKey?: string;
-}): UnifiedMexcClient {
+export function getMexcClient(config?: { apiKey?: string; secretKey?: string }): UnifiedMexcClient {
   return getUnifiedMexcClientFactory(config);
 }
 
@@ -111,9 +101,7 @@ export function getEnhancedMexcService(config?: {
   apiKey?: string;
   secretKey?: string;
 }): UnifiedMexcServiceV2 {
-  console.warn(
-    "getEnhancedMexcService is deprecated. Use getUnifiedMexcServiceV2 instead."
-  );
+  console.warn("getEnhancedMexcService is deprecated. Use getUnifiedMexcServiceV2 instead.");
   return getUnifiedMexcServiceV2(config);
 }
 
@@ -122,9 +110,7 @@ export function getEnhancedMexcService(config?: {
  * @deprecated Use resetUnifiedMexcServiceV2 instead
  */
 export function resetEnhancedMexcService(): void {
-  console.warn(
-    "resetEnhancedMexcService is deprecated. Use resetUnifiedMexcServiceV2 instead."
-  );
+  console.warn("resetEnhancedMexcService is deprecated. Use resetUnifiedMexcServiceV2 instead.");
   resetUnifiedMexcServiceV2();
 }
 

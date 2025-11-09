@@ -148,23 +148,16 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // Extract results (handle any failures gracefully)
     const validation =
-      validationResult.status === "fulfilled"
-        ? validationResult.value
-        : getDefaultValidation();
+      validationResult.status === "fulfilled" ? validationResult.value : getDefaultValidation();
     const metrics =
-      healthMetrics.status === "fulfilled"
-        ? healthMetrics.value
-        : getDefaultMetrics();
+      healthMetrics.status === "fulfilled" ? healthMetrics.value : getDefaultMetrics();
     const quality =
-      connectionQuality.status === "fulfilled"
-        ? connectionQuality.value
-        : getDefaultQuality();
+      connectionQuality.status === "fulfilled" ? connectionQuality.value : getDefaultQuality();
     const circuitBreaker =
       circuitBreakerStatus.status === "fulfilled"
         ? circuitBreakerStatus.value
         : getDefaultCircuitBreaker();
-    const rtStatus =
-      realTimeStatus.status === "fulfilled" ? realTimeStatus.value : null;
+    const rtStatus = realTimeStatus.status === "fulfilled" ? realTimeStatus.value : null;
     const userCreds =
       userCredentialInfo.status === "fulfilled"
         ? userCredentialInfo.value
@@ -241,9 +234,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         latest: recentAlerts[0]?.message,
         severity:
           rtStatus?.alerts?.severity ||
-          (recentAlerts.length > 0
-            ? (recentAlerts[0].severity as any)
-            : "none"),
+          (recentAlerts.length > 0 ? (recentAlerts[0].severity as any) : "none"),
         recent: recentAlerts,
       },
 
@@ -255,8 +246,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       message: statusMessage,
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      lastChecked:
-        rtStatus?.lastChecked?.toISOString() || new Date().toISOString(),
+      lastChecked: rtStatus?.lastChecked?.toISOString() || new Date().toISOString(),
       nextCheckIn: rtStatus?.nextCheckIn || 30000,
 
       // Trends and Analysis
@@ -289,14 +279,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     console.error("[Enhanced Connectivity] Error:", { error: error });
     const safeError = toSafeError(error);
 
-    return apiResponse.error(
-      safeError.message || "Enhanced connectivity check failed",
-      500,
-      {
-        requestId,
-        responseTime: Date.now() - startTime,
-      }
-    );
+    return apiResponse.error(safeError.message || "Enhanced connectivity check failed", 500, {
+      requestId,
+      responseTime: Date.now() - startTime,
+    });
   }
 }
 
@@ -322,9 +308,7 @@ async function getUserCredentialInfo(userId?: string): Promise<{
     }
   }
 
-  const hasEnvironmentCredentials = !!(
-    process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY
-  );
+  const hasEnvironmentCredentials = !!(process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY);
 
   return { hasUserCredentials, hasEnvironmentCredentials };
 }
@@ -332,7 +316,7 @@ async function getUserCredentialInfo(userId?: string): Promise<{
 function determineOverallStatus(
   validation: any,
   metrics: any,
-  quality: any
+  quality: any,
 ): EnhancedConnectivityResponse["status"] {
   if (!validation.hasCredentials) {
     return "no_credentials";
@@ -472,8 +456,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return apiResponse({
       success: false,
-      error:
-        "Invalid request - specify testCredentials, resetCircuitBreaker, or forceRefresh",
+      error: "Invalid request - specify testCredentials, resetCircuitBreaker, or forceRefresh",
       meta: {
         timestamp: new Date().toISOString(),
         requestId,
@@ -482,14 +465,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error("[Enhanced Connectivity POST] Error:", { error: error });
     return apiResponse.error(
-      error instanceof Error
-        ? error.message
-        : "Enhanced connectivity action failed",
+      error instanceof Error ? error.message : "Enhanced connectivity action failed",
       500,
       {
         requestId,
         responseTime: Date.now() - startTime,
-      }
+      },
     );
   }
 }

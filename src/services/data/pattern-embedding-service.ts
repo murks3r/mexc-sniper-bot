@@ -154,9 +154,7 @@ export class PatternEmbeddingService {
   /**
    * Generate AI-enhanced embedding using OpenAI (if available)
    */
-  private async generateDeterministicEmbedding(
-    pattern: PatternData
-  ): Promise<EmbeddingVector> {
+  private async generateDeterministicEmbedding(pattern: PatternData): Promise<EmbeddingVector> {
     // In test environment, always use fallback to ensure consistent results
     if (process.env.NODE_ENV === "test" || process.env.SKIP_OPENAI === "true") {
       return this.generateFallbackEmbedding(pattern);
@@ -183,9 +181,7 @@ export class PatternEmbeddingService {
         }
       }
     } catch (_error) {
-      console.debug(
-        "OpenAI embedding not available, using deterministic approach"
-      );
+      console.debug("OpenAI embedding not available, using deterministic approach");
     }
 
     // Fallback to deterministic generation
@@ -198,10 +194,7 @@ export class PatternEmbeddingService {
   private generateFallbackEmbedding(pattern: PatternData): EmbeddingVector {
     // Use test-friendly dimensions and model name for consistent testing
     const dimensions = process.env.NODE_ENV === "test" ? 128 : 384;
-    const modelName =
-      process.env.NODE_ENV === "test"
-        ? "pattern-v1"
-        : "pattern-deterministic-v1";
+    const modelName = process.env.NODE_ENV === "test" ? "pattern-v1" : "pattern-deterministic-v1";
 
     const vector = new Float32Array(dimensions);
 
@@ -292,14 +285,14 @@ export class PatternEmbeddingService {
   async findSimilarPatterns(
     targetEmbedding: EmbeddingVector,
     candidates: PatternEmbedding[],
-    threshold = 0.8
+    threshold = 0.8,
   ): Promise<PatternEmbedding[]> {
     const results: PatternEmbedding[] = [];
 
     for (const candidate of candidates) {
       const similarity = this.calculateCosineSimilarity(
         targetEmbedding.vector,
-        candidate.embedding.vector
+        candidate.embedding.vector,
       );
 
       if (similarity >= threshold) {
@@ -316,10 +309,7 @@ export class PatternEmbeddingService {
   /**
    * Calculate cosine similarity between vectors
    */
-  private calculateCosineSimilarity(
-    vectorA: number[],
-    vectorB: number[]
-  ): number {
+  private calculateCosineSimilarity(vectorA: number[], vectorB: number[]): number {
     if (vectorA.length !== vectorB.length) {
       throw new Error("Vectors must have the same dimensions");
     }
@@ -366,7 +356,7 @@ export class PatternEmbeddingService {
    */
   async detectPatternTrends(
     patternType: string,
-    timeWindows: PatternTimeWindow[]
+    timeWindows: PatternTimeWindow[],
   ): Promise<{
     trends: PatternTrend[];
     insights: string[];
@@ -382,9 +372,7 @@ export class PatternEmbeddingService {
 
     try {
       // Sort time windows by timestamp
-      const sortedWindows = timeWindows.sort(
-        (a, b) => a.timestamp - b.timestamp
-      );
+      const sortedWindows = timeWindows.sort((a, b) => a.timestamp - b.timestamp);
 
       // Calculate moving averages and trend detection
       for (let i = 1; i < sortedWindows.length; i++) {
@@ -392,28 +380,20 @@ export class PatternEmbeddingService {
         const previous = sortedWindows[i - 1];
 
         // Calculate trend metrics
-        const volumeChange = this.calculatePercentageChange(
-          previous.volume,
-          current.volume
-        );
+        const volumeChange = this.calculatePercentageChange(previous.volume, current.volume);
         const confidenceChange = this.calculatePercentageChange(
           previous.confidence,
-          current.confidence
+          current.confidence,
         );
         const frequencyChange = this.calculatePercentageChange(
           previous.frequency,
-          current.frequency
+          current.frequency,
         );
 
         // Determine trend direction using weighted scoring
-        const trendScore =
-          volumeChange * 0.4 + confidenceChange * 0.3 + frequencyChange * 0.3;
+        const trendScore = volumeChange * 0.4 + confidenceChange * 0.3 + frequencyChange * 0.3;
         const trendDirection =
-          trendScore > 5
-            ? "increasing"
-            : trendScore < -5
-              ? "decreasing"
-              : "stable";
+          trendScore > 5 ? "increasing" : trendScore < -5 ? "decreasing" : "stable";
 
         // Calculate trend strength
         const strength = Math.min(Math.abs(trendScore) / 20, 1.0); // Normalize to 0-1
@@ -437,11 +417,11 @@ export class PatternEmbeddingService {
         if (strength > 0.7) {
           if (trendDirection === "increasing") {
             insights.push(
-              `Strong ${trendDirection} trend detected for ${patternType} (strength: ${(strength * 100).toFixed(1)}%)`
+              `Strong ${trendDirection} trend detected for ${patternType} (strength: ${(strength * 100).toFixed(1)}%)`,
             );
           } else if (trendDirection === "decreasing") {
             insights.push(
-              `Declining trend for ${patternType} - consider pattern validity (strength: ${(strength * 100).toFixed(1)}%)`
+              `Declining trend for ${patternType} - consider pattern validity (strength: ${(strength * 100).toFixed(1)}%)`,
             );
           }
         }
@@ -449,47 +429,40 @@ export class PatternEmbeddingService {
         // Generate alerts for significant changes
         if (Math.abs(volumeChange) > 50) {
           alerts.push(
-            `Significant volume change detected: ${volumeChange.toFixed(1)}% for ${patternType}`
+            `Significant volume change detected: ${volumeChange.toFixed(1)}% for ${patternType}`,
           );
         }
 
         if (confidenceChange < -20) {
           alerts.push(
-            `Pattern confidence declining rapidly: ${confidenceChange.toFixed(1)}% for ${patternType}`
+            `Pattern confidence declining rapidly: ${confidenceChange.toFixed(1)}% for ${patternType}`,
           );
         }
       }
 
       // Overall trend analysis
       if (trends.length > 0) {
-        const increasingTrends = trends.filter(
-          (t) => t.trend === "increasing"
-        ).length;
-        const decreasingTrends = trends.filter(
-          (t) => t.trend === "decreasing"
-        ).length;
-        const avgStrength =
-          trends.reduce((sum, t) => sum + t.strength, 0) / trends.length;
+        const increasingTrends = trends.filter((t) => t.trend === "increasing").length;
+        const decreasingTrends = trends.filter((t) => t.trend === "decreasing").length;
+        const avgStrength = trends.reduce((sum, t) => sum + t.strength, 0) / trends.length;
 
         if (increasingTrends > decreasingTrends * 1.5) {
           insights.push(
-            `${patternType} showing overall bullish pattern behavior (${increasingTrends}/${trends.length} periods)`
+            `${patternType} showing overall bullish pattern behavior (${increasingTrends}/${trends.length} periods)`,
           );
         } else if (decreasingTrends > increasingTrends * 1.5) {
           insights.push(
-            `${patternType} showing overall bearish pattern behavior (${decreasingTrends}/${trends.length} periods)`
+            `${patternType} showing overall bearish pattern behavior (${decreasingTrends}/${trends.length} periods)`,
           );
         } else {
           insights.push(
-            `${patternType} showing mixed signals - monitor closely (avg strength: ${(avgStrength * 100).toFixed(1)}%)`
+            `${patternType} showing mixed signals - monitor closely (avg strength: ${(avgStrength * 100).toFixed(1)}%)`,
           );
         }
       }
     } catch (error) {
       console.error("Error in pattern trend detection:", error);
-      insights.push(
-        `Error analyzing trends for ${patternType} - using fallback analysis`
-      );
+      insights.push(`Error analyzing trends for ${patternType} - using fallback analysis`);
     }
 
     return { trends, insights, alerts };
@@ -500,7 +473,7 @@ export class PatternEmbeddingService {
    */
   async analyzeHistoricalPerformance(
     patternType: string,
-    timeRange: HistoricalTimeRange
+    timeRange: HistoricalTimeRange,
   ): Promise<{
     summary: HistoricalSummary;
     breakdown: PatternPerformanceBreakdown[];
@@ -508,10 +481,7 @@ export class PatternEmbeddingService {
   }> {
     try {
       // Get historical data from trading service
-      const historicalData = await this.fetchHistoricalPatternData(
-        patternType,
-        timeRange
-      );
+      const historicalData = await this.fetchHistoricalPatternData(patternType, timeRange);
 
       if (!historicalData || historicalData.length === 0) {
         return this.generateFallbackPerformanceAnalysis(patternType);
@@ -520,11 +490,7 @@ export class PatternEmbeddingService {
       // Calculate comprehensive performance metrics
       const summary = this.calculatePerformanceSummary(historicalData);
       const breakdown = this.generatePerformanceBreakdown(historicalData);
-      const recommendations = this.generateRecommendations(
-        patternType,
-        summary,
-        breakdown
-      );
+      const recommendations = this.generateRecommendations(patternType, summary, breakdown);
 
       return { summary, breakdown, recommendations };
     } catch (error) {
@@ -538,13 +504,11 @@ export class PatternEmbeddingService {
    */
   private async fetchHistoricalPatternData(
     patternType: string,
-    timeRange: HistoricalTimeRange
+    timeRange: HistoricalTimeRange,
   ): Promise<HistoricalPatternData[]> {
     try {
       // Try to get real historical data from trading service
-      const { getCoreTrading } = await import(
-        "../trading/consolidated/core-trading/base-service"
-      );
+      const { getCoreTrading } = await import("../trading/consolidated/core-trading/base-service");
       const coreTrading = getCoreTrading();
 
       const historicalTrades = await coreTrading.getHistoricalTrades({
@@ -565,9 +529,7 @@ export class PatternEmbeddingService {
         marketConditions: trade.marketConditions || "normal",
       }));
     } catch (_error) {
-      console.debug(
-        "Historical data service not available, using simulated data"
-      );
+      console.debug("Historical data service not available, using simulated data");
 
       // Generate realistic simulated historical data
       return this.generateSimulatedHistoricalData(patternType, timeRange);
@@ -579,13 +541,11 @@ export class PatternEmbeddingService {
    */
   private generateSimulatedHistoricalData(
     patternType: string,
-    timeRange: HistoricalTimeRange
+    timeRange: HistoricalTimeRange,
   ): HistoricalPatternData[] {
     const data: HistoricalPatternData[] = [];
     const dayMs = 24 * 60 * 60 * 1000;
-    const totalDays = Math.floor(
-      (timeRange.endTimestamp - timeRange.startTimestamp) / dayMs
-    );
+    const totalDays = Math.floor((timeRange.endTimestamp - timeRange.startTimestamp) / dayMs);
 
     // Pattern-specific performance characteristics
     const patternConfigs = {
@@ -595,17 +555,18 @@ export class PatternEmbeddingService {
       pre_ready: { baseSuccessRate: 0.65, volatility: 0.18, avgProfit: 2.1 },
     };
 
-    const config = patternConfigs[
-      patternType as keyof typeof patternConfigs
-    ] || { baseSuccessRate: 0.7, volatility: 0.2, avgProfit: 2.5 };
+    const config = patternConfigs[patternType as keyof typeof patternConfigs] || {
+      baseSuccessRate: 0.7,
+      volatility: 0.2,
+      avgProfit: 2.5,
+    };
 
     // Generate realistic trade distribution
     const tradesPerDay = Math.max(1, Math.floor(Math.random() * 3));
 
     for (let day = 0; day < Math.min(totalDays, 90); day++) {
       for (let trade = 0; trade < tradesPerDay; trade++) {
-        const timestamp =
-          timeRange.startTimestamp + day * dayMs + Math.random() * dayMs;
+        const timestamp = timeRange.startTimestamp + day * dayMs + Math.random() * dayMs;
         const confidence = 0.5 + Math.random() * 0.5; // 0.5 to 1.0
 
         // Success rate influenced by confidence and market conditions
@@ -639,26 +600,19 @@ export class PatternEmbeddingService {
   /**
    * Calculate comprehensive performance summary
    */
-  private calculatePerformanceSummary(
-    data: HistoricalPatternData[]
-  ): HistoricalSummary {
+  private calculatePerformanceSummary(data: HistoricalPatternData[]): HistoricalSummary {
     const totalPatterns = data.length;
     const successfulTrades = data.filter((d) => d.success);
-    const successRate =
-      totalPatterns > 0 ? successfulTrades.length / totalPatterns : 0;
+    const successRate = totalPatterns > 0 ? successfulTrades.length / totalPatterns : 0;
 
     const totalProfit = data.reduce((sum, d) => sum + d.profitLoss, 0);
     const avgProfit = totalPatterns > 0 ? totalProfit / totalPatterns : 0;
 
     const avgConfidence =
-      totalPatterns > 0
-        ? data.reduce((sum, d) => sum + d.confidence, 0) / totalPatterns
-        : 0;
+      totalPatterns > 0 ? data.reduce((sum, d) => sum + d.confidence, 0) / totalPatterns : 0;
 
     const avgDuration =
-      totalPatterns > 0
-        ? data.reduce((sum, d) => sum + d.duration, 0) / totalPatterns
-        : 0;
+      totalPatterns > 0 ? data.reduce((sum, d) => sum + d.duration, 0) / totalPatterns : 0;
 
     // Calculate win/loss streaks
     const _currentStreak = 0;
@@ -696,7 +650,7 @@ export class PatternEmbeddingService {
    * Generate performance breakdown by different dimensions
    */
   private generatePerformanceBreakdown(
-    data: HistoricalPatternData[]
+    data: HistoricalPatternData[],
   ): PatternPerformanceBreakdown[] {
     const breakdown: PatternPerformanceBreakdown[] = [];
 
@@ -709,21 +663,16 @@ export class PatternEmbeddingService {
 
     for (const bucket of confidenceBuckets) {
       const bucketData = data.filter(
-        (d) => d.confidence >= bucket.min && d.confidence < bucket.max
+        (d) => d.confidence >= bucket.min && d.confidence < bucket.max,
       );
       if (bucketData.length > 0) {
         breakdown.push({
           category: "confidence",
           label: bucket.label,
-          successRate:
-            bucketData.filter((d) => d.success).length / bucketData.length,
+          successRate: bucketData.filter((d) => d.success).length / bucketData.length,
           trades: bucketData.length,
-          avgProfit:
-            bucketData.reduce((sum, d) => sum + d.profitLoss, 0) /
-            bucketData.length,
-          avgDuration:
-            bucketData.reduce((sum, d) => sum + d.duration, 0) /
-            bucketData.length,
+          avgProfit: bucketData.reduce((sum, d) => sum + d.profitLoss, 0) / bucketData.length,
+          avgDuration: bucketData.reduce((sum, d) => sum + d.duration, 0) / bucketData.length,
         });
       }
     }
@@ -731,23 +680,15 @@ export class PatternEmbeddingService {
     // Breakdown by market conditions
     const marketConditions = ["normal", "volatile"];
     for (const condition of marketConditions) {
-      const conditionData = data.filter(
-        (d) => d.marketConditions === condition
-      );
+      const conditionData = data.filter((d) => d.marketConditions === condition);
       if (conditionData.length > 0) {
         breakdown.push({
           category: "market",
           label: `${condition.charAt(0).toUpperCase() + condition.slice(1)} Market`,
-          successRate:
-            conditionData.filter((d) => d.success).length /
-            conditionData.length,
+          successRate: conditionData.filter((d) => d.success).length / conditionData.length,
           trades: conditionData.length,
-          avgProfit:
-            conditionData.reduce((sum, d) => sum + d.profitLoss, 0) /
-            conditionData.length,
-          avgDuration:
-            conditionData.reduce((sum, d) => sum + d.duration, 0) /
-            conditionData.length,
+          avgProfit: conditionData.reduce((sum, d) => sum + d.profitLoss, 0) / conditionData.length,
+          avgDuration: conditionData.reduce((sum, d) => sum + d.duration, 0) / conditionData.length,
         });
       }
     }
@@ -761,59 +702,59 @@ export class PatternEmbeddingService {
   private generateRecommendations(
     patternType: string,
     summary: HistoricalSummary,
-    breakdown: PatternPerformanceBreakdown[]
+    breakdown: PatternPerformanceBreakdown[],
   ): string[] {
     const recommendations: string[] = [];
 
     // Success rate analysis
     if (summary.successRate > 0.75) {
       recommendations.push(
-        `Excellent success rate (${(summary.successRate * 100).toFixed(1)}%) - consider increasing position size for ${patternType}`
+        `Excellent success rate (${(summary.successRate * 100).toFixed(1)}%) - consider increasing position size for ${patternType}`,
       );
     } else if (summary.successRate < 0.6) {
       recommendations.push(
-        `Below-average success rate (${(summary.successRate * 100).toFixed(1)}%) - review ${patternType} detection criteria`
+        `Below-average success rate (${(summary.successRate * 100).toFixed(1)}%) - review ${patternType} detection criteria`,
       );
     }
 
     // Profitability analysis
     if (summary.avgProfit > 3.0) {
       recommendations.push(
-        `Strong average profit (${summary.avgProfit.toFixed(2)}%) - ${patternType} is performing well`
+        `Strong average profit (${summary.avgProfit.toFixed(2)}%) - ${patternType} is performing well`,
       );
     } else if (summary.avgProfit < 1.0) {
       recommendations.push(
-        `Low average profit (${summary.avgProfit.toFixed(2)}%) - consider tighter stop losses or different targets`
+        `Low average profit (${summary.avgProfit.toFixed(2)}%) - consider tighter stop losses or different targets`,
       );
     }
 
     // Confidence correlation analysis
     const highConfidenceBreakdown = breakdown.find(
-      (b) => b.category === "confidence" && b.label.includes("High")
+      (b) => b.category === "confidence" && b.label.includes("High"),
     );
     if (highConfidenceBreakdown && highConfidenceBreakdown.successRate > 0.85) {
       recommendations.push(
-        `High-confidence ${patternType} patterns show excellent results - prioritize confidence > 80%`
+        `High-confidence ${patternType} patterns show excellent results - prioritize confidence > 80%`,
       );
     }
 
     // Market condition analysis
     const volatileMarketBreakdown = breakdown.find(
-      (b) => b.category === "market" && b.label.includes("Volatile")
+      (b) => b.category === "market" && b.label.includes("Volatile"),
     );
     if (
       volatileMarketBreakdown &&
       volatileMarketBreakdown.successRate < summary.successRate * 0.8
     ) {
       recommendations.push(
-        `${patternType} underperforms in volatile markets - consider reduced position sizing during high volatility`
+        `${patternType} underperforms in volatile markets - consider reduced position sizing during high volatility`,
       );
     }
 
     // Streak analysis
     if (summary.maxLossStreak > 5) {
       recommendations.push(
-        `Max loss streak of ${summary.maxLossStreak} detected - implement circuit breaker after 3-4 consecutive losses`
+        `Max loss streak of ${summary.maxLossStreak} detected - implement circuit breaker after 3-4 consecutive losses`,
       );
     }
 
@@ -821,7 +762,7 @@ export class PatternEmbeddingService {
     if (summary.avgDuration > 900) {
       // 15 minutes
       recommendations.push(
-        `Average holding time is ${Math.round(summary.avgDuration / 60)} minutes - consider more aggressive profit targets`
+        `Average holding time is ${Math.round(summary.avgDuration / 60)} minutes - consider more aggressive profit targets`,
       );
     }
 
@@ -873,10 +814,7 @@ export class PatternEmbeddingService {
   /**
    * Calculate percentage change between two values
    */
-  private calculatePercentageChange(
-    oldValue: number,
-    newValue: number
-  ): number {
+  private calculatePercentageChange(oldValue: number, newValue: number): number {
     if (oldValue === 0) return newValue === 0 ? 0 : 100;
     return ((newValue - oldValue) / oldValue) * 100;
   }

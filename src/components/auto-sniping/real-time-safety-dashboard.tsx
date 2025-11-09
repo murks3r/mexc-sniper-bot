@@ -35,12 +35,7 @@ import { Label } from "@/src/components/ui/label";
 import { Progress } from "@/src/components/ui/progress";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Switch } from "@/src/components/ui/switch";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/src/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 
 interface RealTimeSafetyDashboardProps {
   className?: string;
@@ -153,9 +148,7 @@ function RiskScoreGauge({ score }: { score: number }) {
       <div className="relative">
         <Gauge className={`h-12 w-12 ${getScoreColor(score)}`} />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-xs font-bold ${getScoreColor(score)}`}>
-            {score.toFixed(0)}
-          </span>
+          <span className={`text-xs font-bold ${getScoreColor(score)}`}>{score.toFixed(0)}</span>
         </div>
       </div>
       <p className="text-sm text-gray-600 mt-1">Risk Score</p>
@@ -214,9 +207,7 @@ function SafetyStatusOverview({
       </div>
       <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
         <div className="flex items-center gap-2">
-          <Bell
-            className={`h-5 w-5 ${alertsCount > 0 ? "text-red-500" : "text-gray-400"}`}
-          />
+          <Bell className={`h-5 w-5 ${alertsCount > 0 ? "text-red-500" : "text-gray-400"}`} />
           <span className="text-2xl font-bold">{alertsCount}</span>
         </div>
         <p className="text-sm text-gray-600">Active Alerts</p>
@@ -252,27 +243,19 @@ function RiskMetricsGrid({ metrics }: { metrics: any }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div className="text-center">
-        <div className="text-lg font-bold text-blue-600">
-          {metrics.currentDrawdown.toFixed(1)}%
-        </div>
+        <div className="text-lg font-bold text-blue-600">{metrics.currentDrawdown.toFixed(1)}%</div>
         <p className="text-sm text-gray-600">Current Drawdown</p>
       </div>
       <div className="text-center">
-        <div className="text-lg font-bold text-purple-600">
-          {metrics.successRate.toFixed(1)}%
-        </div>
+        <div className="text-lg font-bold text-purple-600">{metrics.successRate.toFixed(1)}%</div>
         <p className="text-sm text-gray-600">Success Rate</p>
       </div>
       <div className="text-center">
-        <div className="text-lg font-bold text-orange-600">
-          {metrics.consecutiveLosses}
-        </div>
+        <div className="text-lg font-bold text-orange-600">{metrics.consecutiveLosses}</div>
         <p className="text-sm text-gray-600">Consecutive Losses</p>
       </div>
       <div className="text-center">
-        <div className="text-lg font-bold text-green-600">
-          {metrics.apiLatency}ms
-        </div>
+        <div className="text-lg font-bold text-green-600">{metrics.apiLatency}ms</div>
         <p className="text-sm text-gray-600">API Latency</p>
       </div>
     </div>
@@ -342,12 +325,8 @@ function RiskAssessmentCard({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">
-                  Overall Risk Score
-                </span>
-                <span className="text-sm font-medium">
-                  {overallRiskScore.toFixed(1)}/100
-                </span>
+                <span className="text-sm text-gray-600">Overall Risk Score</span>
+                <span className="text-sm font-medium">{overallRiskScore.toFixed(1)}/100</span>
               </div>
               <Progress value={overallRiskScore} className="w-full" />
             </div>
@@ -355,9 +334,7 @@ function RiskAssessmentCard({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">System Health</span>
-                <span className="text-sm font-medium">
-                  {systemHealthScore}%
-                </span>
+                <span className="text-sm font-medium">{systemHealthScore}%</span>
               </div>
               <Progress value={systemHealthScore} className="w-full" />
             </div>
@@ -401,9 +378,7 @@ function SystemHealthCard() {
             <p className="text-xs text-gray-600">Emergency System</p>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded">
-            <div className="text-lg font-semibold text-green-600">
-              Connected
-            </div>
+            <div className="text-lg font-semibold text-green-600">Connected</div>
             <p className="text-xs text-gray-600">MEXC API</p>
           </div>
         </div>
@@ -432,9 +407,7 @@ function SafetyAlertsTab({
             <Bell className="h-5 w-5" />
             Safety Alerts ({activeAlerts.length})
           </CardTitle>
-          <CardDescription>
-            Real-time safety alerts and risk notifications
-          </CardDescription>
+          <CardDescription>Real-time safety alerts and risk notifications</CardDescription>
         </div>
         {activeAlerts.some((alert) => alert.acknowledged) && (
           <Button variant="outline" size="sm" onClick={onClearAlerts}>
@@ -509,9 +482,7 @@ function SafetyActionsTab({ recentActions }: { recentActions: any[] }) {
           <Zap className="h-5 w-5" />
           Recent Safety Actions ({recentActions.length})
         </CardTitle>
-        <CardDescription>
-          Automated and manual safety actions taken by the system
-        </CardDescription>
+        <CardDescription>Automated and manual safety actions taken by the system</CardDescription>
       </CardHeader>
       <CardContent>
         {recentActions.length > 0 ? (
@@ -521,14 +492,10 @@ function SafetyActionsTab({ recentActions }: { recentActions: any[] }) {
                 <div key={action.id} className="border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant={getActionVariant(action.result || "pending")}
-                      >
+                      <Badge variant={getActionVariant(action.result || "pending")}>
                         {action.type.replace("_", " ").toUpperCase()}
                       </Badge>
-                      <Badge variant="outline">
-                        {action.result?.toUpperCase() || "PENDING"}
-                      </Badge>
+                      <Badge variant="outline">{action.result?.toUpperCase() || "PENDING"}</Badge>
                     </div>
                     {action.executedAt && (
                       <span className="text-sm text-gray-500">
@@ -536,20 +503,14 @@ function SafetyActionsTab({ recentActions }: { recentActions: any[] }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 mb-1">
-                    {action.description}
-                  </p>
-                  {action.details && (
-                    <p className="text-xs text-gray-500">{action.details}</p>
-                  )}
+                  <p className="text-sm text-gray-700 mb-1">{action.description}</p>
+                  {action.details && <p className="text-xs text-gray-500">{action.details}</p>}
                 </div>
               ))}
             </div>
           </ScrollArea>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No recent actions
-          </div>
+          <div className="text-center py-8 text-gray-500">No recent actions</div>
         )}
       </CardContent>
     </Card>
@@ -578,9 +539,7 @@ function SafetyConfigTab({
             <Settings className="h-5 w-5" />
             Safety Configuration
           </CardTitle>
-          <CardDescription>
-            Configure safety monitoring parameters and thresholds
-          </CardDescription>
+          <CardDescription>Configure safety monitoring parameters and thresholds</CardDescription>
         </div>
         <div className="flex gap-2">
           {configEditMode ? (
@@ -593,11 +552,7 @@ function SafetyConfigTab({
               >
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={onSaveConfig}
-                disabled={isUpdatingConfig}
-              >
+              <Button size="sm" onClick={onSaveConfig} disabled={isUpdatingConfig}>
                 Save Changes
               </Button>
             </>
@@ -661,7 +616,7 @@ export function RealTimeSafetyDashboard({
     }
 
     const confirmed = window.confirm(
-      `This will trigger an emergency response: "${emergencyReason}". This will halt all trading and close positions. Continue?`
+      `This will trigger an emergency response: "${emergencyReason}". This will halt all trading and close positions. Continue?`,
     );
 
     if (confirmed) {
@@ -713,15 +668,8 @@ export function RealTimeSafetyDashboard({
             <div className="flex gap-2">
               {showControls && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={refreshData}
-                    disabled={isLoading}
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-                    />
+                  <Button variant="outline" size="sm" onClick={refreshData} disabled={isLoading}>
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                     Refresh
                   </Button>
                   <Button
@@ -768,9 +716,7 @@ export function RealTimeSafetyDashboard({
               isTriggeringEmergency={false}
             />
 
-            <p className="text-sm text-gray-500">
-              Last updated: {new Date().toLocaleString()}
-            </p>
+            <p className="text-sm text-gray-500">Last updated: {new Date().toLocaleString()}</p>
           </div>
         </CardContent>
       </Card>

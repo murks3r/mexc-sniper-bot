@@ -7,10 +7,7 @@
 
 import * as crypto from "node:crypto";
 import { mexcApiBreaker } from "../risk/circuit-breaker";
-import type {
-  UnifiedMexcConfig,
-  UnifiedMexcResponse,
-} from "./mexc-client-types";
+import type { UnifiedMexcConfig, UnifiedMexcResponse } from "./mexc-client-types";
 import { MexcClientError } from "./mexc-client-types";
 import { MexcRequestCache } from "./mexc-request-cache";
 
@@ -38,8 +35,7 @@ export class MexcClientCore {
     this.config = {
       apiKey: config.apiKey || process.env.MEXC_API_KEY || "",
       secretKey: config.secretKey || process.env.MEXC_SECRET_KEY || "",
-      baseUrl:
-        config.baseUrl || process.env.MEXC_BASE_URL || "https://api.mexc.com",
+      baseUrl: config.baseUrl || process.env.MEXC_BASE_URL || "https://api.mexc.com",
       timeout: config.timeout || 10000,
       maxRetries: config.maxRetries || 3,
       retryDelay: config.retryDelay || 1000,
@@ -102,22 +98,16 @@ export class MexcClientCore {
       Object.entries(signatureParams)
         .filter(([_, value]) => value !== undefined && value !== null)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => [key, String(value)])
+        .map(([key, value]) => [key, String(value)]),
     ).toString();
 
-    return crypto
-      .createHmac("sha256", this.config.secretKey)
-      .update(queryString)
-      .digest("hex");
+    return crypto.createHmac("sha256", this.config.secretKey).update(queryString).digest("hex");
   }
 
   /**
    * Generate cache key for requests
    */
-  private generateCacheKey(
-    endpoint: string,
-    params: Record<string, unknown> = {}
-  ): string {
+  private generateCacheKey(endpoint: string, params: Record<string, unknown> = {}): string {
     const sortedParams = Object.keys(params)
       .sort()
       .reduce(
@@ -125,7 +115,7 @@ export class MexcClientCore {
           result[key] = params[key];
           return result;
         },
-        {} as Record<string, unknown>
+        {} as Record<string, unknown>,
       );
 
     return `${endpoint}_${JSON.stringify(sortedParams)}`;
@@ -138,7 +128,7 @@ export class MexcClientCore {
     endpoint: string,
     params: Record<string, unknown> = {},
     authenticated = false,
-    skipCache = false
+    skipCache = false,
   ): Promise<UnifiedMexcResponse<T>> {
     const requestId = this.generateRequestId();
     const cacheKey = this.generateCacheKey(endpoint, params);
@@ -147,9 +137,7 @@ export class MexcClientCore {
     if (this.config.enableCaching && !skipCache && !authenticated) {
       const cached = this.cache.get<T>(cacheKey);
       if (cached) {
-        console.info(
-          `[MexcClientCore] Cache hit for ${endpoint} (${requestId})`
-        );
+        console.info(`[MexcClientCore] Cache hit for ${endpoint} (${requestId})`);
         return {
           success: true,
           data: cached,
@@ -178,9 +166,7 @@ export class MexcClientCore {
 
             if (authenticated) {
               if (!this.config.apiKey || !this.config.secretKey) {
-                throw new Error(
-                  "MEXC API credentials not configured for authenticated request"
-                );
+                throw new Error("MEXC API credentials not configured for authenticated request");
               }
 
               // Determine if this is an account endpoint
@@ -200,7 +186,7 @@ export class MexcClientCore {
               headers["X-MEXC-APIKEY"] = this.config.apiKey;
 
               this.logger.debug(
-                `[MexcClientCore] Authenticated ${isAccountEndpoint ? "GET" : "POST"} request: ${endpoint} (${requestId})`
+                `[MexcClientCore] Authenticated ${isAccountEndpoint ? "GET" : "POST"} request: ${endpoint} (${requestId})`,
               );
             }
 
@@ -219,7 +205,7 @@ export class MexcClientCore {
             });
 
             this.logger.debug(
-              `[MexcClientCore] ${authenticated ? "Auth" : "Public"} request: ${endpoint} (attempt ${attempt}/${maxRetries}) (${requestId})`
+              `[MexcClientCore] ${authenticated ? "Auth" : "Public"} request: ${endpoint} (attempt ${attempt}/${maxRetries}) (${requestId})`,
             );
 
             let response: Response;
@@ -297,13 +283,11 @@ export class MexcClientCore {
               }
 
               const errorMsg =
-                errorData?.msg ||
-                errorText ||
-                `${response.status} ${response.statusText}`;
+                errorData?.msg || errorText || `${response.status} ${response.statusText}`;
               throw new MexcClientError(
                 `MEXC API error: ${errorMsg}`,
                 errorData?.code || response.status,
-                requestId
+                requestId,
               );
             }
 
@@ -315,7 +299,7 @@ export class MexcClientCore {
             }
 
             this.logger.debug(
-              `[MexcClientCore] Success: ${endpoint} (attempt ${attempt}) (${requestId})`
+              `[MexcClientCore] Success: ${endpoint} (attempt ${attempt}) (${requestId})`,
             );
 
             return {
@@ -340,7 +324,7 @@ export class MexcClientCore {
 
             console.error(
               `[MexcClientCore] Request failed (attempt ${attempt}/${maxRetries}) (${requestId}):`,
-              error instanceof Error ? error.message : error
+              error instanceof Error ? error.message : error,
             );
 
             // Don't retry on authentication or client errors (4xx), only on timeouts and connection issues
@@ -380,7 +364,7 @@ export class MexcClientCore {
             // Exponential backoff with jitter for retryable errors
             const delay = baseDelay * 2 ** (attempt - 1) + Math.random() * 1000;
             this.logger.debug(
-              `[MexcClientCore] Retrying in ${Math.round(delay)}ms... (${requestId})`
+              `[MexcClientCore] Retrying in ${Math.round(delay)}ms... (${requestId})`,
             );
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
@@ -390,18 +374,15 @@ export class MexcClientCore {
       },
       async () => {
         // Fallback mechanism - return a minimal error response
-        console.warn(
-          `[MexcClientCore] Circuit breaker fallback triggered (${requestId})`
-        );
+        console.warn(`[MexcClientCore] Circuit breaker fallback triggered (${requestId})`);
         return {
           success: false,
           data: null as T,
-          error:
-            "MEXC API circuit breaker is open - service temporarily unavailable",
+          error: "MEXC API circuit breaker is open - service temporarily unavailable",
           timestamp: new Date().toISOString(),
           requestId,
         };
-      }
+      },
     );
   }
 
@@ -443,9 +424,7 @@ export class MexcClientCore {
    */
   async testConnectivity(): Promise<UnifiedMexcResponse<{ status: string }>> {
     try {
-      const response = await this.makeRequest<{ status: string }>(
-        "/api/v3/ping"
-      );
+      const response = await this.makeRequest<{ status: string }>("/api/v3/ping");
 
       if (response.success) {
         return {

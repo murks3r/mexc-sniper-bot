@@ -16,10 +16,7 @@ async function main() {
     console.log("==========================\n");
 
     // Get ALL targets from database (no filters)
-    const allTargetsRaw = await db
-      .select()
-      .from(snipeTargets)
-      .orderBy(snipeTargets.createdAt);
+    const allTargetsRaw = await db.select().from(snipeTargets).orderBy(snipeTargets.createdAt);
 
     console.log("📊 ALL TARGETS IN DATABASE:");
     console.log("============================");
@@ -41,9 +38,7 @@ async function main() {
       console.log(`   📈 Confidence: ${target.confidenceScore}%`);
       console.log(`   ⚡ Priority: ${target.priority}`);
       console.log(`   📅 Created: ${target.createdAt.toISOString()}`);
-      console.log(
-        `   🕐 Target Time: ${target.targetExecutionTime?.toISOString() || "N/A"}`
-      );
+      console.log(`   🕐 Target Time: ${target.targetExecutionTime?.toISOString() || "N/A"}`);
       console.log("");
     });
 
@@ -83,10 +78,10 @@ async function main() {
     console.log(`Targets for "default-user": ${defaultUserTargets.length}`);
     if (defaultUserTargets.length === 0) {
       console.log(
-        "❌ No targets found for 'default-user' - this explains why API returns empty array"
+        "❌ No targets found for 'default-user' - this explains why API returns empty array",
       );
       console.log(
-        "💡 The API is working correctly, but the user ID filter doesn't match database records"
+        "💡 The API is working correctly, but the user ID filter doesn't match database records",
       );
     }
 
@@ -95,9 +90,7 @@ async function main() {
     console.log("====================");
     const statuses = [...new Set(allTargetsRaw.map((t: any) => t.status))];
     statuses.forEach((status) => {
-      const count = allTargetsRaw.filter(
-        (t: any) => t.status === status
-      ).length;
+      const count = allTargetsRaw.filter((t: any) => t.status === status).length;
       console.log(`${status}: ${count} targets`);
     });
 
@@ -106,9 +99,7 @@ async function main() {
     console.log("========================");
 
     const readyTargets = allTargetsRaw.filter((t: any) => t.status === "ready");
-    const pendingTargets = allTargetsRaw.filter(
-      (t: any) => t.status === "pending"
-    );
+    const pendingTargets = allTargetsRaw.filter((t: any) => t.status === "pending");
 
     console.log(`✅ Ready for execution: ${readyTargets.length}`);
     console.log(`⏳ Pending (needs trigger): ${pendingTargets.length}`);
@@ -121,7 +112,7 @@ async function main() {
         console.log(`   💰 Amount: $${target.positionSizeUsdt}`);
         console.log(`   📊 Confidence: ${target.confidenceScore}%`);
         console.log(
-          `   🕐 Target Time: ${target.targetExecutionTime?.toISOString() || "Immediate"}`
+          `   🕐 Target Time: ${target.targetExecutionTime?.toISOString() || "Immediate"}`,
         );
       });
     }

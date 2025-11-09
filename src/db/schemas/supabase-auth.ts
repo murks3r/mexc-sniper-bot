@@ -1,13 +1,4 @@
-import {
-  boolean,
-  integer,
-  jsonb,
-  pgTable,
-  real,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // NOTE: Removed circular imports to prevent JSON parsing errors during testing
 // These imports were causing Drizzle ORM initialization issues:
@@ -116,9 +107,7 @@ export const userPreferences = pgTable("user_preferences", {
     .unique(),
 
   // Trading Configuration
-  defaultBuyAmountUsdt: real("default_buy_amount_usdt")
-    .notNull()
-    .default(100.0),
+  defaultBuyAmountUsdt: real("default_buy_amount_usdt").notNull().default(100.0),
   maxConcurrentSnipes: integer("max_concurrent_snipes").notNull().default(3),
 
   // Take Profit Configuration
@@ -127,14 +116,10 @@ export const userPreferences = pgTable("user_preferences", {
   takeProfitLevel3: real("take_profit_level_3").notNull().default(15.0),
   takeProfitLevel4: real("take_profit_level_4").notNull().default(25.0),
   takeProfitCustom: real("take_profit_custom"),
-  defaultTakeProfitLevel: integer("default_take_profit_level")
-    .notNull()
-    .default(2),
+  defaultTakeProfitLevel: integer("default_take_profit_level").notNull().default(2),
 
   // Enhanced Take Profit Strategy Configuration
-  takeProfitStrategy: text("take_profit_strategy")
-    .notNull()
-    .default("balanced"),
+  takeProfitStrategy: text("take_profit_strategy").notNull().default("balanced"),
   takeProfitLevelsConfig: text("take_profit_levels_config"),
 
   // Sell Quantity Configuration
@@ -146,6 +131,8 @@ export const userPreferences = pgTable("user_preferences", {
 
   // Risk Management
   stopLossPercent: real("stop_loss_percent").notNull().default(5.0),
+  takeProfitPercent: real("take_profit_percent").notNull().default(10.0),
+  maxHoldHours: real("max_hold_hours").notNull().default(24.0),
   riskTolerance: text("risk_tolerance").notNull().default("medium"),
 
   // Pattern Discovery Settings
@@ -154,20 +141,14 @@ export const userPreferences = pgTable("user_preferences", {
   autoSnipeEnabled: boolean("auto_snipe_enabled").notNull().default(true),
 
   // Exit Strategy Settings
-  selectedExitStrategy: text("selected_exit_strategy")
-    .notNull()
-    .default("balanced"),
+  selectedExitStrategy: text("selected_exit_strategy").notNull().default("balanced"),
   customExitStrategy: text("custom_exit_strategy"),
   autoBuyEnabled: boolean("auto_buy_enabled").notNull().default(true),
   autoSellEnabled: boolean("auto_sell_enabled").notNull().default(true),
 
   // Monitoring Intervals
-  calendarPollIntervalSeconds: integer("calendar_poll_interval_seconds")
-    .notNull()
-    .default(300),
-  symbolsPollIntervalSeconds: integer("symbols_poll_interval_seconds")
-    .notNull()
-    .default(30),
+  calendarPollIntervalSeconds: integer("calendar_poll_interval_seconds").notNull().default(300),
+  symbolsPollIntervalSeconds: integer("symbols_poll_interval_seconds").notNull().default(30),
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

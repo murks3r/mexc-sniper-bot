@@ -28,11 +28,7 @@ class WebSocketInstrumentation {
     }
   }
 
-  traceConnection(
-    connectionId: string,
-    event: "connect" | "disconnect",
-    metadata?: any
-  ): void {
+  traceConnection(connectionId: string, event: "connect" | "disconnect", metadata?: any): void {
     if (!this.config.enabled || !this.config.traceConnections) {
       return;
     }
@@ -49,7 +45,7 @@ class WebSocketInstrumentation {
     connectionId: string,
     direction: "inbound" | "outbound",
     messageType: string,
-    content?: any
+    content?: any,
   ): void {
     if (!this.config.enabled || !this.config.traceMessages) {
       return;
@@ -64,11 +60,7 @@ class WebSocketInstrumentation {
     });
   }
 
-  recordWebSocketMetric(
-    metricName: string,
-    value: number,
-    labels?: Record<string, string>
-  ): void {
+  recordWebSocketMetric(metricName: string, value: number, labels?: Record<string, string>): void {
     if (!this.config.enabled) {
       return;
     }
@@ -89,7 +81,7 @@ class WebSocketInstrumentation {
 export const webSocketInstrumentation = new WebSocketInstrumentation();
 
 export function initializeWebSocketInstrumentation(
-  config?: Partial<WebSocketInstrumentationConfig>
+  config?: Partial<WebSocketInstrumentationConfig>,
 ): void {
   webSocketInstrumentation.initialize(config);
 }
@@ -97,14 +89,9 @@ export function initializeWebSocketInstrumentation(
 export function instrumentChannelOperation(
   channel: string,
   operation: string,
-  metadata?: any
+  metadata?: any,
 ): void {
-  webSocketInstrumentation.traceMessage(
-    channel,
-    "outbound",
-    operation,
-    metadata
-  );
+  webSocketInstrumentation.traceMessage(channel, "outbound", operation, metadata);
 }
 
 export function instrumentWebSocketSend(connectionId: string, data: any): void {

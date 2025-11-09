@@ -12,13 +12,7 @@ import type { MexcApiClient } from "./mexc-api-client";
 export interface OrderParams {
   symbol: string;
   side: "BUY" | "SELL";
-  type?:
-    | "LIMIT"
-    | "MARKET"
-    | "STOP_LOSS"
-    | "STOP_LOSS_LIMIT"
-    | "TAKE_PROFIT"
-    | "TAKE_PROFIT_LIMIT";
+  type?: "LIMIT" | "MARKET" | "STOP_LOSS" | "STOP_LOSS_LIMIT" | "TAKE_PROFIT" | "TAKE_PROFIT_LIMIT";
   quantity: string | number;
   price?: string | number;
   timeInForce?: "GTC" | "IOC" | "FOK";
@@ -69,30 +63,12 @@ export interface CredentialTestResult {
 }
 
 export class MexcTradingService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-trading-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-trading-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-trading-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-trading-service]", message, context || ""),
-  };
-
   constructor(private apiClient: MexcApiClient) {}
 
   /**
    * Place a new order
    */
-  async placeOrder(
-    params: OrderParams
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async placeOrder(params: OrderParams): Promise<MexcServiceResponse<OrderResult>> {
     if (!this.apiClient.hasCredentials()) {
       return {
         success: false,
@@ -114,17 +90,13 @@ export class MexcTradingService {
         ...(params.icebergQty && { icebergQty: params.icebergQty }),
       };
 
-      const response = await this.apiClient.post<any>(
-        "/api/v3/order",
-        orderParams
-      );
+      const response = await this.apiClient.post<any>("/api/v3/order", orderParams);
 
       // Transform response to match OrderResult format
       if (response.success && response.data) {
         const orderResult: OrderResult = {
           success: true,
-          orderId:
-            response.data.orderId?.toString() || response.data.id?.toString(),
+          orderId: response.data.orderId?.toString() || response.data.id?.toString(),
           symbol: response.data.symbol || params.symbol,
           side: response.data.side || params.side,
           quantity: response.data.origQty || params.quantity,
@@ -186,7 +158,7 @@ export class MexcTradingService {
       const safeError = toSafeError(error);
       console.error(
         `[MexcTradingService] Failed to get order book for ${symbol}:`,
-        safeError.message
+        safeError.message,
       );
       return {
         symbol,
@@ -200,10 +172,7 @@ export class MexcTradingService {
   /**
    * Get order status
    */
-  async getOrderStatus(
-    symbol: string,
-    orderId: string
-  ): Promise<MexcServiceResponse<any>> {
+  async getOrderStatus(symbol: string, orderId: string): Promise<MexcServiceResponse<any>> {
     if (!this.apiClient.hasCredentials()) {
       return {
         success: false,
@@ -218,10 +187,7 @@ export class MexcTradingService {
   /**
    * Cancel order
    */
-  async cancelOrder(
-    symbol: string,
-    orderId: string
-  ): Promise<MexcServiceResponse<any>> {
+  async cancelOrder(symbol: string, orderId: string): Promise<MexcServiceResponse<any>> {
     if (!this.apiClient.hasCredentials()) {
       return {
         success: false,
@@ -353,9 +319,7 @@ export class MexcTradingService {
   /**
    * Get symbol price ticker
    */
-  async getSymbolPriceTicker(
-    symbol?: string
-  ): Promise<MexcServiceResponse<any>> {
+  async getSymbolPriceTicker(symbol?: string): Promise<MexcServiceResponse<any>> {
     const params = symbol ? { symbol } : {};
     return this.apiClient.get<any>("/api/v3/ticker/price", params);
   }
@@ -430,10 +394,7 @@ export class MexcTradingService {
   /**
    * Get trade history for a symbol
    */
-  async getTradeHistory(
-    symbol: string,
-    limit = 500
-  ): Promise<MexcServiceResponse<any[]>> {
+  async getTradeHistory(symbol: string, limit = 500): Promise<MexcServiceResponse<any[]>> {
     if (!this.apiClient.hasCredentials()) {
       return {
         success: false,
@@ -448,10 +409,7 @@ export class MexcTradingService {
   /**
    * Get order history for a symbol
    */
-  async getOrderHistory(
-    symbol: string,
-    limit = 500
-  ): Promise<MexcServiceResponse<any[]>> {
+  async getOrderHistory(symbol: string, limit = 500): Promise<MexcServiceResponse<any[]>> {
     if (!this.apiClient.hasCredentials()) {
       return {
         success: false,

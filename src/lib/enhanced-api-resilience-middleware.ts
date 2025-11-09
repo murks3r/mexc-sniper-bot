@@ -22,7 +22,7 @@ const logger = createLogger("enhanced-api-resilience", {
 
 export type ResilientApiHandler<T = any> = (
   request: NextRequest,
-  context?: { params?: Record<string, string> }
+  context?: { params?: Record<string, string> },
 ) => Promise<ApiResponse<T> | NextResponse>;
 
 export interface ResilientApiOptions {
@@ -96,7 +96,7 @@ function createDefaultFallbacks(endpointType: string): FallbackStrategy<any>[] {
           apiResponse.success({
             status: "minimal",
             timestamp: new Date().toISOString(),
-          })
+          }),
       );
       break;
 
@@ -116,7 +116,7 @@ function createDefaultFallbacks(endpointType: string): FallbackStrategy<any>[] {
             data: [],
             source: "fallback",
             message: "Service temporarily unavailable",
-          })
+          }),
       );
       break;
 
@@ -135,7 +135,7 @@ function createDefaultFallbacks(endpointType: string): FallbackStrategy<any>[] {
           apiResponse.success({
             mode: "readonly",
             message: "Trading suspended - monitoring only",
-          })
+          }),
       );
       break;
 
@@ -145,7 +145,7 @@ function createDefaultFallbacks(endpointType: string): FallbackStrategy<any>[] {
         apiResponse.success({
           status: "degraded",
           message: "Service operating in degraded mode",
-        })
+        }),
       );
   }
 
@@ -157,17 +157,9 @@ function createDefaultFallbacks(endpointType: string): FallbackStrategy<any>[] {
  */
 function getEndpointType(url: string): string {
   if (url.includes("/health")) return "health";
-  if (
-    url.includes("/trading") ||
-    url.includes("/portfolio") ||
-    url.includes("/mexc")
-  )
+  if (url.includes("/trading") || url.includes("/portfolio") || url.includes("/mexc"))
     return "trading";
-  if (
-    url.includes("/data") ||
-    url.includes("/analytics") ||
-    url.includes("/monitoring")
-  )
+  if (url.includes("/data") || url.includes("/analytics") || url.includes("/monitoring"))
     return "data";
   return "generic";
 }
@@ -177,7 +169,7 @@ function getEndpointType(url: string): string {
  */
 export function withResilientApiHandling<T = any>(
   handler: ResilientApiHandler<T>,
-  options: ResilientApiOptions = {}
+  options: ResilientApiOptions = {},
 ): ResilientApiHandler<T> {
   const config = { ...defaultResilientOptions, ...options };
 
@@ -186,8 +178,7 @@ export function withResilientApiHandling<T = any>(
     const url = new URL(request.url);
     const operationName = `${request.method}:${url.pathname}`;
     const endpointType = getEndpointType(url.pathname);
-    const requestId =
-      request.headers.get("x-request-id") || crypto.randomUUID();
+    const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
 
     if (config.enableRequestLogging) {
       logger.info("Resilient API request started", {
@@ -215,14 +206,10 @@ export function withResilientApiHandling<T = any>(
       }
 
       // Prepare fallback strategies
-      const fallbackStrategies: FallbackStrategy<
-        ApiResponse<T> | NextResponse
-      >[] = [
+      const fallbackStrategies: FallbackStrategy<ApiResponse<T> | NextResponse>[] = [
         ...config.fallbackStrategies.map((strategy) => async () => {
           const result = await strategy();
-          return result instanceof NextResponse
-            ? result
-            : apiResponse.success(result);
+          return result instanceof NextResponse ? result : apiResponse.success(result);
         }),
         ...createDefaultFallbacks(endpointType),
       ];
@@ -235,11 +222,7 @@ export function withResilientApiHandling<T = any>(
             handler(request, context),
             new Promise<never>((_, reject) => {
               setTimeout(() => {
-                reject(
-                  new Error(
-                    `Operation timeout after ${config.operationTimeout}ms`
-                  )
-                );
+                reject(new Error(`Operation timeout after ${config.operationTimeout}ms`));
               }, config.operationTimeout);
             }),
           ]);
@@ -248,10 +231,8 @@ export function withResilientApiHandling<T = any>(
         {
           enableRetries: config.enableRetries,
           enableCircuitBreaker: config.enableCircuitBreaker,
-          customFallbacks: config.enableFallbacks
-            ? fallbackStrategies
-            : undefined,
-        }
+          customFallbacks: config.enableFallbacks ? fallbackStrategies : undefined,
+        },
       );
 
       // Convert result to NextResponse if needed
@@ -271,13 +252,10 @@ export function withResilientApiHandling<T = any>(
 
       // Add CORS headers
       response.headers.set("Access-Control-Allow-Origin", "*");
-      response.headers.set(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
-      );
+      response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
       response.headers.set(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization, X-Requested-With, X-Request-ID"
+        "Content-Type, Authorization, X-Requested-With, X-Request-ID",
       );
 
       // Log successful request
@@ -300,16 +278,12 @@ export function withResilientApiHandling<T = any>(
       // Even in error case, try graceful degradation
       if (config.enableGracefulDegradation) {
         try {
-          const degradedResponse = apiResponse.error(
-            "Service temporarily degraded",
-            503,
-            {
-              ...config.degradedModeResponse,
-              error: error instanceof Error ? error.message : String(error),
-              requestId,
-              duration: Math.round(duration),
-            }
-          );
+          const degradedResponse = apiResponse.error("Service temporarily degraded", 503, {
+            ...config.degradedModeResponse,
+            error: error instanceof Error ? error.message : String(error),
+            requestId,
+            duration: Math.round(duration),
+          });
 
           const response = NextResponse.json(degradedResponse, {
             status: 503,
@@ -369,7 +343,7 @@ export function withResilientApiHandling<T = any>(
           error: error instanceof Error ? error.message : String(error),
           duration: Math.round(duration),
         },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
 
       return response;
@@ -382,7 +356,7 @@ export function withResilientApiHandling<T = any>(
  */
 
 export function withResilientHealthCheck<T = any>(
-  handler: ResilientApiHandler<T>
+  handler: ResilientApiHandler<T>,
 ): ResilientApiHandler<T> {
   return withResilientApiHandling(handler, {
     enableCircuitBreaker: true,
@@ -405,7 +379,7 @@ export function withResilientHealthCheck<T = any>(
 }
 
 export function withResilientTradingApi<T = any>(
-  handler: ResilientApiHandler<T>
+  handler: ResilientApiHandler<T>,
 ): ResilientApiHandler<T> {
   return withResilientApiHandling(handler, {
     enableCircuitBreaker: true,
@@ -427,7 +401,7 @@ export function withResilientTradingApi<T = any>(
 }
 
 export function withResilientDataApi<T = any>(
-  handler: ResilientApiHandler<T>
+  handler: ResilientApiHandler<T>,
 ): ResilientApiHandler<T> {
   return withResilientApiHandling(handler, {
     enableCircuitBreaker: true,
@@ -484,7 +458,7 @@ export function resetAllApiCircuitBreakers(): void {
  */
 export function createResilientEndpoint<T = any>(
   handler: (request: NextRequest, context?: any) => Promise<T>,
-  endpointType: "health" | "trading" | "data" | "generic" = "generic"
+  endpointType: "health" | "trading" | "data" | "generic" = "generic",
 ): ResilientApiHandler<T> {
   const wrappedHandler: ResilientApiHandler<T> = async (request, context) => {
     const result = await handler(request, context);

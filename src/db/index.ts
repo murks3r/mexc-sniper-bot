@@ -5,7 +5,6 @@ import postgres from "postgres";
 
 // OpenTelemetry database instrumentation
 import {
-  instrumentConnectionHealth,
   instrumentDatabase,
   instrumentDatabaseQuery,
 } from "../lib/opentelemetry-database-instrumentation";
@@ -14,7 +13,13 @@ import * as originalSchema from "./schemas";
 import { account, session, user, userPreferences } from "./schemas/auth";
 import { monitoredListings } from "./schemas/patterns";
 import { supabaseSchema } from "./schemas/supabase-schema";
-import { balanceSnapshots, executionHistory, portfolioSummary, snipeTargets, transactions } from "./schemas/trading";
+import {
+  balanceSnapshots,
+  executionHistory,
+  portfolioSummary,
+  snipeTargets,
+  transactions,
+} from "./schemas/trading";
 
 // Supabase client configuration
 export const supabase = createClient(
@@ -31,7 +36,7 @@ export const supabase = createClient(
         eventsPerSecond: 10,
       },
     },
-  }
+  },
 );
 
 // Admin client for server-side operations
@@ -43,7 +48,7 @@ export const supabaseAdmin = createClient(
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
+  },
 );
 
 // Retry configuration
@@ -68,10 +73,8 @@ function getLogger() {
   // Use a local static variable to ensure thread-safety
   if (!(getLogger as any)._logger) {
     (getLogger as any)._logger = {
-      info: (message: string, context?: any) =>
-        console.info("[db-index]", message, context || ""),
-      warn: (message: string, context?: any) =>
-        console.warn("[db-index]", message, context || ""),
+      info: (message: string, context?: any) => console.info("[db-index]", message, context || ""),
+      warn: (message: string, context?: any) => console.warn("[db-index]", message, context || ""),
       error: (message: string, context?: any, error?: Error) =>
         console.error("[db-index]", message, context || "", error || ""),
       debug: (message: string, context?: any) =>
@@ -84,7 +87,7 @@ function getLogger() {
 async function withRetry<T>(
   operation: () => Promise<T>,
   operationName: string,
-  retries = MAX_RETRIES
+  retries = MAX_RETRIES,
 ): Promise<T> {
   let lastError: any;
 
@@ -96,7 +99,7 @@ async function withRetry<T>(
       const delay = RETRY_DELAYS[Math.min(i, RETRY_DELAYS.length - 1)];
       getLogger().warn(
         `[Database] ${operationName} failed (attempt ${i + 1}/${retries}), retrying in ${delay}ms...`,
-        error
+        error,
       );
 
       // Don't retry on the last attempt
@@ -106,27 +109,28 @@ async function withRetry<T>(
     }
   }
 
-  getLogger().error(
-    `[Database] ${operationName} failed after ${retries} attempts`,
-    lastError
-  );
+  getLogger().error(`[Database] ${operationName} failed after ${retries} attempts`, lastError);
   throw lastError;
 }
 
-// Check if we have PostgreSQL configuration
+// Check if we have PostgreSQL configuration (support both postgresql:// and postgres://)
 const hasPostgresConfig = () =>
-  !!process.env.DATABASE_URL?.startsWith("postgresql://");
+  !!process.env.DATABASE_URL?.startsWith("postgresql://") ||
+  !!process.env.DATABASE_URL?.startsWith("postgres://");
 
 // Check if we have Supabase configuration
 export const hasSupabaseConfig = () =>
-  !!process.env.DATABASE_URL?.includes("supabase.com") &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+  !!process.env.DATABASE_URL?.includes("supabase.com") && !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 // Create PostgreSQL client with connection pooling
 function createPostgresClient() {
-  if (!process.env.DATABASE_URL?.startsWith("postgresql://")) {
+  const hasValidProtocol =
+    process.env.DATABASE_URL?.startsWith("postgresql://") ||
+    process.env.DATABASE_URL?.startsWith("postgres://");
+
+  if (!hasValidProtocol) {
     throw new Error(
-      "Database configuration missing: need DATABASE_URL with postgresql:// protocol"
+      "Database configuration missing: need DATABASE_URL with postgresql:// or postgres:// protocol",
     );
   }
 
@@ -135,8 +139,7 @@ function createPostgresClient() {
     return postgresClient;
   }
 
-  const isProduction =
-    process.env.NODE_ENV === "production" || process.env.VERCEL;
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL;
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST;
   const isSupabase = hasSupabaseConfig();
 
@@ -158,9 +161,7 @@ function createPostgresClient() {
 
     // Connection handling
     connection: {
-      application_name: isSupabase
-        ? "mexc-sniper-bot-supabase"
-        : "mexc-sniper-bot-quota-optimized",
+      application_name: isSupabase ? "mexc-sniper-bot-supabase" : "mexc-sniper-bot-quota-optimized",
       statement_timeout: isSupabase ? 15000 : 12000,
       idle_in_transaction_session_timeout: isSupabase ? 15000 : 10000,
       lock_timeout: isSupabase ? 12000 : 8000,
@@ -175,9 +176,7 @@ function createPostgresClient() {
     },
 
     // Debug settings (only in development)
-    debug:
-      process.env.NODE_ENV === "development" &&
-      process.env.DATABASE_DEBUG === "true",
+    debug: process.env.NODE_ENV === "development" && process.env.DATABASE_DEBUG === "true",
 
     // Connection-level optimizations
     fetch_types: false,
@@ -187,16 +186,11 @@ function createPostgresClient() {
   try {
     postgresClient = postgres(process.env.DATABASE_URL, connectionConfig);
     const dbType = isSupabase ? "Supabase" : "PostgreSQL";
-    getLogger().info(
-      `[Database] PostgreSQL connection established with ${dbType}`
-    );
+    getLogger().info(`[Database] PostgreSQL connection established with ${dbType}`);
     return postgresClient;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    getLogger().error(
-      `[Database] Failed to create PostgreSQL client:`,
-      errorMessage
-    );
+    getLogger().error(`[Database] Failed to create PostgreSQL client:`, errorMessage);
     throw new Error(`Failed to create PostgreSQL client: ${errorMessage}`);
   }
 }
@@ -234,9 +228,9 @@ function createMockDatabase() {
       fullJoin: () => createQueryBuilder(result),
       execute: () => Promise.resolve(result),
       // Make it behave like a Promise when awaited
-      [Symbol.toStringTag]: 'Promise',
+      [Symbol.toStringTag]: "Promise",
     };
-    
+
     return queryBuilder;
   };
 
@@ -248,15 +242,15 @@ function createMockDatabase() {
         returning: () => createQueryBuilder([{ id: "mock-id", ...data }]),
       }),
     }),
-    select: (columns?: any) => {
+    select: (_columns?: any) => {
       return createQueryBuilder([]);
     },
-    update: (table: any) => ({
-      set: (data: any) => {
+    update: (_table: any) => ({
+      set: (_data: any) => {
         return createQueryBuilder([]);
       },
     }),
-    delete: (table: any) => {
+    delete: (_table: any) => {
       return createQueryBuilder([]);
     },
     transaction: async (cb: any) => {
@@ -274,18 +268,16 @@ function createMockDatabase() {
   };
 }
 
-  // PostgreSQL database configuration
+// PostgreSQL database configuration
 function createDatabase() {
-  const isProduction =
-    process.env.NODE_ENV === "production" || process.env.VERCEL;
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL;
   const isRailway = process.env.RAILWAY_ENVIRONMENT === "production";
   const isTest = process.env.NODE_ENV === "test" || process.env.VITEST;
 
   // In test environment with mock flags, return a mock database
   if (
     isTest &&
-    (process.env.FORCE_MOCK_DB === "true" ||
-      process.env.USE_MOCK_DATABASE === "true")
+    (process.env.FORCE_MOCK_DB === "true" || process.env.USE_MOCK_DATABASE === "true")
   ) {
     getLogger().info("[Database] Using mocked database for tests");
     return createMockDatabase();
@@ -293,7 +285,7 @@ function createDatabase() {
 
   if (!hasPostgresConfig()) {
     throw new Error(
-      "Database configuration required: DATABASE_URL must be set with postgresql:// protocol"
+      "Database configuration required: DATABASE_URL must be set with postgresql:// protocol",
     );
   }
 
@@ -301,17 +293,15 @@ function createDatabase() {
 
   // Debug logging (remove in production)
   if (process.env.NODE_ENV !== "production") {
-    getLogger().info(
-      `[Database] Using ${isSupabase ? "Supabase" : "PostgreSQL"} database`
-    );
+    getLogger().info(`[Database] Using ${isSupabase ? "Supabase" : "PostgreSQL"} database`);
   }
 
   try {
     const client = createPostgresClient();
-    
+
     // Detect test container environment (localhost connections in test mode)
     const isTestContainer = isTest && process.env.DATABASE_URL?.includes("localhost");
-    
+
     let schema;
     if (isTestContainer) {
       // Use simplified schema for test containers to avoid relation extraction issues
@@ -333,7 +323,7 @@ function createDatabase() {
       // Use Supabase schema if Supabase is detected, otherwise use original schema
       schema = isSupabase ? supabaseSchema : originalSchema;
     }
-    
+
     const baseDb = drizzle(client, { schema });
 
     // Wrap database with OpenTelemetry instrumentation
@@ -351,12 +341,12 @@ function createDatabase() {
           // Test basic connectivity
           await db.execute(sql`SELECT 1 as test`);
           getLogger().info(
-            `[Database] ${isSupabase ? "Supabase" : "PostgreSQL"} connection verified successfully`
+            `[Database] ${isSupabase ? "Supabase" : "PostgreSQL"} connection verified successfully`,
           );
         } catch (error) {
           getLogger().error(
             `[Database] ${isSupabase ? "Supabase" : "PostgreSQL"} connection test failed:`,
-            error
+            error,
           );
         }
       }, 1000);
@@ -369,14 +359,11 @@ function createDatabase() {
     // Enhanced error handling for production
     if (isProduction || isRailway) {
       getLogger().error(
-        `[Database] ${isSupabase ? "Supabase" : "PostgreSQL"} failed in production environment`
+        `[Database] ${isSupabase ? "Supabase" : "PostgreSQL"} failed in production environment`,
       );
       getLogger().error("[Database] Error details:", {
         message: error instanceof Error ? error.message : String(error),
-        code:
-          error instanceof Error && "code" in error
-            ? (error as any).code
-            : "UNKNOWN",
+        code: error instanceof Error && "code" in error ? (error as any).code : "UNKNOWN",
         env: {
           hasUrl: !!process.env.DATABASE_URL,
           urlProtocol: process.env.DATABASE_URL?.split("://")[0],
@@ -391,7 +378,7 @@ function createDatabase() {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const dbType = isSupabase ? "Supabase" : "PostgreSQL";
     throw new Error(
-      `${dbType} connection failed: ${errorMessage}. Check DATABASE_URL and connection settings.`
+      `${dbType} connection failed: ${errorMessage}. Check DATABASE_URL and connection settings.`,
     );
   }
 }
@@ -467,16 +454,10 @@ export async function initializeDatabase() {
       // Check available PostgreSQL extensions
       try {
         // Check for vector extension (pgvector)
-        await db.execute(
-          sql`SELECT 1 FROM pg_available_extensions WHERE name = 'vector'`
-        );
-        getLogger().info(
-          "[Database] Vector extension (pgvector) available for embeddings"
-        );
+        await db.execute(sql`SELECT 1 FROM pg_available_extensions WHERE name = 'vector'`);
+        getLogger().info("[Database] Vector extension (pgvector) available for embeddings");
       } catch (_error) {
-        getLogger().info(
-          "[Database] Vector extension not available, AI features may be limited"
-        );
+        getLogger().info("[Database] Vector extension not available, AI features may be limited");
       }
 
       // Initialize performance monitoring
@@ -490,10 +471,7 @@ export async function initializeDatabase() {
             await databaseOptimizationManager.runOptimizations();
             getLogger().info("[Database] Optimized for AI agent workloads");
           } catch (error) {
-            getLogger().warn(
-              "[Database] Failed to auto-optimize for agents:",
-              error
-            );
+            getLogger().warn("[Database] Failed to auto-optimize for agents:", error);
           }
         }
       }
@@ -501,14 +479,14 @@ export async function initializeDatabase() {
       return true;
     },
     "Database initialization",
-    3 // Fewer retries for initialization
+    3, // Fewer retries for initialization
   );
 }
 
 // Execute query with retry logic
 export async function executeWithRetry<T>(
   query: () => Promise<T>,
-  operationName = "Database query"
+  operationName = "Database query",
 ): Promise<T> {
   return withRetry(query, operationName);
 }
@@ -527,11 +505,7 @@ export async function _internalHealthCheck() {
 
     const isSupabase = hasSupabaseConfig();
     const isHealthy = responseTime < 2000; // Less than 2 seconds is healthy
-    const status = isHealthy
-      ? "healthy"
-      : responseTime < 5000
-        ? "degraded"
-        : "critical";
+    const status = isHealthy ? "healthy" : responseTime < 5000 ? "degraded" : "critical";
 
     return {
       status,
@@ -554,25 +528,21 @@ export async function _internalHealthCheck() {
 export async function executeOptimizedSelect<T>(
   queryFn: () => Promise<T>,
   cacheKey?: string,
-  cacheTTL?: number
+  cacheTTL?: number,
 ): Promise<T> {
-  return databaseConnectionPool.executeSelect(
-    queryFn,
-    cacheKey || "default",
-    cacheTTL
-  );
+  return databaseConnectionPool.executeSelect(queryFn, cacheKey || "default", cacheTTL);
 }
 
 export async function executeOptimizedWrite<T>(
   queryFn: () => Promise<T>,
-  invalidatePatterns: string[] = []
+  invalidatePatterns: string[] = [],
 ): Promise<T> {
   return databaseConnectionPool.executeWrite(queryFn, invalidatePatterns);
 }
 
 export async function executeBatchOperations<T>(
   operations: (() => Promise<T>)[],
-  invalidatePatterns: string[] = []
+  invalidatePatterns: string[] = [],
 ): Promise<T[]> {
   return databaseConnectionPool.executeBatch(operations, invalidatePatterns);
 }
@@ -587,7 +557,7 @@ export async function monitoredQuery<T>(
     userId?: string;
     operationType?: "select" | "insert" | "update" | "delete";
     tableName?: string;
-  }
+  },
 ): Promise<T> {
   return instrumentDatabaseQuery(
     queryName,
@@ -597,7 +567,7 @@ export async function monitoredQuery<T>(
       tableName: options?.tableName,
       queryName,
       includeQuery: !!options?.query,
-    }
+    },
   );
 }
 
@@ -606,9 +576,7 @@ export async function getUserPreferences(userId: string): Promise<any | null> {
   try {
     // Use appropriate userPreferences table based on database type
     const isSupabase = hasSupabaseConfig();
-    const userPreferencesTable = isSupabase
-      ? supabaseUserPreferences
-      : originalUserPreferences;
+    const userPreferencesTable = isSupabase ? supabaseUserPreferences : originalUserPreferences;
 
     const result = (await executeWithRetry(
       async () =>
@@ -617,7 +585,7 @@ export async function getUserPreferences(userId: string): Promise<any | null> {
           .from(userPreferencesTable)
           .where(eq(userPreferencesTable.userId, userId))
           .limit(1),
-      "getUserPreferences"
+      "getUserPreferences",
     )) as any[];
 
     if (result.length === 0) {
@@ -629,15 +597,9 @@ export async function getUserPreferences(userId: string): Promise<any | null> {
     // Safe pattern parsing with fallbacks
     let patternParts: number[] = [2, 2, 4]; // Default fallback
     try {
-      if (
-        prefs.readyStatePattern &&
-        typeof prefs.readyStatePattern === "string"
-      ) {
+      if (prefs.readyStatePattern && typeof prefs.readyStatePattern === "string") {
         const parts = prefs.readyStatePattern.split(",").map(Number);
-        if (
-          parts.length >= 3 &&
-          parts.every((p: number) => !Number.isNaN(p) && p > 0)
-        ) {
+        if (parts.length >= 3 && parts.every((p: number) => !Number.isNaN(p) && p > 0)) {
           patternParts = parts;
         }
       }
@@ -649,10 +611,7 @@ export async function getUserPreferences(userId: string): Promise<any | null> {
     }
 
     // Safe JSON parsing helper
-    const safeJsonParse = (
-      jsonString: string | null | undefined,
-      fallback: any = undefined
-    ) => {
+    const safeJsonParse = (jsonString: string | null | undefined, fallback: any = undefined) => {
       if (!jsonString || typeof jsonString !== "string") return fallback;
       try {
         return JSON.parse(jsonString);
@@ -687,20 +646,14 @@ export async function closeDatabase() {
     try {
       queryPerformanceMonitor.stopMonitoring();
     } catch (error) {
-      getLogger().warn(
-        "[Database] Error stopping performance monitoring:",
-        error
-      );
+      getLogger().warn("[Database] Error stopping performance monitoring:", error);
     }
 
     // Shutdown connection pool
     try {
       await databaseConnectionPool.shutdown();
     } catch (error) {
-      getLogger().warn(
-        "[Database] Error shutting down connection pool:",
-        error
-      );
+      getLogger().warn("[Database] Error shutting down connection pool:", error);
     }
 
     // Close PostgreSQL connection if exists
@@ -711,28 +664,20 @@ export async function closeDatabase() {
           new Promise(
             (resolve) =>
               setTimeout(() => {
-                getLogger().warn(
-                  "[Database] PostgreSQL close timed out, forcing shutdown"
-                );
+                getLogger().warn("[Database] PostgreSQL close timed out, forcing shutdown");
                 resolve(undefined);
-              }, 2000) // Reduced timeout for tests
+              }, 2000), // Reduced timeout for tests
           ),
         ]);
         const dbType = hasSupabaseConfig() ? "Supabase" : "PostgreSQL";
         getLogger().info(`[Database] ${dbType} PostgreSQL connection closed`);
       } catch (error) {
-        getLogger().warn(
-          "[Database] Error closing PostgreSQL connection:",
-          error
-        );
+        getLogger().warn("[Database] Error closing PostgreSQL connection:", error);
       }
     }
 
     // Emergency cleanup for mock databases
-    if (
-      dbInstance &&
-      typeof (dbInstance as any).$emergencyCleanup === "function"
-    ) {
+    if (dbInstance && typeof (dbInstance as any).$emergencyCleanup === "function") {
       try {
         await (dbInstance as any).$emergencyCleanup();
       } catch (error) {

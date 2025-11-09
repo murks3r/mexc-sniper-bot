@@ -41,17 +41,11 @@ export interface SimpleResponse<T = any> {
 // HELPER FUNCTIONS FOR COMMON VALIDATION PATTERNS
 // ============================================================================
 
-export function createSuccessResult<T>(
-  data: T,
-  message?: string
-): ValidationResult<T> {
+export function createSuccessResult<T>(data: T, message?: string): ValidationResult<T> {
   return { success: true, data, message };
 }
 
-export function createErrorResult(
-  error: string,
-  code?: string
-): ValidationResult {
+export function createErrorResult(error: string, code?: string): ValidationResult {
   return { success: false, error, code };
 }
 
@@ -64,11 +58,7 @@ export function createApiSuccess<T>(data: T, message?: string): ApiResponse<T> {
   };
 }
 
-export function createApiError(
-  error: string,
-  code?: string,
-  statusCode?: number
-): ApiResponse {
+export function createApiError(error: string, code?: string, statusCode?: number): ApiResponse {
   return {
     success: false,
     error,
@@ -83,25 +73,25 @@ export function createApiError(
 // ============================================================================
 
 export function isSuccessResult<T>(
-  result: ValidationResult<T>
+  result: ValidationResult<T>,
 ): result is ValidationResult<T> & { success: true; data: T } {
   return result.success === true && result.data !== undefined;
 }
 
 export function isErrorResult<T>(
-  result: ValidationResult<T>
+  result: ValidationResult<T>,
 ): result is ValidationResult<T> & { success: false; error: string } {
   return result.success === false && typeof result.error === "string";
 }
 
 export function isApiSuccess<T>(
-  response: ApiResponse<T>
+  response: ApiResponse<T>,
 ): response is ApiResponse<T> & { success: true; data: T } {
   return response.success === true && response.data !== undefined;
 }
 
 export function isApiError<T>(
-  response: ApiResponse<T>
+  response: ApiResponse<T>,
 ): response is ApiResponse<T> & { success: false; error: string } {
   return response.success === false && typeof response.error === "string";
 }

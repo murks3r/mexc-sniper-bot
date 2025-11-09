@@ -95,10 +95,7 @@ export class SafetyManager {
    */
   async getHealthStatus(): Promise<"operational" | "degraded" | "offline"> {
     if (!this.state.isInitialized) return "offline";
-    if (
-      !this.state.isHealthy ||
-      this.currentRiskScore > this.RISK_THRESHOLDS.high
-    )
+    if (!this.state.isHealthy || this.currentRiskScore > this.RISK_THRESHOLDS.high)
       return "degraded";
     return "operational";
   }
@@ -143,15 +140,14 @@ export class SafetyManager {
       this.lastSafetyCheck = new Date();
 
       // Update metrics
-      const currentChecks =
-        (this.state.metrics.safetyChecksPerformed as number) || 0;
+      const currentChecks = (this.state.metrics.safetyChecksPerformed as number) || 0;
       this.state.metrics.safetyChecksPerformed = currentChecks + 1;
       this.state.metrics.lastSafetyCheck = this.lastSafetyCheck.toISOString();
       this.state.metrics.currentRiskScore = this.currentRiskScore;
 
       // Handle critical issues
       const criticalChecks = checks.filter(
-        (check) => !check.passed && check.severity === "critical"
+        (check) => !check.passed && check.severity === "critical",
       );
       if (criticalChecks.length > 0) {
         this.handleCriticalSafetyViolation(criticalChecks);
@@ -193,28 +189,23 @@ export class SafetyManager {
       const issues: string[] = [];
 
       // Check position size
-      if (
-        target.positionSizeUsdt >
-        this.SAFETY_LIMITS.maxPositionSize * 10000
-      ) {
+      if (target.positionSizeUsdt > this.SAFETY_LIMITS.maxPositionSize * 10000) {
         // Assuming $10k portfolio
         issues.push(
-          `Position size too large: ${target.positionSizeUsdt} > ${this.SAFETY_LIMITS.maxPositionSize * 10000}`
+          `Position size too large: ${target.positionSizeUsdt} > ${this.SAFETY_LIMITS.maxPositionSize * 10000}`,
         );
       }
 
       // Check confidence score
       if (target.confidenceScore < this.context.config.confidenceThreshold) {
         issues.push(
-          `Confidence score too low: ${target.confidenceScore} < ${this.context.config.confidenceThreshold}`
+          `Confidence score too low: ${target.confidenceScore} < ${this.context.config.confidenceThreshold}`,
         );
       }
 
       // Check if symbol is blacklisted (simulated)
       const blacklistedSymbols = ["SCAMCOIN", "RUGPULL", "HONEYPOT"];
-      if (
-        blacklistedSymbols.some((symbol) => target.symbolName.includes(symbol))
-      ) {
+      if (blacklistedSymbols.some((symbol) => target.symbolName.includes(symbol))) {
         issues.push(`Symbol is blacklisted: ${target.symbolName}`);
       }
 
@@ -229,7 +220,7 @@ export class SafetyManager {
       const currentPositions = await this.getCurrentPositionCount();
       if (currentPositions >= this.context.config.maxConcurrentPositions) {
         issues.push(
-          `Maximum concurrent positions reached: ${currentPositions}/${this.context.config.maxConcurrentPositions}`
+          `Maximum concurrent positions reached: ${currentPositions}/${this.context.config.maxConcurrentPositions}`,
         );
       }
 
@@ -260,7 +251,7 @@ export class SafetyManager {
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error(
-        `Target validation failed for ${target.symbolName}: ${safeError.message}`
+        `Target validation failed for ${target.symbolName}: ${safeError.message}`,
       );
 
       return {
@@ -574,13 +565,10 @@ export class SafetyManager {
 
     const reason = criticalChecks.map((check) => check.message).join("; ");
 
-    this.context.logger.error(
-      "Critical safety violation - triggering emergency stop",
-      {
-        criticalChecks: criticalChecks.length,
-        reason,
-      }
-    );
+    this.context.logger.error("Critical safety violation - triggering emergency stop", {
+      criticalChecks: criticalChecks.length,
+      reason,
+    });
 
     this.context.eventEmitter.emit("emergency_stop", reason);
   }

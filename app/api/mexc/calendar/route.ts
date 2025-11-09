@@ -8,15 +8,11 @@ export async function GET() {
 
     const calendarResponse = (await Promise.race([
       mexcService.getCalendarListings(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Service timeout")), 8000)
-      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Service timeout")), 8000)),
     ])) as any;
 
     // Ensure data is always an array
-    const calendarData = Array.isArray(calendarResponse?.data)
-      ? calendarResponse.data
-      : [];
+    const calendarData = Array.isArray(calendarResponse?.data) ? calendarResponse.data : [];
 
     return apiResponse(
       createSuccessResponse(calendarData, {
@@ -24,7 +20,7 @@ export async function GET() {
         cached: calendarResponse?.cached || false,
         executionTimeMs: calendarResponse?.executionTimeMs || 0,
         serviceLayer: true,
-      })
+      }),
     );
   } catch (error) {
     console.error("MEXC calendar fetch failed:", { error: error });
@@ -32,14 +28,11 @@ export async function GET() {
     // Always return empty array with success status to prevent 404/500 errors
     return apiResponse(
       createSuccessResponse([], {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Service temporarily unavailable",
+        error: error instanceof Error ? error.message : "Service temporarily unavailable",
         count: 0,
         serviceLayer: true,
         fallback: true,
-      })
+      }),
     );
   }
 }

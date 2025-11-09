@@ -46,7 +46,7 @@ export class UserPreferencesService {
 
   async updateUserPreferences(
     userId: string,
-    updates: Partial<UserPreferences>
+    updates: Partial<UserPreferences>,
   ): Promise<UserPreferences> {
     const existing = this.preferences.get(userId);
     const updated = {
@@ -64,7 +64,7 @@ export class UserPreferencesService {
 
   async createUserPreferences(
     userId: string,
-    preferences: Partial<UserPreferences> = {}
+    preferences: Partial<UserPreferences> = {},
   ): Promise<UserPreferences> {
     const newPreferences = UserPreferencesSchema.parse({
       ...preferences,

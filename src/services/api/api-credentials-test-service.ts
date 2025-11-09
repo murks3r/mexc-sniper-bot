@@ -65,28 +65,12 @@ export interface AuthenticationTestResult {
 // ============================================================================
 
 export class ApiCredentialsTestService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[api-credentials-test-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[api-credentials-test-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[api-credentials-test-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[api-credentials-test-service]", message, context || ""),
-  };
-
   /**
    * Test API credentials with comprehensive validation
    */
   async testCredentials(
     request: ApiCredentialsTestRequest,
-    authenticatedUserId: string
+    authenticatedUserId: string,
   ): Promise<
     | { success: true; data: ApiCredentialsTestResponse }
     | { success: false; error: string; code: string; details?: any }
@@ -137,16 +121,10 @@ export class ApiCredentialsTestService {
       }
 
       // Initialize MEXC service
-      const mexcService = await this.initializeMexcService(
-        credentialResult.credentials!,
-        context
-      );
+      const mexcService = await this.initializeMexcService(credentialResult.credentials!, context);
 
       // Test connectivity (optional)
-      const connectivityResult = await this.testConnectivity(
-        mexcService,
-        context
-      );
+      const connectivityResult = await this.testConnectivity(mexcService, context);
 
       // Test authentication
       const authResult = await this.testAuthentication(mexcService, context);
@@ -174,7 +152,7 @@ export class ApiCredentialsTestService {
       const statusSyncResult = await syncAfterCredentialTest(
         context.userId,
         context.provider,
-        context.requestId
+        context.requestId,
       );
 
       console.info("[CredentialTestService] Status synchronization completed", {
@@ -215,26 +193,23 @@ export class ApiCredentialsTestService {
       const responseValidation = validateMexcApiResponse(
         ApiCredentialsTestResponseSchema,
         response,
-        "credential test"
+        "credential test",
       );
 
       if (!responseValidation.success) {
         console.error(
           "[CredentialTestService] Response validation failed:",
-          responseValidation.error
+          responseValidation.error,
         );
         // Continue anyway but log the issue
       }
 
-      console.info(
-        "[CredentialTestService] Credential test completed successfully",
-        {
-          requestId: context.requestId,
-          duration: `${Date.now() - context.startTime}ms`,
-          connectivity: response.connectivity,
-          authentication: response.authentication,
-        }
-      );
+      console.info("[CredentialTestService] Credential test completed successfully", {
+        requestId: context.requestId,
+        duration: `${Date.now() - context.startTime}ms`,
+        connectivity: response.connectivity,
+        authentication: response.authentication,
+      });
 
       return { success: true, data: response };
     } catch (error) {
@@ -251,10 +226,7 @@ export class ApiCredentialsTestService {
         code: "TEST_ERROR",
         details: {
           requestId: context.requestId,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unknown error occurred during test",
+          message: error instanceof Error ? error.message : "Unknown error occurred during test",
           duration: `${Date.now() - context.startTime}ms`,
         },
       };
@@ -266,7 +238,7 @@ export class ApiCredentialsTestService {
   // ============================================================================
 
   private async retrieveUserCredentials(
-    context: CredentialTestContext
+    context: CredentialTestContext,
   ): Promise<CredentialRetrievalResult> {
     try {
       console.info("[CredentialTestService] Retrieving credentials", {
@@ -275,10 +247,7 @@ export class ApiCredentialsTestService {
         provider: context.provider,
       });
 
-      const userCredentials = await getUserCredentials(
-        context.userId,
-        context.provider
-      );
+      const userCredentials = await getUserCredentials(context.userId, context.provider);
 
       if (!userCredentials) {
         return {
@@ -288,16 +257,13 @@ export class ApiCredentialsTestService {
         };
       }
 
-      console.info(
-        "[CredentialTestService] Credentials retrieved successfully",
-        {
-          requestId: context.requestId,
-          hasApiKey: !!userCredentials.apiKey,
-          hasSecretKey: !!userCredentials.secretKey,
-          provider: userCredentials.provider,
-          isActive: userCredentials.isActive,
-        }
-      );
+      console.info("[CredentialTestService] Credentials retrieved successfully", {
+        requestId: context.requestId,
+        hasApiKey: !!userCredentials.apiKey,
+        hasSecretKey: !!userCredentials.secretKey,
+        provider: userCredentials.provider,
+        isActive: userCredentials.isActive,
+      });
 
       return {
         success: true,
@@ -311,19 +277,13 @@ export class ApiCredentialsTestService {
 
       return {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to retrieve credentials",
+        error: error instanceof Error ? error.message : "Failed to retrieve credentials",
         code: "CREDENTIAL_RETRIEVAL_ERROR",
       };
     }
   }
 
-  private async initializeMexcService(
-    credentials: any,
-    context: CredentialTestContext
-  ) {
+  private async initializeMexcService(credentials: any, context: CredentialTestContext) {
     console.info("[CredentialTestService] Initializing MEXC service", {
       requestId: context.requestId,
       hasApiKey: !!credentials.apiKey,
@@ -339,7 +299,7 @@ export class ApiCredentialsTestService {
 
   private async testConnectivity(
     mexcService: any,
-    context: CredentialTestContext
+    context: CredentialTestContext,
   ): Promise<ConnectivityTestResult> {
     try {
       console.info("[CredentialTestService] Testing connectivity", {
@@ -355,18 +315,14 @@ export class ApiCredentialsTestService {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.info(
-        "[CredentialTestService] Connectivity test failed, but continuing",
-        {
-          requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error),
-        }
-      );
+      console.info("[CredentialTestService] Connectivity test failed, but continuing", {
+        requestId: context.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Connectivity test failed",
+        error: error instanceof Error ? error.message : "Connectivity test failed",
         timestamp: new Date().toISOString(),
       };
     }
@@ -374,7 +330,7 @@ export class ApiCredentialsTestService {
 
   private async testAuthentication(
     mexcService: any,
-    context: CredentialTestContext
+    context: CredentialTestContext,
   ): Promise<AuthenticationTestResult> {
     try {
       console.info("[CredentialTestService] Testing authentication", {
@@ -402,18 +358,13 @@ export class ApiCredentialsTestService {
       const balanceCount = Array.isArray(balanceData) ? balanceData.length : 0;
 
       const accountType =
-        balanceData && Array.isArray(balanceData) && balanceData.length > 0
-          ? "spot"
-          : "spot";
+        balanceData && Array.isArray(balanceData) && balanceData.length > 0 ? "spot" : "spot";
 
       const permissions = ["SPOT"];
       const canTrade = balanceCount >= 0;
       const hasNonZeroBalances =
         Array.isArray(balanceData) &&
-        balanceData.some(
-          (b) =>
-            parseFloat(b.free || "0") > 0 || parseFloat(b.locked || "0") > 0
-        );
+        balanceData.some((b) => parseFloat(b.free || "0") > 0 || parseFloat(b.locked || "0") > 0);
       const totalAssets = Array.isArray(balanceData) ? balanceData.length : 0;
 
       return {
@@ -426,8 +377,7 @@ export class ApiCredentialsTestService {
         permissions,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown authentication error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown authentication error";
 
       return {
         success: false,
@@ -446,15 +396,9 @@ export class ApiCredentialsTestService {
   private getAuthErrorMessage(error?: string): string {
     if (!error) return "Failed to authenticate with MEXC API";
 
-    if (
-      error.includes("700002") ||
-      error.includes("Signature for this request is not valid")
-    ) {
+    if (error.includes("700002") || error.includes("Signature for this request is not valid")) {
       return "API signature validation failed. Please check your API credentials and ensure your IP is allowlisted.";
-    } else if (
-      error.includes("10072") ||
-      error.includes("Api key info invalid")
-    ) {
+    } else if (error.includes("10072") || error.includes("Api key info invalid")) {
       return "API key is invalid or expired. Please check your MEXC API credentials.";
     }
 
@@ -464,15 +408,9 @@ export class ApiCredentialsTestService {
   private getAuthErrorCode(error?: string): string {
     if (!error) return "AUTHENTICATION_ERROR";
 
-    if (
-      error.includes("700002") ||
-      error.includes("Signature for this request is not valid")
-    ) {
+    if (error.includes("700002") || error.includes("Signature for this request is not valid")) {
       return "SIGNATURE_ERROR";
-    } else if (
-      error.includes("10072") ||
-      error.includes("Api key info invalid")
-    ) {
+    } else if (error.includes("10072") || error.includes("Api key info invalid")) {
       return "INVALID_API_KEY";
     }
 

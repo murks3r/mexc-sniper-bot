@@ -6,37 +6,26 @@ async function getInngestSetup() {
   try {
     // Dynamic imports to avoid build-time module evaluation
     const { inngest } = await import("@/src/inngest/client");
-    const {
-      pollMexcCalendar,
-      watchMexcSymbol,
-      analyzeMexcPatterns,
-      createMexcTradingStrategy,
-    } = await import("@/src/inngest/functions");
+    const { pollMexcCalendar } = await import("@/src/inngest/functions");
     const {
       scheduledCalendarMonitoring,
-      scheduledPatternAnalysis,
       scheduledHealthCheck,
       scheduledDailyReport,
-      scheduledIntensiveAnalysis,
       emergencyResponseHandler,
     } = await import("@/src/inngest/scheduled-functions");
 
     return {
       client: inngest,
       functions: [
-        // Core workflow functions
-        pollMexcCalendar, // Calendar discovery with multi-agent analysis
-        watchMexcSymbol, // Symbol monitoring and readiness analysis
-        analyzeMexcPatterns, // Pattern discovery and validation
-        createMexcTradingStrategy, // Trading strategy creation and risk assessment
+        // Core workflow functions (simplified - no agents)
+        pollMexcCalendar, // Calendar sync to database
 
         // Scheduled monitoring functions
         scheduledCalendarMonitoring, // Every 30 minutes
-        scheduledPatternAnalysis, // Every 15 minutes
         scheduledHealthCheck, // Every 5 minutes
         scheduledDailyReport, // Daily at 9 AM UTC
-        scheduledIntensiveAnalysis, // Every 2 hours
         emergencyResponseHandler, // Event-triggered emergency response
+        // Removed: scheduledPatternAnalysis, scheduledIntensiveAnalysis (agent-based)
       ],
     };
   } catch (error) {

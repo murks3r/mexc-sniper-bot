@@ -7,13 +7,7 @@
 import { Bell, BellOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ExecutionAlert } from "../schemas/validation-schemas";
 
@@ -24,9 +18,7 @@ interface AlertsListProps {
 }
 
 // Helper functions
-const getAlertBadgeVariant = (
-  severity: string
-): "destructive" | "secondary" | "outline" => {
+const getAlertBadgeVariant = (severity: string): "destructive" | "secondary" | "outline" => {
   if (severity === "critical" || severity === "error") return "destructive";
   if (severity === "warning") return "secondary";
   return "outline";
@@ -36,14 +28,8 @@ const formatAlertType = (type: string): string => {
   return type.replace("_", " ").toUpperCase();
 };
 
-export function AlertsList({
-  activeAlerts,
-  onAcknowledgeAlert,
-  onClearAlerts,
-}: AlertsListProps) {
-  const hasAcknowledgedAlerts = activeAlerts.some(
-    (alert) => alert.acknowledged
-  );
+export function AlertsList({ activeAlerts, onAcknowledgeAlert, onClearAlerts }: AlertsListProps) {
+  const hasAcknowledgedAlerts = activeAlerts.some((alert) => alert.acknowledged);
 
   return (
     <Card>
@@ -53,9 +39,7 @@ export function AlertsList({
             <Bell className="h-5 w-5" />
             Execution Alerts ({activeAlerts.length})
           </CardTitle>
-          <CardDescription>
-            Trade execution notifications and system alerts
-          </CardDescription>
+          <CardDescription>Trade execution notifications and system alerts</CardDescription>
         </div>
         {hasAcknowledgedAlerts && (
           <Button variant="outline" size="sm" onClick={onClearAlerts}>
@@ -79,9 +63,7 @@ export function AlertsList({
                       <Badge variant={getAlertBadgeVariant(alert.severity)}>
                         {alert.severity.toUpperCase()}
                       </Badge>
-                      <span className="font-medium">
-                        {formatAlertType(alert.type)}
-                      </span>
+                      <span className="font-medium">{formatAlertType(alert.type)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-500">

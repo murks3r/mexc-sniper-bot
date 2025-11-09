@@ -3,19 +3,26 @@
  *
  * This is the MAIN auto-sniping implementation for the MEXC Sniper Bot.
  * All other auto-sniping services should use this module to prevent conflicts.
- * 
+ *
  * Handles auto-sniping execution and monitoring.
  * Extracted from the original monolithic core-trading.service.ts for modularity.
  */
 
-import { and, eq, isNull, lt, or, inArray, ne, gt, desc } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/src/db";
-import { snipeTargets, executionHistory } from "@/src/db/schemas/trading";
-import { userPreferences as userPreferencesTable } from "@/src/db/schemas/auth";
 import { saveExecutionHistory } from "@/src/db/execution-history-helpers";
+import { createPosition, updatePositionOnSell } from "@/src/db/position-helpers";
+import { userPreferences as userPreferencesTable } from "@/src/db/schemas/auth";
+import { executionHistory, positions, snipeTargets } from "@/src/db/schemas/trading";
 import { toSafeError } from "@/src/lib/error-type-utils";
 import { TradingStrategyManager } from "@/src/services/trading/trading-strategy-manager";
 import { serviceConflictDetector } from "../../service-conflict-detector";
+import { calculateRetryDelay, isNonRetryableError } from "./utils/error-utils";
+import { savePositionCloseHistory } from "./utils/execution-history-helpers";
+import {
+  calculateRealizedPnL,
+  shouldTriggerPriceLevel,
+} from "./utils/position-monitoring-utils";
 
 import type {
   AutoSnipeTarget,
@@ -29,15 +36,6 @@ import type {
   TradingStrategy,
 } from "./types";
 
-// Extended strategy interface for multi-phase strategies
-interface MultiPhaseStrategy extends TradingStrategy {
-  id: string;
-  levels: Array<{
-    percentage: number;
-    action: string;
-    delay?: number;
-  }>;
-}
 
 // Statistics interface for updateStats method
 interface StatsUpdate {
@@ -47,6 +45,16 @@ interface StatsUpdate {
   averageConfidence?: number;
   timestamp?: number;
 }
+
+// Configuration for price level monitoring
+type PriceLevelMonitoringConfig = {
+  position: Position;
+  monitorType: "stop-loss" | "take-profit";
+  triggerPrice: number | undefined;
+  isStopLoss: boolean;
+  pendingTimers: Map<string, NodeJS.Timeout>;
+  executeCallback: (position: Position) => Promise<void>;
+};
 
 export class AutoSnipingModule {
   private context: ModuleContext;
@@ -86,9 +94,11 @@ export class AutoSnipingModule {
     };
 
     // Register with service conflict detector to prevent duplicate services
-    const registered = serviceConflictDetector.registerService('AutoSnipingModule');
+    const registered = serviceConflictDetector.registerService("AutoSnipingModule");
     if (!registered) {
-      throw new Error('AutoSnipingModule cannot start: conflicting auto-sniping services are already active. Use only the consolidated core trading service.');
+      throw new Error(
+        "AutoSnipingModule cannot start: conflicting auto-sniping services are already active. Use only the consolidated core trading service.",
+      );
     }
   }
 
@@ -118,12 +128,9 @@ export class AutoSnipingModule {
 
     // Log active positions that need manual handling
     if (this.activePositions.size > 0) {
-      this.context.logger.warn(
-        `Shutting down with ${this.activePositions.size} active positions`,
-        {
-          positions: Array.from(this.activePositions.keys()),
-        }
-      );
+      this.context.logger.warn(`Shutting down with ${this.activePositions.size} active positions`, {
+        positions: Array.from(this.activePositions.keys()),
+      });
     }
 
     this.state.isInitialized = false;
@@ -225,7 +232,7 @@ export class AutoSnipingModule {
       this.context.logger.info("Auto-sniping monitoring stopped");
 
       // Unregister from service conflict detector
-      serviceConflictDetector.unregisterService('AutoSnipingModule');
+      serviceConflictDetector.unregisterService("AutoSnipingModule");
 
       return {
         success: true,
@@ -244,95 +251,76 @@ export class AutoSnipingModule {
   }
 
   /**
-   * DB-driven SL/TP monitoring loop using snipe_targets as the source of truth
-   * - Selects completed/success rows with actualPositionSize > 0
-   * - Computes SL/TP thresholds from executionPrice and percentages
-   * - Atomically claims row for closing by setting executionStatus='closing'
-   * - Places MARKET SELL with quantity = actualPositionSize
-   * - Persists execution_history and finalizes snipe_targets to closed
+   * Unified position monitoring loop using positions table
+   * - Queries positions table for open positions
+   * - Checks stop-loss, take-profit, and time-based exit conditions
+   * - Executes MARKET SELL when any condition is met
+   * - Updates positions table and links buy/sell pairs
    */
   private async monitorDbPositionsAndExecuteSells(): Promise<void> {
     try {
-      // Fetch open positions from DB
-      const rows = await db
-        .select({
-          id: snipeTargets.id,
-          userId: snipeTargets.userId,
-          vcoinId: snipeTargets.vcoinId,
-          symbolName: snipeTargets.symbolName,
-          executionPrice: snipeTargets.executionPrice,
-          actualPositionSize: snipeTargets.actualPositionSize,
-          stopLossPercent: snipeTargets.stopLossPercent,
-          takeProfitCustom: snipeTargets.takeProfitCustom,
-        })
-        .from(snipeTargets)
-        .where(
-          and(
-            eq(snipeTargets.status, "completed"),
-            eq(snipeTargets.executionStatus, "success"),
-            gt(snipeTargets.actualPositionSize, 0)
-          )
-        );
+      const now = new Date();
 
-      if (!rows?.length) {
+      // Fetch open positions from positions table
+      const openPositions = await db.select().from(positions).where(eq(positions.status, "open"));
+
+      if (!openPositions?.length) {
         return;
       }
 
-      for (const row of rows) {
-        // Sanity checks
-        if (!row.executionPrice || !row.actualPositionSize) continue;
-
-        const symbol = this.normalizeSymbol(row.symbolName);
+      for (const position of openPositions) {
+        const symbol = this.normalizeSymbol(position.symbolName);
         const currentPrice = await this.getCurrentMarketPrice(symbol);
+
         if (
           currentPrice === null ||
           currentPrice === undefined ||
           Number.isNaN(currentPrice) ||
           currentPrice <= 0
         ) {
-          // Skip this tick if we cannot price
-          this.context.logger.debug("DB SL/TP: price unavailable", { symbol, targetId: row.id });
+          this.context.logger.debug("Position monitor: price unavailable", {
+            positionId: position.id,
+            symbol,
+          });
           continue;
         }
 
-        // Compute thresholds
-        const stopLossPrice = row.stopLossPercent && row.stopLossPercent > 0
-          ? row.executionPrice * (1 - row.stopLossPercent / 100)
-          : undefined;
-        const takeProfitPrice = row.takeProfitCustom && row.takeProfitCustom > 0
-          ? row.executionPrice * (1 + row.takeProfitCustom / 100)
-          : undefined;
-
-        // Decide whether to trigger a SELL (assuming BUY entry)
+        // Check all exit conditions
         let shouldSell = false;
-        let reason: "STOP_LOSS" | "TAKE_PROFIT" | null = null;
-        if (stopLossPrice !== undefined && currentPrice <= stopLossPrice) {
+        let reason: "STOP_LOSS" | "TAKE_PROFIT" | "TIME_BASED" | null = null;
+
+        // Stop-loss check
+        if (currentPrice <= position.stopLossPrice) {
           shouldSell = true;
           reason = "STOP_LOSS";
         }
-        if (!shouldSell && takeProfitPrice !== undefined && currentPrice >= takeProfitPrice) {
+
+        // Take-profit check
+        if (!shouldSell && currentPrice >= position.takeProfitPrice) {
           shouldSell = true;
           reason = "TAKE_PROFIT";
         }
+
+        // Time-based exit check
+        if (!shouldSell && now >= position.maxHoldUntil) {
+          shouldSell = true;
+          reason = "TIME_BASED";
+        }
+
         if (!shouldSell) continue;
 
-        // Atomic claim: success -> closing
+        // Atomic claim: open -> closing (prevent duplicate sells)
         const claim = await db
-          .update(snipeTargets)
-          .set({ executionStatus: "closing", updatedAt: new Date() })
-          .where(
-            and(
-              eq(snipeTargets.id, row.id),
-              eq(snipeTargets.status, "completed"),
-              eq(snipeTargets.executionStatus, "success"),
-              gt(snipeTargets.actualPositionSize, 0)
-            )
-          )
-          .returning({ id: snipeTargets.id });
+          .update(positions)
+          .set({ status: "partial", updatedAt: new Date() })
+          .where(and(eq(positions.id, position.id), eq(positions.status, "open")))
+          .returning({ id: positions.id });
 
         if (!Array.isArray(claim) || claim.length === 0) {
-          // Already claimed/closing/closed by another worker
-          this.context.logger.debug("DB SL/TP: target already claimed for closing", { targetId: row.id, symbol });
+          this.context.logger.debug("Position monitor: position already claimed", {
+            positionId: position.id,
+            symbol,
+          });
           continue;
         }
 
@@ -341,7 +329,7 @@ export class AutoSnipingModule {
           symbol,
           side: "SELL",
           type: "MARKET",
-          quantity: Number(row.actualPositionSize),
+          quantity: position.quantity,
           timeInForce: "IOC",
         };
 
@@ -352,76 +340,93 @@ export class AutoSnipingModule {
           }
 
           const executedQty = Number(
-            closeResult.data?.executedQty ?? closeResult.data?.quantity ?? row.actualPositionSize
+            closeResult.data?.executedQty ?? closeResult.data?.quantity ?? position.quantity,
           );
-          const executedPrice = Number(
-            closeResult.data?.price ?? currentPrice
+          const exitPrice = Number(closeResult.data?.price ?? currentPrice);
+          const totalRevenue = Number(
+            closeResult.data?.cummulativeQuoteQty ?? executedQty * exitPrice,
           );
-          const totalCost = Number(
-            closeResult.data?.cummulativeQuoteQty ?? executedQty * executedPrice
-          );
+
+          // Calculate P&L
+          const entryValue = position.entryPrice * position.quantity;
+          const exitValue = exitPrice * executedQty;
+          const realizedPnl = exitValue - entryValue;
+          const realizedPnlPercent = (realizedPnl / entryValue) * 100;
 
           // Persist sell execution
           const executedAt = new Date();
-          const saleUserId = await this.resolveUserIdForSnipe(row.userId, row.id);
-          try {
-            const vcoinIdResolved = await this.getVcoinIdForTarget(row.id, symbol);
-            await saveExecutionHistory({
-              userId: saleUserId,
-              snipeTargetId: row.id,
-              vcoinId: vcoinIdResolved,
-              symbolName: symbol,
-              orderType: (closeResult.data?.type || "MARKET").toString().toLowerCase(),
-              orderSide: "sell",
-              requestedQuantity: Number(row.actualPositionSize),
-              requestedPrice: null,
-              executedQuantity: executedQty,
-              executedPrice: executedPrice,
-              totalCost,
-              fees: closeResult.data?.fees ? Number(closeResult.data.fees) : null,
-              exchangeOrderId: closeResult.data?.orderId ? String(closeResult.data.orderId) : null,
-              exchangeStatus: (closeResult.data?.status || "FILLED").toString(),
-              exchangeResponse: closeResult,
-              executionLatencyMs: (closeResult as any).executionTime || null,
-              slippagePercent: null,
-              status: "success",
-              requestedAt: new Date(),
-              executedAt,
-            });
-          } catch (persistError) {
-            const safe = toSafeError(persistError);
-            this.context.logger.error("DB SL/TP: failed to persist sell execution", { targetId: row.id, error: safe.message });
-          }
-
-          // Finalize target as closed
-          await this.updateSnipeTargetStatus(row.id, "completed", undefined, {
-            executionStatus: "closed",
-            actualPositionSize: 0,
-            executionPrice: executedPrice,
+          const sellExecutionId = await saveExecutionHistory({
+            userId: position.userId,
+            snipeTargetId: position.snipeTargetId,
+            positionId: position.id,
+            vcoinId: position.vcoinId || symbol,
+            symbolName: symbol,
+            orderType: (closeResult.data?.type || "MARKET").toString().toLowerCase(),
+            orderSide: "sell",
+            requestedQuantity: position.quantity,
+            requestedPrice: null,
+            executedQuantity: executedQty,
+            executedPrice: exitPrice,
+            totalCost: totalRevenue,
+            fees: closeResult.data?.fees ? Number(closeResult.data.fees) : null,
+            exchangeOrderId: closeResult.data?.orderId ? String(closeResult.data.orderId) : null,
+            exchangeStatus: (closeResult.data?.status || "FILLED").toString(),
+            exchangeResponse: closeResult,
+            executionLatencyMs: (closeResult as any).executionTime || null,
+            slippagePercent: null,
+            status: "success",
+            requestedAt: new Date(),
+            executedAt,
           });
 
-          this.context.logger.info("DB SL/TP: position closed", {
-            targetId: row.id,
+          // Update position as closed
+          await updatePositionOnSell({
+            positionId: position.id,
+            exitPrice,
+            sellExecutionId,
+            realizedPnl,
+            realizedPnlPercent,
+          });
+
+          // Update snipe target as closed
+          if (position.snipeTargetId) {
+            await this.updateSnipeTargetStatus(position.snipeTargetId, "completed", undefined, {
+              executionStatus: "closed",
+              actualPositionSize: 0,
+              executionPrice: exitPrice,
+            });
+          }
+
+          this.context.logger.info("Position monitor: position closed", {
+            positionId: position.id,
+            targetId: position.snipeTargetId,
             symbol,
             reason,
-            executedQty,
-            executedPrice,
+            entryPrice: position.entryPrice,
+            exitPrice,
+            quantity: executedQty,
+            realizedPnl,
+            realizedPnlPercent: realizedPnlPercent.toFixed(2) + "%",
           });
         } catch (closeError) {
           const safe = toSafeError(closeError);
-          this.context.logger.error("DB SL/TP: close order failed", { targetId: row.id, symbol, error: safe.message });
-          // Optionally, revert claim back to success to allow retry
+          this.context.logger.error("Position monitor: close order failed", {
+            positionId: position.id,
+            symbol,
+            error: safe.message,
+          });
+          // Revert status back to open to allow retry
           try {
             await db
-              .update(snipeTargets)
-              .set({ executionStatus: "success", updatedAt: new Date() })
-              .where(eq(snipeTargets.id, row.id));
+              .update(positions)
+              .set({ status: "open", updatedAt: new Date() })
+              .where(eq(positions.id, position.id));
           } catch {}
         }
       }
     } catch (error) {
       const safe = toSafeError(error);
-      this.context.logger.error("DB SL/TP: monitoring loop error", { error: safe.message });
+      this.context.logger.error("Position monitor: monitoring loop error", { error: safe.message });
     }
   }
 
@@ -430,7 +435,7 @@ export class AutoSnipingModule {
    */
   private async getVcoinIdForTarget(
     snipeTargetId: number,
-    fallbackSymbol: string
+    fallbackSymbol: string,
   ): Promise<string> {
     try {
       const rows = await db
@@ -451,7 +456,7 @@ export class AutoSnipingModule {
    */
   private async resolveUserIdForSnipe(
     targetUserId: string,
-    snipeTargetId: number
+    snipeTargetId: number,
   ): Promise<string> {
     try {
       const rows = await db
@@ -461,8 +466,8 @@ export class AutoSnipingModule {
           and(
             eq(executionHistory.snipeTargetId, snipeTargetId),
             eq(executionHistory.action, "buy"),
-            eq(executionHistory.status, "success")
-          )
+            eq(executionHistory.status, "success"),
+          ),
         )
         .orderBy(desc(executionHistory.executedAt))
         .limit(1);
@@ -564,9 +569,7 @@ export class AutoSnipingModule {
       successfulSnipes: this.successfulSnipes,
       failedSnipes: this.failedSnipes,
       successRate:
-        this.processedTargets > 0
-          ? (this.successfulSnipes / this.processedTargets) * 100
-          : 0,
+        this.processedTargets > 0 ? (this.successfulSnipes / this.processedTargets) * 100 : 0,
     };
   }
 
@@ -574,11 +577,9 @@ export class AutoSnipingModule {
    * Execute auto-sniping (main entry point)
    * This method is the primary execution point for auto-sniping operations
    */
-  async execute(): Promise<
-    ServiceResponse<{ processedCount: number; successCount: number }>
-  > {
+  async execute(): Promise<ServiceResponse<{ processedCount: number; successCount: number }>> {
     const cycleStartTime = Date.now();
-    
+
     try {
       if (!this.isActive) {
         this.context.logger.warn("⚠️ Auto-sniping execution skipped - module not active", {
@@ -611,9 +612,11 @@ export class AutoSnipingModule {
         cycleDurationMs: cycleDuration,
         cycleStartTime: new Date(cycleStartTime).toISOString(),
         cycleEndTime: new Date(cycleEndTime).toISOString(),
-        successRate: result.data?.processedCount > 0 
-          ? ((result.data?.successCount || 0) / result.data?.processedCount * 100).toFixed(2) + '%'
-          : '0%',
+        successRate:
+          result.data?.processedCount > 0
+            ? (((result.data?.successCount || 0) / result.data?.processedCount) * 100).toFixed(2) +
+              "%"
+            : "0%",
         moduleState: this.getStats(),
       });
 
@@ -622,7 +625,7 @@ export class AutoSnipingModule {
       const safeError = toSafeError(error);
       const cycleEndTime = Date.now();
       const cycleDuration = cycleEndTime - cycleStartTime;
-      
+
       this.context.logger.error("❌ Auto-sniping execution cycle failed", {
         error: safeError.message,
         stack: safeError.stack,
@@ -647,18 +650,13 @@ export class AutoSnipingModule {
    * Process individual snipe target
    * This method handles the execution of a single snipe target
    */
-  async processTarget(
-    target: AutoSnipeTarget
-  ): Promise<ServiceResponse<TradeResult>> {
+  async processTarget(target: AutoSnipeTarget): Promise<ServiceResponse<TradeResult>> {
     try {
-      this.context.logger.info(
-        `Processing individual snipe target: ${target.symbolName}`,
-        {
-          confidence: target.confidenceScore,
-          amount: target.positionSizeUsdt,
-          strategy: target.entryStrategy || "normal",
-        }
-      );
+      this.context.logger.info(`Processing individual snipe target: ${target.symbolName}`, {
+        confidence: target.confidenceScore,
+        amount: target.positionSizeUsdt,
+        strategy: target.entryStrategy || "normal",
+      });
 
       // Validate target before processing
       if (target.confidenceScore < this.context.config.confidenceThreshold) {
@@ -677,7 +675,7 @@ export class AutoSnipingModule {
         {
           orderId: result.data?.orderId,
           executedQty: result.data?.executedQty,
-        }
+        },
       );
 
       return {
@@ -687,13 +685,10 @@ export class AutoSnipingModule {
       };
     } catch (error) {
       const safeError = toSafeError(error);
-      this.context.logger.error(
-        `Failed to process individual snipe target: ${target.symbolName}`,
-        {
-          error: safeError.message,
-          target,
-        }
-      );
+      this.context.logger.error(`Failed to process individual snipe target: ${target.symbolName}`, {
+        error: safeError.message,
+        target,
+      });
 
       return {
         success: false,
@@ -706,9 +701,9 @@ export class AutoSnipingModule {
   /**
    * Manually process snipe targets
    */
-  async processSnipeTargets(userId?: string): Promise<
-    ServiceResponse<{ processedCount: number; successCount: number }>
-  > {
+  async processSnipeTargets(
+    userId?: string,
+  ): Promise<ServiceResponse<{ processedCount: number; successCount: number }>> {
     try {
       this.lastSnipeCheck = new Date();
       this.state.lastActivity = new Date();
@@ -722,6 +717,12 @@ export class AutoSnipingModule {
       const readyTargets = await this.getReadySnipeTargets(userId);
 
       if (readyTargets.length === 0) {
+        this.context.logger.info("⏸️ No ready targets found for execution", {
+          userId: userId || "all",
+          checkTime: this.lastSnipeCheck.toISOString(),
+          reason:
+            "No targets match ready criteria (status=ready, execution time passed, retries < 10)",
+        });
         return {
           success: true,
           data: { processedCount: 0, successCount: 0 },
@@ -729,41 +730,101 @@ export class AutoSnipingModule {
         };
       }
 
-      this.context.logger.info(
-        `Processing ${readyTargets.length} ready snipe targets`
-      );
+      this.context.logger.info(`🚀 Processing ${readyTargets.length} ready snipe targets`, {
+        targets: readyTargets.map((t) => ({
+          id: t.id,
+          symbol: t.symbolName,
+          confidence: t.confidenceScore,
+          targetExecutionTime: t.targetExecutionTime?.toISOString(),
+          currentRetries: t.currentRetries,
+        })),
+        confidenceThreshold: this.context.config.confidenceThreshold,
+      });
 
       let successCount = 0;
+      const skippedTargets: Array<{
+        targetId: number;
+        symbol: string;
+        reason: string;
+        details: Record<string, unknown>;
+      }> = [];
 
       // Process each target
       for (const target of readyTargets) {
+        const targetStartTime = Date.now();
+
         if (target.confidenceScore >= this.context.config.confidenceThreshold) {
           try {
+            this.context.logger.info("▶️ Attempting execution", {
+              targetId: target.id,
+              symbol: target.symbolName,
+              confidence: target.confidenceScore,
+              threshold: this.context.config.confidenceThreshold,
+              targetExecutionTime: target.targetExecutionTime?.toISOString(),
+              currentRetries: target.currentRetries,
+            });
+
             await this.executeSnipeTarget(target, userId);
             successCount++;
             this.successfulSnipes++;
+
+            this.context.logger.info("✅ Target execution initiated successfully", {
+              targetId: target.id,
+              symbol: target.symbolName,
+              processingTimeMs: Date.now() - targetStartTime,
+            });
           } catch (error) {
             const safeError = toSafeError(error);
-            this.context.logger.error("Failed to execute snipe target", {
-              target,
-              error: safeError,
+            this.context.logger.error("❌ Failed to execute snipe target", {
+              targetId: target.id,
+              symbol: target.symbolName,
+              error: safeError.message,
+              stack: safeError.stack,
+              target: {
+                id: target.id,
+                symbol: target.symbolName,
+                status: target.status,
+                confidence: target.confidenceScore,
+                targetExecutionTime: target.targetExecutionTime?.toISOString(),
+                currentRetries: target.currentRetries,
+              },
+              processingTimeMs: Date.now() - targetStartTime,
             });
-            await this.updateSnipeTargetStatus(
-              target.id,
-              "failed",
-              safeError.message
-            );
+            await this.updateSnipeTargetStatus(target.id, "failed", safeError.message);
             this.failedSnipes++;
           }
         } else {
-          this.context.logger.debug("Skipping low confidence target", {
+          const skipReason = `Confidence score ${target.confidenceScore} below threshold ${this.context.config.confidenceThreshold}`;
+          skippedTargets.push({
+            targetId: target.id,
+            symbol: target.symbolName,
+            reason: skipReason,
+            details: {
+              confidence: target.confidenceScore,
+              threshold: this.context.config.confidenceThreshold,
+              difference: target.confidenceScore - this.context.config.confidenceThreshold,
+            },
+          });
+
+          this.context.logger.warn("⏭️ Skipping low confidence target", {
+            targetId: target.id,
             symbol: target.symbolName,
             confidence: target.confidenceScore,
             threshold: this.context.config.confidenceThreshold,
+            difference: target.confidenceScore - this.context.config.confidenceThreshold,
+            reason: skipReason,
           });
         }
 
         this.processedTargets++;
+      }
+
+      // Log summary of skipped targets
+      if (skippedTargets.length > 0) {
+        this.context.logger.info("📊 Execution summary - skipped targets", {
+          skippedCount: skippedTargets.length,
+          skippedTargets,
+        });
       }
 
       // Update metrics
@@ -789,22 +850,12 @@ export class AutoSnipingModule {
   }
 
   /**
-   * Execute a specific snipe target
+   * Check if target was already executed (idempotency check)
    */
-  async executeSnipeTarget(target: AutoSnipeTarget, currentUserId?: string): Promise<TradeResult> {
-    const executionStartTime = Date.now();
-    
-    this.context.logger.info("🎯 Starting snipe target execution", {
-      targetId: target.id,
-      symbol: target.symbolName,
-      confidence: target.confidenceScore,
-      amount: target.positionSizeUsdt,
-      strategy: target.entryStrategy || "normal",
-      vcoinId: target.vcoinId,
-      executionStartTime: new Date(executionStartTime).toISOString(),
-    });
-
-    // Idempotency guard: if this target already has a successful execution recorded, don't trade again
+  private async checkIdempotency(
+    target: AutoSnipeTarget,
+    executionStartTime: number,
+  ): Promise<TradeResult | null> {
     try {
       const prior = await db
         .select({
@@ -818,16 +869,19 @@ export class AutoSnipingModule {
         .where(
           and(
             eq(executionHistory.snipeTargetId, target.id),
-            eq(executionHistory.status, "success")
-          )
+            eq(executionHistory.status, "success"),
+          ),
         )
         .limit(1);
 
       if (prior.length > 0) {
-        this.context.logger.warn("Idempotency: target already executed previously; marking completed and skipping", {
-          targetId: target.id,
-          priorExecutionId: prior[0].id,
-        });
+        this.context.logger.warn(
+          "Idempotency: target already executed previously; marking completed and skipping",
+          {
+            targetId: target.id,
+            priorExecutionId: prior[0].id,
+          },
+        );
         await this.updateSnipeTargetStatus(target.id, "completed", undefined, {
           executionStatus: "success",
           executionPrice: prior[0].executedPrice ?? null,
@@ -844,7 +898,8 @@ export class AutoSnipingModule {
             price: String(prior[0].executedPrice ?? "0"),
             status: "FILLED",
             executedQty: String(prior[0].executedQuantity ?? "0"),
-            timestamp: (prior[0].executedAt || new Date()).toISOString?.() || new Date().toISOString(),
+            timestamp:
+              (prior[0].executedAt || new Date()).toISOString?.() || new Date().toISOString(),
           },
           executionTime: Date.now() - executionStartTime,
           timestamp: new Date().toISOString(),
@@ -856,27 +911,85 @@ export class AutoSnipingModule {
         error: idempoError instanceof Error ? idempoError.message : String(idempoError),
       });
     }
+    return null;
+  }
+
+  /**
+   * Check if market price is available for the target
+   */
+  private async checkPriceAvailability(
+    target: AutoSnipeTarget,
+    executionStartTime: number,
+  ): Promise<{ currentPrice: number | null; result: TradeResult | null }> {
+    this.context.logger.info("🔍 Checking market price availability", {
+      targetId: target.id,
+      symbol: target.symbolName,
+      targetExecutionTime: target.targetExecutionTime?.toISOString(),
+      currentTime: new Date().toISOString(),
+      timeUntilExecution: target.targetExecutionTime
+        ? new Date(target.targetExecutionTime).getTime() - Date.now()
+        : null,
+    });
 
     const currentPrice = await this.getCurrentMarketPrice(target.symbolName);
     if (!currentPrice || currentPrice <= 0) {
+      const priceCheckTime = Date.now() - executionStartTime;
       this.context.logger.warn("⚠️ Price unavailable for snipe target; deferring execution", {
         targetId: target.id,
         symbol: target.symbolName,
+        vcoinId: target.vcoinId,
         currentPrice,
+        priceCheckTimeMs: priceCheckTime,
         reason: "Awaiting first market price; will retry",
+        targetExecutionTime: target.targetExecutionTime?.toISOString(),
+        currentRetries: target.currentRetries,
+        nextRetry:
+          target.currentRetries !== null && target.currentRetries < 10
+            ? "Will retry on next cycle"
+            : "Max retries approaching",
       });
-      await this.updateSnipeTargetStatus(target.id, "ready", "Awaiting first market price; will retry");
-      return { success: false, error: "Price unavailable; deferred", timestamp: new Date().toISOString() } as unknown as TradeResult;
+      await this.updateSnipeTargetStatus(
+        target.id,
+        "ready",
+        `Price unavailable (${currentPrice}); awaiting first market price; will retry`,
+      );
+      return {
+        currentPrice: null,
+        result: {
+          success: false,
+          error: "Price unavailable; deferred",
+          timestamp: new Date().toISOString(),
+        } as unknown as TradeResult,
+      };
     }
 
-    this.context.logger.info("💰 Resolved current market price", { 
+    this.context.logger.info("✅ Resolved current market price", {
       targetId: target.id,
-      symbol: target.symbolName, 
+      symbol: target.symbolName,
       currentPrice,
-      priceResolutionTime: Date.now() - executionStartTime,
+      priceResolutionTimeMs: Date.now() - executionStartTime,
+      targetExecutionTime: target.targetExecutionTime?.toISOString(),
+      timeSinceTargetExecution: target.targetExecutionTime
+        ? Date.now() - new Date(target.targetExecutionTime).getTime()
+        : null,
     });
 
-    // Atomic claim: ensure only one worker can move this target from ready -> executing
+    return { currentPrice, result: null };
+  }
+
+  /**
+   * Attempt to claim target for execution (atomic operation)
+   */
+  private async claimTargetForExecution(
+    target: AutoSnipeTarget,
+  ): Promise<TradeResult | null> {
+    this.context.logger.info("🔒 Attempting to claim target for execution", {
+      targetId: target.id,
+      symbol: target.symbolName,
+      currentStatus: target.status,
+      requiredStatus: "ready",
+    });
+
     const claimRows = await db
       .update(snipeTargets)
       .set({ status: "executing", actualExecutionTime: new Date(), updatedAt: new Date() })
@@ -884,12 +997,177 @@ export class AutoSnipingModule {
       .returning({ id: snipeTargets.id });
 
     if (!Array.isArray(claimRows) || claimRows.length === 0) {
-      // Another worker already claimed or processed this target; do not proceed
-      this.context.logger.warn("Target already claimed or not ready; skipping execution", {
+      this.context.logger.warn("⚠️ Target already claimed or not ready; skipping execution", {
+        targetId: target.id,
+        symbol: target.symbolName,
+        currentStatus: target.status,
+        reason: "Another worker already claimed this target OR target status is not 'ready'",
+        claimAttemptTime: new Date().toISOString(),
+      });
+      return {
+        success: false,
+        error: "Already claimed",
+        timestamp: new Date().toISOString(),
+      } as unknown as TradeResult;
+    }
+
+    this.context.logger.info("✅ Successfully claimed target for execution", {
+      targetId: target.id,
+      symbol: target.symbolName,
+      claimTime: new Date().toISOString(),
+    });
+
+    return null;
+  }
+
+  /**
+   * Validate user ID and preferences
+   */
+  private async validateUserAndPreferences(
+    target: AutoSnipeTarget,
+    currentUserId: string | undefined,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    userId?: string;
+    uiMaxBuyUsdt?: number;
+    stopLossPercent?: number;
+    takeProfitPercent?: number;
+    maxHoldHours?: number;
+  }> {
+    const prefsUserId = currentUserId || this.currentUserId;
+    if (!prefsUserId) {
+      const noUserMsg = "Missing current userId for preferences lookup (must come from session)";
+      this.context.logger.error(noUserMsg, { targetId: target.id });
+      await this.updateSnipeTargetStatus(target.id, "failed", noUserMsg, {
+        executionStatus: "failed",
+      });
+      return { success: false, error: noUserMsg };
+    }
+
+    let uiMaxBuyUsdt: number | undefined;
+    let stopLossPercent: number = target.stopLossPercent || 5.0;
+    let takeProfitPercent: number = target.takeProfitCustom || 10.0;
+    let maxHoldHours: number = 24.0;
+
+    const candidateUserIds = [prefsUserId];
+    for (const uid of candidateUserIds) {
+      try {
+        const prefs = await db
+          .select({
+            amount: userPreferencesTable.defaultBuyAmountUsdt,
+            stopLoss: userPreferencesTable.stopLossPercent,
+            takeProfit: userPreferencesTable.takeProfitPercent,
+            maxHold: userPreferencesTable.maxHoldHours,
+          })
+          .from(userPreferencesTable)
+          .where(eq(userPreferencesTable.userId, uid))
+          .limit(1);
+        if (prefs && prefs.length > 0) {
+          if (typeof prefs[0].amount === "number" && prefs[0].amount > 0) {
+            uiMaxBuyUsdt = prefs[0].amount;
+          }
+          if (typeof prefs[0].stopLoss === "number" && prefs[0].stopLoss > 0) {
+            stopLossPercent = prefs[0].stopLoss;
+          }
+          if (typeof prefs[0].takeProfit === "number" && prefs[0].takeProfit > 0) {
+            takeProfitPercent = prefs[0].takeProfit;
+          }
+          if (typeof prefs[0].maxHold === "number" && prefs[0].maxHold > 0) {
+            maxHoldHours = prefs[0].maxHold;
+          }
+          break;
+        }
+      } catch (prefsErr) {
+        this.context.logger.error("Failed to read user preferences", {
+          userId: uid,
+          error: prefsErr instanceof Error ? prefsErr.message : String(prefsErr),
+        });
+      }
+    }
+
+    if (
+      !(typeof uiMaxBuyUsdt === "number" && Number.isFinite(uiMaxBuyUsdt) && uiMaxBuyUsdt > 0)
+    ) {
+      const prefsErrorMsg = `Default buy amount not set in user preferences (defaultBuyAmountUsdt) for user ${prefsUserId}`;
+      this.context.logger.error("❌ Missing required default buy amount; aborting snipe", {
+        userId: prefsUserId,
+        targetId: target.id,
+        symbol: target.symbolName,
+        uiMaxBuyUsdt,
+        reason: "User preferences missing or invalid defaultBuyAmountUsdt",
+        checkedUserIds: candidateUserIds,
+      });
+      await this.updateSnipeTargetStatus(target.id, "failed", prefsErrorMsg, {
+        executionStatus: "failed",
+      });
+      return { success: false, error: prefsErrorMsg };
+    }
+
+    this.context.logger.info("✅ User preferences validated", {
+      userId: prefsUserId,
+      targetId: target.id,
+      uiMaxBuyUsdt,
+      targetPositionSize: target.positionSizeUsdt,
+    });
+
+    return {
+      success: true,
+      userId: prefsUserId,
+      uiMaxBuyUsdt,
+      stopLossPercent,
+      takeProfitPercent,
+      maxHoldHours,
+    };
+  }
+
+  /**
+   * Execute a specific snipe target
+   */
+  async executeSnipeTarget(target: AutoSnipeTarget, currentUserId?: string): Promise<TradeResult> {
+    const executionStartTime = Date.now();
+
+    this.context.logger.info("🎯 Starting snipe target execution", {
+      targetId: target.id,
+      symbol: target.symbolName,
+      confidence: target.confidenceScore,
+      amount: target.positionSizeUsdt,
+      strategy: target.entryStrategy || "normal",
+      vcoinId: target.vcoinId,
+      executionStartTime: new Date(executionStartTime).toISOString(),
+    });
+
+    // Idempotency guard: if this target already has a successful execution recorded, don't trade again
+    const idempotencyResult = await this.checkIdempotency(target, executionStartTime);
+    if (idempotencyResult) {
+      return idempotencyResult;
+    }
+
+    // Check price availability - critical decision point
+    const priceCheck = await this.checkPriceAvailability(target, executionStartTime);
+    if (priceCheck.result) {
+      return priceCheck.result;
+    }
+    const currentPrice = priceCheck.currentPrice!;
+
+    // Atomic claim: ensure only one worker can move this target from ready/active -> executing
+    // If target is "active", transition it to "ready" first, then claim it
+    if (target.status === "active") {
+      this.context.logger.info("🔄 Transitioning active target to ready status", {
         targetId: target.id,
         symbol: target.symbolName,
       });
-      return { success: false, error: "Already claimed", timestamp: new Date().toISOString() } as unknown as TradeResult;
+      await db
+        .update(snipeTargets)
+        .set({ status: "ready", updatedAt: new Date() })
+        .where(eq(snipeTargets.id, target.id));
+      // Update local target status for consistency
+      target.status = "ready";
+    }
+    
+    const claimResult = await this.claimTargetForExecution(target);
+    if (claimResult) {
+      return claimResult;
     }
 
     try {
@@ -901,44 +1179,18 @@ export class AutoSnipingModule {
         firstPhaseTarget: strategy.levels[0]?.percentage,
       });
 
-      // Determine UI-configured max buy from user preferences; ONLY session user
-      const prefsUserId = currentUserId || this.currentUserId;
-      if (!prefsUserId) {
-        const noUserMsg = "Missing current userId for preferences lookup (must come from session)";
-        this.context.logger.error(noUserMsg, { targetId: target.id });
-        await this.updateSnipeTargetStatus(target.id, "failed", noUserMsg, { executionStatus: "failed" });
-        return { success: false, error: noUserMsg, timestamp: new Date().toISOString() } as unknown as TradeResult;
-      }
-      let uiMaxBuyUsdt: number | undefined = undefined;
-      const candidateUserIds = [prefsUserId];
-      for (const uid of candidateUserIds) {
-        try {
-          const prefs = await db
-            .select({ amount: userPreferencesTable.defaultBuyAmountUsdt })
-            .from(userPreferencesTable)
-            .where(eq(userPreferencesTable.userId, uid))
-            .limit(1);
-          if (prefs && prefs.length > 0 && typeof prefs[0].amount === "number" && prefs[0].amount > 0) {
-            uiMaxBuyUsdt = prefs[0].amount;
-            break;
-          }
-        } catch (prefsErr) {
-          this.context.logger.error("Failed to read user preferences", {
-            userId: uid,
-            error: prefsErr instanceof Error ? prefsErr.message : String(prefsErr),
-          });
-        }
+      // Validate user ID and preferences
+      const userValidation = await this.validateUserAndPreferences(target, currentUserId);
+      if (!userValidation.success) {
+        return {
+          success: false,
+          error: userValidation.error!,
+          timestamp: new Date().toISOString(),
+        } as unknown as TradeResult;
       }
 
-      if (!(typeof uiMaxBuyUsdt === "number" && isFinite(uiMaxBuyUsdt) && uiMaxBuyUsdt > 0)) {
-        const prefsErrorMsg = `Default buy amount not set in user preferences (defaultBuyAmountUsdt) for user ${prefsUserId}`;
-        this.context.logger.error("Missing required default buy amount; aborting snipe", {
-          userId: prefsUserId,
-          targetId: target.id,
-        });
-        await this.updateSnipeTargetStatus(target.id, "failed", prefsErrorMsg, { executionStatus: "failed" });
-        return { success: false, error: prefsErrorMsg, timestamp: new Date().toISOString() } as unknown as TradeResult;
-      }
+      const { userId: prefsUserId, uiMaxBuyUsdt, stopLossPercent, takeProfitPercent, maxHoldHours } =
+        userValidation;
 
       // Clamp buy amount to the UI-configured maximum
       const buyUsdt = Math.min(Number(target.positionSizeUsdt || 0), uiMaxBuyUsdt);
@@ -958,18 +1210,18 @@ export class AutoSnipingModule {
         userId: prefsUserId,
       };
 
-      this.context.logger.debug("📋 Prepared trade parameters", { 
+      this.context.logger.debug("📋 Prepared trade parameters", {
         targetId: target.id,
         symbol: target.symbolName,
         tradeParams,
         strategyName: strategy.name,
         strategyLevels: strategy.levels.length,
       });
-      
+
       const tradeExecutionStartTime = Date.now();
       const result = await this.executeTradeViaManualModule(tradeParams);
       const tradeExecutionTime = Date.now() - tradeExecutionStartTime;
-      
+
       this.context.logger.info("📊 Trade execution completed", {
         targetId: target.id,
         symbol: target.symbolName,
@@ -978,7 +1230,8 @@ export class AutoSnipingModule {
         status: (result as any)?.data?.status || (result as any)?.status,
         executedQty: (result as any)?.data?.executedQty || (result as any)?.executedQty,
         executedPrice: (result as any)?.data?.price || (result as any)?.price,
-        totalCost: (result as any)?.data?.cummulativeQuoteQty || (result as any)?.cummulativeQuoteQty,
+        totalCost:
+          (result as any)?.data?.cummulativeQuoteQty || (result as any)?.cummulativeQuoteQty,
         tradeExecutionTimeMs: tradeExecutionTime,
         totalExecutionTimeMs: Date.now() - executionStartTime,
         strategy: strategy.name,
@@ -991,13 +1244,13 @@ export class AutoSnipingModule {
         const statusText: string = String(orderData.status || "").toUpperCase();
         const executedQtyNum: number = Number(orderData.executedQty || orderData.origQty || 0);
         const orderId = orderData.orderId || orderData.id;
-        
+
         // Enhanced status validation - consider more statuses as potentially valid
         const validFilledStatuses = ["FILLED", "SUCCESS", "COMPLETED"];
         const partialFilledStatuses = ["PARTIALLY_FILLED", "PARTIAL"];
         const pendingStatuses = ["NEW", "PENDING", "ACCEPTED", "SUBMITTED"];
         const rejectedStatuses = ["REJECTED", "CANCELED", "CANCELLED", "EXPIRED", "FAILED"];
-        
+
         const isFilled = validFilledStatuses.includes(statusText) && executedQtyNum > 0;
         const isPartiallyFilled = partialFilledStatuses.includes(statusText) && executedQtyNum > 0;
         const isPending = pendingStatuses.includes(statusText);
@@ -1023,7 +1276,7 @@ export class AutoSnipingModule {
             symbol: target.symbolName,
             orderId,
             executedQty: executedQtyNum,
-            status: statusText
+            status: statusText,
           });
         } else if (isPartiallyFilled) {
           // Order is partially filled - still consider it a success but log the partial fill
@@ -1033,7 +1286,7 @@ export class AutoSnipingModule {
             orderId,
             executedQty: executedQtyNum,
             status: statusText,
-            note: "Order partially filled, may need monitoring for completion"
+            note: "Order partially filled, may need monitoring for completion",
           });
         } else if (isPending) {
           const msg = `Order placed but pending execution (status=${statusText}, executedQty=${executedQtyNum})`;
@@ -1044,7 +1297,7 @@ export class AutoSnipingModule {
             statusText,
             executedQtyNum,
             rawResponse: orderData,
-            note: "Order accepted but not yet filled - will wait and recheck status"
+            note: "Order accepted but not yet filled - will wait and recheck status",
           });
           const recheckResult = await this.recheckPendingOrder(target.symbolName, orderId, 3);
           if (recheckResult.success && recheckResult.data) {
@@ -1053,7 +1306,7 @@ export class AutoSnipingModule {
               symbol: target.symbolName,
               orderId,
               finalStatus: recheckResult.data.status,
-              finalExecutedQty: recheckResult.data.executedQty
+              finalExecutedQty: recheckResult.data.executedQty,
             });
             result.data = { ...orderData, ...recheckResult.data };
           } else {
@@ -1061,18 +1314,17 @@ export class AutoSnipingModule {
               targetId: target.id,
               symbol: target.symbolName,
               orderId,
-              recheckError: recheckResult.error
+              recheckError: recheckResult.error,
             });
-            await this.updateSnipeTargetStatus(
-              target.id,
-              "completed",
-              msg,
-              {
-                executionStatus: "success",
-                executionPrice: orderData.price ? Number(orderData.price) : null,
-                actualPositionSize: executedQtyNum || (orderData.price ? Number(target.positionSizeUsdt || 0) / Number(orderData.price) : 0),
-              }
-            );
+            await this.updateSnipeTargetStatus(target.id, "completed", msg, {
+              executionStatus: "success",
+              executionPrice: orderData.price ? Number(orderData.price) : null,
+              actualPositionSize:
+                executedQtyNum ||
+                (orderData.price
+                  ? Number(target.positionSizeUsdt || 0) / Number(orderData.price)
+                  : 0),
+            });
             try {
               const normalizedSymbol = this.normalizeSymbol(target.symbolName);
               await saveExecutionHistory({
@@ -1092,7 +1344,9 @@ export class AutoSnipingModule {
                 executionLatencyMs: result.executionTime || null,
                 exchangeOrderId: String(orderId),
               });
-            } catch {/* swallow persist failure */}
+            } catch {
+              /* swallow persist failure */
+            }
             return result;
           }
         } else if (isRejected) {
@@ -1106,7 +1360,9 @@ export class AutoSnipingModule {
             executedQtyNum,
             rawResponse: orderData,
           });
-          await this.updateSnipeTargetStatus(target.id, "failed", msg, { executionStatus: "failed" });
+          await this.updateSnipeTargetStatus(target.id, "failed", msg, {
+            executionStatus: "failed",
+          });
           try {
             const normalizedSymbol = this.normalizeSymbol(target.symbolName);
             await saveExecutionHistory({
@@ -1125,27 +1381,35 @@ export class AutoSnipingModule {
               exchangeResponse: result,
               executionLatencyMs: result.executionTime || null,
             });
-          } catch {/* swallow persist failure here since already failed */}
+          } catch {
+            /* swallow persist failure here since already failed */
+          }
           return result;
         } else {
           // Unknown or empty status - check if this is a new listing issue
           const isNewListingIssue = (!statusText || statusText === "") && executedQtyNum === 0;
-          
+
           if (isNewListingIssue) {
             // Successful order placement with empty/unknown status and zero executedQty.
             // Per requirements: consider execution successful (do not fail or retry).
-            this.context.logger.warn("Exchange response not filled or zero quantity; treating as successful placement", {
-              targetId: target.id,
-              symbol: target.symbolName,
-              orderId,
-              statusText,
-              executedQtyNum,
-              note: "Proceeding to persist execution and mark target completed",
-            });
+            this.context.logger.warn(
+              "Exchange response not filled or zero quantity; treating as successful placement",
+              {
+                targetId: target.id,
+                symbol: target.symbolName,
+                orderId,
+                statusText,
+                executedQtyNum,
+                note: "Proceeding to persist execution and mark target completed",
+              },
+            );
 
             // Opportunistically verify status. If it turns filled, the verified data will be merged.
             if (orderId) {
-              const verify = await this.verifyOrderStatus(this.normalizeSymbol(target.symbolName), String(orderId));
+              const verify = await this.verifyOrderStatus(
+                this.normalizeSymbol(target.symbolName),
+                String(orderId),
+              );
               if (verify.success && verify.data) {
                 result.data = { ...orderData, ...verify.data };
               }
@@ -1153,17 +1417,23 @@ export class AutoSnipingModule {
             // Fall through to success persistence block below without returning.
           } else {
             // Unknown/empty status but nonzero executedQty → treat as success and enrich
-            this.context.logger.warn("Exchange response unclear but has executed quantity; treating as success", {
-              targetId: target.id,
-              symbol: target.symbolName,
-              orderId,
-              statusText,
-              executedQtyNum,
-            });
+            this.context.logger.warn(
+              "Exchange response unclear but has executed quantity; treating as success",
+              {
+                targetId: target.id,
+                symbol: target.symbolName,
+                orderId,
+                statusText,
+                executedQtyNum,
+              },
+            );
 
             // Try verify to enrich fields
             if (orderId) {
-              const verify = await this.verifyOrderStatus(this.normalizeSymbol(target.symbolName), String(orderId));
+              const verify = await this.verifyOrderStatus(
+                this.normalizeSymbol(target.symbolName),
+                String(orderId),
+              );
               if (verify.success && verify.data) {
                 result.data = { ...orderData, ...verify.data };
               } else {
@@ -1178,9 +1448,7 @@ export class AutoSnipingModule {
         }
 
         const normalizedSymbolForSuccess = this.normalizeSymbol(target.symbolName);
-        const executedQtyValue = Number(
-          result.data?.executedQty ?? result.data?.quantity ?? 0
-        );
+        const executedQtyValue = Number(result.data?.executedQty ?? result.data?.quantity ?? 0);
         const priceValue = result.data?.price
           ? Number(result.data.price)
           : result.data?.executedPrice
@@ -1193,7 +1461,7 @@ export class AutoSnipingModule {
             target.id,
             "failed",
             "Execution reported success=false",
-            { executionStatus: "failed" }
+            { executionStatus: "failed" },
           );
           return result;
         }
@@ -1207,7 +1475,8 @@ export class AutoSnipingModule {
           const totalCostValue = result.data?.cummulativeQuoteQty
             ? Number(result.data.cummulativeQuoteQty)
             : priceValue != null
-              ? priceValue * (executedQtyValue || Number(target.positionSizeUsdt || 0) / (priceValue || 1))
+              ? priceValue *
+                (executedQtyValue || Number(target.positionSizeUsdt || 0) / (priceValue || 1))
               : null;
 
           this.context.logger.info("📝 Recording execution history (treated as success)", {
@@ -1221,7 +1490,7 @@ export class AutoSnipingModule {
             timestamp: executedAtDate,
           });
 
-          await saveExecutionHistory({
+          const buyExecutionId = await saveExecutionHistory({
             userId: prefsUserId,
             snipeTargetId: target.id,
             vcoinId: (target as any).vcoinId || normalizedSymbolForSuccess,
@@ -1248,18 +1517,54 @@ export class AutoSnipingModule {
             targetId: target.id,
             orderId: result.data?.orderId,
             symbol: normalizedSymbolForSuccess,
+            executionId: buyExecutionId,
           });
 
-          await this.updateSnipeTargetStatus(
-            target.id,
-            "completed",
-            undefined,
-            {
-              executionStatus: "success",
-              executionPrice: priceValue ?? null,
-              actualPositionSize: executedQtyValue || (priceValue ? Number(target.positionSizeUsdt || 0) / priceValue : 0),
+          // Create position for monitoring if we have valid execution data
+          let positionId: number | null = null;
+          if (executedQtyValue > 0 && priceValue && priceValue > 0) {
+            try {
+              positionId = await createPosition({
+                userId: prefsUserId,
+                snipeTargetId: target.id,
+                symbolName: normalizedSymbolForSuccess,
+                vcoinId: (target as any).vcoinId || normalizedSymbolForSuccess,
+                entryPrice: priceValue,
+                quantity: executedQtyValue,
+                buyExecutionId,
+                stopLossPercent: stopLossPercent,
+                takeProfitPercent: takeProfitPercent,
+                maxHoldHours: maxHoldHours,
+              });
+
+              this.context.logger.info("✅ Position created for monitoring", {
+                positionId,
+                targetId: target.id,
+                symbol: normalizedSymbolForSuccess,
+                entryPrice: priceValue,
+                quantity: executedQtyValue,
+                stopLossPercent,
+                takeProfitPercent,
+                maxHoldHours,
+              });
+            } catch (positionError) {
+              const safePositionError = toSafeError(positionError);
+              this.context.logger.error("❌ Failed to create position", {
+                targetId: target.id,
+                symbol: normalizedSymbolForSuccess,
+                error: safePositionError.message,
+              });
+              // Continue execution even if position creation fails
             }
-          );
+          }
+
+          await this.updateSnipeTargetStatus(target.id, "completed", undefined, {
+            executionStatus: "success",
+            executionPrice: priceValue ?? null,
+            actualPositionSize:
+              executedQtyValue ||
+              (priceValue ? Number(target.positionSizeUsdt || 0) / priceValue : 0),
+          });
         } catch (persistError) {
           const safePersistError = toSafeError(persistError);
           this.context.logger.error(
@@ -1268,7 +1573,7 @@ export class AutoSnipingModule {
               targetId: target.id,
               symbol: target.symbolName,
               error: safePersistError.message,
-            }
+            },
           );
           await this.updateSnipeTargetStatus(
             target.id,
@@ -1277,50 +1582,14 @@ export class AutoSnipingModule {
             {
               executionStatus: "success",
               executionPrice: priceValue ?? null,
-              actualPositionSize: executedQtyValue || (priceValue ? Number(target.positionSizeUsdt || 0) / priceValue : 0),
-            }
+              actualPositionSize:
+                executedQtyValue ||
+                (priceValue ? Number(target.positionSizeUsdt || 0) / priceValue : 0),
+            },
           );
           return result;
         }
 
-        // Set up multi-phase strategy monitoring if trade was successful
-        if (result.data?.executedQty && result.data?.price) {
-          // Create MultiPhaseStrategy from TradingStrategy
-          const multiPhaseStrategy: MultiPhaseStrategy = {
-            id: `${target.id}_${Date.now()}`,
-            name: strategy.name || "default",
-            description: strategy.description || "Auto-generated strategy",
-            maxPositionSize: target.positionSizeUsdt,
-            positionSizingMethod: "fixed" as const,
-            stopLossPercent: target.stopLossPercent || 5,
-            takeProfitPercent: target.takeProfitCustom || 10,
-            maxDrawdownPercent: 20,
-            orderType: "MARKET" as const,
-            timeInForce: "GTC" as const,
-            slippageTolerance: 0.5,
-            enableMultiPhase: true,
-            phaseCount: 1,
-            phaseDelayMs: 1000,
-            confidenceThreshold: target.confidenceScore || 75,
-            enableAutoSnipe: true,
-            snipeDelayMs: 500,
-            enableTrailingStop: false,
-            enablePartialTakeProfit: false,
-            levels: [
-              {
-                percentage: target.takeProfitCustom || 10,
-                action: "take_profit",
-                delay: 1000,
-              },
-            ],
-          };
-
-          await this.setupMultiPhaseMonitoring(target, multiPhaseStrategy, {
-            entryPrice: parseFloat(result.data.price),
-            quantity: parseFloat(result.data.executedQty),
-            orderId: result.data.orderId,
-          });
-        }
 
         // Emit auto-snipe event with strategy info
         this.context.eventEmitter.emit("auto_snipe_executed", {
@@ -1329,31 +1598,27 @@ export class AutoSnipingModule {
           strategy: strategy.name,
         });
 
-        this.context.logger.info(
-          "Snipe target executed successfully with strategy",
-          {
-            symbol: target.symbolName,
-            orderId: result.data?.orderId,
-            strategy: strategy.name,
-            entryPrice: result.data?.price,
-            quantity: result.data?.executedQty,
-          }
-        );
+        this.context.logger.info("Snipe target executed successfully with strategy", {
+          symbol: target.symbolName,
+          orderId: result.data?.orderId,
+          strategy: strategy.name,
+          entryPrice: result.data?.price,
+          quantity: result.data?.executedQty,
+        });
       } else {
         const errMsg =
-          (typeof result.error === "string"
-            ? result.error
-            : result.error?.message) || "Execution failed";
+          (typeof result.error === "string" ? result.error : result.error?.message) ||
+          "Execution failed";
 
         // If price is not yet available (new listing), keep target ready for retry
         if (/Unable to get current price/i.test(errMsg)) {
           await this.updateSnipeTargetStatus(
             target.id,
             "ready",
-            "Awaiting first market price; will retry"
+            "Awaiting first market price; will retry",
           );
           this.context.logger.warn(
-            `Price unavailable for ${target.symbolName}; deferring execution`
+            `Price unavailable for ${target.symbolName}; deferring execution`,
           );
         } else {
           // Otherwise mark as failed
@@ -1387,7 +1652,7 @@ export class AutoSnipingModule {
               exchangeStatus: "rejected",
               exchangeResponse: result,
             });
-            
+
             this.context.logger.warn("✅ Failed execution history successfully persisted", {
               targetId: target.id,
               symbol: normalizedSymbol,
@@ -1420,7 +1685,7 @@ export class AutoSnipingModule {
     } catch (error) {
       const safeError = toSafeError(error);
       const totalExecutionTime = Date.now() - executionStartTime;
-      
+
       this.context.logger.error("❌ Snipe target execution failed", {
         targetId: target.id,
         symbol: target.symbolName,
@@ -1450,7 +1715,7 @@ export class AutoSnipingModule {
         await this.updateSnipeTargetStatus(
           target.id,
           "ready",
-          "Awaiting first market price; will retry"
+          "Awaiting first market price; will retry",
         );
       } else {
         this.context.logger.error("💥 Execution failed; marking target as failed", {
@@ -1459,76 +1724,12 @@ export class AutoSnipingModule {
           error: safeError.message,
           totalExecutionTimeMs: totalExecutionTime,
         });
-        await this.updateSnipeTargetStatus(
-          target.id,
-          "failed",
-          safeError.message
-        );
+        await this.updateSnipeTargetStatus(target.id, "failed", safeError.message);
       }
       throw error;
     }
   }
 
-  /**
-   * Set up multi-phase strategy monitoring for executed positions
-   */
-  private async setupMultiPhaseMonitoring(
-    target: AutoSnipeTarget,
-    strategy: MultiPhaseStrategy,
-    tradeInfo: { entryPrice: number; quantity: number; orderId: string }
-  ): Promise<void> {
-    try {
-      this.context.logger.info(
-        `Setting up multi-phase monitoring for ${target.symbolName}`,
-        {
-          strategy: strategy.name,
-          entryPrice: tradeInfo.entryPrice,
-          quantity: tradeInfo.quantity,
-          levels: strategy.levels.length,
-        }
-      );
-
-      // Create monitoring context for this position
-      const monitoringContext = {
-        symbol: target.symbolName,
-        strategyId: strategy.id,
-        entryPrice: tradeInfo.entryPrice,
-        totalQuantity: tradeInfo.quantity,
-        remainingQuantity: tradeInfo.quantity,
-        originalOrderId: tradeInfo.orderId,
-        levels: strategy.levels,
-        executedLevels: [] as number[],
-        createdAt: new Date().toISOString(),
-      };
-
-      // Emit event to start strategy monitoring
-      // This would be handled by a separate strategy monitoring service
-      this.context.eventEmitter.emit("multi_phase_strategy_started", {
-        target,
-        strategy,
-        tradeInfo,
-        monitoringContext,
-      });
-
-      this.context.logger.info(
-        `Multi-phase monitoring initiated for ${target.symbolName}`,
-        {
-          targetLevels: strategy.levels.map((level) => `${level.percentage}%`),
-          firstTarget: strategy.levels[0]?.percentage,
-        }
-      );
-    } catch (error) {
-      const safeError = toSafeError(error);
-      this.context.logger.error(
-        `Failed to setup multi-phase monitoring for ${target.symbolName}`,
-        {
-          error: safeError.message,
-          strategy: strategy.name,
-        }
-      );
-      // Continue execution even if monitoring setup fails
-    }
-  }
 
   // ============================================================================
   // Private Helper Methods
@@ -1536,22 +1737,116 @@ export class AutoSnipingModule {
 
   /**
    * Get ready snipe targets from database
+   * Enhanced with comprehensive logging for execution reasoning
    */
   private async getReadySnipeTargets(userId?: string): Promise<AutoSnipeTarget[]> {
+    const checkStartTime = Date.now();
     try {
       const now = new Date();
+
+      // First, fetch ALL targets to analyze why they're excluded
+      const allTargets = await db
+        .select({
+          id: snipeTargets.id,
+          userId: snipeTargets.userId,
+          vcoinId: snipeTargets.vcoinId,
+          symbolName: snipeTargets.symbolName,
+          positionSizeUsdt: snipeTargets.positionSizeUsdt,
+          status: snipeTargets.status,
+          priority: snipeTargets.priority,
+          riskLevel: snipeTargets.riskLevel,
+          createdAt: snipeTargets.createdAt,
+          updatedAt: snipeTargets.updatedAt,
+          entryPrice: snipeTargets.entryPrice,
+          executionStatus: snipeTargets.executionStatus,
+          executionPrice: snipeTargets.executionPrice,
+          confidenceScore: snipeTargets.confidenceScore,
+          takeProfitLevel: snipeTargets.takeProfitLevel,
+          errorMessage: snipeTargets.errorMessage,
+          targetExecutionTime: snipeTargets.targetExecutionTime,
+          actualExecutionTime: snipeTargets.actualExecutionTime,
+          actualPositionSize: snipeTargets.actualPositionSize,
+          entryStrategy: snipeTargets.entryStrategy,
+          maxRetries: snipeTargets.maxRetries,
+          currentRetries: snipeTargets.currentRetries,
+          takeProfitCustom: snipeTargets.takeProfitCustom,
+        })
+        .from(snipeTargets)
+        .orderBy(snipeTargets.priority, snipeTargets.createdAt)
+        .limit(50); // Get more to analyze
+
+      // Log analysis of all targets
+      const excludedTargets: Array<{
+        targetId: number;
+        symbol: string;
+        reasons: string[];
+      }> = [];
+
+      for (const target of allTargets) {
+        const reasons: string[] = [];
+
+        // Check status
+        if (target.status !== "ready") {
+          reasons.push(`Status is "${target.status}" (required: "ready")`);
+        }
+
+        // Check execution time
+        if (target.targetExecutionTime) {
+          const execTime = new Date(target.targetExecutionTime);
+          if (execTime > now) {
+            reasons.push(
+              `Target execution time ${execTime.toISOString()} is in the future (now: ${now.toISOString()})`,
+            );
+          }
+        }
+
+        // Check retries
+        if (target.currentRetries !== null && target.currentRetries >= 10) {
+          reasons.push(`Max retries exceeded (${target.currentRetries}/10)`);
+        }
+
+        // Check user filter
+        if (userId) {
+          if (target.userId !== userId && target.userId !== "system") {
+            reasons.push(
+              `User mismatch: target userId="${target.userId}", requested userId="${userId}"`,
+            );
+          }
+        }
+
+        if (reasons.length > 0) {
+          excludedTargets.push({
+            targetId: target.id,
+            symbol: target.symbolName || "UNKNOWN",
+            reasons,
+          });
+        }
+      }
+
+      // Log excluded targets for debugging
+      if (excludedTargets.length > 0) {
+        this.context.logger.info("🔍 Targets excluded from execution", {
+          excludedCount: excludedTargets.length,
+          excludedTargets: excludedTargets.slice(0, 10), // Log first 10
+          timestamp: now.toISOString(),
+        });
+      }
+
+      // Now apply the actual query filters
+      // Include both "ready" and "active" targets - "active" targets should transition to ready when execution time arrives
       const baseWhere = and(
-        eq(snipeTargets.status, "ready"),
+        or(
+          eq(snipeTargets.status, "ready"),
+          // Also include "active" targets whose execution time has passed (they should be executed)
+          and(eq(snipeTargets.status, "active"), or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now))),
+        ),
         or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now)),
         // Limit retries for new listing issues (max 10 attempts = ~5 minutes at 30s intervals)
-        or(isNull(snipeTargets.currentRetries), lt(snipeTargets.currentRetries, 10))
+        or(isNull(snipeTargets.currentRetries), lt(snipeTargets.currentRetries, 10)),
       );
 
       const whereClause = userId
-        ? and(
-            baseWhere,
-            or(eq(snipeTargets.userId, userId), eq(snipeTargets.userId, "system"))
-          )
+        ? and(baseWhere, or(eq(snipeTargets.userId, userId), eq(snipeTargets.userId, "system")))
         : baseWhere;
 
       const targets = await db
@@ -1585,13 +1880,28 @@ export class AutoSnipingModule {
         .orderBy(snipeTargets.priority, snipeTargets.createdAt)
         .limit(10);
 
+      this.context.logger.info("✅ Ready targets query completed", {
+        readyCount: targets.length,
+        excludedCount: excludedTargets.length,
+        queryTimeMs: Date.now() - checkStartTime,
+        readyTargets: targets.map((t) => ({
+          id: t.id,
+          symbol: t.symbolName,
+          status: t.status,
+          targetExecutionTime: t.targetExecutionTime?.toISOString(),
+          currentRetries: t.currentRetries,
+          confidence: t.confidenceScore,
+        })),
+      });
+
       return targets;
     } catch (error) {
       const safeError = toSafeError(error);
-      this.context.logger.error(
-        "Failed to fetch ready snipe targets",
-        safeError
-      );
+      this.context.logger.error("❌ Failed to fetch ready snipe targets", {
+        error: safeError.message,
+        stack: safeError.stack,
+        queryTimeMs: Date.now() - checkStartTime,
+      });
       return [];
     }
   }
@@ -1603,7 +1913,7 @@ export class AutoSnipingModule {
     targetId: number,
     status: string,
     errorMessage?: string,
-    additionalFields?: Record<string, any>
+    additionalFields?: Record<string, any>,
   ): Promise<void> {
     try {
       const updateData: {
@@ -1635,10 +1945,7 @@ export class AutoSnipingModule {
         timestamp: updateData.updatedAt,
       });
 
-      await db
-        .update(snipeTargets)
-        .set(updateData)
-        .where(eq(snipeTargets.id, targetId));
+      await db.update(snipeTargets).set(updateData).where(eq(snipeTargets.id, targetId));
 
       this.context.logger.info("✅ Snipe target status updated successfully", {
         targetId,
@@ -1672,12 +1979,16 @@ export class AutoSnipingModule {
    */
   private async triggerPatternDetection(): Promise<void> {
     try {
-      this.context.logger.info("Auto-sniping started - pattern detection should be running automatically");
+      this.context.logger.info(
+        "Auto-sniping started - pattern detection should be running automatically",
+      );
       this.context.logger.info("Pattern detection runs via:");
       this.context.logger.info("1. Calendar polling (every 5 minutes) - triggers pattern analysis");
       this.context.logger.info("2. Manual trigger via /api/triggers/pattern-analysis");
       this.context.logger.info("3. Scheduled Inngest workflows");
-      this.context.logger.info("Auto-sniping will process any targets created by pattern detection");
+      this.context.logger.info(
+        "Auto-sniping will process any targets created by pattern detection",
+      );
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Pattern detection trigger info failed", safeError);
@@ -1688,9 +1999,7 @@ export class AutoSnipingModule {
    * Execute trade via manual trading module
    * This would typically call the manual trading module's executeTrade method
    */
-  private async executeTradeViaManualModule(
-    params: TradeParameters
-  ): Promise<TradeResult> {
+  private async executeTradeViaManualModule(params: TradeParameters): Promise<TradeResult> {
     try {
       // Simulate trade execution for now
       // In a real implementation, this would call the manual trading module
@@ -1709,9 +2018,7 @@ export class AutoSnipingModule {
   /**
    * Execute paper snipe trade
    */
-  private async executePaperSnipe(
-    params: TradeParameters
-  ): Promise<TradeResult> {
+  private async executePaperSnipe(params: TradeParameters): Promise<TradeResult> {
     const startTime = Date.now();
     const simulatedPrice = 100 + Math.random() * 1000; // Mock price
     const orderId = `paper-snipe-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -1741,9 +2048,7 @@ export class AutoSnipingModule {
   /**
    * Execute real snipe trade
    */
-  private async executeRealSnipe(
-    params: TradeParameters
-  ): Promise<TradeResult> {
+  private async executeRealSnipe(params: TradeParameters): Promise<TradeResult> {
     const startTime = Date.now();
 
     try {
@@ -1785,11 +2090,12 @@ export class AutoSnipingModule {
         mexcResult.data,
         params,
         currentPrice,
-        params.snipeTargetId
+        params.snipeTargetId,
       );
 
       // Setup stop-loss and take-profit monitoring
-      await this.setupPositionMonitoring(position, params);
+      // Position monitoring now handled by DB-based monitorDbPositionsAndExecuteSells()
+      // No need for in-memory monitoring setup
 
       const result: TradeResult = {
         success: true,
@@ -1804,9 +2110,7 @@ export class AutoSnipingModule {
           status: mexcResult.data.status,
           executedQty: mexcResult.data.executedQty,
           cummulativeQuoteQty: mexcResult.data.cummulativeQuoteQty,
-          timestamp: new Date(
-            mexcResult.data.transactTime || Date.now()
-          ).toISOString(),
+          timestamp: new Date(mexcResult.data.transactTime || Date.now()).toISOString(),
           autoSnipe: true,
           confidenceScore: params.confidenceScore,
         },
@@ -1848,23 +2152,14 @@ export class AutoSnipingModule {
   /**
    * Perform comprehensive pre-trade validation
    */
-  private async performPreTradeValidation(
-    params: TradeParameters
-  ): Promise<void> {
+  private async performPreTradeValidation(params: TradeParameters): Promise<void> {
     // Check safety coordinator
     if (this.context.safetyCoordinator) {
       // Check if safety coordinator has a status method available
-      if (
-        typeof (this.context.safetyCoordinator as any).getCurrentStatus ===
-        "function"
-      ) {
-        const safetyStatus = (
-          this.context.safetyCoordinator as any
-        ).getCurrentStatus();
+      if (typeof (this.context.safetyCoordinator as any).getCurrentStatus === "function") {
+        const safetyStatus = (this.context.safetyCoordinator as any).getCurrentStatus();
         if (safetyStatus?.overall?.safetyLevel !== "safe") {
-          throw new Error(
-            `Trading blocked by safety system: ${safetyStatus.overall.safetyLevel}`
-          );
+          throw new Error(`Trading blocked by safety system: ${safetyStatus.overall.safetyLevel}`);
         }
       }
       // If no getCurrentStatus method, assume safe to proceed
@@ -1876,12 +2171,8 @@ export class AutoSnipingModule {
     }
 
     // Check position limits
-    if (
-      this.activePositions.size >= this.context.config.maxConcurrentPositions
-    ) {
-      throw new Error(
-        `Maximum concurrent positions reached: ${this.activePositions.size}`
-      );
+    if (this.activePositions.size >= this.context.config.maxConcurrentPositions) {
+      throw new Error(`Maximum concurrent positions reached: ${this.activePositions.size}`);
     }
 
     // Validate required parameters
@@ -1898,22 +2189,81 @@ export class AutoSnipingModule {
    * Get current market price for a symbol
    */
   private async getCurrentMarketPrice(symbol: string): Promise<number | null> {
+    const priceFetchStartTime = Date.now();
     try {
       const marketSymbol = this.normalizeSymbol(symbol);
+      this.context.logger.info("💰 Starting price fetch", {
+        originalSymbol: symbol,
+        normalizedSymbol: marketSymbol,
+        timestamp: new Date().toISOString(),
+      });
+
+      const priceAttempts: Array<{
+        attempt: number;
+        success: boolean;
+        price?: number;
+        error?: string;
+      }> = [];
+
       for (let attempt = 1; attempt <= 3; attempt++) {
-        this.context.logger.debug("Fetching current market price", { symbol: marketSymbol, attempt });
-        const price = await this.tryFetchCurrentPriceOnce(marketSymbol);
-        if (price && price > 0) {
-          this.context.logger.debug(`Got current price for ${marketSymbol}: ${price}`);
-          return price;
+        this.context.logger.debug("Fetching current market price", {
+          symbol: marketSymbol,
+          attempt,
+          maxAttempts: 3,
+        });
+
+        try {
+          const price = await this.tryFetchCurrentPriceOnce(marketSymbol);
+          if (price && price > 0) {
+            priceAttempts.push({ attempt, success: true, price });
+            this.context.logger.info("✅ Successfully fetched market price", {
+              symbol: marketSymbol,
+              price,
+              attempt,
+              fetchTimeMs: Date.now() - priceFetchStartTime,
+            });
+            return price;
+          } else {
+            priceAttempts.push({ attempt, success: false, error: "Price was null or <= 0" });
+            this.context.logger.warn("⚠️ Price fetch returned invalid value", {
+              symbol: marketSymbol,
+              attempt,
+              price,
+            });
+          }
+        } catch (attemptError) {
+          const attemptErrorMsg =
+            attemptError instanceof Error ? attemptError.message : String(attemptError);
+          priceAttempts.push({ attempt, success: false, error: attemptErrorMsg });
+          this.context.logger.warn("⚠️ Price fetch attempt failed", {
+            symbol: marketSymbol,
+            attempt,
+            error: attemptErrorMsg,
+          });
         }
-        await new Promise((r) => setTimeout(r, 1000));
+
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
-      this.context.logger.error(`Unable to get current price for ${marketSymbol} from any source`);
+
+      // All attempts failed
+      this.context.logger.error("❌ Unable to get current price from any source", {
+        symbol: marketSymbol,
+        originalSymbol: symbol,
+        attempts: priceAttempts,
+        totalFetchTimeMs: Date.now() - priceFetchStartTime,
+        reason: "All 3 attempts failed or returned invalid prices",
+      });
       return null;
     } catch (error) {
       const safeError = toSafeError(error);
-      this.context.logger.error(`Critical error getting current price for ${symbol}`, safeError);
+      this.context.logger.error("❌ Critical error getting current price", {
+        symbol,
+        error: safeError.message,
+        stack: safeError.stack,
+        fetchTimeMs: Date.now() - priceFetchStartTime,
+      });
       return null;
     }
   }
@@ -1925,7 +2275,11 @@ export class AutoSnipingModule {
       if (this.context.mexcService && typeof this.context.mexcService.getTicker === "function") {
         try {
           const ticker = await this.context.mexcService.getTicker(symbol);
-          this.context.logger.debug("Ticker response", { symbol, success: ticker.success, dataPreview: ticker.data });
+          this.context.logger.debug("Ticker response", {
+            symbol,
+            success: ticker.success,
+            dataPreview: ticker.data,
+          });
           if (ticker.success && ticker.data) {
             const priceFields = ["price", "lastPrice", "close", "last"];
             for (const field of priceFields) {
@@ -1934,7 +2288,11 @@ export class AutoSnipingModule {
                 const priceValue = parseFloat(fieldValue);
                 if (priceValue > 0) {
                   price = priceValue;
-                  this.context.logger.debug("Ticker price extracted", { symbol, field, value: priceValue });
+                  this.context.logger.debug("Ticker price extracted", {
+                    symbol,
+                    field,
+                    value: priceValue,
+                  });
                   break;
                 }
               }
@@ -1962,7 +2320,11 @@ export class AutoSnipingModule {
         }
       }
 
-      if (!price && this.context.mexcService && typeof this.context.mexcService.getCurrentPrice === "function") {
+      if (
+        !price &&
+        this.context.mexcService &&
+        typeof this.context.mexcService.getCurrentPrice === "function"
+      ) {
         try {
           const priceResult = await this.context.mexcService.getCurrentPrice(symbol);
           this.context.logger.debug("getCurrentPrice returned", { symbol, value: priceResult });
@@ -1976,7 +2338,11 @@ export class AutoSnipingModule {
         }
       }
 
-      if (!price && this.context.mexcService && typeof this.context.mexcService.getOrderBook === "function") {
+      if (
+        !price &&
+        this.context.mexcService &&
+        typeof this.context.mexcService.getOrderBook === "function"
+      ) {
         try {
           const orderBook = await this.context.mexcService.getOrderBook(symbol, 5);
           this.context.logger.debug("Order book response", {
@@ -1992,13 +2358,19 @@ export class AutoSnipingModule {
               const askPrice = parseFloat(asks[0][0]);
               if (bidPrice > 0 && askPrice > 0) {
                 price = (bidPrice + askPrice) / 2;
-                this.context.logger.debug("Order book mid-price computed", { symbol, bidPrice, askPrice, mid: price });
+                this.context.logger.debug("Order book mid-price computed", {
+                  symbol,
+                  bidPrice,
+                  askPrice,
+                  mid: price,
+                });
               }
             }
           }
         } catch (orderBookError) {
           this.context.logger.warn(`Failed to get order book for ${symbol}`, {
-            error: orderBookError instanceof Error ? orderBookError.message : String(orderBookError),
+            error:
+              orderBookError instanceof Error ? orderBookError.message : String(orderBookError),
           });
         }
       }
@@ -2066,7 +2438,7 @@ export class AutoSnipingModule {
         const notional = Array.isArray(filters)
           ? filters.find((f: any) => f.filterType === "MIN_NOTIONAL")
           : undefined;
-        if (lot && lot.stepSize) {
+        if (lot?.stepSize) {
           stepSize = parseFloat(lot.stepSize);
           const s = String(lot.stepSize);
           if (s.includes(".")) lotSizeDecimals = s.split(".")[1].replace(/0+$/, "").length;
@@ -2098,26 +2470,38 @@ export class AutoSnipingModule {
   }
 
   // Adjust raw quantity down to valid increment
-  private adjustQuantity(rawQty: number, rules: { stepSize?: number; lotSizeDecimals?: number; baseAssetPrecision?: number }): number {
+  private adjustQuantity(
+    rawQty: number,
+    rules: { stepSize?: number; lotSizeDecimals?: number; baseAssetPrecision?: number },
+  ): number {
     if (!Number.isFinite(rawQty) || rawQty <= 0) return 0;
     if (rules?.stepSize && rules.stepSize > 0) {
       const steps = Math.floor(rawQty / rules.stepSize);
       return steps * rules.stepSize;
     }
-    const decimals = Math.min( (rules?.lotSizeDecimals ?? rules?.baseAssetPrecision ?? 8), 8);
-    const factor = Math.pow(10, decimals);
+    const decimals = Math.min(rules?.lotSizeDecimals ?? rules?.baseAssetPrecision ?? 8, 8);
+    const factor = 10 ** decimals;
     return Math.floor(rawQty * factor) / factor;
   }
 
   // Format quantity as string respecting precision
-  private formatQuantity(qty: number, rules: { lotSizeDecimals?: number; baseAssetPrecision?: number }): string {
+  private formatQuantity(
+    qty: number,
+    rules: { lotSizeDecimals?: number; baseAssetPrecision?: number },
+  ): string {
     if (!Number.isFinite(qty) || qty <= 0) return "0";
-    const decimals = Math.min( (rules?.lotSizeDecimals ?? rules?.baseAssetPrecision ?? 8), 8);
-    return qty.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+    const decimals = Math.min(rules?.lotSizeDecimals ?? rules?.baseAssetPrecision ?? 8, 8);
+    return qty
+      .toFixed(decimals)
+      .replace(/\.0+$/, "")
+      .replace(/(\.\d*?)0+$/, "$1");
   }
 
   // Adjust raw price to exchange constraints (min/max/tickSize)
-  private adjustPrice(rawPrice: number, rules: { tickSize?: number; minPrice?: number; maxPrice?: number }): number {
+  private adjustPrice(
+    rawPrice: number,
+    rules: { tickSize?: number; minPrice?: number; maxPrice?: number },
+  ): number {
     if (!Number.isFinite(rawPrice) || rawPrice <= 0) return 0;
     let p = rawPrice;
     if (typeof rules.maxPrice === "number" && Number.isFinite(rules.maxPrice)) {
@@ -2136,10 +2520,14 @@ export class AutoSnipingModule {
   // Format price string respecting tick size precision
   private formatPrice(price: number, rules: { tickSize?: number }): string {
     if (!Number.isFinite(price) || price <= 0) return "0";
-    const decimals = rules?.tickSize && String(rules.tickSize).includes(".")
-      ? String(rules.tickSize).split(".")[1].replace(/0+$/, "").length
-      : 8;
-    return price.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+    const decimals =
+      rules?.tickSize && String(rules.tickSize).includes(".")
+        ? String(rules.tickSize).split(".")[1].replace(/0+$/, "").length
+        : 8;
+    return price
+      .toFixed(decimals)
+      .replace(/\.0+$/, "")
+      .replace(/(\.\d*?)0+$/, "$1");
   }
 
   /**
@@ -2147,7 +2535,7 @@ export class AutoSnipingModule {
    */
   private async validateOrderParameters(
     orderParams: TradeParameters,
-    currentPrice: number
+    currentPrice: number,
   ): Promise<void> {
     // Validate symbol format
     if (!orderParams.symbol || typeof orderParams.symbol !== "string") {
@@ -2160,7 +2548,7 @@ export class AutoSnipingModule {
     const legalSymbolRe = /^[A-Z0-9-_.]{1,64}$/;
     if (!legalSymbolRe.test(orderParams.symbol)) {
       throw new Error(
-        `Illegal characters found in symbol '${orderParams.symbol}'. Legal range is '^[A-Z0-9-_.]{1,64}$'.`
+        `Illegal characters found in symbol '${orderParams.symbol}'. Legal range is '^[A-Z0-9-_.]{1,64}$'.`,
       );
     }
 
@@ -2175,10 +2563,7 @@ export class AutoSnipingModule {
     }
 
     // Validate time in force
-    if (
-      orderParams.timeInForce &&
-      !["GTC", "IOC", "FOK"].includes(orderParams.timeInForce)
-    ) {
+    if (orderParams.timeInForce && !["GTC", "IOC", "FOK"].includes(orderParams.timeInForce)) {
       throw new Error("Invalid time in force");
     }
 
@@ -2186,9 +2571,7 @@ export class AutoSnipingModule {
     if (orderParams.quoteOrderQty) {
       const minOrderValue = 5; // USDT minimum
       if (orderParams.quoteOrderQty < minOrderValue) {
-        throw new Error(
-          `Order value too small. Minimum: ${minOrderValue} USDT`
-        );
+        throw new Error(`Order value too small. Minimum: ${minOrderValue} USDT`);
       }
     }
 
@@ -2209,59 +2592,60 @@ export class AutoSnipingModule {
   private async recheckPendingOrder(
     symbol: string,
     orderId: string,
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Wait before checking (exponential backoff)
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
         if (attempt > 1) {
           this.context.logger.debug(`Waiting ${delay}ms before recheck attempt ${attempt}`, {
             symbol,
             orderId,
             attempt,
-            maxRetries
+            maxRetries,
           });
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
 
         const statusResult = await this.verifyOrderStatus(symbol, orderId);
-        
+
         if (statusResult.success && statusResult.data) {
           const statusText = String(statusResult.data.status || "").toUpperCase();
           const executedQtyNum = Number(statusResult.data.executedQty || 0);
-          
+
           // Check if order is now filled
           const validFilledStatuses = ["FILLED", "SUCCESS", "COMPLETED"];
           const partialFilledStatuses = ["PARTIALLY_FILLED", "PARTIAL"];
           const isFilled = validFilledStatuses.includes(statusText) && executedQtyNum > 0;
-          const isPartiallyFilled = partialFilledStatuses.includes(statusText) && executedQtyNum > 0;
-          
+          const isPartiallyFilled =
+            partialFilledStatuses.includes(statusText) && executedQtyNum > 0;
+
           if (isFilled || isPartiallyFilled) {
             this.context.logger.info("Order filled during recheck", {
               symbol,
               orderId,
               attempt,
               status: statusText,
-              executedQty: executedQtyNum
+              executedQty: executedQtyNum,
             });
             return statusResult;
           }
-          
+
           // Still pending, continue to next attempt
           this.context.logger.debug("Order still pending during recheck", {
             symbol,
             orderId,
             attempt,
             status: statusText,
-            executedQty: executedQtyNum
+            executedQty: executedQtyNum,
           });
         } else {
           this.context.logger.warn("Failed to get order status during recheck", {
             symbol,
             orderId,
             attempt,
-            error: statusResult.error
+            error: statusResult.error,
           });
         }
       } catch (error) {
@@ -2270,14 +2654,14 @@ export class AutoSnipingModule {
           symbol,
           orderId,
           attempt,
-          error: safeError.message
+          error: safeError.message,
         });
       }
     }
-    
+
     return {
       success: false,
-      error: "Order still pending after all recheck attempts"
+      error: "Order still pending after all recheck attempts",
     };
   }
 
@@ -2286,29 +2670,29 @@ export class AutoSnipingModule {
    */
   private async verifyOrderStatus(
     symbol: string,
-    orderId: string
+    orderId: string,
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       this.context.logger.debug("Querying MEXC for order status", {
         symbol,
-        orderId
+        orderId,
       });
 
       // Use the MEXC service to get order status; pass symbol explicitly to avoid 700004
       const statusResult = await this.context.mexcService.getOrderStatus(
         this.normalizeSymbol(symbol),
-        orderId
+        orderId,
       );
-      
+
       if (statusResult.success && statusResult.data) {
         this.context.logger.debug("Order status retrieved from MEXC", {
           symbol,
           orderId,
           status: statusResult.data.status,
           executedQty: statusResult.data.executedQuantity,
-          cummulativeQuoteQty: statusResult.data.cummulativeQuoteQuantity
+          cummulativeQuoteQty: statusResult.data.cummulativeQuoteQuantity,
         });
-        
+
         return {
           success: true,
           data: {
@@ -2319,19 +2703,19 @@ export class AutoSnipingModule {
             type: statusResult.data.type,
             side: statusResult.data.side,
             quantity: statusResult.data.quantity,
-            timestamp: statusResult.data.timestamp || new Date().toISOString()
-          }
+            timestamp: statusResult.data.timestamp || new Date().toISOString(),
+          },
         };
       } else {
         this.context.logger.warn("Failed to retrieve order status from MEXC", {
           symbol,
           orderId,
-          error: statusResult.error
+          error: statusResult.error,
         });
-        
+
         return {
           success: false,
-          error: statusResult.error || "Failed to retrieve order status"
+          error: statusResult.error || "Failed to retrieve order status",
         };
       }
     } catch (error) {
@@ -2339,12 +2723,12 @@ export class AutoSnipingModule {
       this.context.logger.error("Exception while verifying order status", {
         symbol,
         orderId,
-        error: safeError.message
+        error: safeError.message,
       });
-      
+
       return {
         success: false,
-        error: safeError.message
+        error: safeError.message,
       };
     }
   }
@@ -2355,7 +2739,7 @@ export class AutoSnipingModule {
   private async validatePriceLimits(
     symbol: string,
     orderPrice: number,
-    currentPrice: number
+    currentPrice: number,
   ): Promise<void> {
     try {
       // Get symbol trading rules including price filters
@@ -2384,14 +2768,14 @@ export class AutoSnipingModule {
       // Additional safety check: prevent orders with prices too far from current market
       const maxPriceDeviation = 0.5; // 50% deviation from current price
       const priceDeviation = Math.abs(orderPrice - currentPrice) / currentPrice;
-      
+
       if (priceDeviation > maxPriceDeviation) {
         this.context.logger.warn("Order price significantly deviates from market price", {
           symbol,
           orderPrice,
           currentPrice,
           deviation: `${(priceDeviation * 100).toFixed(2)}%`,
-          maxAllowed: `${(maxPriceDeviation * 100).toFixed(2)}%`
+          maxAllowed: `${(maxPriceDeviation * 100).toFixed(2)}%`,
         });
       }
 
@@ -2402,16 +2786,15 @@ export class AutoSnipingModule {
         currentPrice,
         maxPrice: tradeRules.maxPrice,
         minPrice: tradeRules.minPrice,
-        tickSize: tradeRules.tickSize
+        tickSize: tradeRules.tickSize,
       });
-
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Price validation encountered error (will rely on clamping)", {
         symbol,
         orderPrice,
         currentPrice,
-        error: safeError.message
+        error: safeError.message,
       });
       // Do not throw here; execution path will clamp the price prior to submit
     }
@@ -2422,7 +2805,7 @@ export class AutoSnipingModule {
    */
   private async executeOrderWithRetry(
     orderParams: TradeParameters,
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ): Promise<ServiceResponse<any>> {
     let lastError: Error | null = null;
 
@@ -2456,98 +2839,14 @@ export class AutoSnipingModule {
 
         // If using quoteOrderQty (for market orders), we need to handle this differently
         if (orderParams.quoteOrderQty && orderParams.type === "MARKET") {
-          // For market buy orders with quoteOrderQty, we need to calculate the quantity
           if (orderParams.side === "BUY") {
-            // Get current market price to calculate quantity
-            const currentPrice = await this.getCurrentMarketPrice(mexcOrderData.symbol);
-            if (!currentPrice) {
-              throw new Error(
-                `Unable to get current price for ${orderParams.symbol}`
-              );
-            }
-            let remainingQuote = orderParams.quoteOrderQty;
-
-            // If exchange imposes minNotional, ensure we meet it
-            const minNotional = tradeRules.minNotional || 0;
-            const maxQtyPerOrder = tradeRules.maxQty || Infinity;
-            const minQtyPerOrder = tradeRules.minQty || 0;
-
-            let totalExecutedQty = 0;
-            let totalQuoteSpent = 0;
-            let lastOrderResult: any = null;
-
-            while (remainingQuote > 0) {
-              // Implicit per-order notional cap via maxQty → convert using currentPrice
-              const maxNotionalPerOrder = Number.isFinite(maxQtyPerOrder)
-                ? maxQtyPerOrder * currentPrice
-                : Infinity;
-              const perOrderQuoteCap = Math.min(maxNotionalPerOrder, remainingQuote);
-
-              // If remaining is below minNotional and minQty, break
-              if (
-                (minNotional > 0 && perOrderQuoteCap < minNotional) &&
-                (minQtyPerOrder > 0 && (minQtyPerOrder * currentPrice) > perOrderQuoteCap)
-              ) {
-                break;
-              }
-
-              // Compute a compliant quantity for this order
-              const desiredQty = perOrderQuoteCap / currentPrice;
-              let qty = this.adjustQuantity(desiredQty, tradeRules);
-
-              // Ensure meets minimums
-              const minQtyFromNotional = minNotional > 0 ? minNotional / currentPrice : 0;
-              const requiredMinQty = Math.max(minQtyPerOrder, minQtyFromNotional);
-              if (qty < requiredMinQty) {
-                qty = this.adjustQuantity(requiredMinQty, tradeRules);
-              }
-
-              if (!qty || qty <= 0) break;
-
-              const chunkOrder = { ...mexcOrderData, quantity: this.formatQuantity(qty, tradeRules) };
-              let placeRes = await this.context.mexcService.placeOrder(chunkOrder);
-
-              // Retry once as MARKET if we somehow hit price-limit on LIMIT (defensive)
-              if (!placeRes.success && chunkOrder.type === "LIMIT" &&
-                  (placeRes.error?.includes("Order price cannot exceed") || placeRes.error?.includes("30010"))) {
-                const marketOrderData = { ...chunkOrder };
-                delete (marketOrderData as any).price;
-                marketOrderData.type = "MARKET";
-                placeRes = await this.context.mexcService.placeOrder(marketOrderData);
-              }
-
-              if (!placeRes.success) {
-                // Stop on first failure to avoid partial loops without visibility
-                // Capture partial result by reusing placeRes in outer scope later
-                lastOrderResult = placeRes;
-                break;
-              }
-
-              lastOrderResult = placeRes;
-              const executedQty = Number(placeRes.data?.executedQty ?? placeRes.data?.quantity ?? qty);
-              const spentQuote = Number(placeRes.data?.cummulativeQuoteQty ?? (executedQty * currentPrice));
-              totalExecutedQty += executedQty;
-              totalQuoteSpent += spentQuote;
-              remainingQuote = Math.max(0, remainingQuote - spentQuote);
-
-              // If the remaining budget is too small to form a valid order, stop
-              if (remainingQuote <= 0.0000001) break;
-              if (minNotional > 0 && remainingQuote < minNotional) break;
-              // If exchange reports zero fill and zero cost, avoid infinite loop
-              if ((!executedQty || executedQty <= 0) && (!spentQuote || spentQuote <= 0)) break;
-            }
-
-            // Synthesize a single result representing the aggregate
-            if (lastOrderResult) {
-              // Mutate the last result to carry aggregate totals
-              if (!lastOrderResult.data) lastOrderResult.data = {};
-              lastOrderResult.data.executedQty = totalExecutedQty.toString?.() ?? totalExecutedQty;
-              lastOrderResult.data.cummulativeQuoteQty = totalQuoteSpent.toString?.() ?? totalQuoteSpent;
-              // Overwrite mexcOrderData so outer submit is skipped; we'll use lastOrderResult below
-              mexcOrderData.quantity = undefined;
-              mexcOrderData.quoteOrderQty = undefined as any;
-              // Attach a marker for post-loop handling via a local variable
-              (mexcOrderData as any).__aggregateResult = lastOrderResult;
+            const aggregateResult = await this.executeQuoteOrderQuantityBuy(
+              orderParams,
+              mexcOrderData,
+              tradeRules,
+            );
+            if (aggregateResult) {
+              (mexcOrderData as any).__aggregateResult = aggregateResult;
             }
           } else {
             // For sell orders, quantity should be provided directly
@@ -2567,36 +2866,36 @@ export class AutoSnipingModule {
           price: mexcOrderData.price,
           rules: tradeRules,
         });
-        
+
         // If we aggregated via multi-order budget split, use that result directly
         let result = (mexcOrderData as any).__aggregateResult
           ? (mexcOrderData as any).__aggregateResult
           : await this.context.mexcService.placeOrder(mexcOrderData);
-        
+
         // If price limit error and this is a LIMIT order, try converting to MARKET order
-        if (!result.success && 
-            mexcOrderData.type === "LIMIT" && 
-            (result.error?.includes("Order price cannot exceed") || 
-             result.error?.includes("30010"))) {
-          
+        if (
+          !result.success &&
+          mexcOrderData.type === "LIMIT" &&
+          (result.error?.includes("Order price cannot exceed") || result.error?.includes("30010"))
+        ) {
           this.context.logger.warn("Price limit exceeded, converting LIMIT order to MARKET order", {
             symbol: mexcOrderData.symbol,
             originalPrice: mexcOrderData.price,
             originalType: mexcOrderData.type,
-            error: result.error
+            error: result.error,
           });
-          
+
           // Convert to market order
           const marketOrderData = { ...mexcOrderData };
           delete marketOrderData.price; // Remove price for market order
           marketOrderData.type = "MARKET";
-          
+
           result = await this.context.mexcService.placeOrder(marketOrderData);
-          
+
           if (result.success) {
             this.context.logger.info("Successfully converted to market order", {
               symbol: mexcOrderData.symbol,
-              orderId: result.data?.orderId
+              orderId: result.data?.orderId,
             });
           }
         }
@@ -2605,17 +2904,20 @@ export class AutoSnipingModule {
           // Enhanced validation: verify order status if initial response is incomplete
           const orderData = result.data || {};
           const hasCompleteStatus = orderData.status && orderData.executedQty !== undefined;
-          
+
           if (!hasCompleteStatus && orderData.orderId) {
             this.context.logger.info("Order placed but status incomplete, verifying with MEXC", {
               symbol: orderParams.symbol,
               orderId: orderData.orderId,
               initialStatus: orderData.status,
-              initialExecutedQty: orderData.executedQty
+              initialExecutedQty: orderData.executedQty,
             });
-            
+
             // Query MEXC for actual order status
-            const statusResult = await this.verifyOrderStatus(orderParams.symbol, orderData.orderId);
+            const statusResult = await this.verifyOrderStatus(
+              orderParams.symbol,
+              orderData.orderId,
+            );
             if (statusResult.success && statusResult.data) {
               // Merge the verified status data
               result.data = { ...orderData, ...statusResult.data };
@@ -2623,17 +2925,17 @@ export class AutoSnipingModule {
                 symbol: orderParams.symbol,
                 orderId: orderData.orderId,
                 verifiedStatus: statusResult.data.status,
-                verifiedExecutedQty: statusResult.data.executedQty
+                verifiedExecutedQty: statusResult.data.executedQty,
               });
             } else {
               this.context.logger.warn("Failed to verify order status, using initial response", {
                 symbol: orderParams.symbol,
                 orderId: orderData.orderId,
-                error: statusResult.error
+                error: statusResult.error,
               });
             }
           }
-          
+
           return {
             success: true,
             data: result.data,
@@ -2645,38 +2947,24 @@ export class AutoSnipingModule {
       } catch (error) {
         lastError = toSafeError(error);
 
-        this.context.logger.warn(
-          `Order attempt ${attempt}/${maxRetries} failed`,
-          {
-            symbol: orderParams.symbol,
-            error: lastError.message,
-          }
-        );
+        this.context.logger.warn(`Order attempt ${attempt}/${maxRetries} failed`, {
+          symbol: orderParams.symbol,
+          error: lastError.message,
+        });
 
         // Don't retry on certain errors
-        if (
-          lastError.message.includes("insufficient balance") ||
-          lastError.message.includes("invalid symbol") ||
-          lastError.message.includes("trading disabled") ||
-          lastError.message.includes("MARKET_LOT_SIZE") ||
-          lastError.message.includes("MIN_NOTIONAL") ||
-          lastError.message.includes("Order price cannot exceed") ||
-          lastError.message.includes("exceeds maximum allowed price") ||
-          lastError.message.includes("below minimum allowed price") ||
-          lastError.message.includes("price limit") ||
-          lastError.message.includes("30010") // MEXC price limit error code
-        ) {
+        if (isNonRetryableError(lastError)) {
           this.context.logger.error("Non-retryable error encountered", {
             symbol: orderParams.symbol,
             error: lastError.message,
-            errorType: "price_limit_violation"
+            errorType: "price_limit_violation",
           });
           throw lastError;
         }
 
         // Wait before retry (exponential backoff)
         if (attempt < maxRetries) {
-          const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
+          const delay = calculateRetryDelay(attempt);
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
@@ -2692,7 +2980,7 @@ export class AutoSnipingModule {
     orderResult: any,
     params: TradeParameters,
     currentPrice: number,
-    targetId?: number
+    targetId?: number,
   ): Promise<Position> {
     const positionId = `${params.symbol}-${orderResult.orderId}-${Date.now()}`;
     const entryPrice = parseFloat(orderResult.price) || currentPrice;
@@ -2724,21 +3012,17 @@ export class AutoSnipingModule {
     // Calculate stop-loss and take-profit prices
     if (params.stopLossPercent && params.stopLossPercent > 0) {
       if (params.side === "BUY") {
-        position.stopLossPrice =
-          entryPrice * (1 - params.stopLossPercent / 100);
+        position.stopLossPrice = entryPrice * (1 - params.stopLossPercent / 100);
       } else {
-        position.stopLossPrice =
-          entryPrice * (1 + params.stopLossPercent / 100);
+        position.stopLossPrice = entryPrice * (1 + params.stopLossPercent / 100);
       }
     }
 
     if (params.takeProfitPercent && params.takeProfitPercent > 0) {
       if (params.side === "BUY") {
-        position.takeProfitPrice =
-          entryPrice * (1 + params.takeProfitPercent / 100);
+        position.takeProfitPrice = entryPrice * (1 + params.takeProfitPercent / 100);
       } else {
-        position.takeProfitPrice =
-          entryPrice * (1 - params.takeProfitPercent / 100);
+        position.takeProfitPrice = entryPrice * (1 - params.takeProfitPercent / 100);
       }
     }
 
@@ -2766,7 +3050,7 @@ export class AutoSnipingModule {
    */
   private async setupPositionMonitoring(
     position: Position,
-    _params: TradeParameters
+    _params: TradeParameters,
   ): Promise<void> {
     try {
       // Setup stop-loss monitoring
@@ -2794,32 +3078,47 @@ export class AutoSnipingModule {
   }
 
   /**
-   * Setup stop-loss monitoring for a position
+   * Shared method for setting up price level monitoring (stop-loss or take-profit)
    */
-  private setupStopLossMonitoring(position: Position): void {
+  private setupPriceLevelMonitoring(config: PriceLevelMonitoringConfig): void {
+    const { position, monitorType, triggerPrice, isStopLoss, pendingTimers, executeCallback } =
+      config;
+    if (!triggerPrice) return;
+
     const checkInterval = 5000; // Check every 5 seconds
 
-    this.context.logger.debug("Setting up stop-loss monitoring", {
+    this.context.logger.debug(`Setting up ${monitorType} monitoring`, {
       positionId: position.id,
       symbol: position.symbol,
-      stopLossPrice: position.stopLossPrice,
+      triggerPrice,
       side: position.side,
     });
 
-    const monitorStopLoss = async () => {
+    const monitor = async () => {
       try {
         // If target was deleted or no longer open, stop monitoring
         if (typeof position.snipeTargetId === "number") {
           const rows = await db
-            .select({ id: snipeTargets.id, executionStatus: snipeTargets.executionStatus, actualPositionSize: snipeTargets.actualPositionSize })
+            .select({
+              id: snipeTargets.id,
+              executionStatus: snipeTargets.executionStatus,
+              actualPositionSize: snipeTargets.actualPositionSize,
+            })
             .from(snipeTargets)
             .where(eq(snipeTargets.id, position.snipeTargetId));
-          const existsAndOpen = Array.isArray(rows) && rows.length > 0 && rows[0].executionStatus === "success" && (rows[0].actualPositionSize ?? 0) > 0;
+          const existsAndOpen =
+            Array.isArray(rows) &&
+            rows.length > 0 &&
+            rows[0].executionStatus === "success" &&
+            (rows[0].actualPositionSize ?? 0) > 0;
           if (!existsAndOpen) {
-            this.context.logger.info("Stop-loss monitor: target removed or closed; stopping monitoring", {
-              positionId: position.id,
-              snipeTargetId: position.snipeTargetId,
-            });
+            this.context.logger.info(
+              `${monitorType} monitor: target removed or closed; stopping monitoring`,
+              {
+                positionId: position.id,
+                snipeTargetId: position.snipeTargetId,
+              },
+            );
             this.cleanupPositionMonitoring(position.id);
             this.activePositions.delete(position.id);
             return;
@@ -2827,170 +3126,88 @@ export class AutoSnipingModule {
         }
 
         const currentPrice = await this.getCurrentMarketPrice(position.symbol);
-        if (
-          currentPrice === null ||
-          currentPrice === undefined ||
-          Number.isNaN(currentPrice)
-        ) {
-          this.context.logger.debug("Stop-loss monitor: price unavailable", {
+        if (currentPrice === null || currentPrice === undefined || Number.isNaN(currentPrice)) {
+          this.context.logger.debug(`${monitorType} monitor: price unavailable`, {
             positionId: position.id,
             symbol: position.symbol,
           });
-          const retryTimer = setTimeout(monitorStopLoss, checkInterval);
-          this.pendingStopLosses.set(position.id, retryTimer);
+          const retryTimer = setTimeout(monitor, checkInterval);
+          pendingTimers.set(position.id, retryTimer);
           return;
         }
 
         // Update position current price
         position.currentPrice = currentPrice;
 
-        this.context.logger.debug("Stop-loss monitor tick", {
+        this.context.logger.debug(`${monitorType} monitor tick`, {
           positionId: position.id,
           symbol: position.symbol,
           currentPrice,
-          stopLossPrice: position.stopLossPrice,
+          triggerPrice,
         });
 
-        // Check if stop-loss should trigger
-        let shouldTrigger = false;
-        if (
-          position.side === "BUY" &&
-          currentPrice <= (position.stopLossPrice || 0)
-        ) {
-          shouldTrigger = true;
-        } else if (
-          position.side === "SELL" &&
-          currentPrice >= (position.stopLossPrice || 0)
-        ) {
-          shouldTrigger = true;
-        }
+        // Check if trigger condition is met
+        const shouldTrigger = shouldTriggerPriceLevel(
+          position,
+          currentPrice,
+          triggerPrice,
+          isStopLoss,
+        );
 
         if (shouldTrigger) {
-          await this.executeStopLoss(position);
+          await executeCallback(position);
         } else {
           // Continue monitoring
-          const timer = setTimeout(monitorStopLoss, checkInterval);
-          this.pendingStopLosses.set(position.id, timer);
+          const timer = setTimeout(monitor, checkInterval);
+          pendingTimers.set(position.id, timer);
         }
       } catch (error) {
         const safeError = toSafeError(error);
-        this.context.logger.error("Stop-loss monitoring error", {
+        this.context.logger.error(`${monitorType} monitoring error`, {
           positionId: position.id,
           error: safeError.message,
         });
-        const retryTimer = setTimeout(monitorStopLoss, checkInterval);
-        this.pendingStopLosses.set(position.id, retryTimer);
+        const retryTimer = setTimeout(monitor, checkInterval);
+        pendingTimers.set(position.id, retryTimer);
       }
     };
 
-    const existingTimer = this.pendingStopLosses.get(position.id);
+    const existingTimer = pendingTimers.get(position.id);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
 
     // Start monitoring
-    const timer = setTimeout(monitorStopLoss, checkInterval);
-    this.pendingStopLosses.set(position.id, timer);
+    const timer = setTimeout(monitor, checkInterval);
+    pendingTimers.set(position.id, timer);
+  }
+
+  /**
+   * Setup stop-loss monitoring for a position
+   */
+  private setupStopLossMonitoring(position: Position): void {
+    this.setupPriceLevelMonitoring({
+      position,
+      monitorType: "stop-loss",
+      triggerPrice: position.stopLossPrice,
+      isStopLoss: true,
+      pendingTimers: this.pendingStopLosses,
+      executeCallback: (pos) => this.executeStopLoss(pos),
+    });
   }
 
   /**
    * Setup take-profit monitoring for a position
    */
   private setupTakeProfitMonitoring(position: Position): void {
-    const checkInterval = 5000; // Check every 5 seconds
-
-    this.context.logger.debug("Setting up take-profit monitoring", {
-      positionId: position.id,
-      symbol: position.symbol,
-      takeProfitPrice: position.takeProfitPrice,
-      side: position.side,
+    this.setupPriceLevelMonitoring({
+      position,
+      monitorType: "take-profit",
+      triggerPrice: position.takeProfitPrice,
+      isStopLoss: false,
+      pendingTimers: this.pendingTakeProfits,
+      executeCallback: (pos) => this.executeTakeProfit(pos),
     });
-
-    const monitorTakeProfit = async () => {
-      try {
-        // If target was deleted or no longer open, stop monitoring
-        if (typeof position.snipeTargetId === "number") {
-          const rows = await db
-            .select({ id: snipeTargets.id, executionStatus: snipeTargets.executionStatus, actualPositionSize: snipeTargets.actualPositionSize })
-            .from(snipeTargets)
-            .where(eq(snipeTargets.id, position.snipeTargetId));
-          const existsAndOpen = Array.isArray(rows) && rows.length > 0 && rows[0].executionStatus === "success" && (rows[0].actualPositionSize ?? 0) > 0;
-          if (!existsAndOpen) {
-            this.context.logger.info("Take-profit monitor: target removed or closed; stopping monitoring", {
-              positionId: position.id,
-              snipeTargetId: position.snipeTargetId,
-            });
-            this.cleanupPositionMonitoring(position.id);
-            this.activePositions.delete(position.id);
-            return;
-          }
-        }
-
-        const currentPrice = await this.getCurrentMarketPrice(position.symbol);
-        if (
-          currentPrice === null ||
-          currentPrice === undefined ||
-          Number.isNaN(currentPrice)
-        ) {
-          this.context.logger.debug("Take-profit monitor: price unavailable", {
-            positionId: position.id,
-            symbol: position.symbol,
-          });
-          const retryTimer = setTimeout(monitorTakeProfit, checkInterval);
-          this.pendingTakeProfits.set(position.id, retryTimer);
-          return;
-        }
-
-        // Update position current price
-        position.currentPrice = currentPrice;
-
-        this.context.logger.debug("Take-profit monitor tick", {
-          positionId: position.id,
-          symbol: position.symbol,
-          currentPrice,
-          takeProfitPrice: position.takeProfitPrice,
-        });
-
-        // Check if take-profit should trigger
-        let shouldTrigger = false;
-        if (
-          position.side === "BUY" &&
-          currentPrice >= (position.takeProfitPrice || 0)
-        ) {
-          shouldTrigger = true;
-        } else if (
-          position.side === "SELL" &&
-          currentPrice <= (position.takeProfitPrice || 0)
-        ) {
-          shouldTrigger = true;
-        }
-
-        if (shouldTrigger) {
-          await this.executeTakeProfit(position);
-        } else {
-          // Continue monitoring
-          const timer = setTimeout(monitorTakeProfit, checkInterval);
-          this.pendingTakeProfits.set(position.id, timer);
-        }
-      } catch (error) {
-        const safeError = toSafeError(error);
-        this.context.logger.error("Take-profit monitoring error", {
-          positionId: position.id,
-          error: safeError.message,
-        });
-        const retryTimer = setTimeout(monitorTakeProfit, checkInterval);
-        this.pendingTakeProfits.set(position.id, retryTimer);
-      }
-    };
-
-    const existingTimer = this.pendingTakeProfits.get(position.id);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    // Start monitoring
-    const timer = setTimeout(monitorTakeProfit, checkInterval);
-    this.pendingTakeProfits.set(position.id, timer);
   }
 
   /**
@@ -3019,9 +3236,7 @@ export class AutoSnipingModule {
         const entryValue = position.entryPrice * position.quantity;
         const exitValue = (position.currentPrice || 0) * position.quantity;
         const realizedPnL =
-          position.side === "BUY"
-            ? exitValue - entryValue
-            : entryValue - exitValue;
+          position.side === "BUY" ? exitValue - entryValue : entryValue - exitValue;
 
         position.status = "closed";
         position.closeTime = new Date();
@@ -3036,45 +3251,21 @@ export class AutoSnipingModule {
             actualPositionSize: 0,
             executionPrice: position.currentPrice ?? position.entryPrice,
           });
-          const closeExecutedAt = new Date();
           const saleUserId = await this.resolveUserIdForSnipe(
             position.userId || this.currentUserId || "system",
-            position.snipeTargetId as number
+            position.snipeTargetId as number,
           );
-          const vcoinIdResolved = await this.getVcoinIdForTarget(position.snipeTargetId, position.symbol);
-          await saveExecutionHistory({
-            userId: saleUserId,
-            snipeTargetId: position.snipeTargetId,
-            vcoinId: vcoinIdResolved,
-            symbolName: position.symbol,
-            orderType: (closeResult.data?.type || "MARKET").toString().toLowerCase(),
-            orderSide: "sell",
-            requestedQuantity: position.quantity,
-            requestedPrice: null,
-            executedQuantity: Number(
-              closeResult.data?.executedQty ??
-                closeResult.data?.quantity ??
-                position.quantity
-            ),
-            executedPrice: Number(
-              closeResult.data?.price ?? position.currentPrice ?? position.entryPrice
-            ),
-            totalCost: Number(
-              closeResult.data?.cummulativeQuoteQty ??
-                (position.currentPrice || position.entryPrice) * position.quantity
-            ),
-            fees: closeResult.data?.fees ? Number(closeResult.data.fees) : null,
-            exchangeOrderId: closeResult.data?.orderId
-              ? String(closeResult.data.orderId)
-              : null,
-            exchangeStatus: (closeResult.data?.status || "FILLED").toString(),
-            exchangeResponse: closeResult,
-            executionLatencyMs: (closeResult as any).executionTime || null,
-            slippagePercent: null,
-            status: "success",
-            requestedAt: new Date(),
-            executedAt: closeExecutedAt,
-          });
+          const vcoinIdResolved = await this.getVcoinIdForTarget(
+            position.snipeTargetId,
+            position.symbol,
+          );
+          await savePositionCloseHistory(
+            position,
+            closeResult,
+            saleUserId,
+            position.snipeTargetId,
+            vcoinIdResolved,
+          );
         }
 
         this.context.eventEmitter.emit("position_closed", position);
@@ -3085,9 +3276,7 @@ export class AutoSnipingModule {
           closeOrderId: closeResult.data?.orderId,
         });
       } else {
-        throw new Error(
-          closeResult.error || "Failed to execute stop-loss order"
-        );
+        throw new Error(closeResult.error || "Failed to execute stop-loss order");
       }
     } catch (error) {
       const safeError = toSafeError(error);
@@ -3121,12 +3310,8 @@ export class AutoSnipingModule {
       const closeResult = await this.executeOrderWithRetry(closeParams);
 
       if (closeResult.success) {
-        const entryValue = position.entryPrice * position.quantity;
-        const exitValue = (position.currentPrice || 0) * position.quantity;
-        const realizedPnL =
-          position.side === "BUY"
-            ? exitValue - entryValue
-            : entryValue - exitValue;
+        const exitPrice = position.currentPrice || position.entryPrice;
+        const realizedPnL = calculateRealizedPnL(position, exitPrice);
 
         position.status = "closed";
         position.closeTime = new Date();
@@ -3144,38 +3329,19 @@ export class AutoSnipingModule {
           // Persist take-profit sell execution history
           const saleUserId = await this.resolveUserIdForSnipe(
             position.userId || this.currentUserId || "system",
-            position.snipeTargetId as number
+            position.snipeTargetId as number,
           );
-          const closeExecutedAt = new Date();
-          const vcoinIdResolved2 = await this.getVcoinIdForTarget(position.snipeTargetId, position.symbol);
-          await saveExecutionHistory({
-            userId: saleUserId,
-            snipeTargetId: position.snipeTargetId,
-            vcoinId: vcoinIdResolved2,
-            symbolName: position.symbol,
-            orderType: (closeResult.data?.type || "MARKET").toString().toLowerCase(),
-            orderSide: "sell",
-            requestedQuantity: position.quantity,
-            requestedPrice: null,
-            executedQuantity: Number(
-              closeResult.data?.executedQty ?? closeResult.data?.quantity ?? position.quantity
-            ),
-            executedPrice: Number(
-              closeResult.data?.price ?? position.currentPrice ?? position.entryPrice
-            ),
-            totalCost: Number(
-              closeResult.data?.cummulativeQuoteQty ?? (position.currentPrice || position.entryPrice) * position.quantity
-            ),
-            fees: closeResult.data?.fees ? Number(closeResult.data.fees) : null,
-            exchangeOrderId: closeResult.data?.orderId ? String(closeResult.data.orderId) : null,
-            exchangeStatus: (closeResult.data?.status || "FILLED").toString(),
-            exchangeResponse: closeResult,
-            executionLatencyMs: (closeResult as any).executionTime || null,
-            slippagePercent: null,
-            status: "success",
-            requestedAt: new Date(),
-            executedAt: closeExecutedAt,
-          });
+          const vcoinIdResolved = await this.getVcoinIdForTarget(
+            position.snipeTargetId,
+            position.symbol,
+          );
+          await savePositionCloseHistory(
+            position,
+            closeResult,
+            saleUserId,
+            position.snipeTargetId,
+            vcoinIdResolved,
+          );
         }
 
         this.context.eventEmitter.emit("position_closed", position);
@@ -3186,9 +3352,7 @@ export class AutoSnipingModule {
           closeOrderId: closeResult.data?.orderId,
         });
       } else {
-        throw new Error(
-          closeResult.error || "Failed to execute take-profit order"
-        );
+        throw new Error(closeResult.error || "Failed to execute take-profit order");
       }
     } catch (error) {
       const safeError = toSafeError(error);
@@ -3269,7 +3433,7 @@ export class AutoSnipingModule {
   getStats() {
     const totalPnL = Array.from(this.activePositions.values()).reduce(
       (sum, pos) => sum + (pos.realizedPnL || 0),
-      0
+      0,
     );
 
     return {
@@ -3278,12 +3442,9 @@ export class AutoSnipingModule {
       successfulTrades: this.successfulSnipes,
       failedTrades: this.failedSnipes,
       successRate:
-        this.processedTargets > 0
-          ? (this.successfulSnipes / this.processedTargets) * 100
-          : 0,
+        this.processedTargets > 0 ? (this.successfulSnipes / this.processedTargets) * 100 : 0,
       totalPnL,
-      averagePnL:
-        this.processedTargets > 0 ? totalPnL / this.processedTargets : 0,
+      averagePnL: this.processedTargets > 0 ? totalPnL / this.processedTargets : 0,
       pendingStopLosses: this.pendingStopLosses.size,
       pendingTakeProfits: this.pendingTakeProfits.size,
       timestamp: Date.now(),
@@ -3313,9 +3474,7 @@ export class AutoSnipingModule {
     this.state.metrics.successfulSnipes = this.successfulSnipes;
     this.state.metrics.failedSnipes = this.failedSnipes;
     this.state.metrics.averageConfidence =
-      this.processedTargets > 0
-        ? (this.successfulSnipes / this.processedTargets) * 100
-        : 0;
+      this.processedTargets > 0 ? (this.successfulSnipes / this.processedTargets) * 100 : 0;
   }
 
   /**
@@ -3359,19 +3518,14 @@ export class AutoSnipingModule {
       }
     }
 
-    this.context.logger.warn(
-      `Emergency closed ${closedCount}/${positions.length} positions`
-    );
+    this.context.logger.warn(`Emergency closed ${closedCount}/${positions.length} positions`);
     return closedCount;
   }
 
   /**
    * Update position size
    */
-  async updatePositionSize(
-    positionId: string,
-    newSize: number
-  ): Promise<ServiceResponse<void>> {
+  async updatePositionSize(positionId: string, newSize: number): Promise<ServiceResponse<void>> {
     try {
       const position = this.activePositions.get(positionId);
       if (!position) {
@@ -3386,9 +3540,7 @@ export class AutoSnipingModule {
       position.quantity = newSize;
       this.activePositions.set(positionId, position);
 
-      this.context.logger.info(
-        `Updated position ${positionId} size to ${newSize}`
-      );
+      this.context.logger.info(`Updated position ${positionId} size to ${newSize}`);
       return {
         success: true,
         timestamp: new Date().toISOString(),
@@ -3408,7 +3560,7 @@ export class AutoSnipingModule {
    */
   async closePosition(
     positionId: string,
-    reason: string = "manual"
+    reason: string = "manual",
   ): Promise<ServiceResponse<void>> {
     try {
       const position = this.activePositions.get(positionId);
@@ -3440,9 +3592,7 @@ export class AutoSnipingModule {
         const entryValue = position.entryPrice * position.quantity;
         const exitValue = currentPrice * position.quantity;
         const realizedPnL =
-          position.side === "BUY"
-            ? exitValue - entryValue
-            : entryValue - exitValue;
+          position.side === "BUY" ? exitValue - entryValue : entryValue - exitValue;
 
         // Update position
         position.status = "closed";
@@ -3502,7 +3652,7 @@ export class AutoSnipingModule {
    * Close all active positions
    */
   async closeAllPositions(
-    reason: string = "shutdown"
+    reason: string = "shutdown",
   ): Promise<ServiceResponse<{ closed: number; failed: number }>> {
     const positions = Array.from(this.activePositions.keys());
     let closed = 0;
@@ -3519,10 +3669,7 @@ export class AutoSnipingModule {
       } catch (error) {
         failed++;
         const safeError = toSafeError(error);
-        this.context.logger.error(
-          `Failed to close position ${positionId}`,
-          safeError
-        );
+        this.context.logger.error(`Failed to close position ${positionId}`, safeError);
       }
     }
 
@@ -3551,9 +3698,93 @@ export class AutoSnipingModule {
    * Get positions by symbol
    */
   getPositionsBySymbol(symbol: string): Position[] {
-    return Array.from(this.activePositions.values()).filter(
-      (pos) => pos.symbol === symbol
-    );
+    return Array.from(this.activePositions.values()).filter((pos) => pos.symbol === symbol);
+  }
+
+  /**
+   * Update position price level (stop-loss or take-profit)
+   */
+  private async updatePositionPriceLevel(
+    positionId: string,
+    newPercent: number,
+    isStopLoss: boolean,
+  ): Promise<ServiceResponse<void>> {
+    try {
+      const position = this.activePositions.get(positionId);
+      if (!position) {
+        return {
+          success: false,
+          error: `Position ${positionId} not found`,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // Clear existing monitoring
+      const timerMap = isStopLoss ? this.pendingStopLosses : this.pendingTakeProfits;
+      const existingTimer = timerMap.get(positionId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        timerMap.delete(positionId);
+      }
+
+      // Update price level
+      if (isStopLoss) {
+        position.stopLossPercent = newPercent;
+      } else {
+        position.takeProfitPercent = newPercent;
+      }
+
+      if (newPercent > 0) {
+        const multiplier = isStopLoss
+          ? position.side === "BUY"
+            ? 1 - newPercent / 100
+            : 1 + newPercent / 100
+          : position.side === "BUY"
+            ? 1 + newPercent / 100
+            : 1 - newPercent / 100;
+
+        const priceLevel = position.entryPrice * multiplier;
+        if (isStopLoss) {
+          position.stopLossPrice = priceLevel;
+        } else {
+          position.takeProfitPrice = priceLevel;
+        }
+
+        // Setup new monitoring
+        if (isStopLoss) {
+          this.setupStopLossMonitoring(position);
+        } else {
+          this.setupTakeProfitMonitoring(position);
+        }
+      } else {
+        if (isStopLoss) {
+          position.stopLossPrice = undefined;
+        } else {
+          position.takeProfitPrice = undefined;
+        }
+      }
+
+      const levelType = isStopLoss ? "stop-loss" : "take-profit";
+      this.context.logger.info(`Position ${levelType} updated`, {
+        positionId,
+        [`new${isStopLoss ? "StopLoss" : "TakeProfit"}Percent`]: newPercent,
+        [`new${isStopLoss ? "StopLoss" : "TakeProfit"}Price`]: isStopLoss
+          ? position.stopLossPrice
+          : position.takeProfitPrice,
+      });
+
+      return {
+        success: true,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      const safeError = toSafeError(error);
+      return {
+        success: false,
+        error: safeError.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   /**
@@ -3561,60 +3792,9 @@ export class AutoSnipingModule {
    */
   async updatePositionStopLoss(
     positionId: string,
-    newStopLossPercent: number
+    newStopLossPercent: number,
   ): Promise<ServiceResponse<void>> {
-    try {
-      const position = this.activePositions.get(positionId);
-      if (!position) {
-        return {
-          success: false,
-          error: `Position ${positionId} not found`,
-          timestamp: new Date().toISOString(),
-        };
-      }
-
-      // Clear existing stop-loss monitoring
-      const stopLossTimer = this.pendingStopLosses.get(positionId);
-      if (stopLossTimer) {
-        clearTimeout(stopLossTimer);
-        this.pendingStopLosses.delete(positionId);
-      }
-
-      // Update stop-loss price
-      position.stopLossPercent = newStopLossPercent;
-      if (newStopLossPercent > 0) {
-        if (position.side === "BUY") {
-          position.stopLossPrice =
-            position.entryPrice * (1 - newStopLossPercent / 100);
-        } else {
-          position.stopLossPrice =
-            position.entryPrice * (1 + newStopLossPercent / 100);
-        }
-
-        // Setup new monitoring
-        this.setupStopLossMonitoring(position);
-      } else {
-        position.stopLossPrice = undefined;
-      }
-
-      this.context.logger.info("Position stop-loss updated", {
-        positionId,
-        newStopLossPercent,
-        newStopLossPrice: position.stopLossPrice,
-      });
-
-      return {
-        success: true,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      const safeError = toSafeError(error);
-      return {
-        success: false,
-        error: safeError.message,
-        timestamp: new Date().toISOString(),
-      };
-    }
+    return this.updatePositionPriceLevel(positionId, newStopLossPercent, true);
   }
 
   /**
@@ -3622,136 +3802,250 @@ export class AutoSnipingModule {
    */
   async updatePositionTakeProfit(
     positionId: string,
-    newTakeProfitPercent: number
+    newTakeProfitPercent: number,
   ): Promise<ServiceResponse<void>> {
-    try {
-      const position = this.activePositions.get(positionId);
-      if (!position) {
-        return {
-          success: false,
-          error: `Position ${positionId} not found`,
-          timestamp: new Date().toISOString(),
-        };
-      }
-
-      // Clear existing take-profit monitoring
-      const takeProfitTimer = this.pendingTakeProfits.get(positionId);
-      if (takeProfitTimer) {
-        clearTimeout(takeProfitTimer);
-        this.pendingTakeProfits.delete(positionId);
-      }
-
-      // Update take-profit price
-      position.takeProfitPercent = newTakeProfitPercent;
-      if (newTakeProfitPercent > 0) {
-        if (position.side === "BUY") {
-          position.takeProfitPrice =
-            position.entryPrice * (1 + newTakeProfitPercent / 100);
-        } else {
-          position.takeProfitPrice =
-            position.entryPrice * (1 - newTakeProfitPercent / 100);
-        }
-
-        // Setup new monitoring
-        this.setupTakeProfitMonitoring(position);
-      } else {
-        position.takeProfitPrice = undefined;
-      }
-
-      this.context.logger.info("Position take-profit updated", {
-        positionId,
-        newTakeProfitPercent,
-        newTakeProfitPrice: position.takeProfitPrice,
-      });
-
-      return {
-        success: true,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      const safeError = toSafeError(error);
-      return {
-        success: false,
-        error: safeError.message,
-        timestamp: new Date().toISOString(),
-      };
-    }
+    return this.updatePositionPriceLevel(positionId, newTakeProfitPercent, false);
   }
 
   private async rehydrateOpenPositions(): Promise<void> {
-    try {
-      const rows = await db
-        .select({
-          id: snipeTargets.id,
-          symbolName: snipeTargets.symbolName,
-          entryStrategy: snipeTargets.entryStrategy,
-          executionPrice: snipeTargets.executionPrice,
-          actualPositionSize: snipeTargets.actualPositionSize,
-          stopLossPercent: snipeTargets.stopLossPercent,
-          takeProfitCustom: snipeTargets.takeProfitCustom,
-          confidenceScore: snipeTargets.confidenceScore,
-          createdAt: snipeTargets.createdAt,
-        })
-        .from(snipeTargets)
-        .where(
-          and(
-            eq(snipeTargets.status, "completed"),
-            eq(snipeTargets.executionStatus, "success"),
-            gt(snipeTargets.actualPositionSize, 0)
-          )
-        );
+    const rows = await db
+      .select({
+        id: snipeTargets.id,
+        symbolName: snipeTargets.symbolName,
+        entryStrategy: snipeTargets.entryStrategy,
+        executionPrice: snipeTargets.executionPrice,
+        actualPositionSize: snipeTargets.actualPositionSize,
+        stopLossPercent: snipeTargets.stopLossPercent,
+        takeProfitCustom: snipeTargets.takeProfitCustom,
+        confidenceScore: snipeTargets.confidenceScore,
+        createdAt: snipeTargets.createdAt,
+      })
+      .from(snipeTargets)
+      .where(
+        and(
+          eq(snipeTargets.status, "completed"),
+          eq(snipeTargets.executionStatus, "success"),
+          gt(snipeTargets.actualPositionSize, 0),
+        ),
+      );
 
-      if (!rows.length) {
-        return;
-      }
-
-      this.context.logger.info("Rehydrating open positions", {
-        count: rows.length,
-      });
-
-      for (const row of rows) {
-        if (!row.executionPrice || !row.actualPositionSize) {
-          continue;
-        }
-
-        const position: Position = {
-          id: `${row.symbolName}-${row.id}-rehydrated-${Date.now()}`,
-          symbol: row.symbolName,
-          side: "BUY",
-          orderId: `rehydrated-${row.id}`,
-          entryPrice: row.executionPrice,
-          quantity: row.actualPositionSize,
-          currentPrice: row.executionPrice,
-          stopLossPercent: row.stopLossPercent || undefined,
-          takeProfitPercent: row.takeProfitCustom || undefined,
-          timestamp: row.createdAt?.toISOString?.() ?? new Date().toISOString(),
-          status: "open",
-          openTime: row.createdAt ?? new Date(),
-          strategy: row.entryStrategy || "normal",
-          confidenceScore: row.confidenceScore ?? undefined,
-          tags: ["rehydrated"],
-          snipeTargetId: row.id,
-          userId: row.userId,
-        };
-
-        if (row.stopLossPercent && row.stopLossPercent > 0) {
-          position.stopLossPrice = row.executionPrice * (1 - row.stopLossPercent / 100);
-        }
-        if (row.takeProfitCustom && row.takeProfitCustom > 0) {
-          position.takeProfitPrice = row.executionPrice * (1 + row.takeProfitCustom / 100);
-        }
-
-        this.activePositions.set(position.id, position);
-        this.positionByTargetId.set(row.id, position.id);
-        if (position.stopLossPrice) {
-          this.setupStopLossMonitoring(position);
-        }
-        if (position.takeProfitPrice) {
-          this.setupTakeProfitMonitoring(position);
-        }
-      }
-    } catch (error) {
-      throw error;
+    if (!rows.length) {
+      return;
     }
+
+    this.context.logger.info("Rehydrating open positions", {
+      count: rows.length,
+    });
+
+    for (const row of rows) {
+      if (!row.executionPrice || !row.actualPositionSize) {
+        continue;
+      }
+
+      const position: Position = {
+        id: `${row.symbolName}-${row.id}-rehydrated-${Date.now()}`,
+        symbol: row.symbolName,
+        side: "BUY",
+        orderId: `rehydrated-${row.id}`,
+        entryPrice: row.executionPrice,
+        quantity: row.actualPositionSize,
+        currentPrice: row.executionPrice,
+        stopLossPercent: row.stopLossPercent || undefined,
+        takeProfitPercent: row.takeProfitCustom || undefined,
+        timestamp: row.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        status: "open",
+        openTime: row.createdAt ?? new Date(),
+        strategy: row.entryStrategy || "normal",
+        confidenceScore: row.confidenceScore ?? undefined,
+        tags: ["rehydrated"],
+        snipeTargetId: row.id,
+        userId: row.userId,
+      };
+
+      if (row.stopLossPercent && row.stopLossPercent > 0) {
+        position.stopLossPrice = row.executionPrice * (1 - row.stopLossPercent / 100);
+      }
+      if (row.takeProfitCustom && row.takeProfitCustom > 0) {
+        position.takeProfitPrice = row.executionPrice * (1 + row.takeProfitCustom / 100);
+      }
+
+      this.activePositions.set(position.id, position);
+      this.positionByTargetId.set(row.id, position.id);
+      if (position.stopLossPrice) {
+        this.setupStopLossMonitoring(position);
+      }
+      if (position.takeProfitPrice) {
+        this.setupTakeProfitMonitoring(position);
+      }
+    }
+  }
+
+
+  /**
+   * Execute a market buy order using quote order quantity (splits into multiple orders if needed)
+   */
+  private async executeQuoteOrderQuantityBuy(
+    orderParams: TradeParameters,
+    mexcOrderData: any,
+    tradeRules: {
+      minNotional?: number;
+      maxQty?: number;
+      minQty?: number;
+      stepSize?: number;
+      tickSize?: number;
+    },
+  ): Promise<any | null> {
+    // Get current market price to calculate quantity
+    const currentPrice = await this.getCurrentMarketPrice(mexcOrderData.symbol);
+    if (!currentPrice) {
+      throw new Error(`Unable to get current price for ${orderParams.symbol}`);
+    }
+    let remainingQuote = orderParams.quoteOrderQty!;
+
+    // If exchange imposes minNotional, ensure we meet it
+    const minNotional = tradeRules.minNotional || 0;
+    const maxQtyPerOrder = tradeRules.maxQty || Infinity;
+    const minQtyPerOrder = tradeRules.minQty || 0;
+
+    let totalExecutedQty = 0;
+    let totalQuoteSpent = 0;
+    let lastOrderResult: any = null;
+
+    while (remainingQuote > 0) {
+      // Implicit per-order notional cap via maxQty → convert using currentPrice
+      const maxNotionalPerOrder = Number.isFinite(maxQtyPerOrder)
+        ? maxQtyPerOrder * currentPrice
+        : Infinity;
+      const perOrderQuoteCap = Math.min(maxNotionalPerOrder, remainingQuote);
+
+      // If remaining is below minNotional and minQty, break
+      if (
+        this.isInsufficientRemainingQuote(
+          perOrderQuoteCap,
+          minNotional,
+          minQtyPerOrder,
+          currentPrice,
+        )
+      ) {
+        break;
+      }
+
+      // Compute a compliant quantity for this order
+      const desiredQty = perOrderQuoteCap / currentPrice;
+      let qty = this.adjustQuantity(desiredQty, tradeRules);
+
+      // Ensure meets minimums
+      const minQtyFromNotional = minNotional > 0 ? minNotional / currentPrice : 0;
+      const requiredMinQty = Math.max(minQtyPerOrder, minQtyFromNotional);
+      if (qty < requiredMinQty) {
+        qty = this.adjustQuantity(requiredMinQty, tradeRules);
+      }
+
+      if (!qty || qty <= 0) break;
+
+      const chunkOrder = {
+        ...mexcOrderData,
+        quantity: this.formatQuantity(qty, tradeRules),
+      };
+      let placeRes = await this.context.mexcService.placeOrder(chunkOrder);
+
+      // Retry once as MARKET if we somehow hit price-limit on LIMIT (defensive)
+      if (!placeRes.success && chunkOrder.type === "LIMIT" && this.isPriceLimitError(placeRes.error)) {
+        const marketOrderData = { ...chunkOrder };
+        delete (marketOrderData as any).price;
+        marketOrderData.type = "MARKET";
+        placeRes = await this.context.mexcService.placeOrder(marketOrderData);
+      }
+
+      if (!placeRes.success) {
+        // Stop on first failure to avoid partial loops without visibility
+        lastOrderResult = placeRes;
+        break;
+      }
+
+      lastOrderResult = placeRes;
+      const executedQty = Number(
+        placeRes.data?.executedQty ?? placeRes.data?.quantity ?? qty,
+      );
+      const spentQuote = Number(
+        placeRes.data?.cummulativeQuoteQty ?? executedQty * currentPrice,
+      );
+      totalExecutedQty += executedQty;
+      totalQuoteSpent += spentQuote;
+      remainingQuote = Math.max(0, remainingQuote - spentQuote);
+
+      // If the remaining budget is too small to form a valid order, stop
+      if (
+        this.isInsufficientRemainingQuote(remainingQuote, minNotional, minQtyPerOrder, currentPrice)
+      ) {
+        break;
+      }
+      // If exchange reports zero fill and zero cost, avoid infinite loop
+      if (this.hasZeroFill(executedQty, spentQuote)) break;
+    }
+
+    // Synthesize a single result representing the aggregate
+    if (lastOrderResult) {
+      // Mutate the last result to carry aggregate totals
+      if (!lastOrderResult.data) lastOrderResult.data = {};
+      lastOrderResult.data.executedQty = totalExecutedQty.toString?.() ?? totalExecutedQty;
+      lastOrderResult.data.cummulativeQuoteQty = totalQuoteSpent.toString?.() ?? totalQuoteSpent;
+      return lastOrderResult;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if an error message indicates a non-retryable error
+   */
+  private isNonRetryableError(errorMessage: string): boolean {
+    const nonRetryablePatterns = [
+      "insufficient balance",
+      "invalid symbol",
+      "trading disabled",
+      "MARKET_LOT_SIZE",
+      "MIN_NOTIONAL",
+      "Order price cannot exceed",
+      "exceeds maximum allowed price",
+      "below minimum allowed price",
+      "price limit",
+      "30010", // MEXC price limit error code
+    ];
+    return nonRetryablePatterns.some((pattern) => errorMessage.includes(pattern));
+  }
+
+  /**
+   * Check if a price limit error occurred
+   */
+  private isPriceLimitError(error: string | undefined): boolean {
+    if (!error) return false;
+    return (
+      error.includes("Order price cannot exceed") ||
+      error.includes("30010") ||
+      error.includes("price limit")
+    );
+  }
+
+  /**
+   * Check if remaining quote is insufficient for a valid order
+   */
+  private isInsufficientRemainingQuote(
+    remainingQuote: number,
+    minNotional: number,
+    minQtyPerOrder: number,
+    currentPrice: number,
+  ): boolean {
+    if (remainingQuote <= 0.0000001) return true;
+    if (minNotional > 0 && remainingQuote < minNotional) return true;
+    if (minQtyPerOrder > 0 && minQtyPerOrder * currentPrice > remainingQuote) return true;
+    return false;
+  }
+
+  /**
+   * Check if order execution resulted in zero fill
+   */
+  private hasZeroFill(executedQty: number, spentQuote: number): boolean {
+    return (!executedQty || executedQty <= 0) && (!spentQuote || spentQuote <= 0);
   }
 }

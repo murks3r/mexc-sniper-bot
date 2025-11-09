@@ -158,11 +158,7 @@ export interface AgentPerformanceMessage {
 
 export interface AgentWorkflowMessage {
   workflowId: string;
-  workflowType:
-    | "calendar_discovery"
-    | "symbol_analysis"
-    | "pattern_analysis"
-    | "trading_strategy";
+  workflowType: "calendar_discovery" | "symbol_analysis" | "pattern_analysis" | "trading_strategy";
   status: "started" | "running" | "completed" | "failed" | "cancelled";
   progress: number; // 0-100
   agentsInvolved: string[];
@@ -180,13 +176,7 @@ export interface AgentWorkflowMessage {
 export interface AgentErrorMessage {
   agentId: string;
   error: {
-    type:
-      | "api_error"
-      | "timeout"
-      | "rate_limit"
-      | "network"
-      | "validation"
-      | "unknown";
+    type: "api_error" | "timeout" | "rate_limit" | "network" | "validation" | "unknown";
     message: string;
     stack?: string;
     timestamp: number;
@@ -226,12 +216,7 @@ export interface TradingSignalMessage {
   type: "buy" | "sell" | "hold" | "monitor";
   strength: number; // 0-100
   confidence: number; // 0-100
-  source:
-    | "pattern_discovery"
-    | "symbol_analysis"
-    | "strategy_agent"
-    | "manual"
-    | "price_movement";
+  source: "pattern_discovery" | "symbol_analysis" | "strategy_agent" | "manual" | "price_movement";
   reasoning: string;
   targetPrice?: number;
   stopLoss?: number;
@@ -541,9 +526,7 @@ export interface WebSocketServerConfig {
   path?: string;
   authentication: {
     required: boolean;
-    tokenValidation: (
-      token: string
-    ) => Promise<{ valid: boolean; userId?: string }>;
+    tokenValidation: (token: string) => Promise<{ valid: boolean; userId?: string }>;
   };
   rateLimiting: {
     enabled: boolean;
@@ -588,9 +571,7 @@ export interface WebSocketClientConfig {
 // Utility Types
 // ======================
 
-export type MessageHandler<T = any> = (
-  message: WebSocketMessage<T>
-) => void | Promise<void>;
+export type MessageHandler<T = any> = (message: WebSocketMessage<T>) => void | Promise<void>;
 
 export type ChannelFilter = (data: any) => boolean;
 

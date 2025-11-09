@@ -8,7 +8,7 @@ export async function POST() {
       {
         id: 1,
         userId: "demo-user",
-        vcoinId: "9cce3b0fa9764bc1b2b9d4d80ff913fc", 
+        vcoinId: "9cce3b0fa9764bc1b2b9d4d80ff913fc",
         symbolName: "GXAI",
         entryStrategy: "market",
         positionSizeUsdt: 100.0,
@@ -26,7 +26,7 @@ export async function POST() {
         userId: "demo-user",
         vcoinId: "6eaaadc5b7b34416810eefc0fa6cbbf3",
         symbolName: "DREYAI",
-        entryStrategy: "market", 
+        entryStrategy: "market",
         positionSizeUsdt: 100.0,
         takeProfitLevel: 2,
         stopLossPercent: 5.0,
@@ -36,27 +36,29 @@ export async function POST() {
         riskLevel: "low",
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
+      },
     ];
 
     // For demonstration, we'll just simulate that targets were created
     // In a real system, these would be in the database
-    
+
     return NextResponse.json({
       success: true,
       message: "Mock snipe targets created for demonstration",
       data: {
         targetsCreated: mockTargets.length,
         targets: mockTargets,
-        note: "These are simulated targets for demo purposes. In production, they would be stored in database."
-      }
+        note: "These are simulated targets for demo purposes. In production, they would be stored in database.",
+      },
     });
-
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: "Failed to create test targets",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to create test targets",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
   }
 }

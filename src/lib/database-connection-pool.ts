@@ -23,7 +23,6 @@ interface CacheEntry<T> {
 }
 
 export class DatabaseConnectionPool {
-  private config: ConnectionPoolConfig;
   private cache: Map<string, CacheEntry<any>> = new Map();
   private connections: any[] = [];
   private activeConnections: number = 0;
@@ -55,55 +54,49 @@ export class DatabaseConnectionPool {
   async executeSelect<T>(
     queryFn: () => Promise<T>,
     cacheKey: string,
-    cacheTTL: number = 60000
+    cacheTTL: number = 60000,
   ): Promise<T> {
     const tracer = trace.getTracer("database-connection-pool");
 
-    return tracer.startActiveSpan(
-      `db_pool_select_${cacheKey}`,
-      async (span) => {
-        try {
-          // Check cache first
-          const cached = this.getCachedResult<T>(cacheKey);
-          if (cached) {
-            span.setAttributes({
-              "db.cache_hit": true,
-              "db.cache_key": cacheKey,
-            });
-            return cached;
-          }
-
-          // Execute query
+    return tracer.startActiveSpan(`db_pool_select_${cacheKey}`, async (span) => {
+      try {
+        // Check cache first
+        const cached = this.getCachedResult<T>(cacheKey);
+        if (cached) {
           span.setAttributes({
-            "db.cache_hit": false,
+            "db.cache_hit": true,
             "db.cache_key": cacheKey,
           });
-
-          const result = await queryFn();
-
-          // Cache the result
-          this.setCachedResult(cacheKey, result, cacheTTL);
-
-          return result;
-        } catch (error) {
-          span.setAttributes({
-            "db.error": error instanceof Error ? error.message : String(error),
-          });
-          throw error;
-        } finally {
-          span.end();
+          return cached;
         }
+
+        // Execute query
+        span.setAttributes({
+          "db.cache_hit": false,
+          "db.cache_key": cacheKey,
+        });
+
+        const result = await queryFn();
+
+        // Cache the result
+        this.setCachedResult(cacheKey, result, cacheTTL);
+
+        return result;
+      } catch (error) {
+        span.setAttributes({
+          "db.error": error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      } finally {
+        span.end();
       }
-    );
+    });
   }
 
   /**
    * Execute a write operation with cache invalidation
    */
-  async executeWrite<T>(
-    queryFn: () => Promise<T>,
-    invalidatePatterns: string[] = []
-  ): Promise<T> {
+  async executeWrite<T>(queryFn: () => Promise<T>, invalidatePatterns: string[] = []): Promise<T> {
     const tracer = trace.getTracer("database-connection-pool");
 
     return tracer.startActiveSpan("db_pool_write", async (span) => {
@@ -140,7 +133,7 @@ export class DatabaseConnectionPool {
    */
   async executeBatch<T>(
     operations: (() => Promise<T>)[],
-    invalidatePatterns: string[] = []
+    invalidatePatterns: string[] = [],
   ): Promise<T[]> {
     const tracer = trace.getTracer("database-connection-pool");
 
@@ -244,7 +237,7 @@ export class DatabaseConnectionPool {
           // Log error but don't fail the shutdown
           console.warn("Error closing database connection:", error);
         }
-      })
+      }),
     );
 
     this.connections = [];

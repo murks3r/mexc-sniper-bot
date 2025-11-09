@@ -65,7 +65,7 @@ export class ExecuteTradeUseCase {
       warn: (message: string, context?: any) => void;
       error: (message: string, context?: any) => void;
       debug: (message: string, context?: any) => void;
-    }
+    },
   ) {}
 
   async execute(input: ExecuteTradeInput): Promise<ExecuteTradeOutput> {
@@ -89,8 +89,7 @@ export class ExecuteTradeUseCase {
       const tradeWithOrder = trade.addOrder(order);
 
       // Execute trade through trading service
-      const executionResult =
-        await this.executeThroughTradingService(validatedInput);
+      const executionResult = await this.executeThroughTradingService(validatedInput);
 
       // Update order with execution results
       const updatedOrder = this.updateOrderWithResults(order, executionResult);
@@ -99,7 +98,7 @@ export class ExecuteTradeUseCase {
       const updatedTrade = await this.updateTradeWithResults(
         tradeWithOrder,
         updatedOrder,
-        executionResult
+        executionResult,
       );
 
       // Save updated trade
@@ -111,7 +110,7 @@ export class ExecuteTradeUseCase {
       } else {
         await this.notificationService.notifyTradeFailure(
           finalTrade,
-          executionResult.error || "Unknown error"
+          executionResult.error || "Unknown error",
         );
       }
 
@@ -159,11 +158,7 @@ export class ExecuteTradeUseCase {
 
     if (!result.success) {
       const firstError = result.error.errors[0];
-      throw new DomainValidationError(
-        firstError.path.join("."),
-        input,
-        firstError.message
-      );
+      throw new DomainValidationError(firstError.path.join("."), input, firstError.message);
     }
 
     // Additional validation rules
@@ -171,23 +166,19 @@ export class ExecuteTradeUseCase {
       throw new DomainValidationError(
         "quantity",
         input,
-        "Either quantity or quoteOrderQty must be provided"
+        "Either quantity or quoteOrderQty must be provided",
       );
     }
 
     if (result.data.type === "LIMIT" && !result.data.price) {
-      throw new DomainValidationError(
-        "price",
-        input,
-        "Price is required for LIMIT orders"
-      );
+      throw new DomainValidationError("price", input, "Price is required for LIMIT orders");
     }
 
     if (result.data.type === "STOP_LIMIT" && !result.data.stopPrice) {
       throw new DomainValidationError(
         "stopPrice",
         input,
-        "Stop price is required for STOP_LIMIT orders"
+        "Stop price is required for STOP_LIMIT orders",
       );
     }
 
@@ -198,19 +189,13 @@ export class ExecuteTradeUseCase {
     const trade = await this.tradingRepository.findTradeById(tradeId);
 
     if (!trade) {
-      throw new InvalidTradeParametersError(
-        "tradeId",
-        `Trade not found: ${tradeId}`
-      );
+      throw new InvalidTradeParametersError("tradeId", `Trade not found: ${tradeId}`);
     }
 
     return trade;
   }
 
-  private async validateTradeExecution(
-    trade: Trade,
-    input: ExecuteTradeInput
-  ): Promise<void> {
+  private async validateTradeExecution(trade: Trade, input: ExecuteTradeInput): Promise<void> {
     // Check trade status
     if (trade.isFinalized()) {
       throw new InvalidOrderStateError(trade.status, "execute trade");
@@ -220,7 +205,7 @@ export class ExecuteTradeUseCase {
     if (trade.symbol !== input.symbol.toUpperCase()) {
       throw new BusinessRuleViolationError(
         `Symbol mismatch: trade symbol ${trade.symbol} vs input symbol ${input.symbol}`,
-        `Trade: ${trade.id}`
+        `Trade: ${trade.id}`,
       );
     }
 
@@ -229,7 +214,7 @@ export class ExecuteTradeUseCase {
     if (!canTrade) {
       throw new BusinessRuleViolationError(
         `Trading not allowed for symbol ${input.symbol}`,
-        `Trade: ${trade.id}`
+        `Trade: ${trade.id}`,
       );
     }
 
@@ -237,7 +222,7 @@ export class ExecuteTradeUseCase {
     if (trade.paperTrade !== input.paperTrade) {
       throw new BusinessRuleViolationError(
         `Paper trading mode mismatch: trade=${trade.paperTrade}, input=${input.paperTrade}`,
-        `Trade: ${trade.id}`
+        `Trade: ${trade.id}`,
       );
     }
   }
@@ -312,28 +297,26 @@ export class ExecuteTradeUseCase {
           parseFloat(data.executedQty),
           parseFloat(data.price),
           undefined, // cumulativeQuoteQty
-          undefined // fees
+          undefined, // fees
         );
       } else if (data.status === "PARTIALLY_FILLED") {
         return order.markAsPartiallyFilled(
           parseFloat(data.executedQty),
           parseFloat(data.price),
-          undefined // fees
+          undefined, // fees
         );
       } else {
         return order.markAsSubmitted(data.orderId);
       }
     } else {
-      return order.markAsRejected(
-        executionResult.error || "Unknown execution error"
-      );
+      return order.markAsRejected(executionResult.error || "Unknown execution error");
     }
   }
 
   private async updateTradeWithResults(
     trade: Trade,
     order: Order,
-    executionResult: any
+    executionResult: any,
   ): Promise<Trade> {
     // Update trade with order
     let updatedTrade = trade.updateOrder(order.id, order);
@@ -348,18 +331,13 @@ export class ExecuteTradeUseCase {
         }
 
         // Calculate trade completion details
-        const entryPrice = Price.create(
-          parseFloat(data.price),
-          trade.symbol,
-          "mexc",
-          8
-        );
+        const entryPrice = Price.create(parseFloat(data.price), trade.symbol, "mexc", 8);
 
         const quantity = parseFloat(data.executedQty);
         const totalCost = Money.create(
           quantity * parseFloat(data.price),
           "USDT", // Assuming USDT pairs
-          8
+          8,
         );
 
         // Complete the trade
@@ -368,31 +346,15 @@ export class ExecuteTradeUseCase {
           undefined, // exitPrice - will be set when position is closed
           quantity,
           totalCost,
-          undefined // totalRevenue - will be set when position is closed
+          undefined, // totalRevenue - will be set when position is closed
         );
       }
     } else {
       // Mark trade as failed
-      updatedTrade = updatedTrade.markAsFailed(
-        executionResult.error || "Trade execution failed"
-      );
+      updatedTrade = updatedTrade.markAsFailed(executionResult.error || "Trade execution failed");
     }
 
     return updatedTrade;
-  }
-
-  private extractBaseCurrency(symbol: string): string {
-    // Extract base currency from symbol (e.g., "BTCUSDT" -> "BTC")
-    if (symbol.endsWith("USDT")) {
-      return symbol.replace("USDT", "");
-    }
-    if (symbol.endsWith("BTC")) {
-      return symbol.replace("BTC", "");
-    }
-    if (symbol.endsWith("ETH")) {
-      return symbol.replace("ETH", "");
-    }
-    return symbol; // Fallback
   }
 
   // Helper method to validate trade execution prerequisites

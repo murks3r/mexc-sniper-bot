@@ -7,10 +7,7 @@
  * OPTIMIZATION: Replaces duplicate validation logic across multiple modules
  */
 
-import type {
-  CalendarEntry,
-  SymbolEntry,
-} from "../../../services/api/mexc-unified-exports";
+import type { CalendarEntry, SymbolEntry } from "../../../services/api/mexc-unified-exports";
 import type { PatternAnalysisRequest, PatternMatch } from "../interfaces";
 
 export interface ValidationResult {
@@ -70,9 +67,7 @@ export function validateSymbolEntry(symbol: SymbolEntry): ValidationResult {
   // Optional field validation - batch check for performance
   if (
     symbol.cd &&
-    (symbol.cd.length < 3 ||
-      symbol.cd.length > 20 ||
-      !/^[A-Z0-9]+$/.test(symbol.cd))
+    (symbol.cd.length < 3 || symbol.cd.length > 20 || !/^[A-Z0-9]+$/.test(symbol.cd))
   ) {
     warnings.push("Symbol code format may be invalid");
   }
@@ -197,9 +192,7 @@ export function validatePatternMatch(match: PatternMatch): ValidationResult {
  *
  * OPTIMIZATION: Streamlined validation for API requests
  */
-export function validateAnalysisRequest(
-  request: PatternAnalysisRequest
-): ValidationResult {
+export function validateAnalysisRequest(request: PatternAnalysisRequest): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 

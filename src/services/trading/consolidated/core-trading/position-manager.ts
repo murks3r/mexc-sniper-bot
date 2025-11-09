@@ -97,8 +97,7 @@ export class PositionManager {
         if (!currentPrice) return;
 
         const shouldTrigger =
-          (position.side === "BUY" &&
-            currentPrice <= position.stopLossPrice!) ||
+          (position.side === "BUY" && currentPrice <= position.stopLossPrice!) ||
           (position.side === "SELL" && currentPrice >= position.stopLossPrice!);
 
         if (shouldTrigger) {
@@ -130,10 +129,8 @@ export class PositionManager {
         if (!currentPrice) return;
 
         const shouldTrigger =
-          (position.side === "BUY" &&
-            currentPrice >= position.takeProfitPrice!) ||
-          (position.side === "SELL" &&
-            currentPrice <= position.takeProfitPrice!);
+          (position.side === "BUY" && currentPrice >= position.takeProfitPrice!) ||
+          (position.side === "SELL" && currentPrice <= position.takeProfitPrice!);
 
         if (shouldTrigger) {
           clearInterval(checkInterval);
@@ -172,10 +169,7 @@ export class PositionManager {
   /**
    * Execute stop loss for position
    */
-  private async executeStopLoss(
-    position: Position,
-    currentPrice: number
-  ): Promise<void> {
+  private async executeStopLoss(position: Position, currentPrice: number): Promise<void> {
     this.context.logger.warn("Stop loss triggered", {
       positionId: position.id,
       symbol: position.symbol,
@@ -184,11 +178,7 @@ export class PositionManager {
     });
 
     try {
-      const closeResult = await this.closePosition(
-        position,
-        currentPrice,
-        "STOP_LOSS"
-      );
+      const closeResult = await this.closePosition(position, currentPrice, "STOP_LOSS");
       if (closeResult.success) {
         this.removePosition(position.id);
       }
@@ -204,10 +194,7 @@ export class PositionManager {
   /**
    * Execute take profit for position
    */
-  private async executeTakeProfit(
-    position: Position,
-    currentPrice: number
-  ): Promise<void> {
+  private async executeTakeProfit(position: Position, currentPrice: number): Promise<void> {
     this.context.logger.info("Take profit triggered", {
       positionId: position.id,
       symbol: position.symbol,
@@ -216,11 +203,7 @@ export class PositionManager {
     });
 
     try {
-      const closeResult = await this.closePosition(
-        position,
-        currentPrice,
-        "TAKE_PROFIT"
-      );
+      const closeResult = await this.closePosition(position, currentPrice, "TAKE_PROFIT");
       if (closeResult.success) {
         this.removePosition(position.id);
       }
@@ -249,11 +232,7 @@ export class PositionManager {
       // Get current price from MEXC API
       const priceResponse = await mexcService.getPrice(symbol);
 
-      if (
-        !priceResponse.success ||
-        !priceResponse.data ||
-        priceResponse.data.length === 0
-      ) {
+      if (!priceResponse.success || !priceResponse.data || priceResponse.data.length === 0) {
         this.context.logger.warn("Failed to get current price from MEXC API", {
           symbol,
           error: priceResponse.error,
@@ -299,7 +278,7 @@ export class PositionManager {
   private async closePosition(
     position: Position,
     currentPrice: number,
-    _reason: "STOP_LOSS" | "TAKE_PROFIT"
+    _reason: "STOP_LOSS" | "TAKE_PROFIT",
   ): Promise<TradeResult> {
     // This would integrate with the actual trading service
     // For now, return a mock successful result
@@ -325,7 +304,7 @@ export class PositionManager {
    */
   async updatePositionStopLoss(
     positionId: string,
-    newStopLossPercent: number
+    newStopLossPercent: number,
   ): Promise<{ success: boolean; error?: string; timestamp: string }> {
     try {
       const position = this.activePositions.get(positionId);
@@ -348,11 +327,9 @@ export class PositionManager {
       position.stopLossPercent = newStopLossPercent;
       if (newStopLossPercent > 0) {
         if (position.side === "BUY") {
-          position.stopLossPrice =
-            position.entryPrice * (1 - newStopLossPercent / 100);
+          position.stopLossPrice = position.entryPrice * (1 - newStopLossPercent / 100);
         } else {
-          position.stopLossPrice =
-            position.entryPrice * (1 + newStopLossPercent / 100);
+          position.stopLossPrice = position.entryPrice * (1 + newStopLossPercent / 100);
         }
 
         // Setup new monitoring
@@ -382,7 +359,7 @@ export class PositionManager {
    */
   async updatePositionTakeProfit(
     positionId: string,
-    newTakeProfitPercent: number
+    newTakeProfitPercent: number,
   ): Promise<{ success: boolean; error?: string; timestamp: string }> {
     try {
       const position = this.activePositions.get(positionId);
@@ -405,11 +382,9 @@ export class PositionManager {
       position.takeProfitPercent = newTakeProfitPercent;
       if (newTakeProfitPercent > 0) {
         if (position.side === "BUY") {
-          position.takeProfitPrice =
-            position.entryPrice * (1 + newTakeProfitPercent / 100);
+          position.takeProfitPrice = position.entryPrice * (1 + newTakeProfitPercent / 100);
         } else {
-          position.takeProfitPrice =
-            position.entryPrice * (1 - newTakeProfitPercent / 100);
+          position.takeProfitPrice = position.entryPrice * (1 - newTakeProfitPercent / 100);
         }
 
         // Setup new monitoring
@@ -454,19 +429,17 @@ export class PositionManager {
       status: string;
     }>;
   } {
-    const positions = Array.from(this.activePositions.values()).map(
-      (position) => ({
-        id: position.id,
-        symbol: position.symbol,
-        side: position.side,
-        quantity: position.quantity.toString(),
-        entryPrice: position.entryPrice,
-        currentPnL: position.unrealizedPnL,
-        stopLossPrice: position.stopLossPrice,
-        takeProfitPrice: position.takeProfitPrice,
-        status: position.status || "active",
-      })
-    );
+    const positions = Array.from(this.activePositions.values()).map((position) => ({
+      id: position.id,
+      symbol: position.symbol,
+      side: position.side,
+      quantity: position.quantity.toString(),
+      entryPrice: position.entryPrice,
+      currentPnL: position.unrealizedPnL,
+      stopLossPrice: position.stopLossPrice,
+      takeProfitPrice: position.takeProfitPrice,
+      status: position.status || "active",
+    }));
 
     return {
       totalPositions: this.activePositions.size,
@@ -503,7 +476,7 @@ export class PositionManager {
    * Close all active positions
    */
   async closeAllPositions(
-    _reason: string = "Emergency close"
+    _reason: string = "Emergency close",
   ): Promise<{ success: boolean; closedCount: number; errors?: string[] }> {
     const positions = Array.from(this.activePositions.values());
     let closedCount = 0;
@@ -518,7 +491,7 @@ export class PositionManager {
         }
       } catch (error) {
         errors.push(
-          `Failed to close position ${position.id}: ${error instanceof Error ? error.message : "Unknown error"}`
+          `Failed to close position ${position.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
       }
     }
@@ -535,7 +508,7 @@ export class PositionManager {
    */
   async closePositionPublic(
     positionId: string,
-    _reason: string = "Manual close"
+    _reason: string = "Manual close",
   ): Promise<{ success: boolean; error?: string; timestamp?: string }> {
     try {
       const position = this.activePositions.get(positionId);
@@ -569,10 +542,7 @@ export class PositionManager {
   /**
    * Setup position monitoring (wrapper for compatibility)
    */
-  async setupPositionMonitoring(
-    position: Position,
-    _result: any
-  ): Promise<void> {
+  async setupPositionMonitoring(position: Position, _result: any): Promise<void> {
     try {
       this.addPosition(position);
       this.context.logger.info("Position monitoring setup completed", {

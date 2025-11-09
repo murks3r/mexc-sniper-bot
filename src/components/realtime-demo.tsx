@@ -32,13 +32,7 @@ import {
 } from "@/src/hooks/use-supabase-realtime";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface RealtimeDemoProps {
   className?: string;
@@ -46,11 +40,7 @@ interface RealtimeDemoProps {
 
 export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
   const { user } = useAuth();
-  const [selectedSymbols, _setSelectedSymbols] = useState([
-    "BTCUSDT",
-    "ETHUSDT",
-    "BNBUSDT",
-  ]);
+  const [selectedSymbols, _setSelectedSymbols] = useState(["BTCUSDT", "ETHUSDT", "BNBUSDT"]);
 
   // Real-time data hooks
   const tradingData = useRealtimeTradingData();
@@ -188,32 +178,20 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
               {connection.connected ? "Connected" : "Disconnected"}
             </Badge>
           </div>
-          <CardDescription>
-            Live trading data subscription status
-          </CardDescription>
+          <CardDescription>Live trading data subscription status</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-500">
-                {connection.channels}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Active Channels
-              </div>
+              <div className="text-2xl font-bold text-green-500">{connection.channels}</div>
+              <div className="text-sm text-muted-foreground">Active Channels</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">
-                {connection.reconnectAttempts}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Reconnect Attempts
-              </div>
+              <div className="text-2xl font-bold">{connection.reconnectAttempts}</div>
+              <div className="text-sm text-muted-foreground">Reconnect Attempts</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">
-                {tradingData.unreadAlerts}
-              </div>
+              <div className="text-2xl font-bold">{tradingData.unreadAlerts}</div>
               <div className="text-sm text-muted-foreground">Unread Alerts</div>
             </div>
             <div className="text-center">
@@ -254,15 +232,12 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
             <DollarSign className="h-5 w-5 mr-2" />
             Real-time Prices
           </CardTitle>
-          <CardDescription>
-            Live price updates for {selectedSymbols.join(", ")}
-          </CardDescription>
+          <CardDescription>Live price updates for {selectedSymbols.join(", ")}</CardDescription>
         </CardHeader>
         <CardContent>
           {prices.prices.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
-              No price data available. Use the "Broadcast Price" button to
-              simulate price updates.
+              No price data available. Use the "Broadcast Price" button to simulate price updates.
             </div>
           ) : (
             <div className="space-y-3">
@@ -273,9 +248,7 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
                 >
                   <div className="flex items-center space-x-3">
                     <div className="font-medium">{price.symbol}</div>
-                    <div className="text-2xl font-bold">
-                      {formatPrice(price.price)}
-                    </div>
+                    <div className="text-2xl font-bold">{formatPrice(price.price)}</div>
                   </div>
                   <div className="text-right">
                     <div>{formatPercent(price.changePercent)}</div>
@@ -339,9 +312,7 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
         </CardHeader>
         <CardContent>
           {tradingData.snipeTargets.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">
-              No snipe targets available
-            </div>
+            <div className="text-center text-muted-foreground py-4">No snipe targets available</div>
           ) : (
             <div className="space-y-2">
               {tradingData.snipeTargets.slice(0, 5).map((target) => (
@@ -350,11 +321,7 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
                   className="flex items-center justify-between p-2 border rounded"
                 >
                   <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={
-                        target.status === "active" ? "default" : "secondary"
-                      }
-                    >
+                    <Badge variant={target.status === "active" ? "default" : "secondary"}>
                       {target.status}
                     </Badge>
                     <span className="font-medium">{target.symbol}</span>
@@ -384,9 +351,7 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
               </Badge>
             )}
           </CardTitle>
-          <CardDescription>
-            Real-time system notifications and alerts
-          </CardDescription>
+          <CardDescription>Real-time system notifications and alerts</CardDescription>
         </CardHeader>
         <CardContent>
           {tradingData.alerts.length === 0 ? (
@@ -396,16 +361,11 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
           ) : (
             <div className="space-y-3">
               {tradingData.alerts.slice(0, 5).map((alert) => (
-                <div
-                  key={alert.id}
-                  className="flex items-start space-x-3 p-3 border rounded-lg"
-                >
+                <div key={alert.id} className="flex items-start space-x-3 p-3 border rounded-lg">
                   {getAlertIcon(alert.type)}
                   <div className="flex-1">
                     <div className="font-medium">{alert.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {alert.message}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{alert.message}</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {new Date(alert.timestamp).toLocaleString()}
                     </div>
@@ -417,18 +377,10 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
 
           {tradingData.alerts.length > 0 && (
             <div className="flex space-x-2 mt-4">
-              <Button
-                onClick={tradingData.markAlertsAsRead}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={tradingData.markAlertsAsRead} variant="outline" size="sm">
                 Mark All Read
               </Button>
-              <Button
-                onClick={tradingData.clearAlerts}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={tradingData.clearAlerts} variant="outline" size="sm">
                 Clear All
               </Button>
             </div>
@@ -446,35 +398,22 @@ export function RealtimeDemo({ className = "" }: RealtimeDemoProps) {
         </CardHeader>
         <CardContent>
           {tradingData.transactions.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">
-              No recent transactions
-            </div>
+            <div className="text-center text-muted-foreground py-4">No recent transactions</div>
           ) : (
             <div className="space-y-2">
-              {tradingData.transactions
-                .slice(0, 3)
-                .map((transaction, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 border rounded"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        variant={
-                          transaction.eventType === "INSERT"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {transaction.eventType}
-                      </Badge>
-                      <span className="text-sm">Transaction Update</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(transaction.timestamp).toLocaleTimeString()}
-                    </div>
+              {tradingData.transactions.slice(0, 3).map((transaction, index) => (
+                <div key={index} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={transaction.eventType === "INSERT" ? "default" : "secondary"}>
+                      {transaction.eventType}
+                    </Badge>
+                    <span className="text-sm">Transaction Update</span>
                   </div>
-                ))}
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(transaction.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

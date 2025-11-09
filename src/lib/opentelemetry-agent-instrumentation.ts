@@ -26,11 +26,7 @@ class AgentInstrumentation {
     }
   }
 
-  traceAgentOperation(
-    agentId: string,
-    operation: string,
-    metadata?: any
-  ): void {
+  traceAgentOperation(agentId: string, operation: string, metadata?: any): void {
     if (!this.config.enabled || !this.config.traceAgentOperations) {
       return;
     }
@@ -63,16 +59,14 @@ class AgentInstrumentation {
 
 export const agentInstrumentation = new AgentInstrumentation();
 
-export function initializeAgentInstrumentation(
-  config?: Partial<AgentInstrumentationConfig>
-): void {
+export function initializeAgentInstrumentation(config?: Partial<AgentInstrumentationConfig>): void {
   agentInstrumentation.initialize(config);
 }
 
 export function instrumentAgentMethod(
   _target: any,
   propertyKey: string,
-  descriptor?: PropertyDescriptor
+  descriptor?: PropertyDescriptor,
 ): PropertyDescriptor | undefined {
   if (!agentInstrumentation.isEnabled()) {
     return descriptor;
@@ -86,11 +80,9 @@ export function instrumentAgentMethod(
   descriptor.value = function (...args: any[]) {
     try {
       const result = originalMethod.apply(this, args);
-      agentInstrumentation.traceAgentOperation(
-        this.id || "unknown",
-        propertyKey,
-        { args: args.length }
-      );
+      agentInstrumentation.traceAgentOperation(this.id || "unknown", propertyKey, {
+        args: args.length,
+      });
       return result;
     } catch (error) {
       console.error("Agent method error:", error);

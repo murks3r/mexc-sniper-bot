@@ -93,8 +93,7 @@ export class TradingStrategyManager {
 
   constructor(initialStrategy = "normal") {
     this.strategies = new Map(Object.entries(TRADING_STRATEGIES));
-    this.activeStrategy =
-      this.strategies.get(initialStrategy) || TRADING_STRATEGIES.normal;
+    this.activeStrategy = this.strategies.get(initialStrategy) || TRADING_STRATEGIES.normal;
   }
 
   // Get active strategy
@@ -121,7 +120,7 @@ export class TradingStrategyManager {
   getSellRecommendations(
     entryPrice: number,
     currentPrice: number,
-    totalAmount: number
+    totalAmount: number,
   ): Array<{
     level: PriceMultiplier;
     triggered: boolean;
@@ -148,17 +147,13 @@ export class TradingStrategyManager {
   calculateRemainingPosition(
     entryPrice: number,
     currentPrice: number,
-    totalAmount: number
+    totalAmount: number,
   ): {
     soldAmount: number;
     remainingAmount: number;
     realizedProfit: number;
   } {
-    const recommendations = this.getSellRecommendations(
-      entryPrice,
-      currentPrice,
-      totalAmount
-    );
+    const recommendations = this.getSellRecommendations(entryPrice, currentPrice, totalAmount);
 
     let soldAmount = 0;
     let realizedProfit = 0;
@@ -201,7 +196,7 @@ export class TradingStrategyManager {
   // Get sell recommendation for specific price
   getSellRecommendation(
     currentPrice: number,
-    entryPrice: number
+    entryPrice: number,
   ): {
     shouldSell: boolean;
     phases: Array<{
@@ -231,8 +226,7 @@ export class TradingStrategyManager {
     this.activeStrategy.levels.forEach((level, index) => {
       if (priceIncrease >= level.percentage) {
         // Calculate expected profit for 1 unit
-        const expectedProfit =
-          (currentPrice - entryPrice) * (level.sellPercentage / 100);
+        const expectedProfit = (currentPrice - entryPrice) * (level.sellPercentage / 100);
 
         triggeredPhases.push({
           phase: index + 1,
@@ -245,7 +239,7 @@ export class TradingStrategyManager {
 
     const totalExpectedProfit = triggeredPhases.reduce(
       (sum, phase) => sum + phase.expectedProfit,
-      0
+      0,
     );
 
     return {
@@ -270,12 +264,7 @@ export class TradingStrategyManager {
   importStrategy(strategy: TradingStrategy): boolean {
     try {
       // Validate strategy structure
-      if (
-        !strategy.id ||
-        !strategy.name ||
-        !strategy.levels ||
-        !Array.isArray(strategy.levels)
-      ) {
+      if (!strategy.id || !strategy.name || !strategy.levels || !Array.isArray(strategy.levels)) {
         return false;
       }
 

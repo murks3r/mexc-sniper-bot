@@ -31,9 +31,7 @@ const ApplicationConfigSchema = z.object({
   // Application metadata
   name: z.string().default("MEXC Sniper Bot"),
   version: z.string().default("1.0.0"),
-  environment: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  environment: z.enum(["development", "production", "test"]).default("development"),
 
   // Server configuration
   server: z.object({
@@ -297,9 +295,7 @@ const SecurityConfigSchema = z.object({
   cors: z.object({
     enabled: z.boolean().default(true),
     allowedOrigins: z.array(z.string()).default(["http://localhost:3000"]),
-    allowedMethods: z
-      .array(z.string())
-      .default(["GET", "POST", "PUT", "DELETE"]),
+    allowedMethods: z.array(z.string()).default(["GET", "POST", "PUT", "DELETE"]),
     allowCredentials: z.boolean().default(true),
   }),
 });
@@ -331,37 +327,18 @@ export type Configuration = z.infer<typeof ConfigurationSchema>;
 export class ConfigurationManager {
   private logger = {
     info: (message: string, context?: any) =>
-      console.info(
-        "[unified-configuration-management]",
-        message,
-        context || ""
-      ),
+      console.info("[unified-configuration-management]", message, context || ""),
     warn: (message: string, context?: any) =>
-      console.warn(
-        "[unified-configuration-management]",
-        message,
-        context || ""
-      ),
+      console.warn("[unified-configuration-management]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[unified-configuration-management]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[unified-configuration-management]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
-      console.debug(
-        "[unified-configuration-management]",
-        message,
-        context || ""
-      ),
+      console.debug("[unified-configuration-management]", message, context || ""),
   };
 
   private static instance: ConfigurationManager | null = null;
   private config: Configuration;
-  private listeners: Map<string, ((config: Configuration) => void)[]> =
-    new Map();
-  private watchMode = false;
+  private listeners: Map<string, ((config: Configuration) => void)[]> = new Map();
 
   private constructor() {
     this.config = this.loadConfiguration();
@@ -387,9 +364,7 @@ export class ConfigurationManager {
   /**
    * Get specific configuration section
    */
-  public getSection<K extends keyof Configuration>(
-    section: K
-  ): Configuration[K] {
+  public getSection<K extends keyof Configuration>(section: K): Configuration[K] {
     return this.config[section];
   }
 
@@ -425,10 +400,7 @@ export class ConfigurationManager {
   /**
    * Subscribe to configuration changes
    */
-  public subscribe(
-    key: string,
-    callback: (config: Configuration) => void
-  ): void {
+  public subscribe(key: string, callback: (config: Configuration) => void): void {
     if (!this.listeners.has(key)) {
       this.listeners.set(key, []);
     }
@@ -478,13 +450,9 @@ export class ConfigurationManager {
         monitoringEnabled: this.config.monitoring.metrics.enabled,
       },
       credentials: {
-        mexcConfigured: !!(
-          this.config.mexc.apiKey && this.config.mexc.secretKey
-        ),
+        mexcConfigured: !!(this.config.mexc.apiKey && this.config.mexc.secretKey),
         databaseConfigured: !!this.config.database.url,
-        cacheConfigured: !!(
-          this.config.cache.redis.url || this.config.cache.redis.host
-        ),
+        cacheConfigured: !!(this.config.cache.redis.url || this.config.cache.redis.host),
       },
     };
   }
@@ -499,9 +467,7 @@ export class ConfigurationManager {
         version: process.env.APP_VERSION || process.env.npm_package_version,
         environment: process.env.NODE_ENV,
         server: {
-          port: process.env.PORT
-            ? Number.parseInt(process.env.PORT, 10)
-            : undefined,
+          port: process.env.PORT ? Number.parseInt(process.env.PORT, 10) : undefined,
           host: process.env.HOST,
           cors: {
             enabled: process.env.CORS_ENABLED === "true",
@@ -523,8 +489,7 @@ export class ConfigurationManager {
           ? Number.parseInt(process.env.MEXC_TIMEOUT, 10)
           : undefined,
         enableCaching: process.env.MEXC_CACHE_ENABLED !== "false",
-        enableCircuitBreaker:
-          process.env.MEXC_CIRCUIT_BREAKER_ENABLED !== "false",
+        enableCircuitBreaker: process.env.MEXC_CIRCUIT_BREAKER_ENABLED !== "false",
       },
       trading: {
         autoSniping: {
@@ -547,7 +512,7 @@ export class ConfigurationManager {
         },
       },
       database: {
-        url: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL,
+        url: process.env.DATABASE_URL,
         queryTimeout: process.env.DB_QUERY_TIMEOUT
           ? Number.parseInt(process.env.DB_QUERY_TIMEOUT, 10)
           : undefined,
@@ -557,9 +522,7 @@ export class ConfigurationManager {
         redis: {
           url: process.env.REDIS_URL,
           host: process.env.REDIS_HOST,
-          port: process.env.REDIS_PORT
-            ? Number.parseInt(process.env.REDIS_PORT, 10)
-            : undefined,
+          port: process.env.REDIS_PORT ? Number.parseInt(process.env.REDIS_PORT, 10) : undefined,
           password: process.env.REDIS_PASSWORD,
         },
       },
@@ -594,8 +557,10 @@ export class ConfigurationManager {
       const details =
         issuesCount && Number.isFinite(issuesCount)
           ? `${issuesCount} validation issues`
-          : (error instanceof Error ? error.message : "Unknown validation error");
-      console.warn("Configuration invalid; using defaults (" + details + ")");
+          : error instanceof Error
+            ? error.message
+            : "Unknown validation error";
+      console.warn(`Configuration invalid; using defaults (${details})`);
       const defaults = ConfigurationSchema.parse({
         app: {},
         mexc: {},
@@ -661,9 +626,7 @@ export function getConfig(): Configuration {
 /**
  * Get a specific configuration section
  */
-export function getConfigSection<K extends keyof Configuration>(
-  section: K
-): Configuration[K] {
+export function getConfigSection<K extends keyof Configuration>(section: K): Configuration[K] {
   return ConfigurationManager.getInstance().getSection(section);
 }
 
@@ -677,10 +640,7 @@ export function getConfigValue<T>(path: string): T {
 /**
  * Subscribe to configuration changes
  */
-export function subscribeToConfig(
-  key: string,
-  callback: (config: Configuration) => void
-): void {
+export function subscribeToConfig(key: string, callback: (config: Configuration) => void): void {
   ConfigurationManager.getInstance().subscribe(key, callback);
 }
 
@@ -726,9 +686,7 @@ export function isTest(): boolean {
 /**
  * Check if a feature is enabled
  */
-export function isFeatureEnabled(
-  feature: keyof Configuration["trading"]["autoSniping"]
-): boolean {
+export function isFeatureEnabled(feature: keyof Configuration["trading"]["autoSniping"]): boolean {
   return getConfigValue<boolean>(`trading.autoSniping.${feature}`);
 }
 
@@ -791,10 +749,7 @@ export function validateTradingConfig(): { valid: boolean; issues: string[] } {
   const tradingConfig = getConfigSection("trading");
   const issues: string[] = [];
 
-  if (
-    tradingConfig.autoSniping.enabled &&
-    !tradingConfig.autoSniping.paperTradingMode
-  ) {
+  if (tradingConfig.autoSniping.enabled && !tradingConfig.autoSniping.paperTradingMode) {
     if (!hasMexcCredentials()) {
       issues.push("Live trading requires MEXC credentials");
     }
@@ -836,9 +791,7 @@ export function getConfigHealth(): {
   checks.push({
     name: "Configuration Schema",
     status: configValidation.valid ? "pass" : "fail",
-    message: configValidation.valid
-      ? "Valid"
-      : configValidation.errors.join(", "),
+    message: configValidation.valid ? "Valid" : configValidation.errors.join(", "),
   });
 
   // Validate MEXC config
@@ -854,9 +807,7 @@ export function getConfigHealth(): {
   checks.push({
     name: "Trading Configuration",
     status: tradingValidation.valid ? "pass" : "warn",
-    message: tradingValidation.valid
-      ? "Valid"
-      : tradingValidation.issues.join(", "),
+    message: tradingValidation.valid ? "Valid" : tradingValidation.issues.join(", "),
   });
 
   // Determine overall status

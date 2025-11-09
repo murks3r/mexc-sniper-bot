@@ -18,28 +18,23 @@ export async function GET(_request: NextRequest) {
     if (!exchangeInfoResponse.success) {
       console.warn(
         "[exchange-info-api] Failed to fetch exchange info:",
-        exchangeInfoResponse.error
+        exchangeInfoResponse.error,
       );
       return apiResponse(
-        createErrorResponse(
-          exchangeInfoResponse.error || "Failed to fetch exchange info",
-          {
-            fallbackData: { symbols: [] },
-            serviceLayer: true,
-          }
-        ),
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
+        createErrorResponse(exchangeInfoResponse.error || "Failed to fetch exchange info", {
+          fallbackData: { symbols: [] },
+          serviceLayer: true,
+        }),
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
       );
     }
 
     const symbolsCount = exchangeInfoResponse.data?.symbols?.length || 0;
     const usdtPairs =
-      exchangeInfoResponse.data?.symbols?.filter(
-        (s) => s.quoteAsset === "USDT"
-      ) || [];
+      exchangeInfoResponse.data?.symbols?.filter((s) => s.quoteAsset === "USDT") || [];
 
     console.info(
-      `[exchange-info-api] ✅ Successfully fetched exchange info: ${symbolsCount} total symbols, ${usdtPairs.length} USDT pairs`
+      `[exchange-info-api] ✅ Successfully fetched exchange info: ${symbolsCount} total symbols, ${usdtPairs.length} USDT pairs`,
     );
 
     return apiResponse(
@@ -47,24 +42,18 @@ export async function GET(_request: NextRequest) {
         totalSymbols: symbolsCount,
         usdtPairs: usdtPairs.length,
         serviceLayer: true,
-        cached:
-          "cached" in exchangeInfoResponse
-            ? exchangeInfoResponse.cached
-            : undefined,
-      })
+        cached: "cached" in exchangeInfoResponse ? exchangeInfoResponse.cached : undefined,
+      }),
     );
   } catch (error) {
     console.error("[exchange-info-api] Exchange info fetch failed:", { error });
 
     return apiResponse(
-      createErrorResponse(
-        error instanceof Error ? error.message : "Unknown error",
-        {
-          fallbackData: { symbols: [] },
-          serviceLayer: true,
-        }
-      ),
-      HTTP_STATUS.INTERNAL_SERVER_ERROR
+      createErrorResponse(error instanceof Error ? error.message : "Unknown error", {
+        fallbackData: { symbols: [] },
+        serviceLayer: true,
+      }),
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
     );
   }
 }

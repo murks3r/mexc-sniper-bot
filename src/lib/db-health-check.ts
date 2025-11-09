@@ -49,9 +49,7 @@ function setCachedResult(key: string, result: any, isSuccess: boolean): void {
 }
 
 function getCircuitBreakerState(key: string): CircuitBreakerState {
-  return (
-    circuitBreakers.get(key) || { failures: 0, lastFailure: 0, state: "closed" }
-  );
+  return circuitBreakers.get(key) || { failures: 0, lastFailure: 0, state: "closed" };
 }
 
 function updateCircuitBreaker(key: string, isSuccess: boolean): void {
@@ -76,10 +74,7 @@ function isCircuitBreakerOpen(key: string): boolean {
   if (state.state === "closed") return false;
 
   const now = Date.now();
-  if (
-    state.state === "open" &&
-    now - state.lastFailure > CIRCUIT_BREAKER_TIMEOUT
-  ) {
+  if (state.state === "open" && now - state.lastFailure > CIRCUIT_BREAKER_TIMEOUT) {
     // Transition to half-open
     circuitBreakers.set(key, { ...state, state: "half-open" });
     return false;
@@ -100,8 +95,7 @@ export async function checkDatabaseHealth() {
   if (isCircuitBreakerOpen(cacheKey)) {
     const result = {
       healthy: false,
-      message:
-        "Database check circuit breaker is open - too many recent failures",
+      message: "Database check circuit breaker is open - too many recent failures",
       error: "Circuit breaker open",
       fromCircuitBreaker: true,
     };
@@ -114,10 +108,7 @@ export async function checkDatabaseHealth() {
     const result = await Promise.race([
       db.execute(`SELECT 1 as health_check`),
       new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Health check timeout after 3 seconds")),
-          3000
-        )
+        setTimeout(() => reject(new Error("Health check timeout after 3 seconds")), 3000),
       ),
     ]);
 
@@ -168,9 +159,7 @@ export async function checkDatabaseHealth() {
 }
 
 export async function checkAuthTables(includeAllTables = false) {
-  const cacheKey = includeAllTables
-    ? "auth-tables-full"
-    : "auth-tables-critical";
+  const cacheKey = includeAllTables ? "auth-tables-full" : "auth-tables-critical";
 
   // Check cache first
   const cached = getCachedResult(cacheKey);
@@ -182,8 +171,7 @@ export async function checkAuthTables(includeAllTables = false) {
   if (isCircuitBreakerOpen(cacheKey)) {
     const result = {
       healthy: false,
-      message:
-        "Auth tables check circuit breaker is open - too many recent failures",
+      message: "Auth tables check circuit breaker is open - too many recent failures",
       error: "Circuit breaker open",
       tables: {},
       fromCircuitBreaker: true,
@@ -223,10 +211,7 @@ export async function checkAuthTables(includeAllTables = false) {
           const result = await Promise.race([
             db.select().from(table).limit(1),
             new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error(`Table ${name} check timeout`)),
-                2000
-              )
+              setTimeout(() => reject(new Error(`Table ${name} check timeout`)), 2000),
             ),
           ]);
           const tableResult = {
@@ -250,8 +235,7 @@ export async function checkAuthTables(includeAllTables = false) {
             error: errorMessage,
             isTimeout: errorMessage.includes("timeout"),
             isConnectivity:
-              errorMessage.includes("ECONNREFUSED") ||
-              errorMessage.includes("connection"),
+              errorMessage.includes("ECONNREFUSED") || errorMessage.includes("connection"),
           };
           results[name] = tableResult;
         }
@@ -263,19 +247,13 @@ export async function checkAuthTables(includeAllTables = false) {
           Promise.race([
             db.select().from(user).limit(1),
             new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("User table check timeout")),
-                2000
-              )
+              setTimeout(() => reject(new Error("User table check timeout")), 2000),
             ),
           ]),
           Promise.race([
             db.select().from(session).limit(1),
             new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("Session table check timeout")),
-                2000
-              )
+              setTimeout(() => reject(new Error("Session table check timeout")), 2000),
             ),
           ]),
         ]);
@@ -298,10 +276,7 @@ export async function checkAuthTables(includeAllTables = false) {
               const result = await Promise.race([
                 db.select().from(table).limit(1),
                 new Promise((_, reject) =>
-                  setTimeout(
-                    () => reject(new Error(`Table ${name} check timeout`)),
-                    2000
-                  )
+                  setTimeout(() => reject(new Error(`Table ${name} check timeout`)), 2000),
                 ),
               ]);
               results[name] = {
@@ -326,9 +301,7 @@ export async function checkAuthTables(includeAllTables = false) {
 
     // Determine overall health based on critical tables
     const criticalTables = ["user", "session"];
-    const criticalTablesHealthy = criticalTables.every(
-      (tableName) => results[tableName]?.exists
-    );
+    const criticalTablesHealthy = criticalTables.every((tableName) => results[tableName]?.exists);
 
     const authResult = {
       healthy: criticalTablesHealthy,
@@ -361,9 +334,7 @@ export async function checkAuthTables(includeAllTables = false) {
 export function clearHealthCheckCaches(): void {
   healthCache.clear();
   circuitBreakers.clear();
-  console.info(
-    "[DB Health] All health check caches and circuit breakers cleared"
-  );
+  console.info("[DB Health] All health check caches and circuit breakers cleared");
 }
 
 export function getHealthCheckCacheStats(): {

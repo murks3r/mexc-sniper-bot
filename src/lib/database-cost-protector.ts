@@ -17,7 +17,7 @@ const defaultLimits: CostLimits = {
 
 export async function checkCostLimits(
   _operationType: string,
-  _estimatedCost: number = 0
+  _estimatedCost: number = 0,
 ): Promise<{ allowed: boolean; reason?: string }> {
   // Simple implementation - always allow for now
   return { allowed: true };
@@ -26,7 +26,7 @@ export async function checkCostLimits(
 export async function protectDatabaseOperation<T>(
   operation: () => Promise<T>,
   operationType: string,
-  _limits: CostLimits = defaultLimits
+  _limits: CostLimits = defaultLimits,
 ): Promise<T> {
   const costCheck = await checkCostLimits(operationType);
 
@@ -46,20 +46,13 @@ export class DatabaseCostProtector {
 
   async checkLimits(
     operationType: string,
-    estimatedCost: number = 0
+    estimatedCost: number = 0,
   ): Promise<{ allowed: boolean; reason?: string }> {
     return await checkCostLimits(operationType, estimatedCost);
   }
 
-  async protect<T>(
-    operation: () => Promise<T>,
-    operationType: string
-  ): Promise<T> {
-    return await protectDatabaseOperation(
-      operation,
-      operationType,
-      this.limits
-    );
+  async protect<T>(operation: () => Promise<T>, operationType: string): Promise<T> {
+    return await protectDatabaseOperation(operation, operationType, this.limits);
   }
 
   updateLimits(newLimits: Partial<CostLimits>): void {

@@ -24,9 +24,7 @@ import type { UnifiedMexcConfig } from "@/src/schemas/unified/mexc-api-schemas";
  * Environment configuration schema
  */
 const EnvironmentConfigSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   MEXC_API_KEY: z.string().optional(),
   MEXC_SECRET_KEY: z.string().optional(),
   MEXC_PASSPHRASE: z.string().optional(),
@@ -116,22 +114,6 @@ export interface ConfigurationMetrics {
  * Handles validation, updates, and health monitoring of all configuration
  */
 export class MexcConfigurationService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-configuration-service]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-configuration-service]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[mexc-configuration-service]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-configuration-service]", message, context || ""),
-  };
-
   private config: ServiceConfig;
   private metrics: ConfigurationMetrics;
   private readonly requiredEnvVars = ["MEXC_API_KEY", "MEXC_SECRET_KEY"];
@@ -227,8 +209,7 @@ export class MexcConfigurationService {
   } {
     try {
       const newEnvironmentConfig = { ...this.config.environment, ...updates };
-      const validatedConfig =
-        EnvironmentConfigSchema.parse(newEnvironmentConfig);
+      const validatedConfig = EnvironmentConfigSchema.parse(newEnvironmentConfig);
 
       this.config.environment = validatedConfig;
       this.config.lastUpdated = new Date();
@@ -294,7 +275,7 @@ export class MexcConfigurationService {
   updateCredentials(
     apiKey: string,
     secretKey: string,
-    passphrase?: string
+    passphrase?: string,
   ): { success: boolean; errors: string[] } {
     return this.updateEnvironmentConfig({
       MEXC_API_KEY: apiKey,
@@ -326,10 +307,7 @@ export class MexcConfigurationService {
       // Check required environment variables
       this.metrics.environmentChecks++;
       for (const envVar of this.requiredEnvVars) {
-        if (
-          !process.env[envVar] &&
-          !this.config.environment[envVar as keyof EnvironmentConfig]
-        ) {
+        if (!process.env[envVar] && !this.config.environment[envVar as keyof EnvironmentConfig]) {
           errors.push(`Required environment variable ${envVar} is not set`);
         }
       }
@@ -376,13 +354,10 @@ export class MexcConfigurationService {
   performHealthCheck(): ConfigurationHealth {
     const validation = this.validateConfiguration();
     const hasCredentials = !!(
-      this.config.environment.MEXC_API_KEY &&
-      this.config.environment.MEXC_SECRET_KEY
+      this.config.environment.MEXC_API_KEY && this.config.environment.MEXC_SECRET_KEY
     );
     const hasRequiredEnvVars = this.requiredEnvVars.every(
-      (envVar) =>
-        process.env[envVar] ||
-        this.config.environment[envVar as keyof EnvironmentConfig]
+      (envVar) => process.env[envVar] || this.config.environment[envVar as keyof EnvironmentConfig],
     );
 
     const recommendations: string[] = [];
@@ -400,9 +375,7 @@ export class MexcConfigurationService {
     }
 
     if (this.config.trading.maxPositionSize > 5000) {
-      recommendations.push(
-        "Consider lowering maximum position size for risk management"
-      );
+      recommendations.push("Consider lowering maximum position size for risk management");
     }
 
     // Determine security level
@@ -460,9 +433,7 @@ export class MexcConfigurationService {
   /**
    * Load configuration from environment and defaults
    */
-  private loadConfiguration(
-    initialConfig?: Partial<ServiceConfig>
-  ): ServiceConfig {
+  private loadConfiguration(initialConfig?: Partial<ServiceConfig>): ServiceConfig {
     try {
       // Create environment configuration from process.env
       const envConfig = this.loadEnvironmentConfig();
@@ -495,10 +466,7 @@ export class MexcConfigurationService {
 
       return defaultConfig;
     } catch (error) {
-      console.error(
-        "[MexcConfigurationService] Failed to load configuration:",
-        error
-      );
+      console.error("[MexcConfigurationService] Failed to load configuration:", error);
       // Return minimal safe configuration
       return ServiceConfigSchema.parse({});
     }
@@ -520,13 +488,10 @@ export class MexcConfigurationService {
       MEXC_RATE_LIMIT_DELAY: process.env.MEXC_RATE_LIMIT_DELAY || "100",
       MEXC_ENABLE_CACHING: process.env.MEXC_ENABLE_CACHING || "true",
       MEXC_CACHE_TTL: process.env.MEXC_CACHE_TTL || "30000",
-      MEXC_ENABLE_CIRCUIT_BREAKER:
-        process.env.MEXC_ENABLE_CIRCUIT_BREAKER || "true",
+      MEXC_ENABLE_CIRCUIT_BREAKER: process.env.MEXC_ENABLE_CIRCUIT_BREAKER || "true",
       MEXC_ENABLE_METRICS: process.env.MEXC_ENABLE_METRICS || "true",
-      MEXC_ENABLE_ENHANCED_CACHING:
-        process.env.MEXC_ENABLE_ENHANCED_CACHING || "true",
-      MEXC_ENABLE_PERFORMANCE_MONITORING:
-        process.env.MEXC_ENABLE_PERFORMANCE_MONITORING || "true",
+      MEXC_ENABLE_ENHANCED_CACHING: process.env.MEXC_ENABLE_ENHANCED_CACHING || "true",
+      MEXC_ENABLE_PERFORMANCE_MONITORING: process.env.MEXC_ENABLE_PERFORMANCE_MONITORING || "true",
       MEXC_API_RESPONSE_TTL: process.env.MEXC_API_RESPONSE_TTL || "1500",
     };
 
@@ -557,7 +522,7 @@ export class MexcConfigurationService {
  * Create configuration service with defaults
  */
 export function createMexcConfigurationService(
-  initialConfig?: Partial<ServiceConfig>
+  initialConfig?: Partial<ServiceConfig>,
 ): MexcConfigurationService {
   return new MexcConfigurationService(initialConfig);
 }
@@ -588,9 +553,7 @@ export function resetGlobalConfigurationService(): void {
 /**
  * Initialize configuration with validation
  */
-export async function initializeConfiguration(
-  initialConfig?: Partial<ServiceConfig>
-): Promise<{
+export async function initializeConfiguration(initialConfig?: Partial<ServiceConfig>): Promise<{
   configService: MexcConfigurationService;
   health: ConfigurationHealth;
   isReady: boolean;

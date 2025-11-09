@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID required", serviceLayer: true },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -23,10 +23,7 @@ export async function GET(request: NextRequest) {
         error,
       });
       // Check if it's an encryption service error
-      if (
-        error instanceof Error &&
-        error.message.includes("Encryption service unavailable")
-      ) {
+      if (error instanceof Error && error.message.includes("Encryption service unavailable")) {
         return NextResponse.json(
           {
             success: false,
@@ -34,12 +31,11 @@ export async function GET(request: NextRequest) {
             balances: [],
             hasCredentials: false,
             hasUserCredentials: false,
-            message:
-              "Unable to access stored credentials due to server configuration issue",
+            message: "Unable to access stored credentials due to server configuration issue",
             serviceLayer: true,
             timestamp: new Date().toISOString(),
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
       // For other errors, userCredentials remains null and we'll fall back to environment
@@ -58,9 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if service has credentials by testing if we have user credentials or environment credentials
-    const hasEnvironmentCredentials = !!(
-      process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY
-    );
+    const hasEnvironmentCredentials = !!(process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY);
     const hasAnyCredentials = !!userCredentials || hasEnvironmentCredentials;
 
     if (!hasAnyCredentials) {
@@ -78,7 +72,7 @@ export async function GET(request: NextRequest) {
           serviceLayer: true,
           timestamp: new Date().toISOString(),
         },
-        { status: 400 }
+        { status: 400 },
       ); // Bad Request - client configuration issue
     }
 
@@ -120,7 +114,7 @@ export async function GET(request: NextRequest) {
           executionTimeMs: (balancesResponse as any).executionTimeMs || 0,
           timestamp: balancesResponse.timestamp,
         },
-        { status: statusCode }
+        { status: statusCode },
       );
     }
 
@@ -133,15 +127,14 @@ export async function GET(request: NextRequest) {
           serviceLayer: true,
           timestamp: new Date().toISOString(),
         },
-        { status: 502 }
+        { status: 502 },
       ); // Bad Gateway - upstream service issue
     }
 
     const { balances, totalUsdtValue } = balancesResponse.data;
-    const lastUpdated =
-      (balancesResponse.data as any).lastUpdated || new Date().toISOString();
+    const lastUpdated = (balancesResponse.data as any).lastUpdated || new Date().toISOString();
     console.info(
-      `✅ MEXC Account Service Success - Found ${balances.length} balances with total value: ${totalUsdtValue.toFixed(2)} USDT`
+      `✅ MEXC Account Service Success - Found ${balances.length} balances with total value: ${totalUsdtValue.toFixed(2)} USDT`,
     );
 
     const message = userCredentials
@@ -173,7 +166,7 @@ export async function GET(request: NextRequest) {
         serviceLayer: true,
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

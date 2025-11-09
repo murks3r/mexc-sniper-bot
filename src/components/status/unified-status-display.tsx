@@ -34,11 +34,7 @@ export function UnifiedStatusDisplay() {
               <Badge variant="secondary">Inactive</Badge>
             </div>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="w-full"
-          >
+          <Button onClick={handleRefresh} disabled={isLoading} className="w-full">
             {isLoading ? "Refreshing..." : "Refresh All"}
           </Button>
         </div>

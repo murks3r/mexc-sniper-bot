@@ -5,7 +5,7 @@
  * Implements automatic garbage collection, memory monitoring, and pressure relief
  */
 
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 
 export interface MemoryMetrics {
   heapUsed: number;
@@ -152,10 +152,8 @@ export class EnhancedMemoryManager extends EventEmitter {
 
     if (older.length === 0) return;
 
-    const recentAvg =
-      recent.reduce((sum, m) => sum + m.heapUsed, 0) / recent.length;
-    const olderAvg =
-      older.reduce((sum, m) => sum + m.heapUsed, 0) / older.length;
+    const recentAvg = recent.reduce((sum, m) => sum + m.heapUsed, 0) / recent.length;
+    const olderAvg = older.reduce((sum, m) => sum + m.heapUsed, 0) / older.length;
 
     const growth = recentAvg - olderAvg;
 
@@ -170,7 +168,7 @@ export class EnhancedMemoryManager extends EventEmitter {
         });
 
         console.warn(
-          `[Memory Manager] Potential memory leak detected: ${(growth / 1024 / 1024).toFixed(2)}MB/min growth`
+          `[Memory Manager] Potential memory leak detected: ${(growth / 1024 / 1024).toFixed(2)}MB/min growth`,
         );
       }
     } else {
@@ -178,10 +176,7 @@ export class EnhancedMemoryManager extends EventEmitter {
     }
   }
 
-  private handleMemoryPressure(
-    level: MemoryPressureLevel,
-    metrics: MemoryMetrics
-  ): void {
+  private handleMemoryPressure(level: MemoryPressureLevel, metrics: MemoryMetrics): void {
     const recommendations: string[] = [];
 
     switch (level) {
@@ -216,9 +211,9 @@ export class EnhancedMemoryManager extends EventEmitter {
     this.emit("memory-pressure", event);
 
     console.warn(`[Memory Manager] Memory pressure detected: ${level}`, {
-      heapUtilization: (metrics.heapUtilization * 100).toFixed(2) + "%",
-      heapUsed: (metrics.heapUsed / 1024 / 1024).toFixed(2) + "MB",
-      heapTotal: (metrics.heapTotal / 1024 / 1024).toFixed(2) + "MB",
+      heapUtilization: `${(metrics.heapUtilization * 100).toFixed(2)}%`,
+      heapUsed: `${(metrics.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+      heapTotal: `${(metrics.heapTotal / 1024 / 1024).toFixed(2)}MB`,
       recommendations,
     });
   }
@@ -240,7 +235,7 @@ export class EnhancedMemoryManager extends EventEmitter {
         const heapFreed = beforeGc.heapUsed - afterGc.heapUsed;
 
         console.log(
-          `[Memory Manager] Garbage collection completed: freed ${(heapFreed / 1024 / 1024).toFixed(2)}MB`
+          `[Memory Manager] Garbage collection completed: freed ${(heapFreed / 1024 / 1024).toFixed(2)}MB`,
         );
 
         this.emit("gc-completed", {
@@ -250,9 +245,7 @@ export class EnhancedMemoryManager extends EventEmitter {
           timestamp: now,
         });
       } else {
-        console.warn(
-          "[Memory Manager] Garbage collection not available (--expose-gc not enabled)"
-        );
+        console.warn("[Memory Manager] Garbage collection not available (--expose-gc not enabled)");
       }
     } catch (error) {
       console.error("[Memory Manager] Garbage collection failed:", error);
@@ -266,10 +259,7 @@ export class EnhancedMemoryManager extends EventEmitter {
       try {
         handler();
       } catch (error) {
-        console.error(
-          `[Memory Manager] Cache cleanup handler ${index} failed:`,
-          error
-        );
+        console.error(`[Memory Manager] Cache cleanup handler ${index} failed:`, error);
       }
     });
 
@@ -317,7 +307,7 @@ export class EnhancedMemoryManager extends EventEmitter {
   } {
     const samplesNeeded = Math.min(
       Math.floor((minutes * 60) / (this.config.monitoringInterval / 1000)),
-      this.metricsHistory.length
+      this.metricsHistory.length,
     );
 
     if (samplesNeeded < 2) {
@@ -408,7 +398,7 @@ export class EnhancedMemoryManager extends EventEmitter {
     const afterMetrics = this.getCurrentMetrics();
     if (afterMetrics) {
       console.log(
-        `[Memory Manager] Force cleanup completed. Heap utilization: ${(afterMetrics.heapUtilization * 100).toFixed(2)}%`
+        `[Memory Manager] Force cleanup completed. Heap utilization: ${(afterMetrics.heapUtilization * 100).toFixed(2)}%`,
       );
     }
   }
@@ -450,7 +440,7 @@ export function forceMemoryCleanup(): Promise<void> {
 }
 
 export function getMemoryTrend(
-  minutes?: number
+  minutes?: number,
 ): ReturnType<EnhancedMemoryManager["getMemoryTrend"]> {
   return globalMemoryManager.getMemoryTrend(minutes);
 }

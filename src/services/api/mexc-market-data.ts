@@ -52,107 +52,139 @@ export class MexcMarketDataClient extends MexcClientCore {
 
   /**
    * Get new coin calendar listings from MEXC
+   * Primary Detection: https://www.mexc.com/api/operation/new_coin_calendar?timestamp=
+   * Added proper timestamp parameter handling, User-Agent headers, and timeout configuration
    */
   async getCalendarListings(): Promise<UnifiedMexcResponse<CalendarEntry[]>> {
     try {
       console.info("[MexcMarketData] Fetching calendar listings...");
 
       const timestamp = Date.now();
-      const response = await this.makeRequest<{ data: unknown[] }>(
-        `https://www.mexc.com/api/operation/new_coin_calendar?timestamp=${timestamp}`
-      );
+      // Use native fetch with proper headers and timeout for calendar API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!response.success) {
-        return {
-          success: false,
-          data: [],
-          error: response.error,
+      try {
+        const url = `https://www.mexc.com/api/operation/new_coin_calendar?timestamp=${timestamp}`;
+        const fetchResponse = await fetch(url, {
+          method: "GET",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          throw new Error(
+            `Calendar API returned ${fetchResponse.status}: ${fetchResponse.statusText}`,
+          );
+        }
+
+        const data = await fetchResponse.json();
+
+        // Wrap in UnifiedMexcResponse format
+        const response: UnifiedMexcResponse<{ data: unknown[] }> = {
+          success: true,
+          data: data,
           timestamp: new Date().toISOString(),
         };
+
+        if (!response.success) {
+          return {
+            success: false,
+            data: [],
+            error: response.error,
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        // Parse and validate the response
+        let calendarData: CalendarEntry[] = [];
+
+        // Handle the actual MEXC API response structure: data.newCoins
+        if (
+          (response.data as any)?.data?.newCoins &&
+          Array.isArray((response.data as any).data.newCoins)
+        ) {
+          calendarData = (response.data as any).data.newCoins
+            .filter(
+              (entry: unknown): entry is Record<string, unknown> =>
+                typeof entry === "object" &&
+                entry !== null &&
+                "vcoinId" in entry &&
+                Boolean(entry.vcoinId) &&
+                "vcoinName" in entry &&
+                Boolean(entry.vcoinName) &&
+                "firstOpenTime" in entry &&
+                Boolean(entry.firstOpenTime),
+            )
+            .map((entry: any): CalendarEntry | undefined => {
+              try {
+                return CalendarEntrySchema.parse({
+                  vcoinId: String(entry.vcoinId),
+                  symbol: String(entry.vcoinName), // MEXC uses vcoinName for symbol
+                  projectName: String(entry.vcoinNameFull || entry.vcoinName), // MEXC uses vcoinNameFull for full project name
+                  firstOpenTime: Number(entry.firstOpenTime),
+                });
+              } catch (_error) {
+                console.warn("[MexcMarketData] Invalid calendar entry:", entry);
+                return undefined;
+              }
+            })
+            .filter(
+              (entry: CalendarEntry | undefined): entry is CalendarEntry => entry !== undefined,
+            );
+        }
+        // Fallback: check if data is directly an array (for backward compatibility)
+        else if (response.data?.data && Array.isArray(response.data.data)) {
+          calendarData = response.data.data
+            .filter(
+              (entry: unknown): entry is Record<string, unknown> =>
+                typeof entry === "object" &&
+                entry !== null &&
+                "vcoinId" in entry &&
+                Boolean(entry.vcoinId) &&
+                "symbol" in entry &&
+                Boolean(entry.symbol) &&
+                "firstOpenTime" in entry &&
+                Boolean(entry.firstOpenTime),
+            )
+            .map((entry: any): CalendarEntry | undefined => {
+              try {
+                return CalendarEntrySchema.parse({
+                  vcoinId: String(entry.vcoinId),
+                  symbol: String(entry.symbol),
+                  projectName: String(entry.projectName || entry.symbol),
+                  firstOpenTime: Number(entry.firstOpenTime),
+                });
+              } catch (_error) {
+                console.warn("[MexcMarketData] Invalid calendar entry:", entry);
+                return undefined;
+              }
+            })
+            .filter(
+              (entry: CalendarEntry | undefined): entry is CalendarEntry => entry !== undefined,
+            );
+        }
+
+        console.info(`[MexcMarketData] Retrieved ${calendarData.length} calendar entries`);
+
+        return {
+          success: true, // API call successful regardless of data count
+          data: calendarData,
+          timestamp: new Date().toISOString(),
+        };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          throw new Error("Calendar API request timeout");
+        }
+        throw fetchError;
       }
-
-      // Parse and validate the response
-      let calendarData: CalendarEntry[] = [];
-
-      // Handle the actual MEXC API response structure: data.newCoins
-      if (
-        (response.data as any)?.data?.newCoins &&
-        Array.isArray((response.data as any).data.newCoins)
-      ) {
-        calendarData = (response.data as any).data.newCoins
-          .filter(
-            (entry: unknown): entry is Record<string, unknown> =>
-              typeof entry === "object" &&
-              entry !== null &&
-              "vcoinId" in entry &&
-              Boolean(entry.vcoinId) &&
-              "vcoinName" in entry &&
-              Boolean(entry.vcoinName) &&
-              "firstOpenTime" in entry &&
-              Boolean(entry.firstOpenTime)
-          )
-          .map((entry: any): CalendarEntry | undefined => {
-            try {
-              return CalendarEntrySchema.parse({
-                vcoinId: String(entry.vcoinId),
-                symbol: String(entry.vcoinName), // MEXC uses vcoinName for symbol
-                projectName: String(entry.vcoinNameFull || entry.vcoinName), // MEXC uses vcoinNameFull for full project name
-                firstOpenTime: Number(entry.firstOpenTime),
-              });
-            } catch (_error) {
-              console.warn("[MexcMarketData] Invalid calendar entry:", entry);
-              return undefined;
-            }
-          })
-          .filter(
-            (entry: CalendarEntry | undefined): entry is CalendarEntry =>
-              entry !== undefined
-          );
-      }
-      // Fallback: check if data is directly an array (for backward compatibility)
-      else if (response.data?.data && Array.isArray(response.data.data)) {
-        calendarData = response.data.data
-          .filter(
-            (entry: unknown): entry is Record<string, unknown> =>
-              typeof entry === "object" &&
-              entry !== null &&
-              "vcoinId" in entry &&
-              Boolean(entry.vcoinId) &&
-              "symbol" in entry &&
-              Boolean(entry.symbol) &&
-              "firstOpenTime" in entry &&
-              Boolean(entry.firstOpenTime)
-          )
-          .map((entry: any): CalendarEntry | undefined => {
-            try {
-              return CalendarEntrySchema.parse({
-                vcoinId: String(entry.vcoinId),
-                symbol: String(entry.symbol),
-                projectName: String(entry.projectName || entry.symbol),
-                firstOpenTime: Number(entry.firstOpenTime),
-              });
-            } catch (_error) {
-              console.warn("[MexcMarketData] Invalid calendar entry:", entry);
-              return undefined;
-            }
-          })
-          .filter(
-            (entry: CalendarEntry | undefined): entry is CalendarEntry =>
-              entry !== undefined
-          );
-      }
-
-      console.info(
-        `[MexcMarketData] Retrieved ${calendarData.length} calendar entries`
-      );
-
-      return {
-        success: true, // API call successful regardless of data count
-        data: calendarData,
-        timestamp: new Date().toISOString(),
-        cached: response.cached,
-        requestId: response.requestId,
-      };
     } catch (error) {
       console.error("[MexcMarketData] Calendar listings failed:", error);
       return {
@@ -171,16 +203,12 @@ export class MexcMarketDataClient extends MexcClientCore {
   /**
    * Get symbols data from MEXC V2 API
    */
-  async getSymbolsV2(
-    vcoinId?: string
-  ): Promise<UnifiedMexcResponse<SymbolEntry[]>> {
+  async getSymbolsV2(vcoinId?: string): Promise<UnifiedMexcResponse<SymbolEntry[]>> {
     try {
-      console.info(
-        `[MexcMarketData] Fetching symbols data${vcoinId ? ` for ${vcoinId}` : ""}...`
-      );
+      console.info(`[MexcMarketData] Fetching symbols data${vcoinId ? ` for ${vcoinId}` : ""}...`);
 
       const response = await this.makeRequest<{ data: { symbols: unknown[] } }>(
-        "/api/platform/spot/market-v2/web/symbolsV2"
+        "/api/platform/spot/market-v2/web/symbolsV2",
       );
 
       if (!response.success) {
@@ -195,10 +223,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       // Parse and validate the response
       let symbolData: SymbolEntry[] = [];
 
-      if (
-        response.data?.data?.symbols &&
-        Array.isArray(response.data.data.symbols)
-      ) {
+      if (response.data?.data?.symbols && Array.isArray(response.data.data.symbols)) {
         symbolData = response.data.data.symbols
           .filter((entry: unknown): entry is Record<string, unknown> => {
             if (typeof entry !== "object" || entry === null) return false;
@@ -240,9 +265,7 @@ export class MexcMarketDataClient extends MexcClientCore {
           .filter((entry): entry is SymbolEntry => entry !== null);
       }
 
-      console.info(
-        `[MexcMarketData] Retrieved ${symbolData.length} symbol entries`
-      );
+      console.info(`[MexcMarketData] Retrieved ${symbolData.length} symbol entries`);
 
       return {
         success: symbolData.length > 0,
@@ -314,9 +337,7 @@ export class MexcMarketDataClient extends MexcClientCore {
 
       // Parse and cache the symbols - MEXC uses status "1" for trading symbols, not "TRADING"
       const validSymbols = response.data.symbols
-        .filter(
-          (symbol) => symbol.status === "1" && symbol.quoteAsset === "USDT"
-        )
+        .filter((symbol) => symbol.status === "1" && symbol.quoteAsset === "USDT")
         .map((symbol): ExchangeSymbol | null => {
           try {
             return ExchangeSymbolSchema.parse(symbol);
@@ -330,9 +351,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       this.exchangeSymbolsCache = validSymbols;
       this.exchangeSymbolsCacheTime = now;
 
-      console.info(
-        `[MexcMarketData] Retrieved ${validSymbols.length} USDT trading pairs`
-      );
+      console.info(`[MexcMarketData] Retrieved ${validSymbols.length} USDT trading pairs`);
 
       return {
         success: true,
@@ -361,9 +380,7 @@ export class MexcMarketDataClient extends MexcClientCore {
    */
   async get24hrTicker(symbol?: string): Promise<UnifiedMexcResponse<Ticker[]>> {
     try {
-      const endpoint = symbol
-        ? `/api/v3/ticker/24hr?symbol=${symbol}`
-        : "/api/v3/ticker/24hr";
+      const endpoint = symbol ? `/api/v3/ticker/24hr?symbol=${symbol}` : "/api/v3/ticker/24hr";
       const response = await this.makeRequest<Ticker | Ticker[]>(endpoint);
 
       if (!response.success) {
@@ -376,9 +393,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       }
 
       // Handle both single symbol and all symbols response
-      const rawData = Array.isArray(response.data)
-        ? response.data
-        : [response.data];
+      const rawData = Array.isArray(response.data) ? response.data : [response.data];
 
       const validatedData = rawData
         .map((ticker): Ticker | null => {
@@ -413,12 +428,10 @@ export class MexcMarketDataClient extends MexcClientCore {
    * Get current price for a symbol or all symbols
    */
   async getPrice(
-    symbol?: string
+    symbol?: string,
   ): Promise<UnifiedMexcResponse<{ symbol: string; price: string }[]>> {
     try {
-      const endpoint = symbol
-        ? `/api/v3/ticker/price?symbol=${symbol}`
-        : "/api/v3/ticker/price";
+      const endpoint = symbol ? `/api/v3/ticker/price?symbol=${symbol}` : "/api/v3/ticker/price";
       const response = await this.makeRequest<
         { symbol: string; price: string } | { symbol: string; price: string }[]
       >(endpoint);
@@ -433,9 +446,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       }
 
       // Handle both single symbol and all symbols response
-      const rawData = Array.isArray(response.data)
-        ? response.data
-        : [response.data];
+      const rawData = Array.isArray(response.data) ? response.data : [response.data];
 
       return {
         success: true,
@@ -463,29 +474,17 @@ export class MexcMarketDataClient extends MexcClientCore {
     interval: string = "1d",
     limit: number = 500,
     startTime?: number,
-    endTime?: number
+    endTime?: number,
   ): Promise<
     UnifiedMexcResponse<
       Array<
-        [
-          number,
-          string,
-          string,
-          string,
-          string,
-          string,
-          number,
-          string,
-          number,
-          string,
-          string,
-        ]
+        [number, string, string, string, string, string, number, string, number, string, string]
       >
     >
   > {
     try {
       console.info(
-        `[MexcMarketData] Fetching klines for ${symbol} with interval ${interval}, limit ${limit}`
+        `[MexcMarketData] Fetching klines for ${symbol} with interval ${interval}, limit ${limit}`,
       );
 
       // Build endpoint with parameters
@@ -506,19 +505,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       const response =
         await this.makeRequest<
           Array<
-            [
-              number,
-              string,
-              string,
-              string,
-              string,
-              string,
-              number,
-              string,
-              number,
-              string,
-              string,
-            ]
+            [number, string, string, string, string, string, number, string, number, string, string]
           >
         >(endpoint);
 
@@ -541,9 +528,7 @@ export class MexcMarketDataClient extends MexcClientCore {
         };
       }
 
-      console.info(
-        `[MexcMarketData] Retrieved ${response.data.length} kline data points`
-      );
+      console.info(`[MexcMarketData] Retrieved ${response.data.length} kline data points`);
 
       return {
         success: true,
@@ -568,7 +553,7 @@ export class MexcMarketDataClient extends MexcClientCore {
    */
   async getOrderBook(
     symbol: string,
-    limit: number = 100
+    limit: number = 100,
   ): Promise<
     UnifiedMexcResponse<{
       bids: [string, string][];
@@ -577,9 +562,7 @@ export class MexcMarketDataClient extends MexcClientCore {
     }>
   > {
     try {
-      console.info(
-        `[MexcMarketData] Fetching order book for ${symbol} with limit ${limit}`
-      );
+      console.info(`[MexcMarketData] Fetching order book for ${symbol} with limit ${limit}`);
 
       const endpoint = `/api/v3/depth?symbol=${symbol}&limit=${limit}`;
       const response = await this.makeRequest<{
@@ -612,7 +595,7 @@ export class MexcMarketDataClient extends MexcClientCore {
       }
 
       console.info(
-        `[MexcMarketData] Retrieved order book with ${response.data.bids.length} bids and ${response.data.asks.length} asks`
+        `[MexcMarketData] Retrieved order book with ${response.data.bids.length} bids and ${response.data.asks.length} asks`,
       );
 
       return {
@@ -627,10 +610,7 @@ export class MexcMarketDataClient extends MexcClientCore {
         requestId: response.requestId,
       };
     } catch (error) {
-      console.error(
-        `[MexcMarketData] Order book fetch failed for ${symbol}:`,
-        error
-      );
+      console.error(`[MexcMarketData] Order book fetch failed for ${symbol}:`, error);
       return {
         success: false,
         data: { bids: [], asks: [], lastUpdateId: 0 },
@@ -651,14 +631,12 @@ export class MexcMarketDataClient extends MexcClientCore {
     const recoveryService = getGlobalErrorRecoveryService();
 
     try {
-      console.info(
-        "[MexcMarketData] Testing connectivity with error recovery..."
-      );
+      console.info("[MexcMarketData] Testing connectivity with error recovery...");
 
       const result = await recoveryService.executeWithRecovery(
         () => this.makeRequest("/api/v3/ping"),
         undefined, // No fallback for connectivity test
-        "Connectivity Test"
+        "Connectivity Test",
       );
 
       const success = Boolean(result.success && result.data?.success);
@@ -686,9 +664,7 @@ export class MexcMarketDataClient extends MexcClientCore {
    */
   async getServerTime(): Promise<UnifiedMexcResponse<{ serverTime: number }>> {
     try {
-      const response = await this.makeRequest<{ serverTime: number }>(
-        "/api/v3/time"
-      );
+      const response = await this.makeRequest<{ serverTime: number }>("/api/v3/time");
       if (response.success) {
         return response;
       }
@@ -735,8 +711,7 @@ export class MexcMarketDataClient extends MexcClientCore {
   isExchangeCacheValid(): boolean {
     const now = Date.now();
     return Boolean(
-      this.exchangeSymbolsCache &&
-        now - this.exchangeSymbolsCacheTime < this.symbolsCacheExpiry
+      this.exchangeSymbolsCache && now - this.exchangeSymbolsCacheTime < this.symbolsCacheExpiry,
     );
   }
 }

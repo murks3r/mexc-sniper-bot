@@ -100,7 +100,7 @@ export class MexcTradingService {
    * Execute a trading order with comprehensive validation and risk management
    */
   async executeTrade(
-    request: TradingOrderRequest
+    request: TradingOrderRequest,
   ): Promise<
     | { success: true; data: TradingOrderResponse }
     | { success: false; error: string; code: string; details?: any }
@@ -124,10 +124,7 @@ export class MexcTradingService {
 
     try {
       // Get and validate credentials
-      const credentials = await this.getValidatedCredentials(
-        context.userId,
-        context
-      );
+      const credentials = await this.getValidatedCredentials(context.userId, context);
       if (!credentials) {
         return {
           success: false,
@@ -161,11 +158,7 @@ export class MexcTradingService {
       }
 
       // Risk assessment
-      const riskAssessment = await this.performRiskAssessment(
-        context.userId,
-        orderParams,
-        context
-      );
+      const riskAssessment = await this.performRiskAssessment(context.userId, orderParams, context);
 
       if (!riskAssessment.approved && !context.skipRisk) {
         return {
@@ -187,7 +180,7 @@ export class MexcTradingService {
         orderParams,
         mexcService,
         riskAssessment,
-        context
+        context,
       );
 
       if (!executionResult.success) {
@@ -219,26 +212,23 @@ export class MexcTradingService {
       const responseValidation = validateMexcApiResponse(
         TradingOrderResponseSchema,
         response,
-        "trading order"
+        "trading order",
       );
 
       if (!responseValidation.success) {
         this.logger.error(
           "[MexcTradingService] Response validation failed:",
-          responseValidation.error
+          responseValidation.error,
         );
         // Continue anyway but log the issue
       }
 
-      this.logger.info(
-        "[MexcTradingService] Trade execution completed successfully",
-        {
-          requestId: context.requestId,
-          orderId: response.orderId,
-          symbol: response.symbol,
-          duration: `${Date.now() - context.startTime}ms`,
-        }
-      );
+      this.logger.info("[MexcTradingService] Trade execution completed successfully", {
+        requestId: context.requestId,
+        orderId: response.orderId,
+        symbol: response.symbol,
+        duration: `${Date.now() - context.startTime}ms`,
+      });
 
       return { success: true, data: response };
     } catch (error) {
@@ -271,7 +261,7 @@ export class MexcTradingService {
 
   private async getValidatedCredentials(
     userId: string,
-    context: TradingContext
+    context: TradingContext,
   ): Promise<TradingCredentials | null> {
     try {
       // Redacted: avoid logging sensitive credential operations
@@ -284,8 +274,8 @@ export class MexcTradingService {
           and(
             eq(apiCredentials.userId, userId),
             eq(apiCredentials.provider, "mexc"),
-            eq(apiCredentials.isActive, true)
-          )
+            eq(apiCredentials.isActive, true),
+          ),
         )
         .limit(1);
 
@@ -298,28 +288,22 @@ export class MexcTradingService {
         userId,
         credentials[0].encryptedApiKey,
         credentials[0].encryptedSecretKey,
-        credentials[0].encryptedPassphrase
+        credentials[0].encryptedPassphrase,
       );
 
       // Redacted: avoid logging sensitive credential operations
 
       return { apiKey, secretKey, source: "cache" };
     } catch (error) {
-      this.logger.error(
-        "[MexcTradingService] Failed to retrieve credentials:",
-        {
-          requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error),
-        }
-      );
+      this.logger.error("[MexcTradingService] Failed to retrieve credentials:", {
+        requestId: context.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
 
-  private initializeMexcService(
-    credentials: TradingCredentials,
-    context: TradingContext
-  ) {
+  private initializeMexcService(credentials: TradingCredentials, context: TradingContext) {
     this.logger.info("[MexcTradingService] Initializing MEXC service", {
       requestId: context.requestId,
       credentialSource: credentials.source,
@@ -333,7 +317,7 @@ export class MexcTradingService {
 
   private prepareOrderParameters(
     request: TradingOrderRequest,
-    context: TradingContext
+    context: TradingContext,
   ): OrderParameters {
     const orderParams: OrderParameters = {
       symbol: request.symbol,
@@ -342,14 +326,8 @@ export class MexcTradingService {
         request.type === "STOP_LOSS" || request.type === "STOP_LOSS_LIMIT"
           ? "LIMIT"
           : (request.type as "MARKET" | "LIMIT") || "MARKET",
-      quantity: request.quantity
-        ? String(request.quantity)
-        : request.quoteOrderQty
-          ? "0"
-          : "1",
-      quoteOrderQty: request.quoteOrderQty
-        ? String(request.quoteOrderQty)
-        : undefined,
+      quantity: request.quantity ? String(request.quantity) : request.quoteOrderQty ? "0" : "1",
+      quoteOrderQty: request.quoteOrderQty ? String(request.quoteOrderQty) : undefined,
       price: request.price ? String(request.price) : undefined,
       timeInForce: request.timeInForce || "IOC", // Immediate or Cancel for safety
     };
@@ -368,7 +346,7 @@ export class MexcTradingService {
 
   private async checkResourceLock(
     resourceId: string,
-    context: TradingContext
+    context: TradingContext,
   ): Promise<{ success: boolean; error?: string; details?: any }> {
     if (context.skipLock) {
       this.logger.info("[MexcTradingService] Skipping lock check", {
@@ -418,7 +396,7 @@ export class MexcTradingService {
   private async performRiskAssessment(
     userId: string,
     orderParams: OrderParameters,
-    context: TradingContext
+    context: TradingContext,
   ): Promise<RiskAssessmentResult> {
     if (context.skipRisk) {
       this.logger.info("[MexcTradingService] Skipping risk assessment", {
@@ -444,11 +422,10 @@ export class MexcTradingService {
         symbol: orderParams.symbol,
       });
 
-      const riskAssessment =
-        await enhancedRiskManagementService.assessTradingRisk(
-          userId,
-          orderParams
-        );
+      const riskAssessment = await enhancedRiskManagementService.assessTradingRisk(
+        userId,
+        orderParams,
+      );
 
       this.logger.info("[MexcTradingService] Risk assessment completed", {
         requestId: context.requestId,
@@ -485,7 +462,7 @@ export class MexcTradingService {
     orderParams: OrderParameters,
     mexcService: any,
     riskAssessment: RiskAssessmentResult,
-    context: TradingContext
+    context: TradingContext,
   ): Promise<TradeExecutionResult> {
     const executeTrade = async (): Promise<TradeExecutionResult> => {
       try {
@@ -511,10 +488,7 @@ export class MexcTradingService {
           orderId: orderResult.orderId,
           symbol: orderParams.symbol,
           side: orderParams.side,
-          quantity:
-            orderParams.quantity?.toString() ||
-            orderParams.quoteOrderQty?.toString() ||
-            "",
+          quantity: orderParams.quantity?.toString() || orderParams.quoteOrderQty?.toString() || "",
           price: orderParams.price?.toString(),
           status: orderResult.status,
           executedQty: orderResult.executedQty,
@@ -541,13 +515,9 @@ export class MexcTradingService {
           success: false,
           symbol: orderParams.symbol,
           side: orderParams.side,
-          quantity:
-            orderParams.quantity?.toString() ||
-            orderParams.quoteOrderQty?.toString() ||
-            "",
+          quantity: orderParams.quantity?.toString() || orderParams.quoteOrderQty?.toString() || "",
           timestamp: new Date().toISOString(),
-          error:
-            error instanceof Error ? error.message : "Trade execution failed",
+          error: error instanceof Error ? error.message : "Trade execution failed",
         };
       }
     };
@@ -570,7 +540,7 @@ export class MexcTradingService {
           timeoutMs: 30000, // 30 second timeout
           priority: orderParams.side === "SELL" ? 1 : 5, // Prioritize sells
         },
-        executeTrade
+        executeTrade,
       );
 
       if (!lockResult.success) {
@@ -578,10 +548,7 @@ export class MexcTradingService {
           success: false,
           symbol: orderParams.symbol,
           side: orderParams.side,
-          quantity:
-            orderParams.quantity?.toString() ||
-            orderParams.quoteOrderQty?.toString() ||
-            "",
+          quantity: orderParams.quantity?.toString() || orderParams.quoteOrderQty?.toString() || "",
           timestamp: new Date().toISOString(),
           error: lockResult.error || "Trade execution failed",
         };
@@ -593,10 +560,7 @@ export class MexcTradingService {
           success: true,
           symbol: orderParams.symbol,
           side: orderParams.side,
-          quantity:
-            orderParams.quantity?.toString() ||
-            orderParams.quoteOrderQty?.toString() ||
-            "",
+          quantity: orderParams.quantity?.toString() || orderParams.quoteOrderQty?.toString() || "",
           timestamp: new Date().toISOString(),
           ...lockResult.result,
         } as TradeExecutionResult;
@@ -607,10 +571,7 @@ export class MexcTradingService {
         success: true,
         symbol: orderParams.symbol,
         side: orderParams.side,
-        quantity:
-          orderParams.quantity?.toString() ||
-          orderParams.quoteOrderQty?.toString() ||
-          "",
+        quantity: orderParams.quantity?.toString() || orderParams.quoteOrderQty?.toString() || "",
         timestamp: new Date().toISOString(),
       };
     }
@@ -619,7 +580,7 @@ export class MexcTradingService {
   private async saveExecutionHistory(
     result: TradeExecutionResult,
     request: TradingOrderRequest,
-    context: TradingContext
+    context: TradingContext,
   ): Promise<void> {
     if (!result.success) {
       return; // Don't save failed executions
@@ -640,16 +601,10 @@ export class MexcTradingService {
         orderType: request.type.toLowerCase(),
         orderSide: request.side.toLowerCase(),
         requestedQuantity: parseFloat(
-          request.quantity?.toString() ||
-            request.quoteOrderQty?.toString() ||
-            "0"
+          request.quantity?.toString() || request.quoteOrderQty?.toString() || "0",
         ),
-        requestedPrice: request.price
-          ? parseFloat(request.price.toString())
-          : null,
-        executedQuantity: result.executedQty
-          ? parseFloat(result.executedQty)
-          : null,
+        requestedPrice: request.price ? parseFloat(request.price.toString()) : null,
+        executedQuantity: result.executedQty ? parseFloat(result.executedQty) : null,
         executedPrice: result.price ? parseFloat(result.price) : null,
         totalCost: null, // Would need to calculate from executedQty * executedPrice
         fees: null,
@@ -670,13 +625,10 @@ export class MexcTradingService {
         orderId: result.orderId,
       });
     } catch (error) {
-      this.logger.error(
-        "[MexcTradingService] Failed to save execution history:",
-        {
-          requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error),
-        }
-      );
+      this.logger.error("[MexcTradingService] Failed to save execution history:", {
+        requestId: context.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Don't fail the trade response if history save fails
     }
   }

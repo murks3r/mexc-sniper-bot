@@ -27,11 +27,7 @@ export class ApiClient {
   /**
    * Performs a POST request with consistent error handling
    */
-  static async post<T>(
-    url: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<T> {
+  static async post<T>(url: string, data?: unknown, options?: RequestInit): Promise<T> {
     const response = await fetch(url, {
       ...options,
       method: "POST",
@@ -47,11 +43,7 @@ export class ApiClient {
   /**
    * Performs a PUT request with consistent error handling
    */
-  static async put<T>(
-    url: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<T> {
+  static async put<T>(url: string, data?: unknown, options?: RequestInit): Promise<T> {
     const response = await fetch(url, {
       ...options,
       method: "PUT",
@@ -78,11 +70,7 @@ export class ApiClient {
   /**
    * Performs a PATCH request with consistent error handling
    */
-  static async patch<T>(
-    url: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<T> {
+  static async patch<T>(url: string, data?: unknown, options?: RequestInit): Promise<T> {
     const response = await fetch(url, {
       ...options,
       method: "PATCH",
@@ -100,7 +88,7 @@ export class ApiClient {
    */
   static buildUrl(
     baseUrl: string,
-    params?: Record<string, string | number | boolean | undefined>
+    params?: Record<string, string | number | boolean | undefined>,
   ): string {
     if (!params) return baseUrl;
 

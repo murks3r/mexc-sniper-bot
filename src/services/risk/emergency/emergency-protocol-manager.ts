@@ -23,12 +23,7 @@ export class EmergencyProtocolManager {
     warn: (message: string, context?: any) =>
       console.warn("[emergency-protocol-manager]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[emergency-protocol-manager]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[emergency-protocol-manager]", message, context || "", error || ""),
   };
 
   constructor() {
@@ -104,10 +99,7 @@ export class EmergencyProtocolManager {
     // Required fields
     if (!protocol.id) errors.push("Protocol ID is required");
     if (!protocol.name) errors.push("Protocol name is required");
-    if (
-      !protocol.triggerConditions ||
-      protocol.triggerConditions.length === 0
-    ) {
+    if (!protocol.triggerConditions || protocol.triggerConditions.length === 0) {
       errors.push("Protocol must have trigger conditions");
     }
 
@@ -126,10 +118,7 @@ export class EmergencyProtocolManager {
     // Validate escalation rules
     if (protocol.escalationRules) {
       protocol.escalationRules.forEach((rule, index) => {
-        const ruleErrors = this.validateEscalationRule(
-          rule,
-          protocol.emergencyLevels
-        );
+        const ruleErrors = this.validateEscalationRule(rule, protocol.emergencyLevels);
         if (ruleErrors.length > 0) {
           errors.push(`Escalation rule ${index}: ${ruleErrors.join(", ")}`);
         }
@@ -150,11 +139,7 @@ export class EmergencyProtocolManager {
 
     if (!level.id) errors.push("Level ID is required");
     if (!level.name) errors.push("Level name is required");
-    if (
-      typeof level.severity !== "number" ||
-      level.severity < 1 ||
-      level.severity > 10
-    ) {
+    if (typeof level.severity !== "number" || level.severity < 1 || level.severity > 10) {
       errors.push("Severity must be a number between 1 and 10");
     }
 
@@ -179,8 +164,7 @@ export class EmergencyProtocolManager {
 
     if (!action.id) errors.push("Action ID is required");
     if (!action.type) errors.push("Action type is required");
-    if (typeof action.priority !== "number")
-      errors.push("Priority must be a number");
+    if (typeof action.priority !== "number") errors.push("Priority must be a number");
     if (typeof action.timeout !== "number" || action.timeout <= 0) {
       errors.push("Timeout must be a positive number");
     }
@@ -204,10 +188,7 @@ export class EmergencyProtocolManager {
   /**
    * Validate escalation rule
    */
-  private validateEscalationRule(
-    rule: EscalationRule,
-    levels: EmergencyLevel[]
-  ): string[] {
+  private validateEscalationRule(rule: EscalationRule, levels: EmergencyLevel[]): string[] {
     const errors: string[] = [];
 
     if (!rule.fromLevel) errors.push("From level is required");
@@ -237,11 +218,7 @@ export class EmergencyProtocolManager {
     this.protocols.set("system_failure", {
       id: "system_failure",
       name: "System Failure Response",
-      triggerConditions: [
-        "system_error",
-        "service_unavailable",
-        "timeout_exceeded",
-      ],
+      triggerConditions: ["system_error", "service_unavailable", "timeout_exceeded"],
       requiredApprovals: ["operations_manager"],
       emergencyLevels: [
         {
@@ -304,8 +281,7 @@ export class EmergencyProtocolManager {
         channels: ["slack", "email"],
         stakeholders: ["operations_team", "engineering_team"],
         templates: {
-          activated:
-            "System failure protocol activated. Level: {level}. Reason: {reason}",
+          activated: "System failure protocol activated. Level: {level}. Reason: {reason}",
           escalated: "Emergency escalated to {level}. Action required.",
           resolved: "System failure resolved. Recovery verified.",
         },
@@ -342,11 +318,7 @@ export class EmergencyProtocolManager {
     this.protocols.set("market_crisis", {
       id: "market_crisis",
       name: "Market Crisis Response",
-      triggerConditions: [
-        "market_volatility > 50%",
-        "liquidity_crisis",
-        "flash_crash_detected",
-      ],
+      triggerConditions: ["market_volatility > 50%", "liquidity_crisis", "flash_crash_detected"],
       requiredApprovals: ["risk_manager", "cto"],
       emergencyLevels: [
         {
@@ -411,10 +383,7 @@ export class EmergencyProtocolManager {
         {
           fromLevel: "level_1_monitoring",
           toLevel: "level_2_protection",
-          conditions: [
-            "continued_volatility",
-            "position_losses_exceed_threshold",
-          ],
+          conditions: ["continued_volatility", "position_losses_exceed_threshold"],
           timeout: 300000,
           autoEscalate: true,
         },
@@ -423,10 +392,8 @@ export class EmergencyProtocolManager {
         channels: ["slack", "email", "sms"],
         stakeholders: ["trading_team", "risk_team", "management"],
         templates: {
-          activated:
-            "Market crisis protocol activated. Market conditions: {conditions}",
-          escalated:
-            "Market crisis escalated to {level}. Portfolio protection engaged.",
+          activated: "Market crisis protocol activated. Market conditions: {conditions}",
+          escalated: "Market crisis escalated to {level}. Portfolio protection engaged.",
           resolved: "Market crisis resolved. Normal operations resumed.",
         },
         escalationContacts: ["cfo", "ceo"],
@@ -462,11 +429,7 @@ export class EmergencyProtocolManager {
     this.protocols.set("security_breach", {
       id: "security_breach",
       name: "Security Breach Response",
-      triggerConditions: [
-        "unauthorized_access",
-        "suspicious_activity",
-        "data_breach_detected",
-      ],
+      triggerConditions: ["unauthorized_access", "suspicious_activity", "data_breach_detected"],
       requiredApprovals: ["security_officer", "cto", "legal"],
       emergencyLevels: [
         {
@@ -507,19 +470,11 @@ export class EmergencyProtocolManager {
       escalationRules: [],
       communicationPlan: {
         channels: ["secure_channel", "phone"],
-        stakeholders: [
-          "security_team",
-          "incident_response",
-          "legal",
-          "management",
-        ],
+        stakeholders: ["security_team", "incident_response", "legal", "management"],
         templates: {
-          activated:
-            "SECURITY BREACH DETECTED. All systems halted. Incident ID: {incident_id}",
-          escalated:
-            "Security breach requires immediate attention. Contact: {contact}",
-          resolved:
-            "Security breach contained and resolved. Post-incident review scheduled.",
+          activated: "SECURITY BREACH DETECTED. All systems halted. Incident ID: {incident_id}",
+          escalated: "Security breach requires immediate attention. Contact: {contact}",
+          resolved: "Security breach contained and resolved. Post-incident review scheduled.",
         },
         escalationContacts: ["ciso", "ceo", "legal_counsel"],
       },
@@ -568,9 +523,7 @@ export class EmergencyProtocolManager {
   /**
    * Test protocol execution (dry run)
    */
-  async testProtocol(
-    protocolId: string
-  ): Promise<{ success: boolean; issues: string[] }> {
+  async testProtocol(protocolId: string): Promise<{ success: boolean; issues: string[] }> {
     const protocol = this.protocols.get(protocolId);
     if (!protocol) {
       return { success: false, issues: [`Protocol not found: ${protocolId}`] };
@@ -590,7 +543,7 @@ export class EmergencyProtocolManager {
         // Check if all dependencies exist
         for (const depId of action.dependencies) {
           const depExists = protocol.emergencyLevels.some((l) =>
-            l.autoActions.some((a) => a.id === depId)
+            l.autoActions.some((a) => a.id === depId),
           );
           if (!depExists) {
             issues.push(`Action ${action.id} has missing dependency: ${depId}`);
@@ -649,8 +602,7 @@ export class EmergencyProtocolManager {
     return {
       totalProtocols: this.protocols.size,
       protocolsByComplexity,
-      averageLevelsPerProtocol:
-        this.protocols.size > 0 ? totalLevels / this.protocols.size : 0,
+      averageLevelsPerProtocol: this.protocols.size > 0 ? totalLevels / this.protocols.size : 0,
       actionTypes,
     };
   }

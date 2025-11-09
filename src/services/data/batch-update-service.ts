@@ -56,7 +56,7 @@ export class BatchUpdateService {
    */
   async batchUpdateSnipeTargets(
     updates: SnipeTargetUpdate[],
-    options: Partial<BatchUpdateOptions> = {}
+    options: Partial<BatchUpdateOptions> = {},
   ): Promise<{
     success: boolean;
     updated: number;
@@ -90,8 +90,8 @@ export class BatchUpdateService {
         .where(
           inArray(
             snipeTargets.id,
-            targetIds.map((id) => Number(id))
-          )
+            targetIds.map((id) => Number(id)),
+          ),
         );
 
       const existingIds = new Set(existingTargets.map((t: any) => t.id));
@@ -113,14 +113,12 @@ export class BatchUpdateService {
       // Process valid updates in chunks
       const chunks = this.chunkArray(validUpdates, opts.chunkSize);
       this.logger.info(
-        `Processing ${validUpdates.length} target updates in ${chunks.length} chunks`
+        `Processing ${validUpdates.length} target updates in ${chunks.length} chunks`,
       );
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        this.logger.debug(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`
-        );
+        this.logger.debug(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`);
 
         try {
           const result = await this.updateSnipeTargetChunk(chunk);
@@ -174,7 +172,7 @@ export class BatchUpdateService {
    */
   async batchUpdatePatternEmbeddings(
     updates: PatternEmbeddingUpdate[],
-    options: Partial<BatchUpdateOptions> = {}
+    options: Partial<BatchUpdateOptions> = {},
   ): Promise<{
     success: boolean;
     updated: number;
@@ -207,9 +205,7 @@ export class BatchUpdateService {
         .from(patternEmbeddings)
         .where(inArray(patternEmbeddings.patternId, patternIds));
 
-      const existingIds = new Set(
-        existingPatterns.map((p: any) => p.patternId)
-      );
+      const existingIds = new Set(existingPatterns.map((p: any) => p.patternId));
       const validUpdates = updates.filter((u) => existingIds.has(u.patternId));
 
       // Track not found patterns
@@ -228,14 +224,12 @@ export class BatchUpdateService {
       // Process valid updates in chunks
       const chunks = this.chunkArray(validUpdates, opts.chunkSize);
       this.logger.info(
-        `Processing ${validUpdates.length} pattern updates in ${chunks.length} chunks`
+        `Processing ${validUpdates.length} pattern updates in ${chunks.length} chunks`,
       );
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        this.logger.debug(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`
-        );
+        this.logger.debug(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`);
 
         try {
           const result = await this.updatePatternEmbeddingChunk(chunk);
@@ -290,7 +284,7 @@ export class BatchUpdateService {
   async batchToggleSnipeTargets(
     targetIds: string[],
     isActive: boolean,
-    options: Partial<BatchUpdateOptions> = {}
+    options: Partial<BatchUpdateOptions> = {},
   ): Promise<{
     success: boolean;
     updated: number;
@@ -303,14 +297,12 @@ export class BatchUpdateService {
     try {
       const chunks = this.chunkArray(targetIds, opts.chunkSize);
       this.logger.info(
-        `Toggling ${targetIds.length} targets to ${isActive ? "active" : "inactive"} in ${chunks.length} chunks`
+        `Toggling ${targetIds.length} targets to ${isActive ? "active" : "inactive"} in ${chunks.length} chunks`,
       );
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        this.logger.debug(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`
-        );
+        this.logger.debug(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} items)`);
 
         try {
           const result = await executeWithRetry(
@@ -324,10 +316,10 @@ export class BatchUpdateService {
                 .where(
                   inArray(
                     snipeTargets.id,
-                    chunk.map((id) => Number(id))
-                  )
+                    chunk.map((id) => Number(id)),
+                  ),
                 ),
-            `Update snipe targets chunk ${i + 1}`
+            `Update snipe targets chunk ${i + 1}`,
           );
 
           const updated = (result as any)?.changes || 0;
@@ -376,7 +368,7 @@ export class BatchUpdateService {
    * Update a chunk of snipe targets
    */
   private async updateSnipeTargetChunk(
-    chunk: SnipeTargetUpdate[]
+    chunk: SnipeTargetUpdate[],
   ): Promise<{ updated: number; errors: string[] }> {
     const errors: string[] = [];
     let updated = 0;
@@ -404,7 +396,7 @@ export class BatchUpdateService {
               .update(snipeTargets)
               .set(updateData)
               .where(eq(snipeTargets.id, Number(update.id))),
-          `Update snipe target ${update.id}`
+          `Update snipe target ${update.id}`,
         );
 
         if ((result as any)?.changes && (result as any).changes > 0) {
@@ -412,9 +404,7 @@ export class BatchUpdateService {
         }
       } catch (error) {
         const safeError = toSafeError(error);
-        errors.push(
-          `Failed to update target ${update.id}: ${safeError.message}`
-        );
+        errors.push(`Failed to update target ${update.id}: ${safeError.message}`);
       }
     }
 
@@ -425,7 +415,7 @@ export class BatchUpdateService {
    * Update a chunk of pattern embeddings
    */
   private async updatePatternEmbeddingChunk(
-    chunk: PatternEmbeddingUpdate[]
+    chunk: PatternEmbeddingUpdate[],
   ): Promise<{ updated: number; errors: string[] }> {
     const errors: string[] = [];
     let updated = 0;
@@ -453,7 +443,7 @@ export class BatchUpdateService {
               .update(patternEmbeddings)
               .set(updateData)
               .where(eq(patternEmbeddings.patternId, update.patternId)),
-          `Update pattern embedding ${update.patternId}`
+          `Update pattern embedding ${update.patternId}`,
         );
 
         if ((result as any)?.changes && (result as any).changes > 0) {
@@ -461,9 +451,7 @@ export class BatchUpdateService {
         }
       } catch (error) {
         const safeError = toSafeError(error);
-        errors.push(
-          `Failed to update pattern ${update.patternId}: ${safeError.message}`
-        );
+        errors.push(`Failed to update pattern ${update.patternId}: ${safeError.message}`);
       }
     }
 
@@ -495,17 +483,12 @@ export class BatchUpdateService {
 
       if (
         update.confidence !== undefined &&
-        (typeof update.confidence !== "number" ||
-          update.confidence < 0 ||
-          update.confidence > 100)
+        (typeof update.confidence !== "number" || update.confidence < 0 || update.confidence > 100)
       ) {
         errors.push(`Item ${i}: Invalid confidence (must be 0-100)`);
       }
 
-      if (
-        update.isActive !== undefined &&
-        typeof update.isActive !== "boolean"
-      ) {
+      if (update.isActive !== undefined && typeof update.isActive !== "boolean") {
         errors.push(`Item ${i}: Invalid isActive (must be boolean)`);
       }
     }
@@ -534,24 +517,16 @@ export class BatchUpdateService {
 
       if (
         update.confidence !== undefined &&
-        (typeof update.confidence !== "number" ||
-          update.confidence < 0 ||
-          update.confidence > 100)
+        (typeof update.confidence !== "number" || update.confidence < 0 || update.confidence > 100)
       ) {
         errors.push(`Item ${i}: Invalid confidence (must be 0-100)`);
       }
 
-      if (
-        update.embedding !== undefined &&
-        typeof update.embedding !== "string"
-      ) {
+      if (update.embedding !== undefined && typeof update.embedding !== "string") {
         errors.push(`Item ${i}: Invalid embedding (must be string)`);
       }
 
-      if (
-        update.patternData !== undefined &&
-        typeof update.patternData !== "string"
-      ) {
+      if (update.patternData !== undefined && typeof update.patternData !== "string") {
         errors.push(`Item ${i}: Invalid patternData (must be string)`);
       }
     }

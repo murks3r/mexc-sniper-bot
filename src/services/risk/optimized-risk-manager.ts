@@ -21,12 +21,7 @@ import type { EnhancedExecutionPosition as ExecutionPosition } from "@/src/schem
 // ============================================================================
 
 export const RiskLevelSchema = z.enum(["low", "medium", "high", "extreme"]);
-export const RiskActionSchema = z.enum([
-  "allow",
-  "warn",
-  "block",
-  "emergency_stop",
-]);
+export const RiskActionSchema = z.enum(["allow", "warn", "block", "emergency_stop"]);
 
 export const RiskAssessmentSchema = z.object({
   overallRiskLevel: RiskLevelSchema,
@@ -75,7 +70,7 @@ export const TakeProfitConfigSchema = z.object({
       z.object({
         price: z.number().positive(),
         percentage: z.number().min(0).max(100),
-      })
+      }),
     )
     .optional(),
   dynamicMultiplier: z.number().positive().optional(),
@@ -109,21 +104,6 @@ export type RiskAction = z.infer<typeof RiskActionSchema>;
 
 export class OptimizedRiskManager {
   private static instance: OptimizedRiskManager;
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[optimized-risk-manager]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[optimized-risk-manager]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[optimized-risk-manager]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[optimized-risk-manager]", message, context || ""),
-  };
 
   // Risk configuration
   private riskLimits: RiskLimits;
@@ -132,10 +112,6 @@ export class OptimizedRiskManager {
 
   // Risk tracking
   private portfolioMetrics: PortfolioRiskMetrics;
-  private riskHistory: Array<{
-    timestamp: string;
-    metrics: PortfolioRiskMetrics;
-  }> = [];
 
   // Performance metrics
   private riskMetrics = {
@@ -174,20 +150,17 @@ export class OptimizedRiskManager {
   async assessTradeRisk(
     pattern: PatternMatch,
     positionSize: number,
-    activePositions: ExecutionPosition[]
+    activePositions: ExecutionPosition[],
   ): Promise<RiskAssessment> {
     try {
       this.riskMetrics.totalAssessments++; // Calculate various risk components
       const positionRisk = this.calculatePositionRisk(pattern, positionSize);
-      const portfolioRisk = this.calculatePortfolioRisk(
-        activePositions,
-        positionSize
-      );
+      const portfolioRisk = this.calculatePortfolioRisk(activePositions, positionSize);
       const drawdownRisk = this.calculateDrawdownRisk(activePositions);
       const concentrationRisk = this.calculateConcentrationRisk(
         pattern.symbol,
         activePositions,
-        positionSize
+        positionSize,
       );
       const volatilityRisk = this.calculateVolatilityRisk(pattern);
 
@@ -202,10 +175,7 @@ export class OptimizedRiskManager {
 
       // Determine risk level and action
       const overallRiskLevel = this.determineRiskLevel(riskScore);
-      const recommendedAction = this.determineRiskAction(
-        overallRiskLevel,
-        riskScore
-      );
+      const recommendedAction = this.determineRiskAction(overallRiskLevel, riskScore);
 
       // Generate risk factors and recommendations
       const riskFactors = this.generateRiskFactors({
@@ -219,24 +189,18 @@ export class OptimizedRiskManager {
       const recommendations = this.generateRiskRecommendations(
         overallRiskLevel,
         riskScore,
-        pattern
+        pattern,
       );
 
       // Calculate safe position size and prices
       const maxSafePositionSize = this.calculateMaxSafePositionSize(
         pattern,
         activePositions,
-        riskScore
+        riskScore,
       );
 
-      const stopLossPrice = this.calculateOptimalStopLoss(
-        pattern,
-        positionSize
-      );
-      const takeProfitPrice = this.calculateOptimalTakeProfit(
-        pattern,
-        positionSize
-      );
+      const stopLossPrice = this.calculateOptimalStopLoss(pattern, positionSize);
+      const takeProfitPrice = this.calculateOptimalTakeProfit(pattern, positionSize);
 
       const assessment = RiskAssessmentSchema.parse({
         overallRiskLevel,
@@ -255,10 +219,7 @@ export class OptimizedRiskManager {
       });
 
       // Track blocked trades
-      if (
-        recommendedAction === "block" ||
-        recommendedAction === "emergency_stop"
-      ) {
+      if (recommendedAction === "block" || recommendedAction === "emergency_stop") {
         this.riskMetrics.blockedTrades++;
       }
       return assessment;
@@ -315,9 +276,7 @@ export class OptimizedRiskManager {
       if (unrealizedPnlPercent <= -this.riskLimits.emergencyStopLoss) {
         riskLevel = "extreme";
         shouldClose = true;
-        reasoning.push(
-          `Emergency stop: Loss exceeds ${this.riskLimits.emergencyStopLoss}%`
-        );
+        reasoning.push(`Emergency stop: Loss exceeds ${this.riskLimits.emergencyStopLoss}%`);
         this.riskMetrics.emergencyStops++;
       }
 
@@ -327,7 +286,7 @@ export class OptimizedRiskManager {
         const trailingStop = this.calculateTrailingStopLoss(
           currentPrice,
           entryPrice,
-          currentStopLoss
+          currentStopLoss,
         );
 
         if (trailingStop > currentStopLoss) {
@@ -342,10 +301,7 @@ export class OptimizedRiskManager {
         // Significant profit
         riskLevel = "low";
         if (this.takeProfitConfig.type === "dynamic") {
-          const dynamicTakeProfit = this.calculateDynamicTakeProfit(
-            currentPrice,
-            entryPrice
-          );
+          const dynamicTakeProfit = this.calculateDynamicTakeProfit(currentPrice, entryPrice);
           newTakeProfit = dynamicTakeProfit;
           shouldAdjustTakeProfit = true;
           reasoning.push("Dynamic take-profit adjustment");
@@ -464,8 +420,7 @@ export class OptimizedRiskManager {
   getRiskMetrics() {
     const blockRate =
       this.riskMetrics.totalAssessments > 0
-        ? (this.riskMetrics.blockedTrades / this.riskMetrics.totalAssessments) *
-          100
+        ? (this.riskMetrics.blockedTrades / this.riskMetrics.totalAssessments) * 100
         : 0;
 
     return {
@@ -477,10 +432,7 @@ export class OptimizedRiskManager {
 
   // Private helper methods
 
-  private calculatePositionRisk(
-    pattern: PatternMatch,
-    positionSize: number
-  ): number {
+  private calculatePositionRisk(pattern: PatternMatch, positionSize: number): number {
     let risk = 0;
 
     // Base risk from pattern confidence (inverted)
@@ -503,10 +455,7 @@ export class OptimizedRiskManager {
     }
 
     // Risk from position size
-    const sizeFactor = Math.min(
-      positionSize / this.riskLimits.maxPositionSize,
-      1
-    );
+    const sizeFactor = Math.min(positionSize / this.riskLimits.maxPositionSize, 1);
     risk += sizeFactor * 30;
 
     return Math.min(100, risk);
@@ -514,15 +463,14 @@ export class OptimizedRiskManager {
 
   private calculatePortfolioRisk(
     activePositions: ExecutionPosition[],
-    newPositionSize: number
+    newPositionSize: number,
   ): number {
     const totalValue =
       activePositions.reduce((sum, pos) => {
         return sum + pos.quantity * pos.currentPrice;
       }, 0) + newPositionSize;
 
-    const maxPortfolioValue =
-      this.riskLimits.maxPositionSize * this.riskLimits.maxPositions;
+    const maxPortfolioValue = this.riskLimits.maxPositionSize * this.riskLimits.maxPositions;
 
     return Math.min(100, (totalValue / maxPortfolioValue) * 100);
   }
@@ -543,11 +491,9 @@ export class OptimizedRiskManager {
   private calculateConcentrationRisk(
     symbol: string,
     activePositions: ExecutionPosition[],
-    newPositionSize: number
+    newPositionSize: number,
   ): number {
-    const symbolPositions = activePositions.filter(
-      (pos) => pos.symbol === symbol
-    );
+    const symbolPositions = activePositions.filter((pos) => pos.symbol === symbol);
     const symbolValue =
       symbolPositions.reduce((sum, pos) => {
         return sum + pos.quantity * pos.currentPrice;
@@ -590,7 +536,7 @@ export class OptimizedRiskManager {
         risks.portfolioRisk * weights.portfolioRisk +
         risks.drawdownRisk * weights.drawdownRisk +
         risks.concentrationRisk * weights.concentrationRisk +
-        risks.volatilityRisk * weights.volatilityRisk
+        risks.volatilityRisk * weights.volatilityRisk,
     );
   }
 
@@ -601,10 +547,7 @@ export class OptimizedRiskManager {
     return "low";
   }
 
-  private determineRiskAction(
-    riskLevel: RiskLevel,
-    riskScore: number
-  ): RiskAction {
+  private determineRiskAction(riskLevel: RiskLevel, riskScore: number): RiskAction {
     switch (riskLevel) {
       case "extreme":
         return "emergency_stop";
@@ -623,8 +566,7 @@ export class OptimizedRiskManager {
     if (risks.positionRisk > 50) factors.push("High position risk");
     if (risks.portfolioRisk > 60) factors.push("High portfolio exposure");
     if (risks.drawdownRisk > 40) factors.push("Significant drawdown");
-    if (risks.concentrationRisk > 30)
-      factors.push("High concentration in single asset");
+    if (risks.concentrationRisk > 30) factors.push("High concentration in single asset");
     if (risks.volatilityRisk > 50) factors.push("High market volatility");
 
     return factors;
@@ -633,7 +575,7 @@ export class OptimizedRiskManager {
   private generateRiskRecommendations(
     riskLevel: RiskLevel,
     riskScore: number,
-    pattern: PatternMatch
+    pattern: PatternMatch,
   ): string[] {
     const recommendations: string[] = [];
 
@@ -656,7 +598,7 @@ export class OptimizedRiskManager {
   private calculateMaxSafePositionSize(
     pattern: PatternMatch,
     _activePositions: ExecutionPosition[],
-    riskScore: number
+    riskScore: number,
   ): number {
     let maxSize = this.riskLimits.maxPositionSize;
 
@@ -673,7 +615,7 @@ export class OptimizedRiskManager {
 
   private calculateOptimalStopLoss(
     _pattern: PatternMatch,
-    _positionSize: number
+    _positionSize: number,
   ): number | undefined {
     if (this.stopLossConfig.type === "percentage") {
       // Assuming we have a current price (would be fetched in real implementation)
@@ -685,7 +627,7 @@ export class OptimizedRiskManager {
 
   private calculateOptimalTakeProfit(
     _pattern: PatternMatch,
-    _positionSize: number
+    _positionSize: number,
   ): number | undefined {
     if (this.takeProfitConfig.type === "percentage") {
       // Assuming we have a current price (would be fetched in real implementation)
@@ -698,17 +640,14 @@ export class OptimizedRiskManager {
   private calculateTrailingStopLoss(
     currentPrice: number,
     _entryPrice: number,
-    currentStopLoss: number
+    currentStopLoss: number,
   ): number {
     const trailingDistance = this.stopLossConfig.trailingDistance || 5; // 5% default
     const newStopLoss = currentPrice * (1 - trailingDistance / 100);
     return Math.max(currentStopLoss, newStopLoss);
   }
 
-  private calculateDynamicTakeProfit(
-    currentPrice: number,
-    entryPrice: number
-  ): number {
+  private calculateDynamicTakeProfit(currentPrice: number, entryPrice: number): number {
     const dynamicMultiplier = this.takeProfitConfig.dynamicMultiplier || 1.5;
     const profitPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
     return currentPrice * (1 + (profitPercent * dynamicMultiplier) / 100);

@@ -7,10 +7,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import type { ApiResponse } from "./api-response";
-import {
-  handleApiError,
-  type StandardizedErrorContext,
-} from "./standardized-error-handler";
+import { handleApiError, type StandardizedErrorContext } from "./standardized-error-handler";
 import { createLogger } from "./unified-logger";
 
 const logger = createLogger("api-error-middleware", {
@@ -23,7 +20,7 @@ const logger = createLogger("api-error-middleware", {
  */
 export type ApiHandler<T = any> = (
   request: NextRequest,
-  context?: { params?: Record<string, string> }
+  context?: { params?: Record<string, string> },
 ) => Promise<ApiResponse<T> | NextResponse>;
 
 /**
@@ -53,7 +50,7 @@ const defaultOptions: ApiErrorMiddlewareOptions = {
  */
 function extractRequestContext(
   request: NextRequest,
-  params?: Record<string, string>
+  params?: Record<string, string>,
 ): StandardizedErrorContext {
   const url = new URL(request.url);
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
@@ -80,23 +77,17 @@ function extractRequestContext(
  */
 function addCorsHeaders(response: NextResponse): void {
   response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   response.headers.set(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With, X-Request-ID"
+    "Content-Type, Authorization, X-Requested-With, X-Request-ID",
   );
 }
 
 /**
  * Create standardized error response
  */
-function createErrorResponse<T>(
-  error: unknown,
-  context: StandardizedErrorContext
-): NextResponse {
+function createErrorResponse<T>(error: unknown, context: StandardizedErrorContext): NextResponse {
   const apiResponse = handleApiError<T>(error, context);
 
   const response = NextResponse.json(apiResponse, {
@@ -114,10 +105,7 @@ function createErrorResponse<T>(
 /**
  * Timeout wrapper for API handlers
  */
-function withTimeout<T>(
-  handler: ApiHandler<T>,
-  timeoutMs: number
-): ApiHandler<T> {
+function withTimeout<T>(handler: ApiHandler<T>, timeoutMs: number): ApiHandler<T> {
   return async (request, context) => {
     return Promise.race([
       handler(request, context),
@@ -135,7 +123,7 @@ function withTimeout<T>(
  */
 export function withApiErrorHandling<T = any>(
   handler: ApiHandler<T>,
-  options: ApiErrorMiddlewareOptions = {}
+  options: ApiErrorMiddlewareOptions = {},
 ): ApiHandler<T> {
   const config = { ...defaultOptions, ...options };
 
@@ -166,9 +154,7 @@ export function withApiErrorHandling<T = any>(
       }
 
       // Create handler with timeout if specified
-      const handlerWithTimeout = config.timeout
-        ? withTimeout(handler, config.timeout)
-        : handler;
+      const handlerWithTimeout = config.timeout ? withTimeout(handler, config.timeout) : handler;
 
       // Execute the handler
       const result = await handlerWithTimeout(request, context);
@@ -242,7 +228,7 @@ export function withApiErrorHandling<T = any>(
           duration: Math.round(duration),
           error: error instanceof Error ? error.message : String(error),
         },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
 
       return errorResponse;
@@ -257,9 +243,7 @@ export function withApiErrorHandling<T = any>(
 /**
  * Public API routes (no authentication required)
  */
-export function withPublicApiErrorHandling<T = any>(
-  handler: ApiHandler<T>
-): ApiHandler<T> {
+export function withPublicApiErrorHandling<T = any>(handler: ApiHandler<T>): ApiHandler<T> {
   return withApiErrorHandling(handler, {
     enableMetrics: true,
     enableCors: true,
@@ -270,9 +254,7 @@ export function withPublicApiErrorHandling<T = any>(
 /**
  * Protected API routes (authentication required)
  */
-export function withProtectedApiErrorHandling<T = any>(
-  handler: ApiHandler<T>
-): ApiHandler<T> {
+export function withProtectedApiErrorHandling<T = any>(handler: ApiHandler<T>): ApiHandler<T> {
   return withApiErrorHandling(handler, {
     enableMetrics: true,
     enableCors: true,
@@ -284,9 +266,7 @@ export function withProtectedApiErrorHandling<T = any>(
 /**
  * Internal API routes (service-to-service)
  */
-export function withInternalApiErrorHandling<T = any>(
-  handler: ApiHandler<T>
-): ApiHandler<T> {
+export function withInternalApiErrorHandling<T = any>(handler: ApiHandler<T>): ApiHandler<T> {
   return withApiErrorHandling(handler, {
     enableMetrics: true,
     enableCors: false,
@@ -299,7 +279,7 @@ export function withInternalApiErrorHandling<T = any>(
  * High-performance API routes (minimal overhead)
  */
 export function withHighPerformanceApiErrorHandling<T = any>(
-  handler: ApiHandler<T>
+  handler: ApiHandler<T>,
 ): ApiHandler<T> {
   return withApiErrorHandling(handler, {
     enableMetrics: false,
@@ -312,9 +292,7 @@ export function withHighPerformanceApiErrorHandling<T = any>(
 /**
  * Webhook API routes (external integrations)
  */
-export function withWebhookApiErrorHandling<T = any>(
-  handler: ApiHandler<T>
-): ApiHandler<T> {
+export function withWebhookApiErrorHandling<T = any>(handler: ApiHandler<T>): ApiHandler<T> {
   return withApiErrorHandling(handler, {
     enableMetrics: true,
     enableCors: false,
@@ -327,7 +305,7 @@ export function withWebhookApiErrorHandling<T = any>(
  * Utility function to validate request methods
  */
 export function withMethodValidation(
-  allowedMethods: string[]
+  allowedMethods: string[],
 ): (handler: ApiHandler) => ApiHandler {
   return (handler: ApiHandler) => {
     return withApiErrorHandling(async (request, context) => {
@@ -343,7 +321,7 @@ export function withMethodValidation(
  * Utility function to validate content type
  */
 export function withContentTypeValidation(
-  requiredContentType: string
+  requiredContentType: string,
 ): (handler: ApiHandler) => ApiHandler {
   return (handler: ApiHandler) => {
     return withApiErrorHandling(async (request, context) => {
@@ -369,10 +347,7 @@ export function composeApiMiddleware<T = any>(
   ...middlewares: Array<(handler: ApiHandler<T>) => ApiHandler<T>>
 ): (handler: ApiHandler<T>) => ApiHandler<T> {
   return (handler: ApiHandler<T>) => {
-    return middlewares.reduceRight(
-      (acc, middleware) => middleware(acc),
-      handler
-    );
+    return middlewares.reduceRight((acc, middleware) => middleware(acc), handler);
   };
 }
 

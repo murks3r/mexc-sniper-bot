@@ -75,34 +75,23 @@ export function useUserPreferences(userId?: string) {
       }
 
       try {
-        const response = await fetch(
-          `/api/user-preferences?userId=${encodeURIComponent(userId)}`,
-          {
-            credentials: "include", // Include authentication cookies
-          }
-        );
+        const response = await fetch(`/api/user-preferences?userId=${encodeURIComponent(userId)}`, {
+          credentials: "include", // Include authentication cookies
+        });
 
         if (!response.ok) {
-          throw new Error(
-            `Failed to fetch user preferences: ${response.statusText}`
-          );
+          throw new Error(`Failed to fetch user preferences: ${response.statusText}`);
         }
 
-        const apiResponse: ApiResponse<UserTradingPreferences | null> =
-          await response.json();
+        const apiResponse: ApiResponse<UserTradingPreferences | null> = await response.json();
 
         if (!apiResponse.success) {
-          throw new Error(
-            apiResponse.error || "Failed to fetch user preferences"
-          );
+          throw new Error(apiResponse.error || "Failed to fetch user preferences");
         }
 
         return apiResponse.data || null;
       } catch (error) {
-        console.error(
-          "[useUserPreferences] Failed to fetch preferences:",
-          error
-        );
+        console.error("[useUserPreferences] Failed to fetch preferences:", error);
         throw error;
       }
     },
@@ -117,9 +106,7 @@ export function useUpdateUserPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      data: Partial<UserTradingPreferences> & { userId: string }
-    ) => {
+    mutationFn: async (data: Partial<UserTradingPreferences> & { userId: string }) => {
       try {
         const response = await fetch("/api/user-preferences", {
           method: "POST",
@@ -143,27 +130,21 @@ export function useUpdateUserPreferences() {
           } catch {
             // Fallback to status text if response isn't JSON
           }
-          
+
           throw new Error(
-            `Failed to update user preferences: ${errorDetails} (Status: ${response.status})`
+            `Failed to update user preferences: ${errorDetails} (Status: ${response.status})`,
           );
         }
 
-        const apiResponse: ApiResponse<Partial<UserTradingPreferences>> =
-          await response.json();
+        const apiResponse: ApiResponse<Partial<UserTradingPreferences>> = await response.json();
 
         if (!apiResponse.success) {
-          throw new Error(
-            apiResponse.error || "Failed to update user preferences"
-          );
+          throw new Error(apiResponse.error || "Failed to update user preferences");
         }
 
         return apiResponse.data || data;
       } catch (error) {
-        console.error(
-          "[useUpdateUserPreferences] Failed to update preferences:",
-          error
-        );
+        console.error("[useUpdateUserPreferences] Failed to update preferences:", error);
         throw error;
       }
     },
@@ -397,10 +378,7 @@ export function useUpdateMultiLevelTakeProfit() {
   const updatePreferences = useUpdateUserPreferences();
 
   return useMutation({
-    mutationFn: async (data: {
-      userId: string;
-      config: MultiLevelTakeProfitConfig;
-    }) => {
+    mutationFn: async (data: { userId: string; config: MultiLevelTakeProfitConfig }) => {
       return updatePreferences.mutateAsync({
         userId: data.userId,
         multiLevelTakeProfit: data.config,

@@ -17,9 +17,7 @@ interface AutoSnipingStatus {
   isHealthy: boolean;
 }
 
-export function SimpleAutoSnipingControl({
-  className,
-}: SimpleAutoSnipingControlProps) {
+export function SimpleAutoSnipingControl({ className }: SimpleAutoSnipingControlProps) {
   const [status, setStatus] = useState<AutoSnipingStatus>({
     isActive: false,
     autoSnipingEnabled: false,
@@ -129,7 +127,7 @@ export function SimpleAutoSnipingControl({
           activePositions: 0,
           isHealthy: true,
         };
-        
+
         setStatus(newStatus);
         console.log("✅ Emergency stop successful:", newStatus);
 
@@ -150,15 +148,8 @@ export function SimpleAutoSnipingControl({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Auto-Sniping Control
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchStatus}
-              disabled={isLoading}
-            >
-              <Loader2
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
+            <Button variant="ghost" size="sm" onClick={fetchStatus} disabled={isLoading}>
+              <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
           </CardTitle>
         </CardHeader>
@@ -176,9 +167,7 @@ export function SimpleAutoSnipingControl({
                 </Badge>
               )}
               {status.activePositions > 0 && (
-                <Badge variant="outline">
-                  {status.activePositions} Active Positions
-                </Badge>
+                <Badge variant="outline">{status.activePositions} Active Positions</Badge>
               )}
             </div>
 
@@ -223,10 +212,7 @@ export function SimpleAutoSnipingControl({
             {/* Status Info */}
             <div className="text-xs text-gray-500 space-y-1">
               <div>System Health: {status.isHealthy ? "Good" : "Poor"}</div>
-              <div>
-                Auto-Sniping:{" "}
-                {status.autoSnipingEnabled ? "Enabled" : "Disabled"}
-              </div>
+              <div>Auto-Sniping: {status.autoSnipingEnabled ? "Enabled" : "Disabled"}</div>
               <div>Active Positions: {status.activePositions}</div>
             </div>
           </div>

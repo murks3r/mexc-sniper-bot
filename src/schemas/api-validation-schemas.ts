@@ -250,7 +250,7 @@ export const SortQuerySchema = z.object({
 
 export function validateApiQuery<T extends z.ZodSchema>(
   schema: T,
-  searchParams: URLSearchParams
+  searchParams: URLSearchParams,
 ): { success?: boolean; data?: z.infer<T>; error?: string } {
   try {
     const params = Object.fromEntries(searchParams.entries());
@@ -269,7 +269,7 @@ export function validateApiQuery<T extends z.ZodSchema>(
 
 export function validateApiBody<T extends z.ZodSchema>(
   schema: T,
-  body: unknown
+  body: unknown,
 ): { success?: boolean; data?: z.infer<T>; error?: string } {
   try {
     const result = schema.parse(body);
@@ -288,7 +288,7 @@ export function validateApiBody<T extends z.ZodSchema>(
 export function createValidatedApiResponse<T>(
   data: T,
   schema?: z.ZodSchema<T>,
-  message?: string
+  message?: string,
 ): { success?: boolean; data?: T; message?: string; timestamp?: string } {
   const validatedData = schema ? schema.parse(data) : data;
   return {
@@ -309,9 +309,7 @@ export type ApiResponse = z.infer<typeof ApiResponseSchema>;
 export type TransactionLock = z.infer<typeof TransactionLockSchema>;
 export type TransactionQueueItem = z.infer<typeof TransactionQueueItemSchema>;
 export type LockStats = z.infer<typeof LockStatsSchema>;
-export type TransactionLocksResponse = z.infer<
-  typeof TransactionLocksResponseSchema
->;
+export type TransactionLocksResponse = z.infer<typeof TransactionLocksResponseSchema>;
 export type TransactionLockQuery = z.infer<typeof TransactionLockQuerySchema>;
 export type ReleaseLockRequest = z.infer<typeof ReleaseLockRequestSchema>;
 export type CheckLockRequest = z.infer<typeof CheckLockRequestSchema>;
@@ -321,9 +319,7 @@ export type PortfolioActivity = z.infer<typeof PortfolioActivitySchema>;
 export type PortfolioResponse = z.infer<typeof PortfolioResponseSchema>;
 export type PortfolioQuery = z.infer<typeof PortfolioQuerySchema>;
 export type TradingPerformance = z.infer<typeof TradingPerformanceSchema>;
-export type TradingAnalyticsResponse = z.infer<
-  typeof TradingAnalyticsResponseSchema
->;
+export type TradingAnalyticsResponse = z.infer<typeof TradingAnalyticsResponseSchema>;
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
 export type DateRangeQuery = z.infer<typeof DateRangeQuerySchema>;
 export type SortQuery = z.infer<typeof SortQuerySchema>;

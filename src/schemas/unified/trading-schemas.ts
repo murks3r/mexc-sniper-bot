@@ -25,42 +25,22 @@ export const TradingConfigSchema = z.object({
     .number()
     .positive("Max concurrent positions must be positive")
     .default(5),
-  maxPositionSize: z
-    .number()
-    .min(0)
-    .max(1, "Position size must be between 0 and 1")
-    .default(0.1),
-  defaultStrategy: z
-    .enum(["conservative", "balanced", "aggressive"])
-    .default("conservative"),
+  maxPositionSize: z.number().min(0).max(1, "Position size must be between 0 and 1").default(0.1),
+  defaultStrategy: z.enum(["conservative", "balanced", "aggressive"]).default("conservative"),
 
   // Auto-Sniping Settings
   autoSnipingEnabled: z.boolean().default(false),
-  confidenceThreshold: z
-    .number()
-    .min(0)
-    .max(100, "Confidence threshold must be 0-100")
-    .default(75),
-  snipeCheckInterval: z
-    .number()
-    .positive("Snipe check interval must be positive")
-    .default(30000),
+  confidenceThreshold: z.number().min(0).max(100, "Confidence threshold must be 0-100").default(75),
+  snipeCheckInterval: z.number().positive("Snipe check interval must be positive").default(30000),
 
   // Risk Management
-  globalStopLossPercent: z
-    .number()
-    .min(0)
-    .max(100, "Stop loss percent must be 0-100")
-    .default(15),
+  globalStopLossPercent: z.number().min(0).max(100, "Stop loss percent must be 0-100").default(15),
   globalTakeProfitPercent: z
     .number()
     .min(0)
     .max(100, "Take profit percent must be 0-100")
     .default(25),
-  maxDailyLoss: z
-    .number()
-    .min(0, "Max daily loss cannot be negative")
-    .default(1000),
+  maxDailyLoss: z.number().min(0, "Max daily loss cannot be negative").default(1000),
 
   // Circuit Breaker Settings
   enableCircuitBreaker: z.boolean().default(true),
@@ -93,10 +73,7 @@ export const TradeParametersSchema = z
 
     // Quantity Parameters (mutually exclusive)
     quantity: z.number().positive("Quantity must be positive").optional(),
-    quoteOrderQty: z
-      .number()
-      .positive("Quote order quantity must be positive")
-      .optional(),
+    quoteOrderQty: z.number().positive("Quote order quantity must be positive").optional(),
 
     // Price Parameters
     price: z.number().positive("Price must be positive").optional(),
@@ -115,13 +92,10 @@ export const TradeParametersSchema = z
     isAutoSnipe: z.boolean().default(false),
     confidenceScore: z.number().min(0).max(100).optional(),
   })
-  .refine(
-    (data) => data.quantity !== undefined || data.quoteOrderQty !== undefined,
-    {
-      message: "Either quantity or quoteOrderQty must be provided",
-      path: ["quantity"],
-    }
-  )
+  .refine((data) => data.quantity !== undefined || data.quoteOrderQty !== undefined, {
+    message: "Either quantity or quoteOrderQty must be provided",
+    path: ["quantity"],
+  })
   .refine(
     (data) => {
       if (data.type === "LIMIT" || data.type === "STOP_LIMIT") {
@@ -132,7 +106,7 @@ export const TradeParametersSchema = z
     {
       message: "Price is required for LIMIT and STOP_LIMIT orders",
       path: ["price"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -144,7 +118,7 @@ export const TradeParametersSchema = z
     {
       message: "Stop price is required for STOP and STOP_LIMIT orders",
       path: ["stopPrice"],
-    }
+    },
   );
 
 export type TradeParameters = z.infer<typeof TradeParametersSchema>;
@@ -175,7 +149,7 @@ export const TradeExecutionResultSchema = z.object({
         qty: z.string(),
         commission: z.string(),
         commissionAsset: z.string(),
-      })
+      }),
     )
     .optional(),
 
@@ -212,14 +186,7 @@ export const AutoSnipeTargetSchema = z.object({
   positionSizeUsdt: z.number().positive(),
   stopLossPercent: z.number().min(0).max(100),
   takeProfitCustom: z.number().min(0).max(100).optional(),
-  status: z.enum([
-    "pending",
-    "ready",
-    "executing",
-    "completed",
-    "failed",
-    "cancelled",
-  ]),
+  status: z.enum(["pending", "ready", "executing", "completed", "failed", "cancelled"]),
   targetExecutionTime: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -274,9 +241,7 @@ export const TradingStrategySchema = z.object({
 
   // Position Sizing
   maxPositionSize: z.number().min(0).max(1, "Max position size must be 0-1"),
-  positionSizingMethod: z
-    .enum(["fixed", "kelly", "risk_parity"])
-    .default("fixed"),
+  positionSizingMethod: z.enum(["fixed", "kelly", "risk_parity"]).default("fixed"),
 
   // Risk Management
   stopLossPercent: z.number().min(0).max(100),
@@ -398,7 +363,7 @@ export const MultiPhaseResultSchema = z.object({
       allocation: z.number(),
       result: TradeExecutionResultSchema.optional(),
       executionTime: z.date().optional(),
-    })
+    }),
   ),
   totalExecuted: z.number(),
   averagePrice: z.number().optional(),
@@ -458,7 +423,7 @@ export const PerformanceMetricsSchema = z.object({
       trades: z.number(),
       pnl: z.number(),
       successRate: z.number(),
-    })
+    }),
   ),
 });
 
@@ -577,7 +542,7 @@ export const TRADING_SCHEMAS = {
  */
 export function validateTradingData<T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: boolean; data?: T; error?: string } {
   try {
     const result = schema.parse(data);
@@ -591,8 +556,7 @@ export function validateTradingData<T>(
     }
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Unknown validation error",
+      error: error instanceof Error ? error.message : "Unknown validation error",
     };
   }
 }
@@ -600,9 +564,7 @@ export function validateTradingData<T>(
 /**
  * Validate take profit strategy
  */
-export function validateTakeProfitStrategy(
-  strategy: TakeProfitStrategy
-): string[] {
+export function validateTakeProfitStrategy(strategy: TakeProfitStrategy): string[] {
   const errors: string[] = [];
 
   if (strategy.levels.length === 0) {
@@ -615,13 +577,8 @@ export function validateTakeProfitStrategy(
 
   // Check for ascending profit percentages
   for (let i = 1; i < strategy.levels.length; i++) {
-    if (
-      strategy.levels[i].profitPercentage <=
-      strategy.levels[i - 1].profitPercentage
-    ) {
-      errors.push(
-        `Level ${i + 1} profit percentage must be higher than level ${i}`
-      );
+    if (strategy.levels[i].profitPercentage <= strategy.levels[i - 1].profitPercentage) {
+      errors.push(`Level ${i + 1} profit percentage must be higher than level ${i}`);
     }
   }
 

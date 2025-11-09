@@ -22,11 +22,7 @@ class ParameterManager {
   private parameters: Map<string, Parameter> = new Map();
   private groups: Map<string, ParameterGroup> = new Map();
 
-  setParameter(
-    name: string,
-    value: any,
-    type: Parameter["type"] = "string"
-  ): void {
+  setParameter(name: string, value: any, type: Parameter["type"] = "string"): void {
     const existing = this.parameters.get(name);
 
     const parameter: Parameter = {
@@ -137,7 +133,9 @@ class ParameterManager {
     this.importParameters(updates);
   }
 
-  async validateParameters(params: Record<string, any>): Promise<{ valid: boolean; errors: string[] }> {
+  async validateParameters(
+    params: Record<string, any>,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     const errors: string[] = [];
     for (const [name, value] of Object.entries(params)) {
       if (!this.validateParameter(name, value)) {
@@ -165,9 +163,11 @@ class ParameterManager {
     return [];
   }
 
-  async createSnapshot(description?: string): Promise<void> {
+  async createSnapshot(name?: string, reason?: string): Promise<string> {
     // Implement snapshot creation later
-    console.log(`Creating snapshot: ${description || 'Unnamed snapshot'}`);
+    const snapshotId = `snapshot-${Date.now()}`;
+    console.log(`Creating snapshot: ${name || "Unnamed snapshot"}`, reason || "");
+    return snapshotId;
   }
 
   async restoreFromSnapshot(snapshotId: string): Promise<void> {
@@ -201,11 +201,7 @@ export function getParameter<T = any>(name: string, defaultValue?: T): T {
   return parameterManager.getParameter(name, defaultValue);
 }
 
-export function setParameter(
-  name: string,
-  value: any,
-  type: Parameter["type"] = "string"
-): void {
+export function setParameter(name: string, value: any, type: Parameter["type"] = "string"): void {
   parameterManager.setParameter(name, value, type);
 }
 

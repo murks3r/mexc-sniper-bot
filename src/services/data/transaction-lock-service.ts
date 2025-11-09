@@ -32,33 +32,6 @@ export interface TransactionResult {
 }
 
 export class TransactionLockService {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-  private getLogger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[transaction-lock-service]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[transaction-lock-service]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error(
-            "[transaction-lock-service]",
-            message,
-            context || "",
-            error || ""
-          ),
-        debug: (message: string, context?: any) =>
-          console.debug("[transaction-lock-service]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
-
   private static instance: TransactionLockService;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
@@ -77,9 +50,7 @@ export class TransactionLockService {
   /**
    * Generate a unique idempotency key for a transaction
    */
-  generateIdempotencyKey(
-    config: Omit<TransactionLockConfig, "idempotencyKey">
-  ): string {
+  generateIdempotencyKey(config: Omit<TransactionLockConfig, "idempotencyKey">): string {
     const data = {
       resourceId: config.resourceId,
       ownerId: config.ownerId,
@@ -88,17 +59,14 @@ export class TransactionLockService {
       ...this.extractIdempotencyData(config.transactionData),
     };
 
-    return crypto
-      .createHash("sha256")
-      .update(JSON.stringify(data))
-      .digest("hex");
+    return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
   }
 
   /**
    * Extract data relevant for idempotency from transaction data
    */
   private extractIdempotencyData(
-    transactionData: Record<string, unknown>
+    transactionData: Record<string, unknown>,
   ): Record<string, unknown> {
     // For trade transactions, include symbol, side, quantity, and order type
     if (transactionData.symbol && transactionData.side) {
@@ -117,8 +85,7 @@ export class TransactionLockService {
    * Acquire a lock for a transaction
    */
   async acquireLock(config: TransactionLockConfig): Promise<LockResult> {
-    const idempotencyKey =
-      config.idempotencyKey || this.generateIdempotencyKey(config);
+    const idempotencyKey = config.idempotencyKey || this.generateIdempotencyKey(config);
     const lockId = crypto.randomUUID();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + (config.timeoutMs || 30000));
@@ -136,10 +103,7 @@ export class TransactionLockService {
 
         if (existingLock) {
           // If lock is still active and not expired, return existing result or retry status
-          if (
-            existingLock.status === "active" &&
-            new Date(existingLock.expiresAt) > now
-          ) {
+          if (existingLock.status === "active" && new Date(existingLock.expiresAt) > now) {
             return {
               success: false,
               error: "Transaction already in progress",
@@ -168,14 +132,14 @@ export class TransactionLockService {
             and(
               eq(transactionLocks.resourceId, config.resourceId),
               eq(transactionLocks.status, "active"),
-              gte(transactionLocks.expiresAt, now)
-            )
+              gte(transactionLocks.expiresAt, now),
+            ),
           );
 
         if (activeLocks.length > 0) {
           // Check if any of the active locks have the same idempotency key
           const duplicateLock = activeLocks.find(
-            (lock: any) => lock.idempotencyKey === idempotencyKey
+            (lock: any) => lock.idempotencyKey === idempotencyKey,
           );
           if (duplicateLock) {
             return {
@@ -250,8 +214,7 @@ export class TransactionLockService {
       console.error("Failed to acquire lock:", error);
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to acquire lock",
+        error: error instanceof Error ? error.message : "Failed to acquire lock",
       };
     }
   }
@@ -262,7 +225,7 @@ export class TransactionLockService {
   async releaseLock(
     lockId: string,
     result?: Record<string, unknown>,
-    error?: string
+    error?: string,
   ): Promise<boolean> {
     try {
       await db
@@ -296,7 +259,7 @@ export class TransactionLockService {
    */
   private async addToQueue(
     config: TransactionLockConfig,
-    idempotencyKey: string
+    idempotencyKey: string,
   ): Promise<{ queueId: string; position: number }> {
     const queueId = crypto.randomUUID();
 
@@ -307,8 +270,8 @@ export class TransactionLockService {
       .where(
         and(
           eq(transactionQueue.resourceId, config.resourceId),
-          eq(transactionQueue.status, "pending")
-        )
+          eq(transactionQueue.status, "pending"),
+        ),
       );
 
     await db.insert(transactionQueue).values({
@@ -341,10 +304,7 @@ export class TransactionLockService {
       .select()
       .from(transactionQueue)
       .where(
-        and(
-          eq(transactionQueue.resourceId, resourceId),
-          eq(transactionQueue.status, "pending")
-        )
+        and(eq(transactionQueue.resourceId, resourceId), eq(transactionQueue.status, "pending")),
       )
       .orderBy(transactionQueue.priority, transactionQueue.queuedAt);
 
@@ -356,10 +316,7 @@ export class TransactionLockService {
       resourceId: nextItem.resourceId,
       ownerId: nextItem.ownerId,
       ownerType: nextItem.ownerType as "user" | "system" | "workflow",
-      transactionType: nextItem.transactionType as
-        | "trade"
-        | "cancel"
-        | "update",
+      transactionType: nextItem.transactionType as "trade" | "cancel" | "update",
       transactionData: JSON.parse(nextItem.transactionData),
       idempotencyKey: nextItem.idempotencyKey,
     };
@@ -385,7 +342,7 @@ export class TransactionLockService {
    */
   async executeWithLock<T>(
     config: TransactionLockConfig,
-    executor: () => Promise<T>
+    executor: () => Promise<T>,
   ): Promise<TransactionResult> {
     const startTime = Date.now();
     const lockResult = await this.acquireLock(config);
@@ -397,10 +354,7 @@ export class TransactionLockService {
     return this.executeTransaction(lockResult, executor, startTime);
   }
 
-  private handleLockFailure(
-    lockResult: LockResult,
-    startTime: number
-  ): TransactionResult {
+  private handleLockFailure(lockResult: LockResult, startTime: number): TransactionResult {
     if (lockResult.existingResult) {
       // Transaction already completed, return existing result
       return {
@@ -412,10 +366,7 @@ export class TransactionLockService {
     }
 
     // If this is a retry (duplicate idempotency key) and it's not just queued, return failure
-    if (
-      lockResult.isRetry &&
-      lockResult.error?.includes("Transaction already in progress")
-    ) {
+    if (lockResult.isRetry && lockResult.error?.includes("Transaction already in progress")) {
       return {
         success: false,
         error: lockResult.error,
@@ -435,7 +386,7 @@ export class TransactionLockService {
   private async executeTransaction<T>(
     lockResult: LockResult,
     executor: () => Promise<T>,
-    startTime: number
+    startTime: number,
   ): Promise<TransactionResult> {
     try {
       // Execute the transaction
@@ -471,11 +422,10 @@ export class TransactionLockService {
   private async handleExecutionError(
     error: unknown,
     lockResult: LockResult,
-    startTime: number
+    startTime: number,
   ): Promise<TransactionResult> {
     // Release lock with error
-    const errorMessage =
-      error instanceof Error ? error.message : "Transaction failed";
+    const errorMessage = error instanceof Error ? error.message : "Transaction failed";
     if (lockResult.lockId) {
       await this.releaseLock(lockResult.lockId, undefined, errorMessage);
     }
@@ -499,8 +449,8 @@ export class TransactionLockService {
         and(
           eq(transactionLocks.resourceId, resourceId),
           eq(transactionLocks.status, "active"),
-          gte(transactionLocks.expiresAt, new Date())
-        )
+          gte(transactionLocks.expiresAt, new Date()),
+        ),
       );
 
     return activeLocks.length > 0;
@@ -531,18 +481,15 @@ export class TransactionLockService {
         and(
           eq(transactionLocks.resourceId, resourceId),
           eq(transactionLocks.status, "active"),
-          gte(transactionLocks.expiresAt, now)
-        )
+          gte(transactionLocks.expiresAt, now),
+        ),
       );
 
     const queuedItems = await db
       .select()
       .from(transactionQueue)
       .where(
-        and(
-          eq(transactionQueue.resourceId, resourceId),
-          eq(transactionQueue.status, "pending")
-        )
+        and(eq(transactionQueue.resourceId, resourceId), eq(transactionQueue.status, "pending")),
       );
 
     return {
@@ -574,12 +521,7 @@ export class TransactionLockService {
           status: "expired",
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(transactionLocks.status, "active"),
-            lte(transactionLocks.expiresAt, now)
-          )
-        );
+        .where(and(eq(transactionLocks.status, "active"), lte(transactionLocks.expiresAt, now)));
 
       // Clean up old completed/failed locks (older than 24 hours)
       const cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -590,10 +532,10 @@ export class TransactionLockService {
             or(
               eq(transactionLocks.status, "released"),
               eq(transactionLocks.status, "expired"),
-              eq(transactionLocks.status, "failed")
+              eq(transactionLocks.status, "failed"),
             ),
-            lte(transactionLocks.createdAt, cutoffTime)
-          )
+            lte(transactionLocks.createdAt, cutoffTime),
+          ),
         );
 
       // Clean up old queue items
@@ -604,10 +546,10 @@ export class TransactionLockService {
             or(
               eq(transactionQueue.status, "completed"),
               eq(transactionQueue.status, "failed"),
-              eq(transactionQueue.status, "cancelled")
+              eq(transactionQueue.status, "cancelled"),
             ),
-            lte(transactionQueue.createdAt, cutoffTime)
-          )
+            lte(transactionQueue.createdAt, cutoffTime),
+          ),
         );
     } catch (error) {
       console.error("Cleanup process error:", error);
@@ -623,7 +565,7 @@ export class TransactionLockService {
       () => {
         this.cleanupExpiredLocks();
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     );
   }
 
@@ -664,10 +606,10 @@ export class TransactionLockService {
             lte(transactionQueue.priority, queueItem.priority),
             and(
               eq(transactionQueue.priority, queueItem.priority),
-              lte(transactionQueue.queuedAt, queueItem.queuedAt)
-            )
-          )
-        )
+              lte(transactionQueue.queuedAt, queueItem.queuedAt),
+            ),
+          ),
+        ),
       );
 
     return itemsAhead.length;
@@ -685,12 +627,7 @@ export class TransactionLockService {
         errorMessage: "Force released by owner",
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(transactionLocks.ownerId, ownerId),
-          eq(transactionLocks.status, "active")
-        )
-      );
+      .where(and(eq(transactionLocks.ownerId, ownerId), eq(transactionLocks.status, "active")));
 
     return (result as { changes?: number }).changes || 0;
   }
@@ -699,19 +636,13 @@ export class TransactionLockService {
    * Get all active locks
    */
   async getActiveLocks() {
-    return await db
-      .select()
-      .from(transactionLocks)
-      .where(eq(transactionLocks.status, "active"));
+    return await db.select().from(transactionLocks).where(eq(transactionLocks.status, "active"));
   }
 
   /**
    * Release a lock by resource ID and owner ID
    */
-  async releaseLockByResource(
-    resourceId: string,
-    ownerId: string
-  ): Promise<boolean> {
+  async releaseLockByResource(resourceId: string, ownerId: string): Promise<boolean> {
     try {
       // First, check if the lock exists
       const existingLocks = await db
@@ -721,8 +652,8 @@ export class TransactionLockService {
           and(
             eq(transactionLocks.resourceId, resourceId),
             eq(transactionLocks.ownerId, ownerId),
-            eq(transactionLocks.status, "active")
-          )
+            eq(transactionLocks.status, "active"),
+          ),
         );
 
       const existingLock = existingLocks[0];
@@ -743,8 +674,8 @@ export class TransactionLockService {
           and(
             eq(transactionLocks.resourceId, resourceId),
             eq(transactionLocks.ownerId, ownerId),
-            eq(transactionLocks.status, "active")
-          )
+            eq(transactionLocks.status, "active"),
+          ),
         );
 
       // For PostgreSQL with Drizzle, we need to check if the update was successful
@@ -756,8 +687,8 @@ export class TransactionLockService {
           and(
             eq(transactionLocks.resourceId, resourceId),
             eq(transactionLocks.ownerId, ownerId),
-            eq(transactionLocks.status, "released")
-          )
+            eq(transactionLocks.status, "released"),
+          ),
         );
 
       return updatedLocks.length > 0;

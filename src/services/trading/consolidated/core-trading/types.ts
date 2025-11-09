@@ -506,42 +506,30 @@ export interface ModuleContext {
   config: CoreTradingConfig;
   mexcService: UnifiedMexcServiceV2;
   safetyCoordinator?: ComprehensiveSafetyCoordinator;
-  manualTradingModule?: {
-    executeTrade: (params: TradeParameters) => Promise<TradeResult>;
-  };
   tradingStrategy: {
-    closePosition: (
-      positionId: string,
-      reason: string
-    ) => Promise<ServiceResponse<any>>;
+    closePosition: (positionId: string, reason: string) => Promise<ServiceResponse<any>>;
   };
   orderExecutor: {
     executePaperSnipe: (params: TradeParameters) => Promise<TradeResult>;
     executeRealSnipe: (params: TradeParameters) => Promise<TradeResult>;
-    createPositionEntry: (
-      params: TradeParameters,
-      result: TradeResult
-    ) => Promise<Position>;
+    createPositionEntry: (params: TradeParameters, result: TradeResult) => Promise<Position>;
   };
   positionManager: {
-    setupPositionMonitoring: (
-      position: Position,
-      result: TradeResult
-    ) => Promise<void>;
+    setupPositionMonitoring: (position: Position, result: TradeResult) => Promise<void>;
     updatePositionStopLoss: (
       positionId: string,
-      newStopLoss: number
+      newStopLoss: number,
     ) => Promise<ServiceResponse<void>>;
     updatePositionTakeProfit: (
       positionId: string,
-      newTakeProfit: number
+      newTakeProfit: number,
     ) => Promise<ServiceResponse<void>>;
     getActivePositions: () => Map<string, Position>;
     createPositionEntry: (
       tradeParams: any,
       symbol: string,
       stopLoss?: any,
-      takeProfit?: any
+      takeProfit?: any,
     ) => Promise<Position>;
   };
   marketDataService: {

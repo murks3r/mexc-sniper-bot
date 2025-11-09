@@ -4,10 +4,7 @@ import { getSession } from "@/src/lib/supabase-auth";
 /**
  * Validates URL format and protocol
  */
-function validateUrlFormat(
-  url: string | undefined,
-  allowedProtocols: string[]
-): boolean {
+function validateUrlFormat(url: string | undefined, allowedProtocols: string[]): boolean {
   if (!url) {
     return false;
   }
@@ -41,9 +38,7 @@ export async function GET() {
     ];
 
     // Check for missing environment variables (undefined/null, not empty strings)
-    const missing = requiredEnvs.filter(
-      (env) => process.env[env] === undefined
-    );
+    const missing = requiredEnvs.filter((env) => process.env[env] === undefined);
 
     if (missing.length > 0) {
       return NextResponse.json(
@@ -53,7 +48,7 @@ export async function GET() {
           missing_env_vars: missing,
           timestamp: new Date().toISOString(),
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -78,26 +73,25 @@ export async function GET() {
       supabaseStatus = "error";
       authTestResult = {
         sdk_accessible: false,
-        error:
-          sdkError instanceof Error ? sdkError.message : "Unknown SDK error",
+        error: sdkError instanceof Error ? sdkError.message : "Unknown SDK error",
       };
     }
 
     // Validate configuration values with proper URL validation
+    // Support both postgresql:// and postgres:// protocols (Supabase uses postgres://)
+    const databaseUrl = process.env.DATABASE_URL || "";
+    const databaseUrlFormat =
+      databaseUrl.startsWith("postgresql://") || databaseUrl.startsWith("postgres://");
+
     const configValidation = {
-      supabase_url_format: validateUrlFormat(process.env.NEXT_PUBLIC_SUPABASE_URL, [
-        "https",
-      ]),
-      database_url_format: validateUrlFormat(process.env.DATABASE_URL, [
-        "postgresql",
-      ]),
-            anon_key_format: Boolean(
+      supabase_url_format: validateUrlFormat(process.env.NEXT_PUBLIC_SUPABASE_URL, ["https"]),
+      database_url_format: databaseUrlFormat,
+      anon_key_format: Boolean(
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 0
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 0,
       ),
       service_role_key_format: Boolean(
-        process.env.SUPABASE_SERVICE_ROLE_KEY &&
-          process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0
+        process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0,
       ),
     };
 
@@ -165,7 +159,7 @@ export async function GET() {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

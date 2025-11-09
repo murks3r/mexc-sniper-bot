@@ -76,20 +76,18 @@ export class TradingDomainFactory {
     const logger = dependencies.logger || console;
 
     // Create feature flag manager
-    const featureFlagManager = new TradingDomainFeatureFlagManager(
-      dependencies.featureFlags
-    );
+    const featureFlagManager = new TradingDomainFeatureFlagManager(dependencies.featureFlags);
 
     // Create infrastructure adapters
     const tradingRepository = new DrizzleTradingRepository(logger);
     const tradingService = new MexcTradingServiceAdapter(
       dependencies.mexcService,
       dependencies.safetyCoordinator,
-      logger
+      logger,
     );
     const notificationService = new TradingNotificationServiceAdapter(
       logger,
-      dependencies.eventEmitter
+      dependencies.eventEmitter,
     );
 
     // Create use cases
@@ -97,14 +95,14 @@ export class TradingDomainFactory {
       tradingRepository,
       tradingService,
       notificationService,
-      logger
+      logger,
     );
 
     const executeTradeUseCase = new ExecuteTradeUseCase(
       tradingRepository,
       tradingService,
       notificationService,
-      logger
+      logger,
     );
 
     return {
@@ -121,10 +119,8 @@ export class TradingDomainFactory {
       featureFlagManager,
 
       // Helper methods
-      canUseTradingDomain: () =>
-        featureFlagManager.isCleanArchitectureTradingEnabled(),
-      shouldFallbackToLegacy: () =>
-        featureFlagManager.shouldUseLegacyTradingService(),
+      canUseTradingDomain: () => featureFlagManager.isCleanArchitectureTradingEnabled(),
+      shouldFallbackToLegacy: () => featureFlagManager.shouldUseLegacyTradingService(),
     };
   }
 }

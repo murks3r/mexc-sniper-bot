@@ -19,6 +19,7 @@ export interface OrderData {
   quantity: string;
   price?: string;
   timeInForce?: "GTC" | "IOC" | "FOK";
+  quoteOrderQty?: string;
 }
 
 export interface OrderResult {
@@ -38,17 +39,6 @@ export interface OrderResult {
 }
 
 export class MexcCoreTradingClient {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-core-trading]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-core-trading]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[mexc-core-trading]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-core-trading]", message, context || ""),
-  };
-
   constructor(private httpClient: MexcCoreHttpClient) {}
 
   // ============================================================================
@@ -58,20 +48,27 @@ export class MexcCoreTradingClient {
   /**
    * Place a trading order
    */
-  async placeOrder(
-    orderData: OrderData
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async placeOrder(orderData: OrderData): Promise<MexcServiceResponse<OrderResult>> {
     const startTime = Date.now();
 
     try {
       // Construct order parameters
+      // For MARKET BUY orders, use quoteOrderQty if provided (MEXC API requirement)
+      const isMarketBuyWithQuoteQty = orderData.side === "BUY" && orderData.type === "MARKET" && orderData.quoteOrderQty;
+      
       const params = new URLSearchParams({
         symbol: orderData.symbol,
         side: orderData.side,
         type: orderData.type,
-        quantity: orderData.quantity,
         timestamp: Date.now().toString(),
       });
+
+      // For MARKET BUY with quoteOrderQty, use quoteOrderQty instead of quantity
+      if (isMarketBuyWithQuoteQty) {
+        params.append("quoteOrderQty", orderData.quoteOrderQty);
+      } else {
+        params.append("quantity", orderData.quantity);
+      }
 
       if (orderData.price) {
         params.append("price", orderData.price);
@@ -105,10 +102,7 @@ export class MexcCoreTradingClient {
   /**
    * Cancel an existing order
    */
-  async cancelOrder(
-    symbol: string,
-    orderId: number
-  ): Promise<MexcServiceResponse<any>> {
+  async cancelOrder(symbol: string, orderId: number): Promise<MexcServiceResponse<any>> {
     const startTime = Date.now();
 
     try {
@@ -140,10 +134,7 @@ export class MexcCoreTradingClient {
   /**
    * Get order status
    */
-  async getOrderStatus(
-    symbol: string,
-    orderId: number
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async getOrderStatus(symbol: string, orderId: number): Promise<MexcServiceResponse<OrderResult>> {
     const startTime = Date.now();
 
     try {
@@ -175,9 +166,7 @@ export class MexcCoreTradingClient {
   /**
    * Get all open orders for a symbol
    */
-  async getOpenOrders(
-    symbol?: string
-  ): Promise<MexcServiceResponse<OrderResult[]>> {
+  async getOpenOrders(symbol?: string): Promise<MexcServiceResponse<OrderResult[]>> {
     const startTime = Date.now();
 
     try {
@@ -215,7 +204,7 @@ export class MexcCoreTradingClient {
     symbol: string,
     limit: number = 500,
     startTime?: number,
-    endTime?: number
+    endTime?: number,
   ): Promise<MexcServiceResponse<OrderResult[]>> {
     const startTimeMs = Date.now();
 
@@ -308,10 +297,7 @@ export class MexcCoreTradingClient {
   /**
    * Place a market buy order
    */
-  async marketBuy(
-    symbol: string,
-    quantity: string
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async marketBuy(symbol: string, quantity: string): Promise<MexcServiceResponse<OrderResult>> {
     return this.placeOrder({
       symbol,
       side: "BUY",
@@ -323,10 +309,7 @@ export class MexcCoreTradingClient {
   /**
    * Place a market sell order
    */
-  async marketSell(
-    symbol: string,
-    quantity: string
-  ): Promise<MexcServiceResponse<OrderResult>> {
+  async marketSell(symbol: string, quantity: string): Promise<MexcServiceResponse<OrderResult>> {
     return this.placeOrder({
       symbol,
       side: "SELL",
@@ -342,7 +325,7 @@ export class MexcCoreTradingClient {
     symbol: string,
     quantity: string,
     price: string,
-    timeInForce: "GTC" | "IOC" | "FOK" = "GTC"
+    timeInForce: "GTC" | "IOC" | "FOK" = "GTC",
   ): Promise<MexcServiceResponse<OrderResult>> {
     return this.placeOrder({
       symbol,
@@ -361,7 +344,7 @@ export class MexcCoreTradingClient {
     symbol: string,
     quantity: string,
     price: string,
-    timeInForce: "GTC" | "IOC" | "FOK" = "GTC"
+    timeInForce: "GTC" | "IOC" | "FOK" = "GTC",
   ): Promise<MexcServiceResponse<OrderResult>> {
     return this.placeOrder({
       symbol,
@@ -422,9 +405,7 @@ export class MexcCoreTradingClient {
 /**
  * Create a new MEXC trading client instance
  */
-export function createMexcCoreTradingClient(
-  httpClient: MexcCoreHttpClient
-): MexcCoreTradingClient {
+export function createMexcCoreTradingClient(httpClient: MexcCoreHttpClient): MexcCoreTradingClient {
   return new MexcCoreTradingClient(httpClient);
 }
 

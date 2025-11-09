@@ -1,10 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { executionHistory } from "../db/schema";
-import {
-  getConnectivityStatus,
-  performSystemHealthCheck,
-} from "./health-checks";
+import { getConnectivityStatus, performSystemHealthCheck } from "./health-checks";
 export interface EmergencyRecoveryPlan {
   emergencyType: string;
   severity: "low" | "medium" | "high" | "critical";
@@ -30,29 +27,13 @@ export interface RecoveryResult {
 }
 
 export class EmergencyRecoveryService {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[emergency-recovery]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[emergency-recovery]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[emergency-recovery]",
-        message,
-        context || "",
-        error || ""
-      ),
-    debug: (message: string, context?: any) =>
-      console.debug("[emergency-recovery]", message, context || ""),
-  };
-
   /**
    * Execute emergency recovery based on detected issues
    */
   async executeRecovery(
     emergencyType: string,
     severity: "low" | "medium" | "high" | "critical",
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const systemHealth = await performSystemHealthCheck();
     const connectivity = await getConnectivityStatus();
@@ -67,33 +48,30 @@ export class EmergencyRecoveryService {
       case "api_failure":
         return await this.handleApiFailureRecovery(
           connectivity,
-          systemHealth as unknown as Record<string, unknown>
+          systemHealth as unknown as Record<string, unknown>,
         );
 
       case "database_failure":
         return await this.handleDatabaseFailureRecovery(
-          systemHealth as unknown as Record<string, unknown>
+          systemHealth as unknown as Record<string, unknown>,
         );
 
       case "high_volatility":
         return await this.handleHighVolatilityRecovery(
           data,
-          systemHealth as unknown as Record<string, unknown>
+          systemHealth as unknown as Record<string, unknown>,
         );
 
       case "system_overload":
         return await this.handleSystemOverloadRecovery(
-          systemHealth as unknown as Record<string, unknown>
+          systemHealth as unknown as Record<string, unknown>,
         );
 
       case "trading_anomaly":
         return await this.handleTradingAnomalyRecovery(data);
 
       default:
-        return await this.handleGeneralEmergencyRecovery(
-          emergencyType,
-          severity
-        );
+        return await this.handleGeneralEmergencyRecovery(emergencyType, severity);
     }
   }
 
@@ -102,7 +80,7 @@ export class EmergencyRecoveryService {
    */
   private async handleApiFailureRecovery(
     connectivity: Record<string, unknown>,
-    _systemHealth: Record<string, unknown>
+    _systemHealth: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [];
 
@@ -162,7 +140,7 @@ export class EmergencyRecoveryService {
    * Handle database failure recovery
    */
   private async handleDatabaseFailureRecovery(
-    _systemHealth: Record<string, unknown>
+    _systemHealth: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [
       {
@@ -205,7 +183,7 @@ export class EmergencyRecoveryService {
    */
   private async handleHighVolatilityRecovery(
     data: Record<string, unknown>,
-    _systemHealth: Record<string, unknown>
+    _systemHealth: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [
       {
@@ -227,8 +205,7 @@ export class EmergencyRecoveryService {
       {
         id: "emergency_pattern_analysis",
         description: "Perform emergency pattern analysis",
-        action: async () =>
-          await this.performEmergencyAnalysis(data.affectedSymbols),
+        action: async () => await this.performEmergencyAnalysis(data.affectedSymbols),
         retryable: true,
         maxRetries: 2,
         timeoutMs: 60000,
@@ -256,7 +233,7 @@ export class EmergencyRecoveryService {
    * Handle system overload recovery
    */
   private async handleSystemOverloadRecovery(
-    _systemHealth: Record<string, unknown>
+    _systemHealth: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [
       {
@@ -306,14 +283,13 @@ export class EmergencyRecoveryService {
    * Handle trading anomaly recovery
    */
   private async handleTradingAnomalyRecovery(
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [
       {
         id: "halt_affected_trading",
         description: "Immediately halt trading for affected symbols",
-        action: async () =>
-          await this.haltAffectedTrading(data.affectedSymbols),
+        action: async () => await this.haltAffectedTrading(data.affectedSymbols),
         retryable: false,
         maxRetries: 1,
         timeoutMs: 5000,
@@ -350,7 +326,7 @@ export class EmergencyRecoveryService {
    */
   private async handleGeneralEmergencyRecovery(
     emergencyType: string,
-    severity: "low" | "medium" | "high" | "critical"
+    severity: "low" | "medium" | "high" | "critical",
   ): Promise<EmergencyRecoveryPlan> {
     const recoverySteps: RecoveryStep[] = [
       {
@@ -364,8 +340,7 @@ export class EmergencyRecoveryService {
       {
         id: "log_emergency_details",
         description: "Log detailed emergency information",
-        action: async () =>
-          await this.logEmergencyDetails(emergencyType, severity),
+        action: async () => await this.logEmergencyDetails(emergencyType, severity),
         retryable: true,
         maxRetries: 3,
         timeoutMs: 5000,
@@ -468,9 +443,7 @@ export class EmergencyRecoveryService {
     };
   }
 
-  private async scheduleRecoveryChecks(
-    emergencyType: string
-  ): Promise<RecoveryResult> {
+  private async scheduleRecoveryChecks(emergencyType: string): Promise<RecoveryResult> {
     // Schedule periodic checks to attempt recovery
     return {
       success: true,
@@ -533,8 +506,7 @@ export class EmergencyRecoveryService {
   private async tightenRiskControls(): Promise<RecoveryResult> {
     return {
       success: true,
-      message:
-        "Risk controls tightened - reduced position sizes and stricter stop losses",
+      message: "Risk controls tightened - reduced position sizes and stricter stop losses",
       details: {
         maxPositionSize: "reduced_by_50%",
         stopLossBuffer: "increased_by_25%",
@@ -543,9 +515,7 @@ export class EmergencyRecoveryService {
     };
   }
 
-  private async performEmergencyAnalysis(
-    symbols: unknown
-  ): Promise<RecoveryResult> {
+  private async performEmergencyAnalysis(symbols: unknown): Promise<RecoveryResult> {
     const symbolArray = Array.isArray(symbols) ? symbols : [];
     return {
       success: true,
@@ -555,7 +525,7 @@ export class EmergencyRecoveryService {
   }
 
   private async sendVolatilityNotification(
-    _data: Record<string, unknown>
+    _data: Record<string, unknown>,
   ): Promise<RecoveryResult> {
     return {
       success: true,
@@ -619,9 +589,7 @@ export class EmergencyRecoveryService {
     };
   }
 
-  private async investigateTradingAnomaly(
-    data: Record<string, unknown>
-  ): Promise<RecoveryResult> {
+  private async investigateTradingAnomaly(data: Record<string, unknown>): Promise<RecoveryResult> {
     return {
       success: true,
       message: "Trading anomaly investigation initiated",
@@ -647,16 +615,13 @@ export class EmergencyRecoveryService {
       success: true,
       message: `System health check completed - status: ${health.overall}`,
       details: health as unknown as Record<string, unknown>,
-      nextAction:
-        health.overall === "healthy"
-          ? "resume_operations"
-          : "continue_recovery",
+      nextAction: health.overall === "healthy" ? "resume_operations" : "continue_recovery",
     };
   }
 
   private async logEmergencyDetails(
     emergencyType: string,
-    severity: "low" | "medium" | "high" | "critical"
+    severity: "low" | "medium" | "high" | "critical",
   ): Promise<RecoveryResult> {
     return {
       success: true,
@@ -669,7 +634,7 @@ export class EmergencyRecoveryService {
     _emergencyType: string,
     _severity: "low" | "medium" | "high" | "critical",
     _phase: string,
-    _details: Record<string, unknown>
+    _details: Record<string, unknown>,
   ): Promise<void> {
     try {
       await db.insert(executionHistory).values({

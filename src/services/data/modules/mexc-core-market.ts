@@ -5,11 +5,7 @@
  * Extracted from core client for better separation of concerns.
  */
 
-import type {
-  CalendarEntry,
-  MexcServiceResponse,
-  SymbolEntry,
-} from "./mexc-api-types";
+import type { CalendarEntry, MexcServiceResponse, SymbolEntry } from "./mexc-api-types";
 import type { MexcCoreHttpClient } from "./mexc-core-http";
 
 // ============================================================================
@@ -17,17 +13,6 @@ import type { MexcCoreHttpClient } from "./mexc-core-http";
 // ============================================================================
 
 export class MexcCoreMarketClient {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-core-market]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-core-market]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[mexc-core-market]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-core-market]", message, context || ""),
-  };
-
   constructor(private httpClient: MexcCoreHttpClient) {}
 
   // ============================================================================
@@ -36,6 +21,8 @@ export class MexcCoreMarketClient {
 
   /**
    * Get calendar listings from MEXC
+   * Primary Detection: https://www.mexc.com/api/operation/new_coin_calendar?timestamp=
+   * Added proper timestamp parameter handling, User-Agent headers, and timeout configuration
    */
   async getCalendarListings(): Promise<MexcServiceResponse<CalendarEntry[]>> {
     const startTime = Date.now();
@@ -47,6 +34,11 @@ export class MexcCoreMarketClient {
       const response = await this.httpClient.makeRequest(url, {
         method: "GET",
         timeout: 30000,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "application/json",
+        },
       });
 
       // Handle MEXC's specific response structure
@@ -54,11 +46,8 @@ export class MexcCoreMarketClient {
         const calendarData = response.data.newCoins.map((coin: any) => ({
           vcoinId: coin.vcoinId || coin.id || "",
           symbol: coin.vcoinName || coin.symbol || coin.vcoinId || "",
-          projectName:
-            coin.vcoinNameFull || coin.vcoinName || coin.projectName || "",
-          firstOpenTime: this.httpClient.parseTimestamp(
-            coin.firstOpenTime || coin.first_open_time
-          ),
+          projectName: coin.vcoinNameFull || coin.vcoinName || coin.projectName || "",
+          firstOpenTime: this.httpClient.parseTimestamp(coin.firstOpenTime || coin.first_open_time),
           vcoinName: coin.vcoinName,
           vcoinNameFull: coin.vcoinNameFull,
           zone: coin.zone,
@@ -79,11 +68,7 @@ export class MexcCoreMarketClient {
         source: "mexc-core-market",
       };
     } catch (error) {
-      return this.httpClient.handleError(
-        error,
-        "getCalendarListings",
-        startTime
-      );
+      return this.httpClient.handleError(error, "getCalendarListings", startTime);
     }
   }
 
@@ -119,9 +104,7 @@ export class MexcCoreMarketClient {
   /**
    * Get symbols for a specific coin
    */
-  async getSymbolsByVcoinId(
-    vcoinId: string
-  ): Promise<MexcServiceResponse<SymbolEntry[]>> {
+  async getSymbolsByVcoinId(vcoinId: string): Promise<MexcServiceResponse<SymbolEntry[]>> {
     const startTime = Date.now();
 
     try {
@@ -136,7 +119,7 @@ export class MexcCoreMarketClient {
           .filter(
             (symbol: any) =>
               symbol.symbol?.includes(vcoinId.toUpperCase()) ||
-              symbol.baseAsset === vcoinId.toUpperCase()
+              symbol.baseAsset === vcoinId.toUpperCase(),
           )
           .map((symbol: any) => ({
             symbol: symbol.symbol,
@@ -169,11 +152,7 @@ export class MexcCoreMarketClient {
         source: "mexc-core-market",
       };
     } catch (error) {
-      return this.httpClient.handleError(
-        error,
-        "getSymbolsByVcoinId",
-        startTime
-      );
+      return this.httpClient.handleError(error, "getSymbolsByVcoinId", startTime);
     }
   }
 
@@ -229,9 +208,7 @@ export class MexcCoreMarketClient {
   /**
    * Get basic symbol information by symbol name
    */
-  async getSymbolInfoBasic(
-    symbolName: string
-  ): Promise<MexcServiceResponse<any>> {
+  async getSymbolInfoBasic(symbolName: string): Promise<MexcServiceResponse<any>> {
     const startTime = Date.now();
 
     try {
@@ -255,11 +232,7 @@ export class MexcCoreMarketClient {
         source: "mexc-core-market",
       };
     } catch (error) {
-      return this.httpClient.handleError(
-        error,
-        "getSymbolInfoBasic",
-        startTime
-      );
+      return this.httpClient.handleError(error, "getSymbolInfoBasic", startTime);
     }
   }
 
@@ -296,7 +269,7 @@ export class MexcCoreMarketClient {
       const simple = await this.httpClient.makeRequest(urlSimple, {
         method: "GET",
       });
-      if (simple?.data && simple.data.price) {
+      if (simple?.data?.price) {
         const mapped = {
           symbol: simple.data.symbol || symbol,
           price: simple.data.price,
@@ -316,7 +289,7 @@ export class MexcCoreMarketClient {
       // 3) Fallback: bookTicker best bid/ask -> mid-price
       const urlBook = `${config.baseUrl}/api/v3/ticker/bookTicker?symbol=${symbol}`;
       const book = await this.httpClient.makeRequest(urlBook, { method: "GET" });
-      if (book?.data && book.data.bidPrice && book.data.askPrice) {
+      if (book?.data?.bidPrice && book.data.askPrice) {
         const bid = parseFloat(book.data.bidPrice);
         const ask = parseFloat(book.data.askPrice);
         if (bid > 0 && ask > 0) {
@@ -352,7 +325,7 @@ export class MexcCoreMarketClient {
         const simple = await this.httpClient.makeRequest(urlSimple, {
           method: "GET",
         });
-        if (simple?.data && simple.data.price) {
+        if (simple?.data?.price) {
           const mapped = {
             symbol: simple.data.symbol || symbol,
             price: simple.data.price,
@@ -371,7 +344,7 @@ export class MexcCoreMarketClient {
 
         const urlBook = `${config.baseUrl}/api/v3/ticker/bookTicker?symbol=${symbol}`;
         const book = await this.httpClient.makeRequest(urlBook, { method: "GET" });
-        if (book?.data && book.data.bidPrice && book.data.askPrice) {
+        if (book?.data?.bidPrice && book.data.askPrice) {
           const bid = parseFloat(book.data.bidPrice);
           const ask = parseFloat(book.data.askPrice);
           if (bid > 0 && ask > 0) {
@@ -438,7 +411,7 @@ export class MexcCoreMarketClient {
    */
   async getOrderBook(
     symbol: string,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<
     MexcServiceResponse<{
       bids: [string, string][];
@@ -519,9 +492,7 @@ export class MexcCoreMarketClient {
 /**
  * Create a new MEXC market client instance
  */
-export function createMexcCoreMarketClient(
-  httpClient: MexcCoreHttpClient
-): MexcCoreMarketClient {
+export function createMexcCoreMarketClient(httpClient: MexcCoreHttpClient): MexcCoreMarketClient {
   return new MexcCoreMarketClient(httpClient);
 }
 

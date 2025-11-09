@@ -28,9 +28,7 @@ export class InsufficientBalanceError extends TradingDomainError {
   readonly errorCode = "INSUFFICIENT_BALANCE";
 
   constructor(required: number, available: number, asset: string) {
-    super(
-      `Insufficient ${asset} balance. Required: ${required}, Available: ${available}`
-    );
+    super(`Insufficient ${asset} balance. Required: ${required}, Available: ${available}`);
   }
 }
 
@@ -39,7 +37,7 @@ export class OrderExecutionError extends TradingDomainError {
 
   constructor(reason: string, exchangeError?: string) {
     super(
-      `Order execution failed: ${reason}${exchangeError ? ` (Exchange: ${exchangeError})` : ""}`
+      `Order execution failed: ${reason}${exchangeError ? ` (Exchange: ${exchangeError})` : ""}`,
     );
   }
 }
@@ -182,7 +180,7 @@ export class StaleMarketDataError extends TradingDomainError {
 
   constructor(symbol: string, lastUpdate: Date, maxAge: number) {
     super(
-      `Market data for ${symbol} is stale. Last update: ${lastUpdate.toISOString()}, Max age: ${maxAge}ms`
+      `Market data for ${symbol} is stale. Last update: ${lastUpdate.toISOString()}, Max age: ${maxAge}ms`,
     );
   }
 }
@@ -200,9 +198,7 @@ export class ConcurrentModificationError extends TradingDomainError {
   readonly errorCode = "CONCURRENT_MODIFICATION_ERROR";
 
   constructor(resourceType: string, resourceId: string) {
-    super(
-      `Concurrent modification detected for ${resourceType} '${resourceId}'`
-    );
+    super(`Concurrent modification detected for ${resourceType} '${resourceId}'`);
   }
 }
 
@@ -211,9 +207,7 @@ export class DomainValidationError extends TradingDomainError {
   readonly errorCode = "DOMAIN_VALIDATION_ERROR";
 
   constructor(field: string, value: any, constraint: string) {
-    super(
-      `Validation failed for '${field}' with value '${value}': ${constraint}`
-    );
+    super(`Validation failed for '${field}' with value '${value}': ${constraint}`);
   }
 }
 
@@ -221,33 +215,25 @@ export class BusinessRuleViolationError extends TradingDomainError {
   readonly errorCode = "BUSINESS_RULE_VIOLATION";
 
   constructor(rule: string, context?: string) {
-    super(
-      `Business rule violation: ${rule}${context ? ` (Context: ${context})` : ""}`
-    );
+    super(`Business rule violation: ${rule}${context ? ` (Context: ${context})` : ""}`);
   }
 }
 
 // Error Factory for common error creation patterns
 export class TradingErrorFactory {
-  static invalidTradeParameters(
-    parameter: string,
-    reason: string
-  ): InvalidTradeParametersError {
+  static invalidTradeParameters(parameter: string, reason: string): InvalidTradeParametersError {
     return new InvalidTradeParametersError(parameter, reason);
   }
 
   static insufficientBalance(
     required: number,
     available: number,
-    asset: string
+    asset: string,
   ): InsufficientBalanceError {
     return new InsufficientBalanceError(required, available, asset);
   }
 
-  static orderExecutionFailed(
-    reason: string,
-    exchangeError?: string
-  ): OrderExecutionError {
+  static orderExecutionFailed(reason: string, exchangeError?: string): OrderExecutionError {
     return new OrderExecutionError(reason, exchangeError);
   }
 
@@ -262,21 +248,16 @@ export class TradingErrorFactory {
   static riskLimitExceeded(
     limitType: string,
     current: number,
-    limit: number
+    limit: number,
   ): RiskLimitExceededError {
     return new RiskLimitExceededError(limitType, current, limit);
   }
 
-  static autoSnipeTargetNotFound(
-    targetId: number
-  ): AutoSnipeTargetNotFoundError {
+  static autoSnipeTargetNotFound(targetId: number): AutoSnipeTargetNotFoundError {
     return new AutoSnipeTargetNotFoundError(targetId);
   }
 
-  static insufficientConfidence(
-    actual: number,
-    required: number
-  ): InsufficientConfidenceError {
+  static insufficientConfidence(actual: number, required: number): InsufficientConfidenceError {
     return new InsufficientConfidenceError(actual, required);
   }
 
@@ -284,10 +265,7 @@ export class TradingErrorFactory {
     return new InvalidSymbolError(symbol);
   }
 
-  static businessRuleViolation(
-    rule: string,
-    context?: string
-  ): BusinessRuleViolationError {
+  static businessRuleViolation(rule: string, context?: string): BusinessRuleViolationError {
     return new BusinessRuleViolationError(rule, context);
   }
 }

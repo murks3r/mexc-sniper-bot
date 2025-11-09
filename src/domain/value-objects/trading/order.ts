@@ -102,9 +102,7 @@ export class Order extends ValueObject<OrderProps> {
     super(props);
   }
 
-  static create(
-    props: Omit<OrderProps, "id" | "createdAt" | "updatedAt">
-  ): Order {
+  static create(props: Omit<OrderProps, "id" | "createdAt" | "updatedAt">): Order {
     const id = `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
 
@@ -130,7 +128,7 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         firstError.path.join("."),
         "invalid value",
-        firstError.message
+        firstError.message,
       );
     }
 
@@ -146,17 +144,13 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         "quantity",
         "undefined",
-        "Either quantity or quoteOrderQty must be provided"
+        "Either quantity or quoteOrderQty must be provided",
       );
     }
 
     // Price validation for limit orders
     if (props.type === OrderType.LIMIT && !props.price) {
-      throw new DomainValidationError(
-        "price",
-        "undefined",
-        "Price is required for LIMIT orders"
-      );
+      throw new DomainValidationError("price", "undefined", "Price is required for LIMIT orders");
     }
 
     // Stop price validation for stop limit orders
@@ -164,20 +158,16 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         "stopPrice",
         "undefined",
-        "Stop price is required for STOP_LIMIT orders"
+        "Stop price is required for STOP_LIMIT orders",
       );
     }
 
     // Execution validation
-    if (
-      props.executedQuantity &&
-      props.quantity &&
-      props.executedQuantity > props.quantity
-    ) {
+    if (props.executedQuantity && props.quantity && props.executedQuantity > props.quantity) {
       throw new DomainValidationError(
         "executedQuantity",
         props.executedQuantity,
-        "Executed quantity cannot exceed order quantity"
+        "Executed quantity cannot exceed order quantity",
       );
     }
 
@@ -186,7 +176,7 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         "filledAt",
         "undefined",
-        "Fill timestamp is required for FILLED orders"
+        "Fill timestamp is required for FILLED orders",
       );
     }
 
@@ -194,7 +184,7 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         "cancelledAt",
         "undefined",
-        "Cancel timestamp is required for CANCELLED orders"
+        "Cancel timestamp is required for CANCELLED orders",
       );
     }
 
@@ -203,7 +193,7 @@ export class Order extends ValueObject<OrderProps> {
       throw new DomainValidationError(
         "confidenceScore",
         "undefined",
-        "Confidence score is required for auto-snipe orders"
+        "Confidence score is required for auto-snipe orders",
       );
     }
   }
@@ -331,11 +321,9 @@ export class Order extends ValueObject<OrderProps> {
   }
 
   isActive(): boolean {
-    return [
-      OrderStatus.PENDING,
-      OrderStatus.SUBMITTED,
-      OrderStatus.PARTIALLY_FILLED,
-    ].includes(this.props.status);
+    return [OrderStatus.PENDING, OrderStatus.SUBMITTED, OrderStatus.PARTIALLY_FILLED].includes(
+      this.props.status,
+    );
   }
 
   isFinalized(): boolean {
@@ -376,11 +364,7 @@ export class Order extends ValueObject<OrderProps> {
     });
   }
 
-  markAsPartiallyFilled(
-    executedQuantity: number,
-    executedPrice: number,
-    fees?: number
-  ): Order {
+  markAsPartiallyFilled(executedQuantity: number, executedPrice: number, fees?: number): Order {
     return Order.fromExisting({
       ...this.props,
       status: OrderStatus.PARTIALLY_FILLED,
@@ -396,7 +380,7 @@ export class Order extends ValueObject<OrderProps> {
     executedQuantity: number,
     executedPrice: number,
     cumulativeQuoteQty?: number,
-    fees?: number
+    fees?: number,
   ): Order {
     return Order.fromExisting({
       ...this.props,

@@ -18,10 +18,7 @@ let trace: any;
 let TRADING_TELEMETRY_CONFIG: any;
 let tracer: any;
 
-if (
-  process.env.DISABLE_TELEMETRY !== "true" &&
-  process.env.NODE_ENV !== "test"
-) {
+if (process.env.DISABLE_TELEMETRY !== "true" && process.env.NODE_ENV !== "test") {
   try {
     ({ SpanKind, SpanStatusCode, trace } = require("@opentelemetry/api"));
     ({ TRADING_TELEMETRY_CONFIG } = require("./opentelemetry-setup"));
@@ -29,22 +26,18 @@ if (
   } catch (error) {
     console.warn(
       "OpenTelemetry not available:",
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     );
   }
 }
 
 export function instrumentedTradingRoute<T = any>(
   handler: (request: NextRequest) => Promise<NextResponse<T> | Response>,
-  operationType: string
+  operationType: string,
 ) {
   return async (request: NextRequest): Promise<NextResponse<T> | Response> => {
     // Skip telemetry during build or when disabled
-    if (
-      process.env.DISABLE_TELEMETRY === "true" ||
-      process.env.NODE_ENV === "test" ||
-      !tracer
-    ) {
+    if (process.env.DISABLE_TELEMETRY === "true" || process.env.NODE_ENV === "test" || !tracer) {
       return handler(request);
     }
 
@@ -81,7 +74,7 @@ export function instrumentedTradingRoute<T = any>(
             "http.status_code": response.status,
             [TRADING_TELEMETRY_CONFIG.attributes.response_time]: duration,
             "response.size_bytes": response.headers.get("content-length")
-              ? Number.parseInt(response.headers.get("content-length")!)
+              ? Number.parseInt(response.headers.get("content-length")!, 10)
               : 0,
           });
 
@@ -114,26 +107,22 @@ export function instrumentedTradingRoute<T = any>(
 
           // Add error attributes
           span.setAttributes({
-            "error.type":
-              error instanceof Error ? error.constructor.name : "UnknownError",
-            "error.message":
-              error instanceof Error ? error.message : "Unknown error",
+            "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
+            "error.message": error instanceof Error ? error.message : "Unknown error",
             [TRADING_TELEMETRY_CONFIG.attributes.response_time]: duration,
           });
 
           // Add error event
           span.addEvent("request.error", {
             duration_ms: duration,
-            error_type:
-              error instanceof Error ? error.constructor.name : "UnknownError",
-            error_message:
-              error instanceof Error ? error.message : "Unknown error",
+            error_type: error instanceof Error ? error.constructor.name : "UnknownError",
+            error_message: error instanceof Error ? error.message : "Unknown error",
           });
 
           // Re-throw the error to maintain original behavior
           throw error;
         }
-      }
+      },
     );
   };
 }
@@ -143,7 +132,7 @@ export function instrumentedTradingRoute<T = any>(
  */
 export function instrumentedApiRoute<T = any>(
   handler: (request: NextRequest) => Promise<NextResponse<T> | Response>,
-  routeName: string
+  routeName: string,
 ) {
   return instrumentedTradingRoute(handler, routeName);
 }
@@ -154,7 +143,7 @@ export function instrumentedApiRoute<T = any>(
 export async function instrumentedDatabaseOperation<T>(
   operationName: string,
   operation: () => Promise<T>,
-  attributes: Record<string, any> = {}
+  attributes: Record<string, any> = {},
 ): Promise<T> {
   const spanName = `${TRADING_TELEMETRY_CONFIG.spans.database_query}.${operationName}`;
 
@@ -192,21 +181,17 @@ export async function instrumentedDatabaseOperation<T>(
         span.setAttributes({
           "db.duration_ms": duration,
           "db.success": false,
-          "db.error.type":
-            error instanceof Error ? error.constructor.name : "UnknownError",
+          "db.error.type": error instanceof Error ? error.constructor.name : "UnknownError",
         });
 
         span.setStatus({
           code: SpanStatusCode.ERROR,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Database operation failed",
+          message: error instanceof Error ? error.message : "Database operation failed",
         });
 
         throw error;
       }
-    }
+    },
   );
 }
 
@@ -216,7 +201,7 @@ export async function instrumentedDatabaseOperation<T>(
 export async function instrumentedApiCall<T>(
   endpoint: string,
   operation: () => Promise<T>,
-  attributes: Record<string, any> = {}
+  attributes: Record<string, any> = {},
 ): Promise<T> {
   const spanName = `${TRADING_TELEMETRY_CONFIG.spans.api_call}.mexc`;
 
@@ -259,8 +244,7 @@ export async function instrumentedApiCall<T>(
         span.setAttributes({
           [TRADING_TELEMETRY_CONFIG.attributes.response_time]: duration,
           "api.success": false,
-          "api.error.type":
-            error instanceof Error ? error.constructor.name : "UnknownError",
+          "api.error.type": error instanceof Error ? error.constructor.name : "UnknownError",
         });
 
         span.setStatus({
@@ -271,13 +255,12 @@ export async function instrumentedApiCall<T>(
         span.addEvent("api.call.error", {
           endpoint,
           duration_ms: duration,
-          error_type:
-            error instanceof Error ? error.constructor.name : "UnknownError",
+          error_type: error instanceof Error ? error.constructor.name : "UnknownError",
         });
 
         throw error;
       }
-    }
+    },
   );
 }
 
@@ -292,7 +275,7 @@ export async function instrumentedTradingOperation<T>(
     | "position_monitoring"
     | "safety_check",
   operation: () => Promise<T>,
-  attributes: Record<string, any> = {}
+  attributes: Record<string, any> = {},
 ): Promise<T> {
   const spanName = TRADING_TELEMETRY_CONFIG.spans[operationType];
 
@@ -332,13 +315,12 @@ export async function instrumentedTradingOperation<T>(
 
         span.setStatus({
           code: SpanStatusCode.ERROR,
-          message:
-            error instanceof Error ? error.message : "Trading operation failed",
+          message: error instanceof Error ? error.message : "Trading operation failed",
         });
 
         throw error;
       }
-    }
+    },
   );
 }
 
@@ -355,10 +337,7 @@ export function addTradingAttributes(attributes: Record<string, any>): void {
 /**
  * Add an event to the current active span
  */
-export function addTradingEvent(
-  name: string,
-  attributes?: Record<string, any>
-): void {
+export function addTradingEvent(name: string, attributes?: Record<string, any>): void {
   const activeSpan = trace.getActiveSpan();
   if (activeSpan) {
     activeSpan.addEvent(name, attributes);

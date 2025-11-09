@@ -77,7 +77,7 @@ export type ApiRouteHandler<TQuery = any, TBody = any, TResponse = any> = (
     query: TQuery;
     body: TBody;
     params: Record<string, string>;
-  }
+  },
 ) => Promise<TResponse>;
 
 // ============================================================================
@@ -100,13 +100,9 @@ export type ApiRouteHandler<TQuery = any, TBody = any, TResponse = any> = (
  * });
  * ```
  */
-export function createApiRouteHandler<
-  TQuery = any,
-  TBody = any,
-  TResponse = any,
->(
+export function createApiRouteHandler<TQuery = any, TBody = any, TResponse = any>(
   options: ApiRouteOptions<TQuery, TBody, TResponse>,
-  handler: ApiRouteHandler<TQuery, TBody, TResponse>
+  handler: ApiRouteHandler<TQuery, TBody, TResponse>,
 ) {
   return async (request: NextRequest) => {
     const startTime = Date.now();
@@ -130,15 +126,12 @@ export function createApiRouteHandler<
       // Validate HTTP method
       if (options.method && request.method !== options.method) {
         return apiResponse(
-          createErrorResponse(
-            `Method ${request.method} not allowed. Expected ${options.method}`,
-            {
-              code: "METHOD_NOT_ALLOWED",
-              requestId,
-              requestDuration: `${Date.now() - startTime}ms`,
-            }
-          ),
-          HTTP_STATUS.METHOD_NOT_ALLOWED
+          createErrorResponse(`Method ${request.method} not allowed. Expected ${options.method}`, {
+            code: "METHOD_NOT_ALLOWED",
+            requestId,
+            requestDuration: `${Date.now() - startTime}ms`,
+          }),
+          HTTP_STATUS.METHOD_NOT_ALLOWED,
         );
       }
 
@@ -148,10 +141,7 @@ export function createApiRouteHandler<
         const { searchParams } = new URL(request.url);
         const queryParams = Object.fromEntries(searchParams.entries());
 
-        const queryValidation = validateMexcApiRequest(
-          options.querySchema,
-          queryParams
-        );
+        const queryValidation = validateMexcApiRequest(options.querySchema, queryParams);
         if (!queryValidation.success) {
           const errorResult = queryValidation as {
             success: false;
@@ -173,7 +163,7 @@ export function createApiRouteHandler<
               requestId,
               requestDuration: `${Date.now() - startTime}ms`,
             }),
-            HTTP_STATUS.BAD_REQUEST
+            HTTP_STATUS.BAD_REQUEST,
           );
         }
         queryData = queryValidation.data;
@@ -181,16 +171,10 @@ export function createApiRouteHandler<
 
       // Parse and validate request body
       let bodyData = {} as TBody;
-      if (
-        options.bodySchema &&
-        ["POST", "PUT", "PATCH"].includes(request.method)
-      ) {
+      if (options.bodySchema && ["POST", "PUT", "PATCH"].includes(request.method)) {
         try {
           const rawBody = await request.json();
-          const bodyValidation = validateMexcApiRequest(
-            options.bodySchema,
-            rawBody
-          );
+          const bodyValidation = validateMexcApiRequest(options.bodySchema, rawBody);
 
           if (!bodyValidation.success) {
             const errorResult = bodyValidation as {
@@ -198,14 +182,11 @@ export function createApiRouteHandler<
               error: string;
               details: string[];
             };
-            console.warn(
-              `[${routeName.toUpperCase()}] Body validation failed`,
-              {
-                requestId,
-                error: errorResult.error,
-                details: errorResult.details,
-              }
-            );
+            console.warn(`[${routeName.toUpperCase()}] Body validation failed`, {
+              requestId,
+              error: errorResult.error,
+              details: errorResult.details,
+            });
 
             return apiResponse(
               createErrorResponse(errorResult.error, {
@@ -214,18 +195,15 @@ export function createApiRouteHandler<
                 requestId,
                 requestDuration: `${Date.now() - startTime}ms`,
               }),
-              HTTP_STATUS.BAD_REQUEST
+              HTTP_STATUS.BAD_REQUEST,
             );
           }
           bodyData = bodyValidation.data;
         } catch (error) {
-          console.warn(
-            `[${routeName.toUpperCase()}] Invalid JSON in request body`,
-            {
-              requestId,
-              error: error instanceof Error ? error.message : "Unknown error",
-            }
-          );
+          console.warn(`[${routeName.toUpperCase()}] Invalid JSON in request body`, {
+            requestId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
 
           return apiResponse(
             createErrorResponse("Invalid JSON in request body", {
@@ -233,7 +211,7 @@ export function createApiRouteHandler<
               requestId,
               requestDuration: `${Date.now() - startTime}ms`,
             }),
-            HTTP_STATUS.BAD_REQUEST
+            HTTP_STATUS.BAD_REQUEST,
           );
         }
       }
@@ -242,15 +220,12 @@ export function createApiRouteHandler<
       const params: Record<string, string> = {};
       // Note: Next.js dynamic params would be passed via context in the actual route file
 
-      logger.debug(
-        `[${routeName.toUpperCase()}] Request validation completed`,
-        {
-          requestId,
-          hasQuery: Object.keys(queryData as object).length > 0,
-          hasBody: Object.keys(bodyData as object).length > 0,
-          validationDuration: `${Date.now() - startTime}ms`,
-        }
-      );
+      logger.debug(`[${routeName.toUpperCase()}] Request validation completed`, {
+        requestId,
+        hasQuery: Object.keys(queryData as object).length > 0,
+        hasBody: Object.keys(bodyData as object).length > 0,
+        validationDuration: `${Date.now() - startTime}ms`,
+      });
 
       // Execute the handler
       const result = await handler(context, {
@@ -264,7 +239,7 @@ export function createApiRouteHandler<
         const responseValidation = validateMexcApiResponse(
           options.responseSchema,
           result,
-          routeName
+          routeName,
         );
 
         if (!responseValidation.success) {
@@ -272,14 +247,11 @@ export function createApiRouteHandler<
             success: false;
             error: string;
           };
-          console.warn(
-            `[${routeName.toUpperCase()}] Response validation failed`,
-            {
-              requestId,
-              error: errorResult.error,
-              result: typeof result,
-            }
-          );
+          console.warn(`[${routeName.toUpperCase()}] Response validation failed`, {
+            requestId,
+            error: errorResult.error,
+            result: typeof result,
+          });
           // Log warning but don't fail the request
         }
       }
@@ -300,12 +272,11 @@ export function createApiRouteHandler<
           requestId,
           requestDuration: `${requestDuration}ms`,
           timestamp: new Date().toISOString(),
-        })
+        }),
       );
     } catch (error) {
       const requestDuration = Date.now() - startTime;
-      const safeError =
-        error instanceof Error ? error : new Error("Unknown error occurred");
+      const safeError = error instanceof Error ? error : new Error("Unknown error occurred");
 
       console.error(`[${routeName.toUpperCase()}] Request failed`, {
         requestId,
@@ -319,17 +290,11 @@ export function createApiRouteHandler<
         try {
           return options.customErrorHandler(safeError, context);
         } catch (handlerError) {
-          console.error(
-            `[${routeName.toUpperCase()}] Custom error handler failed`,
-            {
-              requestId,
-              originalError: safeError.message,
-              handlerError:
-                handlerError instanceof Error
-                  ? handlerError.message
-                  : "Unknown",
-            }
-          );
+          console.error(`[${routeName.toUpperCase()}] Custom error handler failed`, {
+            requestId,
+            originalError: safeError.message,
+            handlerError: handlerError instanceof Error ? handlerError.message : "Unknown",
+          });
         }
       }
 
@@ -342,7 +307,7 @@ export function createApiRouteHandler<
           timestamp: new Date().toISOString(),
           ...(options.fallbackData && { fallbackData: options.fallbackData }),
         }),
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
       );
     }
   };
@@ -355,13 +320,9 @@ export function createApiRouteHandler<
 /**
  * Create a public API route (no authentication required)
  */
-export function createPublicApiRoute<
-  TQuery = any,
-  TBody = any,
-  TResponse = any,
->(
+export function createPublicApiRoute<TQuery = any, TBody = any, TResponse = any>(
   options: Omit<ApiRouteOptions<TQuery, TBody, TResponse>, "publicRoute">,
-  handler: ApiRouteHandler<TQuery, TBody, TResponse>
+  handler: ApiRouteHandler<TQuery, TBody, TResponse>,
 ) {
   return createApiRouteHandler({ ...options, publicRoute: true }, handler);
 }
@@ -369,13 +330,9 @@ export function createPublicApiRoute<
 /**
  * Create a protected API route (authentication required)
  */
-export function createProtectedApiRoute<
-  TQuery = any,
-  TBody = any,
-  TResponse = any,
->(
+export function createProtectedApiRoute<TQuery = any, TBody = any, TResponse = any>(
   options: Omit<ApiRouteOptions<TQuery, TBody, TResponse>, "requireAuth">,
-  handler: ApiRouteHandler<TQuery, TBody, TResponse>
+  handler: ApiRouteHandler<TQuery, TBody, TResponse>,
 ) {
   return createApiRouteHandler({ ...options, requireAuth: true }, handler);
 }
@@ -383,13 +340,9 @@ export function createProtectedApiRoute<
 /**
  * Create a sensitive data API route (enhanced security)
  */
-export function createSensitiveApiRoute<
-  TQuery = any,
-  TBody = any,
-  TResponse = any,
->(
+export function createSensitiveApiRoute<TQuery = any, TBody = any, TResponse = any>(
   options: Omit<ApiRouteOptions<TQuery, TBody, TResponse>, "sensitiveData">,
-  handler: ApiRouteHandler<TQuery, TBody, TResponse>
+  handler: ApiRouteHandler<TQuery, TBody, TResponse>,
 ) {
   return createApiRouteHandler({ ...options, sensitiveData: true }, handler);
 }
@@ -404,7 +357,7 @@ export function createSensitiveApiRoute<
  */
 export function extractRouteParams(
   request: NextRequest,
-  paramNames: string[]
+  paramNames: string[],
 ): Record<string, string> {
   const url = new URL(request.url);
   const pathSegments = url.pathname.split("/").filter(Boolean);
@@ -439,11 +392,8 @@ export function createCorsHeaders(origin?: string) {
  */
 export function handleOptionsRequest(origin?: string) {
   const { NextResponse } = require("next/server");
-  return NextResponse.json(
-    createSuccessResponse(null, { message: "CORS preflight request" }),
-    {
-      status: HTTP_STATUS.OK,
-      headers: createCorsHeaders(origin),
-    }
-  );
+  return NextResponse.json(createSuccessResponse(null, { message: "CORS preflight request" }), {
+    status: HTTP_STATUS.OK,
+    headers: createCorsHeaders(origin),
+  });
 }

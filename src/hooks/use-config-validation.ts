@@ -40,9 +40,7 @@ interface ConfigValidationState {
 interface ConfigValidationActions {
   // Main validation functions
   generateReadinessReport: () => Promise<void>;
-  validateComponent: (
-    component: string
-  ) => Promise<ConfigValidationResult | null>;
+  validateComponent: (component: string) => Promise<ConfigValidationResult | null>;
   runHealthCheck: () => Promise<void>;
 
   // Utility functions
@@ -61,7 +59,7 @@ interface UseConfigValidationOptions {
 }
 
 export function useConfigValidation(
-  options: UseConfigValidationOptions = {}
+  options: UseConfigValidationOptions = {},
 ): ConfigValidationState & ConfigValidationActions {
   const {
     autoRefresh = false,
@@ -80,8 +78,7 @@ export function useConfigValidation(
     healthStatus: null,
   });
 
-  const [autoRefreshInterval, setAutoRefreshInterval] =
-    useState<NodeJS.Timeout | null>(null);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Clear error state
   const clearError = useCallback(() => {
@@ -106,17 +103,11 @@ export function useConfigValidation(
         lastUpdated: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error(
-        "[useConfigValidation] Failed to generate readiness report:",
-        error
-      );
+      console.error("[useConfigValidation] Failed to generate readiness report:", error);
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate readiness report",
+        error: error instanceof Error ? error.message : "Failed to generate readiness report",
       }));
     }
   }, []);
@@ -141,9 +132,7 @@ export function useConfigValidation(
         setState((prev) => ({
           ...prev,
           validationResults: prev.validationResults.map((result) =>
-            result.component === validationResult.component
-              ? validationResult
-              : result
+            result.component === validationResult.component ? validationResult : result,
           ),
           isValidating: false,
           lastUpdated: new Date().toISOString(),
@@ -151,22 +140,16 @@ export function useConfigValidation(
 
         return validationResult;
       } catch (error) {
-        console.error(
-          `[useConfigValidation] Failed to validate ${component}:`,
-          error
-        );
+        console.error(`[useConfigValidation] Failed to validate ${component}:`, error);
         setState((prev) => ({
           ...prev,
           isValidating: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : `Failed to validate ${component}`,
+          error: error instanceof Error ? error.message : `Failed to validate ${component}`,
         }));
         return null;
       }
     },
-    []
+    [],
   );
 
   // Run quick health check
@@ -220,7 +203,7 @@ export function useConfigValidation(
 
       setAutoRefreshInterval(interval);
     },
-    [autoRefreshInterval, refreshInterval, runHealthCheck]
+    [autoRefreshInterval, refreshInterval, runHealthCheck],
   );
 
   // Stop auto-refresh

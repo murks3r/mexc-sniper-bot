@@ -24,12 +24,7 @@ import { z } from "zod";
 /**
  * Market sentiment types
  */
-export const MarketSentimentSchema = z.enum([
-  "bullish",
-  "bearish",
-  "neutral",
-  "volatile",
-]);
+export const MarketSentimentSchema = z.enum(["bullish", "bearish", "neutral", "volatile"]);
 
 export type MarketSentiment = z.infer<typeof MarketSentimentSchema>;
 
@@ -233,12 +228,7 @@ export type RiskEngineConfig = z.infer<typeof RiskEngineConfigSchema>;
 /**
  * Risk alert severity levels
  */
-export const AlertSeveritySchema = z.enum([
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
+export const AlertSeveritySchema = z.enum(["low", "medium", "high", "critical"]);
 
 export type AlertSeverity = z.infer<typeof AlertSeveritySchema>;
 
@@ -461,18 +451,14 @@ export function validateMarketConditions(data: unknown): MarketConditions {
 /**
  * Validate position risk profile data
  */
-export function validatePositionRiskProfile(
-  data: unknown
-): PositionRiskProfile {
+export function validatePositionRiskProfile(data: unknown): PositionRiskProfile {
   return PositionRiskProfileSchema.parse(data);
 }
 
 /**
  * Validate portfolio risk metrics data
  */
-export function validatePortfolioRiskMetrics(
-  data: unknown
-): PortfolioRiskMetrics {
+export function validatePortfolioRiskMetrics(data: unknown): PortfolioRiskMetrics {
   return PortfolioRiskMetricsSchema.parse(data);
 }
 

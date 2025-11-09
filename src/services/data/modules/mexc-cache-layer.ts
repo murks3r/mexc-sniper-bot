@@ -50,17 +50,6 @@ const CACHE_TTL_PROFILES = {
 // ============================================================================
 
 export class MexcCacheLayer {
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-cache-layer]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-cache-layer]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[mexc-cache-layer]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-cache-layer]", message, context || ""),
-  };
-
   private cache = new Map<string, CacheEntry<any>>();
   private config: MexcCacheConfig;
   private metrics: CacheMetrics;
@@ -82,7 +71,7 @@ export class MexcCacheLayer {
       () => {
         this.cleanup();
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     );
   }
 
@@ -118,11 +107,7 @@ export class MexcCacheLayer {
   /**
    * Set data in cache with appropriate TTL
    */
-  set<T>(
-    key: string,
-    data: T,
-    ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic"
-  ): void {
+  set<T>(key: string, data: T, ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic"): void {
     const ttl = CACHE_TTL_PROFILES[ttlType];
 
     const entry: CacheEntry<T> = {
@@ -140,8 +125,7 @@ export class MexcCacheLayer {
    * Set data in cache with custom TTL
    */
   setWithCustomTTL<T>(key: string, data: T, customTTL?: number): void {
-    const ttl =
-      customTTL ?? this.config.cacheTTL ?? CACHE_TTL_PROFILES.semiStatic;
+    const ttl = customTTL ?? this.config.cacheTTL ?? CACHE_TTL_PROFILES.semiStatic;
 
     const entry: CacheEntry<T> = {
       data,
@@ -192,7 +176,7 @@ export class MexcCacheLayer {
   wrapWithCache<T>(
     key: string,
     fn: () => Promise<MexcServiceResponse<T>>,
-    ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic"
+    ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic",
   ): () => Promise<MexcServiceResponse<T>> {
     return async () => {
       // Try cache first
@@ -222,7 +206,7 @@ export class MexcCacheLayer {
   wrapWithCacheCustomTTL<T>(
     key: string,
     fn: () => Promise<MexcServiceResponse<T>>,
-    customTTL?: number
+    customTTL?: number,
   ): () => Promise<MexcServiceResponse<T>> {
     return async () => {
       // Try cache first
@@ -252,7 +236,7 @@ export class MexcCacheLayer {
   async getOrSet<T>(
     key: string,
     fn: () => Promise<MexcServiceResponse<T>>,
-    ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic"
+    ttlType: keyof typeof CACHE_TTL_PROFILES = "semiStatic",
   ): Promise<MexcServiceResponse<T>> {
     const wrapped = this.wrapWithCache(key, fn, ttlType);
     return wrapped();
@@ -264,7 +248,7 @@ export class MexcCacheLayer {
   async getOrSetWithCustomTTL<T>(
     key: string,
     fn: () => Promise<MexcServiceResponse<T>>,
-    customTTL?: number
+    customTTL?: number,
   ): Promise<MexcServiceResponse<T>> {
     const wrapped = this.wrapWithCacheCustomTTL(key, fn, customTTL);
     return wrapped();
@@ -345,9 +329,7 @@ export class MexcCacheLayer {
    */
   getMetrics(): CacheMetrics & { hitRate: number; size: number } {
     const hitRate =
-      this.metrics.totalRequests > 0
-        ? (this.metrics.hits / this.metrics.totalRequests) * 100
-        : 0;
+      this.metrics.totalRequests > 0 ? (this.metrics.hits / this.metrics.totalRequests) * 100 : 0;
 
     return {
       ...this.metrics,

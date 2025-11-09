@@ -52,12 +52,8 @@ async function main() {
 
     console.log("💰 CURRENT ACCOUNT BALANCE:");
     console.log("============================");
-    console.log(
-      `🏦 Total Account Value: $${balanceData.totalUsdtValue.toFixed(2)} USDT`
-    );
-    console.log(
-      `🕐 Last Updated: ${new Date(balanceData.lastUpdated).toLocaleString()}\n`
-    );
+    console.log(`🏦 Total Account Value: $${balanceData.totalUsdtValue.toFixed(2)} USDT`);
+    console.log(`🕐 Last Updated: ${new Date(balanceData.lastUpdated).toLocaleString()}\n`);
 
     console.log("💱 Asset Breakdown:");
     balanceData.balances.forEach((balance, index) => {
@@ -81,13 +77,9 @@ async function main() {
     if (allTargets.length === 0) {
       console.log("❌ No snipe targets found");
     } else {
-      const pendingTargets = allTargets.filter(
-        (t: any) => t.status === "pending"
-      );
+      const pendingTargets = allTargets.filter((t: any) => t.status === "pending");
       const readyTargets = allTargets.filter((t: any) => t.status === "ready");
-      const completedTargets = allTargets.filter(
-        (t: any) => t.status === "completed"
-      );
+      const completedTargets = allTargets.filter((t: any) => t.status === "completed");
 
       console.log(`📋 Total Targets: ${allTargets.length}`);
       console.log(`⏳ Pending: ${pendingTargets.length}`);
@@ -113,7 +105,7 @@ async function main() {
           console.log(`   📊 Confidence: ${target.confidenceScore}%`);
           console.log(`   💰 Position Size: $${target.positionSizeUsdt} USDT`);
           console.log(
-            `   🎯 Target Time: ${target.targetExecutionTime?.toLocaleString() || "Immediate"}`
+            `   🎯 Target Time: ${target.targetExecutionTime?.toLocaleString() || "Immediate"}`,
           );
           console.log(`   ⚡ Priority: ${target.priority}`);
           console.log("");
@@ -127,19 +119,15 @@ async function main() {
 
       console.log("💹 ALLOCATION SUMMARY:");
       console.log("======================");
+      console.log(`🎯 Total Target Allocation: $${totalAllocation.toFixed(2)} USDT`);
+      console.log(`💰 Available Balance: $${balanceData.totalUsdtValue.toFixed(2)} USDT`);
       console.log(
-        `🎯 Total Target Allocation: $${totalAllocation.toFixed(2)} USDT`
-      );
-      console.log(
-        `💰 Available Balance: $${balanceData.totalUsdtValue.toFixed(2)} USDT`
-      );
-      console.log(
-        `📊 Allocation vs Balance: ${((totalAllocation / balanceData.totalUsdtValue) * 100).toFixed(1)}%`
+        `📊 Allocation vs Balance: ${((totalAllocation / balanceData.totalUsdtValue) * 100).toFixed(1)}%`,
       );
 
       if (totalAllocation > balanceData.totalUsdtValue) {
         console.log(
-          `⚠️  WARNING: Target allocation (${totalAllocation.toFixed(2)}) exceeds available balance (${balanceData.totalUsdtValue.toFixed(2)})`
+          `⚠️  WARNING: Target allocation (${totalAllocation.toFixed(2)}) exceeds available balance (${balanceData.totalUsdtValue.toFixed(2)})`,
         );
       } else {
         console.log(`✅ Sufficient balance for all targets`);

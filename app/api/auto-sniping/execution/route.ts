@@ -7,10 +7,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { apiAuthWrapper } from "@/src/lib/api-auth";
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from "@/src/lib/api-response";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import { instrumentedTradingRoute } from "@/src/lib/opentelemetry-api-middleware";
 // Using simple console logger to avoid webpack bundling issues
 import {
@@ -74,7 +71,7 @@ export const GET = instrumentedTradingRoute(
       return NextResponse.json(
         createSuccessResponse(responseData, {
           message: "Execution report retrieved successfully",
-        })
+        }),
       );
     } catch (error) {
       console.error("[API] Auto-sniping execution GET failed:", { error });
@@ -82,11 +79,11 @@ export const GET = instrumentedTradingRoute(
         createErrorResponse("Failed to get execution report", {
           details: error instanceof Error ? error.message : "Unknown error",
         }),
-        { status: 500 }
+        { status: 500 },
       );
     }
   }),
-  "sniping" // operationType for OpenTelemetry spans
+  "sniping", // operationType for OpenTelemetry spans
 );
 
 /**
@@ -119,16 +116,15 @@ export const POST = instrumentedTradingRoute(
             return NextResponse.json(
               createSuccessResponse(
                 { status: "started" },
-                { message: "Auto-sniping execution started successfully" }
-              )
+                { message: "Auto-sniping execution started successfully" },
+              ),
             );
           } catch (error) {
             return NextResponse.json(
               createErrorResponse("Failed to start execution", {
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
+                details: error instanceof Error ? error.message : "Unknown error",
               }),
-              { status: 400 }
+              { status: 400 },
             );
           }
 
@@ -137,8 +133,8 @@ export const POST = instrumentedTradingRoute(
           return NextResponse.json(
             createSuccessResponse(
               { status: "stopped" },
-              { message: "Auto-sniping execution stopped successfully" }
-            )
+              { message: "Auto-sniping execution stopped successfully" },
+            ),
           );
 
         case "pause_execution":
@@ -146,8 +142,8 @@ export const POST = instrumentedTradingRoute(
           return NextResponse.json(
             createSuccessResponse(
               { status: "paused" },
-              { message: "Auto-sniping execution paused successfully" }
-            )
+              { message: "Auto-sniping execution paused successfully" },
+            ),
           );
 
         case "resume_execution":
@@ -157,16 +153,15 @@ export const POST = instrumentedTradingRoute(
             return NextResponse.json(
               createSuccessResponse(
                 { status: "resumed" },
-                { message: "Auto-sniping execution resumed successfully" }
-              )
+                { message: "Auto-sniping execution resumed successfully" },
+              ),
             );
           } catch (error) {
             return NextResponse.json(
               createErrorResponse("Failed to resume execution", {
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
+                details: error instanceof Error ? error.message : "Unknown error",
               }),
-              { status: 400 }
+              { status: 400 },
             );
           }
 
@@ -178,7 +173,7 @@ export const POST = instrumentedTradingRoute(
               createErrorResponse("Invalid request: positionId is required", {
                 code: "MISSING_POSITION_ID",
               }),
-              { status: 400 }
+              { status: 400 },
             );
           }
 
@@ -190,23 +185,22 @@ export const POST = instrumentedTradingRoute(
                 createErrorResponse("Failed to close position", {
                   code: "POSITION_CLOSE_FAILED",
                 }),
-                { status: 400 }
+                { status: 400 },
               );
             }
 
             return NextResponse.json(
               createSuccessResponse(
                 { positionId, status: "closed" },
-                { message: `Position ${positionId} closed successfully` }
-              )
+                { message: `Position ${positionId} closed successfully` },
+              ),
             );
           } catch (error) {
             return NextResponse.json(
               createErrorResponse("Failed to close position", {
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
+                details: error instanceof Error ? error.message : "Unknown error",
               }),
-              { status: 500 }
+              { status: 500 },
             );
           }
 
@@ -219,29 +213,27 @@ export const POST = instrumentedTradingRoute(
                 { closedCount },
                 {
                   message: `Emergency close completed: ${closedCount} positions closed`,
-                }
-              )
+                },
+              ),
             );
           } catch (error) {
             return NextResponse.json(
               createErrorResponse("Emergency close failed", {
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
+                details: error instanceof Error ? error.message : "Unknown error",
               }),
-              { status: 500 }
+              { status: 500 },
             );
           }
 
         case "get_active_positions": {
-          const activePositions =
-            await (await getExecutionService()).getActivePositions();
+          const activePositions = await (await getExecutionService()).getActivePositions();
           return NextResponse.json(
             createSuccessResponse(
               { positions: activePositions },
               {
                 message: `Retrieved ${activePositions.length} active positions`,
-              }
-            )
+              },
+            ),
           );
         }
 
@@ -251,27 +243,25 @@ export const POST = instrumentedTradingRoute(
               createErrorResponse("Invalid request: alertId is required", {
                 code: "MISSING_ALERT_ID",
               }),
-              { status: 400 }
+              { status: 400 },
             );
           }
 
-          const acknowledged = (await getExecutionService()).acknowledgeAlert(
-            body.alertId
-          );
+          const acknowledged = (await getExecutionService()).acknowledgeAlert(body.alertId);
           if (!acknowledged) {
             return NextResponse.json(
               createErrorResponse("Alert not found", {
                 code: "ALERT_NOT_FOUND",
               }),
-              { status: 404 }
+              { status: 404 },
             );
           }
 
           return NextResponse.json(
             createSuccessResponse(
               { alertId: body.alertId, status: "acknowledged" },
-              { message: "Alert acknowledged successfully" }
-            )
+              { message: "Alert acknowledged successfully" },
+            ),
           );
         }
 
@@ -280,19 +270,18 @@ export const POST = instrumentedTradingRoute(
           return NextResponse.json(
             createSuccessResponse(
               { clearedCount },
-              { message: `${clearedCount} acknowledged alerts cleared` }
-            )
+              { message: `${clearedCount} acknowledged alerts cleared` },
+            ),
           );
         }
 
         case "update_config":
           if (!config || typeof config !== "object") {
             return NextResponse.json(
-              createErrorResponse(
-                "Invalid request: config object is required",
-                { code: "INVALID_CONFIG" }
-              ),
-              { status: 400 }
+              createErrorResponse("Invalid request: config object is required", {
+                code: "INVALID_CONFIG",
+              }),
+              { status: 400 },
             );
           }
 
@@ -302,16 +291,15 @@ export const POST = instrumentedTradingRoute(
             return NextResponse.json(
               createSuccessResponse(
                 { updated: true, configKeys: Object.keys(config) },
-                { message: "Configuration updated successfully" }
-              )
+                { message: "Configuration updated successfully" },
+              ),
             );
           } catch (error) {
             return NextResponse.json(
               createErrorResponse("Failed to update configuration", {
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
+                details: error instanceof Error ? error.message : "Unknown error",
               }),
-              { status: 400 }
+              { status: 400 },
             );
           }
 
@@ -331,8 +319,8 @@ export const POST = instrumentedTradingRoute(
               },
               {
                 message: "Execution status retrieved successfully",
-              }
-            )
+              },
+            ),
           );
         }
 
@@ -341,7 +329,7 @@ export const POST = instrumentedTradingRoute(
             createErrorResponse(`Unknown action: ${action}`, {
               code: "INVALID_ACTION",
             }),
-            { status: 400 }
+            { status: 400 },
           );
       }
     } catch (error) {
@@ -350,11 +338,11 @@ export const POST = instrumentedTradingRoute(
         createErrorResponse("Execution operation failed", {
           details: error instanceof Error ? error.message : "Unknown error",
         }),
-        { status: 500 }
+        { status: 500 },
       );
     }
   }),
-  "sniping" // operationType for OpenTelemetry spans
+  "sniping", // operationType for OpenTelemetry spans
 );
 
 /**
@@ -372,7 +360,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
         createErrorResponse("Invalid request: config object is required", {
           code: "INVALID_CONFIG",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -386,7 +374,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
           code: "INVALID_CONFIG_VALUE",
           field: "maxPositions",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -395,21 +383,21 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       (config.minConfidence < 0 || config.minConfidence > 100)
     ) {
       return NextResponse.json(
-        createErrorResponse(
-          "Invalid minConfidence: must be between 0 and 100",
-          { code: "INVALID_CONFIG_VALUE", field: "minConfidence" }
-        ),
-        { status: 400 }
+        createErrorResponse("Invalid minConfidence: must be between 0 and 100", {
+          code: "INVALID_CONFIG_VALUE",
+          field: "minConfidence",
+        }),
+        { status: 400 },
       );
     }
 
     if (config.positionSizeUSDT !== undefined && config.positionSizeUSDT <= 0) {
       return NextResponse.json(
-        createErrorResponse(
-          "Invalid positionSizeUSDT: must be greater than 0",
-          { code: "INVALID_CONFIG_VALUE", field: "positionSizeUSDT" }
-        ),
-        { status: 400 }
+        createErrorResponse("Invalid positionSizeUSDT: must be greater than 0", {
+          code: "INVALID_CONFIG_VALUE",
+          field: "positionSizeUSDT",
+        }),
+        { status: 400 },
       );
     }
 
@@ -420,15 +408,15 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       return NextResponse.json(
         createSuccessResponse(
           { updatedFields: Object.keys(config) },
-          { message: "Execution configuration updated successfully" }
-        )
+          { message: "Execution configuration updated successfully" },
+        ),
       );
     } catch (error) {
       return NextResponse.json(
         createErrorResponse("Failed to update configuration", {
           details: error instanceof Error ? error.message : "Unknown error",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
   } catch (error) {
@@ -437,7 +425,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       createErrorResponse("Failed to update execution configuration", {
         details: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
@@ -464,8 +452,8 @@ export const DELETE = instrumentedTradingRoute(
           { closedPositions: closedCount },
           {
             message: `Emergency shutdown completed: ${closedCount} positions closed`,
-          }
-        )
+          },
+        ),
       );
     } catch (error) {
       console.error("[API] Emergency shutdown failed:", { error });
@@ -473,9 +461,9 @@ export const DELETE = instrumentedTradingRoute(
         createErrorResponse("Emergency shutdown failed", {
           details: error instanceof Error ? error.message : "Unknown error",
         }),
-        { status: 500 }
+        { status: 500 },
       );
     }
   }),
-  "execution" // operationType for OpenTelemetry spans
+  "execution", // operationType for OpenTelemetry spans
 );

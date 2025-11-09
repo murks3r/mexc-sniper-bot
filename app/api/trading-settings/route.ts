@@ -39,9 +39,9 @@ function getDefaultTradingSettings() {
 
 async function getTradingSettingsFast() {
   const now = Date.now();
-  
+
   // Return cached data if still valid
-  if (tradingSettingsCache && (now - tradingSettingsCache.timestamp) < CACHE_DURATION) {
+  if (tradingSettingsCache && now - tradingSettingsCache.timestamp < CACHE_DURATION) {
     return tradingSettingsCache.data;
   }
 
@@ -51,7 +51,7 @@ async function getTradingSettingsFast() {
   // Cache the result
   tradingSettingsCache = {
     data: settings,
-    timestamp: now
+    timestamp: now,
   };
 
   return settings;
@@ -60,7 +60,7 @@ async function getTradingSettingsFast() {
 export async function GET() {
   try {
     const settings = await getTradingSettingsFast();
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -105,22 +105,22 @@ export async function GET() {
   } catch (error) {
     console.error("[Trading Settings] GET error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "Failed to fetch trading settings" 
+      {
+        success: false,
+        error: "Failed to fetch trading settings",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
+    const _body = await request.json();
+
     // Clear cache when settings are updated
     tradingSettingsCache = null;
-    
+
     // For now, just return success - real implementation would save to database
     return NextResponse.json({
       success: true,
@@ -130,11 +130,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Trading Settings] POST error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "Failed to update trading settings" 
+      {
+        success: false,
+        error: "Failed to update trading settings",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

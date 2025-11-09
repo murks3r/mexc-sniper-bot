@@ -34,11 +34,7 @@ export function ClientSafeWrapper({
 
   // During SSR or before hydration, show fallback
   if (!isHydrated) {
-    return (
-      <div suppressHydrationWarning={suppressHydrationWarning}>
-        {fallback || children}
-      </div>
-    );
+    return <div suppressHydrationWarning={suppressHydrationWarning}>{fallback || children}</div>;
   }
 
   // After hydration, wrap in error boundary for safety
@@ -61,10 +57,7 @@ export function useIsClient() {
 /**
  * Hook to safely access window object
  */
-export function useWindowSafe<T>(
-  accessor: (window: Window) => T,
-  defaultValue: T
-): T {
+export function useWindowSafe<T>(accessor: (window: Window) => T, defaultValue: T): T {
   const [value, setValue] = useState<T>(defaultValue);
   const isClient = useIsClient();
 
@@ -119,7 +112,7 @@ export function EnvironmentSafeComponent({
  */
 export function useLocalStorageSafe(
   key: string,
-  defaultValue: string | null = null
+  defaultValue: string | null = null,
 ): [string | null, (value: string | null) => void] {
   const [value, setValue] = useState<string | null>(defaultValue);
   const isClient = useIsClient();

@@ -28,13 +28,10 @@ export function useRealtimeTransactions() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = realtimeManager.subscribeToTransactions(
-      user.id,
-      (update) => {
-        setTransactions((prev) => [update, ...prev.slice(0, 99)]); // Keep last 100
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToTransactions(user.id, (update) => {
+      setTransactions((prev) => [update, ...prev.slice(0, 99)]); // Keep last 100
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -64,13 +61,10 @@ export function useRealtimePortfolio() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = realtimeManager.subscribeToPortfolio(
-      user.id,
-      (update) => {
-        setPortfolio(update);
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToPortfolio(user.id, (update) => {
+      setPortfolio(update);
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -92,26 +86,21 @@ export function useRealtimePortfolio() {
  */
 export function useRealtimeSnipeTargets() {
   const { user } = useAuth();
-  const [snipeTargets, setSnipeTargets] = useState<
-    Map<string, SnipeTargetUpdate>
-  >(new Map());
+  const [snipeTargets, setSnipeTargets] = useState<Map<string, SnipeTargetUpdate>>(new Map());
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = realtimeManager.subscribeToSnipeTargets(
-      user.id,
-      (update) => {
-        setSnipeTargets((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(update.id, update);
-          return newMap;
-        });
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToSnipeTargets(user.id, (update) => {
+      setSnipeTargets((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(update.id, update);
+        return newMap;
+      });
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -145,13 +134,10 @@ export function useRealtimeExecutionHistory() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = realtimeManager.subscribeToExecutionHistory(
-      user.id,
-      (update) => {
-        setExecutions((prev) => [update, ...prev.slice(0, 49)]); // Keep last 50
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToExecutionHistory(user.id, (update) => {
+      setExecutions((prev) => [update, ...prev.slice(0, 49)]); // Keep last 50
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -180,17 +166,14 @@ export function useRealtimePrices(symbols: string[] = []) {
   useEffect(() => {
     if (symbols.length === 0) return;
 
-    const unsubscribe = realtimeManager.subscribeToPriceUpdates(
-      symbols,
-      (update) => {
-        setPrices((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(update.symbol, update);
-          return newMap;
-        });
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToPriceUpdates(symbols, (update) => {
+      setPrices((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(update.symbol, update);
+        return newMap;
+      });
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -204,7 +187,7 @@ export function useRealtimePrices(symbols: string[] = []) {
     (symbol: string) => {
       return prices.get(symbol);
     },
-    [prices]
+    [prices],
   );
 
   return {
@@ -229,14 +212,11 @@ export function useRealtimeAlerts() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = realtimeManager.subscribeToSystemAlerts(
-      user.id,
-      (alert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 99)]); // Keep last 100
-        setUnreadCount((prev) => prev + 1);
-        setLastUpdate(new Date());
-      }
-    );
+    const unsubscribe = realtimeManager.subscribeToSystemAlerts(user.id, (alert) => {
+      setAlerts((prev) => [alert, ...prev.slice(0, 99)]); // Keep last 100
+      setUnreadCount((prev) => prev + 1);
+      setLastUpdate(new Date());
+    });
 
     setIsConnected(true);
 
@@ -379,7 +359,7 @@ export function useRealtimeBroadcast() {
 
       await realtimeManager.broadcastSystemAlert(fullAlert);
     },
-    [user?.id]
+    [user?.id],
   );
 
   const broadcastPrice = useCallback(async (priceUpdate: PriceUpdate) => {

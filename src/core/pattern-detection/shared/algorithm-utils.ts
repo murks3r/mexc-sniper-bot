@@ -13,10 +13,7 @@
  * OPTIMIZATION: Replaces nested loops with efficient vector operations
  * PERFORMANCE: ~40% faster than original implementation
  */
-export function generateOptimizedEmbedding(
-  data: string,
-  dimension = 1536
-): number[] {
+export function generateOptimizedEmbedding(data: string, dimension = 1536): number[] {
   const embedding = new Float32Array(dimension);
 
   // Create deterministic seed from data
@@ -54,16 +51,11 @@ export function generateOptimizedEmbedding(
  * OPTIMIZATION: Vectorized similarity computation with early exit conditions
  * PERFORMANCE: ~60% faster than original implementation
  */
-export function calculateOptimizedPatternSimilarity(
-  pattern1: any,
-  pattern2: any
-): number {
+export function calculateOptimizedPatternSimilarity(pattern1: any, pattern2: any): number {
   try {
     const data1 = pattern1.data || {};
     const data2 =
-      typeof pattern2.data === "string"
-        ? JSON.parse(pattern2.data)
-        : pattern2.data || {};
+      typeof pattern2.data === "string" ? JSON.parse(pattern2.data) : pattern2.data || {};
 
     let similarity = 0;
     let comparisons = 0;
@@ -89,12 +81,8 @@ export function calculateOptimizedPatternSimilarity(
     }
 
     // Confidence range comparison - optimized threshold check
-    if (
-      pattern1.confidence !== undefined &&
-      pattern2.confidence !== undefined
-    ) {
-      similarity +=
-        Math.abs(pattern1.confidence - pattern2.confidence) <= 10 ? 1 : 0;
+    if (pattern1.confidence !== undefined && pattern2.confidence !== undefined) {
+      similarity += Math.abs(pattern1.confidence - pattern2.confidence) <= 10 ? 1 : 0;
       comparisons++;
     }
 
@@ -110,19 +98,13 @@ export function calculateOptimizedPatternSimilarity(
  * OPTIMIZATION: Batch cache operations with Set-based filtering
  * PERFORMANCE: ~70% faster than manual iteration
  */
-export function optimizedCacheInvalidation(
-  cache: Map<string, any>,
-  patterns: string[]
-): string[] {
+export function optimizedCacheInvalidation(cache: Map<string, any>, patterns: string[]): string[] {
   const patternsSet = new Set(patterns);
   const keysToDelete: string[] = [];
 
   // Single-pass iteration with efficient Set lookup
   for (const key of Array.from(cache.keys())) {
-    if (
-      patternsSet.has(key) ||
-      patterns.some((pattern) => key.includes(pattern))
-    ) {
+    if (patternsSet.has(key) || patterns.some((pattern) => key.includes(pattern))) {
       keysToDelete.push(key);
     }
   }
@@ -142,7 +124,7 @@ export function optimizedCacheInvalidation(
  * PERFORMANCE: ~50% faster than original implementation
  */
 export function calculateOptimizedConfidenceDistribution(
-  matches: Array<{ confidence: number }>
+  matches: Array<{ confidence: number }>,
 ): Record<string, number> {
   const buckets = { "0-50": 0, "50-70": 0, "70-85": 0, "85-100": 0 };
 
@@ -166,7 +148,7 @@ export function calculateOptimizedConfidenceDistribution(
  */
 export function filterByConfidenceThreshold<T extends { confidence: number }>(
   items: T[],
-  threshold: number
+  threshold: number,
 ): T[] {
   const result: T[] = [];
 
@@ -186,7 +168,7 @@ export function filterByConfidenceThreshold<T extends { confidence: number }>(
  * PERFORMANCE: ~45% faster for large arrays
  */
 export function calculateOptimizedAverageAdvanceHours(
-  matches: Array<{ advanceNoticeHours?: number }>
+  matches: Array<{ advanceNoticeHours?: number }>,
 ): number {
   let totalHours = 0;
   let count = 0;
@@ -210,7 +192,7 @@ export function calculateOptimizedAverageAdvanceHours(
  * PERFORMANCE: ~35% faster than separate operations
  */
 export function calculateOptimizedAverageTimeToReady(
-  matches: Array<{ estimatedTimeToReady?: number }>
+  matches: Array<{ estimatedTimeToReady?: number }>,
 ): number {
   let totalTime = 0;
   let count = 0;
@@ -241,8 +223,7 @@ export function estimateOptimizedMemoryUsage(cache: Map<string, any>): number {
 
     // Estimate object size without JSON.stringify overhead
     if (value?.data) {
-      memoryUsage +=
-        typeof value.data === "string" ? value.data.length * 2 : 100; // Estimated object overhead
+      memoryUsage += typeof value.data === "string" ? value.data.length * 2 : 100; // Estimated object overhead
     }
 
     memoryUsage += 64; // Entry overhead
@@ -257,9 +238,9 @@ export function estimateOptimizedMemoryUsage(cache: Map<string, any>): number {
  * OPTIMIZATION: Hash-based lookup instead of repeated array filtering
  * PERFORMANCE: ~65% faster for large arrays
  */
-export function categorizeOptimizedRecommendations<
-  T extends { recommendation: string },
->(matches: T[]): { immediate: T[]; monitor: T[]; prepare: T[] } {
+export function categorizeOptimizedRecommendations<T extends { recommendation: string }>(
+  matches: T[],
+): { immediate: T[]; monitor: T[]; prepare: T[] } {
   const immediate: T[] = [];
   const monitor: T[] = [];
   const prepare: T[] = [];

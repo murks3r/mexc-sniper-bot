@@ -245,14 +245,10 @@ export class MexcResponseCache {
       }
     }
 
-    const averageEntryAge =
-      this.cache.size > 0 ? totalAge / this.cache.size : 0;
-    const expirationRate =
-      this.cache.size > 0 ? expiredCount / this.cache.size : 0;
+    const averageEntryAge = this.cache.size > 0 ? totalAge / this.cache.size : 0;
+    const expirationRate = this.cache.size > 0 ? expiredCount / this.cache.size : 0;
     const memoryEfficiency =
-      stats.totalMemoryUsage > 0
-        ? stats.hitCount / (stats.totalMemoryUsage / 1024)
-        : 0;
+      stats.totalMemoryUsage > 0 ? stats.hitCount / (stats.totalMemoryUsage / 1024) : 0;
 
     return {
       hitRate: stats.hitRate,
@@ -276,7 +272,7 @@ export class MexcResponseCache {
     // If still over capacity, remove LRU entries
     if (this.cache.size > this.config.maxSize) {
       const entries = Array.from(this.cache.entries()).sort(
-        ([, a], [, b]) => a.timestamp - b.timestamp
+        ([, a], [, b]) => a.timestamp - b.timestamp,
       );
 
       const toRemove = this.cache.size - this.config.maxSize;
@@ -347,9 +343,7 @@ export class MexcResponseCache {
 /**
  * Create a new cache instance with optimized defaults for MEXC API
  */
-export function createMexcCache(
-  config?: Partial<CacheConfig>
-): MexcResponseCache {
+export function createMexcCache(config?: Partial<CacheConfig>): MexcResponseCache {
   const defaultConfig: Partial<CacheConfig> = {
     defaultTTL: 30000, // 30 seconds for API responses
     maxSize: 500, // Reasonable size for MEXC data
@@ -364,7 +358,7 @@ export function createMexcCache(
  * Create a specialized cache for different data types
  */
 export function createSpecializedCache(
-  type: "calendar" | "symbols" | "balance" | "ticker"
+  type: "calendar" | "symbols" | "balance" | "ticker",
 ): MexcResponseCache {
   const configs = {
     calendar: {
@@ -396,19 +390,12 @@ export function createSpecializedCache(
  * Decorator for automatic method result caching
  */
 export function cacheResult(ttl = 30000) {
-  return (
-    _target: any,
-    _propertyName: string,
-    descriptor: PropertyDescriptor
-  ) => {
+  return (_target: any, _propertyName: string, descriptor: PropertyDescriptor) => {
     const method = descriptor.value;
     const cache = new Map<string, CachedResponse>();
 
     descriptor.value = async function (...args: any[]) {
-      const key = crypto
-        .createHash("md5")
-        .update(JSON.stringify(args))
-        .digest("hex");
+      const key = crypto.createHash("md5").update(JSON.stringify(args)).digest("hex");
       const cached = cache.get(key);
       const now = Date.now();
 

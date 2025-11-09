@@ -1,8 +1,5 @@
 import { emergencyRecoveryService } from "@/src/lib/emergency-recovery";
-import {
-  getConnectivityStatus,
-  performSystemHealthCheck,
-} from "@/src/lib/health-checks";
+import { getConnectivityStatus, performSystemHealthCheck } from "@/src/lib/health-checks";
 import { inngest } from "./client";
 
 // Helper function to update workflow status
@@ -45,20 +42,17 @@ export const scheduledCalendarMonitoring = inngest.createFunction(
     });
 
     // Step 1: Trigger calendar polling
-    const _calendarResult = await step.run(
-      "trigger-calendar-poll",
-      async () => {
-        await inngest.send({
-          name: "mexc/calendar.poll",
-          data: {
-            trigger: "scheduled",
-            force: false,
-            timestamp: new Date().toISOString(),
-          },
-        });
-        return { triggered: true };
-      }
-    );
+    const _calendarResult = await step.run("trigger-calendar-poll", async () => {
+      await inngest.send({
+        name: "mexc/calendar.poll",
+        data: {
+          trigger: "scheduled",
+          force: false,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return { triggered: true };
+    });
 
     await updateWorkflowStatus("addActivity", {
       activity: {
@@ -73,55 +67,10 @@ export const scheduledCalendarMonitoring = inngest.createFunction(
       timestamp: new Date().toISOString(),
       nextRun: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     };
-  }
+  },
 );
 
-// Scheduled Pattern Analysis (every 15 minutes)
-export const scheduledPatternAnalysis = inngest.createFunction(
-  { id: "scheduled-pattern-analysis" },
-  { cron: "*/15 * * * *" }, // Every 15 minutes
-  async ({ step }) => {
-    console.info("[Scheduled] Starting pattern analysis cycle");
-
-    await updateWorkflowStatus("addActivity", {
-      activity: {
-        type: "pattern",
-        message: "Scheduled pattern analysis started",
-      },
-    });
-
-    // Step 1: Trigger pattern analysis for all monitored symbols
-    const _patternResult = await step.run(
-      "trigger-pattern-analysis",
-      async () => {
-        await inngest.send({
-          name: "mexc/patterns.analyze",
-          data: {
-            symbols: [], // Empty array means analyze all monitored symbols
-            analysisType: "monitoring",
-            trigger: "scheduled",
-            timestamp: new Date().toISOString(),
-          },
-        });
-        return { triggered: true };
-      }
-    );
-
-    await updateWorkflowStatus("addActivity", {
-      activity: {
-        type: "pattern",
-        message: "Scheduled pattern analysis triggered",
-      },
-    });
-
-    return {
-      status: "completed",
-      trigger: "scheduled_15min",
-      timestamp: new Date().toISOString(),
-      nextRun: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    };
-  }
-);
+// Removed scheduledPatternAnalysis - agent-based workflow no longer needed
 
 // Scheduled Health Check (every 5 minutes)
 export const scheduledHealthCheck = inngest.createFunction(
@@ -153,12 +102,8 @@ export const scheduledHealthCheck = inngest.createFunction(
           systemUptime: Math.floor(process.uptime() / 60), // minutes
           systemHealth: systemHealth.overall,
           apiStatus: connectivity.apiConnectivity ? "healthy" : "unhealthy",
-          databaseStatus: connectivity.databaseConnectivity
-            ? "healthy"
-            : "unhealthy",
-          openAiStatus: connectivity.openAiConnectivity
-            ? "healthy"
-            : "unhealthy",
+          databaseStatus: connectivity.databaseConnectivity ? "healthy" : "unhealthy",
+          // Removed OpenAI status - agents removed
         },
       });
 
@@ -186,15 +131,7 @@ export const scheduledHealthCheck = inngest.createFunction(
         });
       }
 
-      if (!healthResult.openAiConnectivity) {
-        await updateWorkflowStatus("addActivity", {
-          activity: {
-            type: "analysis",
-            message:
-              "OpenAI API connectivity issues detected - agents may be affected",
-          },
-        });
-      }
+      // Removed OpenAI connectivity check - agents removed
 
       if (healthResult.overallHealth === "unhealthy") {
         await updateWorkflowStatus("addActivity", {
@@ -227,12 +164,12 @@ export const scheduledHealthCheck = inngest.createFunction(
         memoryMB: Math.floor(healthResult.memoryUsage.heapUsed / 1024 / 1024),
         apiConnectivity: healthResult.apiConnectivity,
         databaseConnectivity: healthResult.databaseConnectivity,
-        openAiConnectivity: healthResult.openAiConnectivity,
+        // Removed OpenAI connectivity - agents removed
       },
       timestamp: new Date().toISOString(),
       nextRun: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     };
-  }
+  },
 );
 
 // Scheduled Daily Report (every day at 9 AM UTC)
@@ -251,9 +188,7 @@ export const scheduledDailyReport = inngest.createFunction(
 
     // Step 1: Collect daily metrics
     const dailyMetrics = await step.run("collect-daily-metrics", async () => {
-      const _twentyFourHoursAgo = Math.floor(
-        (Date.now() - 24 * 60 * 60 * 1000) / 1000
-      );
+      const _twentyFourHoursAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
 
       try {
         // For simplicity, use default values for metrics in scheduled reports
@@ -309,67 +244,10 @@ export const scheduledDailyReport = inngest.createFunction(
       timestamp: new Date().toISOString(),
       nextRun: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };
-  }
+  },
 );
 
-// Scheduled Intensive Analysis (every 2 hours)
-export const scheduledIntensiveAnalysis = inngest.createFunction(
-  { id: "scheduled-intensive-analysis" },
-  { cron: "0 */2 * * *" }, // Every 2 hours
-  async ({ step }) => {
-    console.info("[Scheduled] Starting intensive analysis cycle");
-
-    await updateWorkflowStatus("addActivity", {
-      activity: {
-        type: "analysis",
-        message: "Intensive multi-agent analysis started",
-      },
-    });
-
-    // Step 1: Execute comprehensive multi-agent pipeline
-    const _pipelineResult = await step.run(
-      "comprehensive-pipeline",
-      async () => {
-        // Trigger calendar discovery
-        await inngest.send({
-          name: "mexc/calendar.poll",
-          data: {
-            trigger: "intensive_scheduled",
-            force: true,
-            timestamp: new Date().toISOString(),
-          },
-        });
-
-        // Trigger pattern analysis
-        await inngest.send({
-          name: "mexc/patterns.analyze",
-          data: {
-            symbols: [],
-            analysisType: "discovery",
-            trigger: "intensive_scheduled",
-            timestamp: new Date().toISOString(),
-          },
-        });
-
-        return { triggered: true };
-      }
-    );
-
-    await updateWorkflowStatus("addActivity", {
-      activity: {
-        type: "analysis",
-        message: "Intensive analysis pipeline completed",
-      },
-    });
-
-    return {
-      status: "completed",
-      trigger: "scheduled_intensive_2h",
-      timestamp: new Date().toISOString(),
-      nextRun: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    };
-  }
-);
+// Removed scheduledIntensiveAnalysis - agent-based workflow no longer needed
 
 // Emergency Response Function (triggered by events)
 export const emergencyResponseHandler = inngest.createFunction(
@@ -378,9 +256,7 @@ export const emergencyResponseHandler = inngest.createFunction(
   async ({ event, step }) => {
     const { emergencyType, severity, data } = event.data;
 
-    console.info(
-      `[Emergency] ${emergencyType} detected with severity: ${severity}`
-    );
+    console.info(`[Emergency] ${emergencyType} detected with severity: ${severity}`);
 
     await updateWorkflowStatus("addActivity", {
       activity: {
@@ -393,16 +269,14 @@ export const emergencyResponseHandler = inngest.createFunction(
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex emergency recovery with multiple steps and error handling
     const responseResult = await step.run("emergency-response", async () => {
       // Execute the comprehensive recovery plan
-      const validSeverity = ["low", "medium", "high", "critical"].includes(
-        severity as string
-      )
+      const validSeverity = ["low", "medium", "high", "critical"].includes(severity as string)
         ? (severity as "low" | "medium" | "high" | "critical")
         : "medium";
 
       const recoveryPlan = await emergencyRecoveryService.executeRecovery(
         emergencyType,
         validSeverity,
-        data
+        data,
       );
 
       // Execute recovery steps with proper error handling
@@ -418,8 +292,8 @@ export const emergencyResponseHandler = inngest.createFunction(
               new Promise<never>((_, reject) =>
                 setTimeout(
                   () => reject(new Error("Recovery step timeout")),
-                  recoveryStep.timeoutMs
-                )
+                  recoveryStep.timeoutMs,
+                ),
               ),
             ]);
 
@@ -448,9 +322,7 @@ export const emergencyResponseHandler = inngest.createFunction(
 
             if (attempts <= recoveryStep.maxRetries && recoveryStep.retryable) {
               // Wait before retry with exponential backoff
-              await new Promise((resolve) =>
-                setTimeout(resolve, Math.min(1000 * attempts, 10000))
-              );
+              await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * attempts, 10000)));
             }
           }
         }
@@ -480,8 +352,7 @@ export const emergencyResponseHandler = inngest.createFunction(
         recoveryPlan,
         executionResults,
         requiresManualIntervention:
-          recoveryPlan.requiresManualIntervention ||
-          executionResults.some((r) => !r.success),
+          recoveryPlan.requiresManualIntervention || executionResults.some((r) => !r.success),
         estimatedRecoveryTime: recoveryPlan.estimatedRecoveryTime,
       };
     });
@@ -493,5 +364,5 @@ export const emergencyResponseHandler = inngest.createFunction(
       response: responseResult,
       timestamp: new Date().toISOString(),
     };
-  }
+  },
 );

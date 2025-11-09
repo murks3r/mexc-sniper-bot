@@ -7,11 +7,8 @@
 
 import { randomUUID } from "node:crypto";
 import { PatternDetectionCore } from "@/src/core/pattern-detection";
-import type {
-  NotificationMessage,
-  TradingPriceMessage,
-} from "@/src/lib/websocket-types";
-import { webSocketAgentBridge } from "@/src/mexc-agents/websocket-agent-bridge";
+import type { NotificationMessage, TradingPriceMessage } from "@/src/lib/websocket-types";
+// Removed: webSocketAgentBridge - agents removed
 
 // ======================
 // MEXC WebSocket Types
@@ -77,12 +74,7 @@ export class MarketDataManager {
     warn: (message: string, context?: any) =>
       console.warn("[market-data-manager]", message, context || ""),
     error: (message: string, context?: any, error?: Error) =>
-      console.error(
-        "[market-data-manager]",
-        message,
-        context || "",
-        error || ""
-      ),
+      console.error("[market-data-manager]", message, context || "", error || ""),
     debug: (message: string, context?: any) =>
       console.debug("[market-data-manager]", message, context || ""),
   };
@@ -91,7 +83,6 @@ export class MarketDataManager {
   private priceCache = new Map<string, TradingPriceMessage>();
   private depthCache = new Map<string, MexcDepthData>();
   private statusCache = new Map<string, SymbolStatusData>();
-  private subscribers = new Map<string, Set<string>>();
 
   // Pattern detection
   private patternDetection: PatternDetectionCore;
@@ -216,10 +207,7 @@ export class MarketDataManager {
   /**
    * Check for pattern updates based on price changes
    */
-  private async checkForPatternUpdates(
-    symbol: string,
-    price: TradingPriceMessage
-  ): Promise<void> {
+  private async checkForPatternUpdates(symbol: string, price: TradingPriceMessage): Promise<void> {
     const lastCheck = this.lastPatternCheck.get(symbol) || 0;
     const now = Date.now();
 
@@ -259,9 +247,7 @@ export class MarketDataManager {
   /**
    * Broadcast ready state pattern detection
    */
-  private async broadcastReadyStatePattern(
-    status: SymbolStatusData
-  ): Promise<void> {
+  private async broadcastReadyStatePattern(status: SymbolStatusData): Promise<void> {
     try {
       this.logger.info("Ready state pattern detected", {
         symbol: status.symbol,
@@ -336,10 +322,7 @@ export class MarketDataManager {
         },
       };
 
-      // Notify WebSocket agent bridge via broadcasting
-      if (webSocketAgentBridge.isRunning()) {
-        webSocketAgentBridge.broadcastTradingSignal(tradingSignal);
-      }
+      // Removed: WebSocket agent bridge notification - agents removed
 
       this.logger.info("Ready state pattern broadcasted", {
         symbol: status.symbol,

@@ -19,7 +19,7 @@ export class MexcTradingServiceAdapter implements TradingService {
       warn: (message: string, context?: LoggerContext) => void;
       error: (message: string, context?: LoggerContext) => void;
       debug: (message: string, context?: LoggerContext) => void;
-    } = console
+    } = console,
   ) {}
 
   async executeTrade(params: {
@@ -94,10 +94,7 @@ export class MexcTradingServiceAdapter implements TradingService {
       }
 
       // Transform MEXC response to domain format
-      const transformedResult = this.transformMexcResponse(
-        result.data,
-        startTime
-      );
+      const transformedResult = this.transformMexcResponse(result.data, startTime);
 
       this.logger.info("Trade executed successfully", {
         orderId: transformedResult.data?.orderId,
@@ -194,10 +191,7 @@ export class MexcTradingServiceAdapter implements TradingService {
     };
 
     // Add price for limit orders
-    if (
-      params.price &&
-      (params.type === "LIMIT" || params.type === "STOP_LIMIT")
-    ) {
+    if (params.price && (params.type === "LIMIT" || params.type === "STOP_LIMIT")) {
       mexcParams.price = params.price.toString();
     }
 
@@ -206,7 +200,7 @@ export class MexcTradingServiceAdapter implements TradingService {
 
   private transformMexcResponse(
     mexcData: Record<string, unknown>,
-    startTime: number
+    startTime: number,
   ): {
     success: boolean;
     data: {
@@ -227,9 +221,7 @@ export class MexcTradingServiceAdapter implements TradingService {
       success: true,
       data: {
         orderId: String(mexcData.orderId || mexcData.id || ""),
-        clientOrderId: mexcData.clientOrderId
-          ? String(mexcData.clientOrderId)
-          : undefined,
+        clientOrderId: mexcData.clientOrderId ? String(mexcData.clientOrderId) : undefined,
         symbol: String(mexcData.symbol || ""),
         side: String(mexcData.side || ""),
         type: String(mexcData.type || ""),
@@ -237,9 +229,7 @@ export class MexcTradingServiceAdapter implements TradingService {
         price: String(mexcData.price || "0"),
         status: String(mexcData.status || ""),
         executedQty: String(mexcData.executedQty || "0"),
-        timestamp: new Date(
-          Number(mexcData.transactTime) || Date.now()
-        ).toISOString(),
+        timestamp: new Date(Number(mexcData.transactTime) || Date.now()).toISOString(),
       },
       executionTime: Date.now() - startTime,
     };
@@ -253,7 +243,7 @@ export class MexcTradingServiceAdapter implements TradingService {
       quantity?: number;
       quoteOrderQty?: number;
     },
-    startTime: number
+    startTime: number,
   ): Promise<{
     success: boolean;
     data: {
@@ -318,12 +308,8 @@ export class MexcTradingServiceAdapter implements TradingService {
       }
 
       const filters = (symbolInfo.data as any)?.filters || [];
-      const lotSizeFilter = filters.find(
-        (f: any) => f.filterType === "LOT_SIZE"
-      );
-      const notionalFilter = filters.find(
-        (f: any) => f.filterType === "MIN_NOTIONAL"
-      );
+      const lotSizeFilter = filters.find((f: any) => f.filterType === "LOT_SIZE");
+      const notionalFilter = filters.find((f: any) => f.filterType === "MIN_NOTIONAL");
 
       return {
         minQuantity: parseFloat(lotSizeFilter?.minQty || "0"),

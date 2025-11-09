@@ -18,7 +18,7 @@ export function useCurrencyFormatting() {
       const decimals = amount < 1 ? 6 : amount < 100 ? 4 : 2;
       return formatCurrency(amount, decimals);
     },
-    [formatCurrency]
+    [formatCurrency],
   );
 
   const formatPercentage = useCallback((value: number) => {
@@ -46,12 +46,6 @@ export function useCurrencyFormatting() {
       formatBytes,
       formatGrowthRate,
     }),
-    [
-      formatCurrency,
-      formatTokenAmount,
-      formatPercentage,
-      formatBytes,
-      formatGrowthRate,
-    ]
+    [formatCurrency, formatTokenAmount, formatPercentage, formatBytes, formatGrowthRate],
   );
 }

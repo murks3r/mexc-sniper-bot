@@ -32,11 +32,7 @@ export function EnhancedCredentialStatusConsolidated() {
             <span>Trading Status:</span>
             <Badge variant="secondary">Inactive</Badge>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="w-full"
-          >
+          <Button onClick={handleRefresh} disabled={isLoading} className="w-full">
             {isLoading ? "Refreshing..." : "Refresh Status"}
           </Button>
         </div>

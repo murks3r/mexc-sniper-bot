@@ -1,92 +1,73 @@
 # MEXC Sniper Bot 🎯
 
-An intelligent cryptocurrency trading bot powered by specialized AI agents that discover and analyze new token listings on the MEXC exchange. Features a cutting-edge TypeScript multi-agent system with OpenAI GPT-4 integration for advanced pattern recognition and automated trading strategies.
+A focused cryptocurrency trading bot for automated sniping of new token listings on the MEXC exchange. Features pattern detection, calendar sync, and automated execution with position management.
 
 ## 🚀 Key Features
 
-- **🤖 Multi-Agent AI System**: 16+ specialized TypeScript agents working together for comprehensive analysis
-- **🔍 Intelligent Pattern Discovery**: AI-powered detection of MEXC ready state patterns (sts:2, st:2, tt:4)
-- **⏰ Advanced Timing**: 3.5+ hour advance detection for optimal position entry
-- **📊 Real-time Analysis**: Continuous symbol monitoring with dynamic confidence scoring
-- **🎯 Smart Strategy Generation**: AI-powered trading strategies with risk assessment
+- **🎯 Auto-Sniping**: Automated execution of snipe targets with configurable position sizing
+- **🔍 Pattern Detection**: Detection of MEXC ready state patterns (sts:2, st:2, tt:4) without AI dependencies
+- **⏰ Calendar Sync**: Automatic sync of MEXC calendar listings to create snipe targets
+- **📊 Position Management**: Automated position monitoring with stop-loss, take-profit, and time-based exits
 - **⚡ Pure TypeScript Architecture**: Modern stack with Next.js 15, Drizzle ORM, and TanStack Query
-- **🛡️ Robust Error Handling**: Multi-agent fallbacks and graceful degradation
+- **🛡️ Robust Error Handling**: Comprehensive error handling and retry logic
 - **📈 Confidence Scoring**: 0-100% reliability metrics for every trading signal
-- **⚙️ User Configurable**: Customizable take profit levels and risk management
+- **⚙️ User Configurable**: Customizable take profit levels, stop-loss, and risk management
 - **🔐 Secure Authentication**: Supabase Auth with email bypass and rate limit handling
-- **🧪 Comprehensive Testing**: 293 tests with 96%+ pass rate (Vitest, Playwright, Stagehand AI-powered testing)
+- **🧪 Comprehensive Testing**: Extensive test suite with Vitest and Playwright
 
-## 🏗️ Multi-Agent Architecture
+## 🏗️ Architecture
 
-Revolutionary TypeScript-based system with specialized AI agents:
+Focused sniping system with core components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    MexcOrchestrator                         │
-│              (Workflow Coordination Hub)                    │
+│                  Auto-Sniping Module                        │
+│              (Core Sniping Execution)                       │
 └─────────────────────┬───────────────────────────────────────┘
                       │
          ┌────────────┼────────────┐
          │            │            │
     ┌────▼───┐   ┌────▼───┐   ┌────▼───┐
-    │Calendar│   │Pattern │   │Symbol  │
-    │ Agent  │   │Discovery│   │Analysis│
-    │        │   │ Agent  │   │ Agent  │
+    │Calendar│   │Pattern │   │Position│
+    │  Sync  │   │Detection│   │Manager │
+    │        │   │        │   │        │
     └────┬───┘   └────┬───┘   └────┬───┘
          │            │            │
          └────────────┼────────────┘
                       │
                  ┌────▼───┐
                  │MEXC API│
-                 │ Agent  │
+                 │Service │
                  └────────┘
 ```
 
-### 🎯 **Specialized Agents (16+ Active)**
+### 🎯 **Core Components**
 
-**Core Trading Agents:**
-- **📅 CalendarAgent**: New listing discovery and launch timing analysis
-- **🔍 PatternDiscoveryAgent**: Ready state detection and pattern validation (`sts:2, st:2, tt:4`)
-- **📊 SymbolAnalysisAgent**: Real-time readiness assessment and market analysis
-- **🌐 MexcApiAgent**: API interactions and trading signal analysis
-- **🎯 StrategyAgent**: AI-powered trading strategy creation and optimization
-
-**Risk Management & Safety Agents:**
-- **🛡️ SafetyBaseAgent**: Core safety monitoring and circuit breaker controls
-- **📊 SafetyMonitorAgent**: Real-time safety monitoring and alerts
-- **⚖️ RiskManagerAgent**: Position sizing, risk metrics, and circuit breakers
-- **🔄 ReconciliationAgent**: Balance verification and position tracking
-- **🧪 SimulationAgent**: Strategy backtesting and paper trading validation
-- **🔧 ErrorRecoveryAgent**: System health monitoring and automatic recovery
-
-**Orchestration & Coordination:**
-- **🎭 MultiAgentOrchestrator**: Workflow coordination and result synthesis
-- **🎪 MexcOrchestrator**: Specialized MEXC workflow execution
-- **👨‍💼 AgentManager**: Agent lifecycle and health management
-- **🌐 WebSocketAgentBridge**: Real-time data integration bridge
-- **📋 Additional specialized agents** for pattern embedding, data fetching, and analysis
+**Sniping System:**
+- **📅 Calendar Sync**: Automatic sync of MEXC calendar listings to create snipe targets
+- **🔍 Pattern Detection**: Ready state detection and pattern validation (`sts:2, st:2, tt:4`)
+- **🎯 Auto-Sniping**: Automated execution of snipe targets at launch time
+- **📊 Position Management**: Automated position monitoring with stop-loss, take-profit, and time-based exits
+- **🌐 MEXC API Integration**: Core MEXC API service for trading and market data
 
 ### 🚀 **Technology Stack**
 
 - **Frontend**: Next.js 15 with TypeScript and React 19
-- **Agent System**: Pure TypeScript with OpenAI GPT-4 integration
-- **Authentication**: Kinde Auth with secure session management
-- **Workflows**: Inngest for reliable background task orchestration
-- **Database**: Drizzle ORM with NeonDB (serverless PostgreSQL) for global edge performance
+- **Authentication**: Supabase Auth with secure session management
+- **Workflows**: Inngest for reliable background task orchestration (calendar sync)
+- **Database**: Drizzle ORM with PostgreSQL for data persistence
 - **Data Management**: TanStack Query v5.80.6 for real-time data fetching and caching
-- **Observability**: OpenTelemetry with distributed tracing for critical operations
-- **Logging**: Simplified console-based logging (recently cleaned up from complex structured logging)
-- **Testing**: Vitest (unit), Playwright (E2E), Stagehand v2.3.0 (AI-powered E2E)
+- **Logging**: Console-based logging for simplicity
+- **Testing**: Vitest (unit), Playwright (E2E)
 - **Code Quality**: Biome.js for formatting and linting, TypeScript for type safety
 - **Deployment**: Vercel with automatic scaling and edge optimization
 
 ## 📋 Prerequisites
 
 - **Node.js 20.11.0+** and bun/npm (see package.json engines)
-- **OpenAI API key** (required for AI agents and Stagehand testing)
-- **Kinde Auth account** (required for authentication)
-- **MEXC API credentials** (optional, for authenticated endpoints)
-- **NeonDB account** (optional, for production database)
+- **Supabase account** (required for authentication)
+- **MEXC API credentials** (required for trading execution)
+- **PostgreSQL database** (Supabase, NeonDB, or local PostgreSQL)
 
 ## 🛠️ Quick Start
 
@@ -109,9 +90,6 @@ npm install
 Create a `.env.local` file:
 
 ```bash
-# Required - Core AI Integration
-OPENAI_API_KEY=your_openai_api_key
-
 # Required - Supabase Authentication
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
@@ -180,99 +158,29 @@ make dev-inngest # Inngest dev server on port 8288
 ### 5. Access the Application
 
 - **Homepage**: http://localhost:3008 (public landing page)
-- **Authentication**: http://localhost:3008/auth (Kinde Auth login)
+- **Authentication**: http://localhost:3008/auth (Supabase Auth login)
 - **Trading Dashboard**: http://localhost:3008/dashboard (authenticated users)
-- **Configuration**: http://localhost:3008/config (user settings)
-- **Safety Monitor**: http://localhost:3008/safety (risk management)
-- **Strategies**: http://localhost:3008/strategies (trading strategies)
-- **Workflows**: http://localhost:3008/workflows (agent workflows)
 - **Inngest Dashboard**: http://localhost:8288 (development workflow monitoring)
 
-## 🤖 TypeScript Multi-Agent System
+## 🚀 Sniping System
 
 ### 🚀 Inngest Workflows
 
 The system uses event-driven Inngest workflows for reliable execution:
 
-#### **Calendar Discovery Workflow**
+#### **Calendar Sync Workflow**
 ```typescript
-// Trigger calendar scanning
+// Trigger calendar sync to create snipe targets
 await inngest.send({
   name: "mexc/calendar.poll",
   data: { triggeredBy: "manual", timestamp: new Date().toISOString() }
 });
 ```
 
-#### **Symbol Monitoring Workflow**
-```typescript
-// Monitor specific symbol for ready state
-await inngest.send({
-  name: "mexc/symbol.watch",
-  data: {
-    vcoinId: "EXAMPLE001",
-    symbolName: "EXAMPLECOIN",
-    attempt: 1
-  }
-});
-```
-
-#### **Pattern Analysis Workflow**
-```typescript
-// Analyze patterns across symbols
-await inngest.send({
-  name: "mexc/pattern.analysis",
-  data: {
-    symbols: ["BTC", "ETH", "SOL"],
-    analysisType: "discovery"
-  }
-});
-```
-
-#### **Trading Strategy Workflow**
-```typescript
-// Generate AI-powered trading strategy
-await inngest.send({
-  name: "mexc/trading.strategy",
-  data: {
-    vcoinId: "EXAMPLE001",
-    symbolData: {...},
-    riskLevel: "medium",
-    positionSize: 1000
-  }
-});
-```
-
-### 🧠 Agent Capabilities
-
-#### **📅 CalendarAgent**
-- **AI-Powered Discovery**: Scans MEXC calendar using GPT-4 analysis
-- **Launch Timing**: Predicts actual vs. announced launch times
-- **Market Potential**: Assesses project fundamentals and trading appeal
-- **Monitoring Plans**: Creates dynamic scheduling for discovered opportunities
-
-#### **🔍 PatternDiscoveryAgent**
-- **Ready State Detection**: Validates sts:2, st:2, tt:4 pattern with 90%+ accuracy
-- **Early Opportunity ID**: Identifies pre-ready patterns for 3.5+ hour advance
-- **Confidence Scoring**: 0-100% reliability metrics for all patterns
-- **False Positive Filtering**: AI-powered validation to reduce noise
-
-#### **📊 SymbolAnalysisAgent**
-- **Real-time Assessment**: Continuous READY/NOT READY determination
-- **Market Microstructure**: Analyzes liquidity, spreads, and trading conditions
-- **Risk Evaluation**: Comprehensive risk scoring and mitigation strategies
-- **Dynamic Monitoring**: AI-driven scheduling based on symbol status
-
-#### **🌐 MexcApiAgent**
-- **Intelligent API Integration**: Smart data fetching with fallback mechanisms
-- **Trading Signal Analysis**: AI-powered extraction of actionable insights
-- **Data Quality Assessment**: Validates completeness and reliability
-- **Market Condition Integration**: Contextual analysis of trading environment
-
-#### **🎭 MexcOrchestrator**
-- **Workflow Coordination**: Manages complex multi-agent workflows
-- **Result Synthesis**: Combines insights from multiple agents
-- **Error Recovery**: Robust fallback and retry mechanisms
-- **Performance Optimization**: Efficient resource allocation and scheduling
+This workflow:
+- Fetches calendar listings from MEXC API
+- Creates snipe targets for upcoming launches
+- Updates existing targets with new information
 
 ## ⚙️ User Configuration
 
@@ -328,12 +236,11 @@ railway init
 railway up
 ```
 
-### Database Setup with NeonDB
+### Database Setup
 
-1. Visit [Neon.tech](https://neon.tech) and create an account
-2. Create a new project and database
-3. Get your connection string from the project dashboard
-4. Add the connection string to your environment variables:
+1. Set up a PostgreSQL database (local or cloud provider)
+2. Get your connection string
+3. Add the connection string to your environment variables:
    ```bash
    DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require
    ```
@@ -362,13 +269,11 @@ For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/d
 - [Supabase Rate Limit Fix](docs/SUPABASE_AUTH_RATE_LIMIT_FIX.md) - Email bypass and workarounds
 
 ### Core Documentation
-- [Agent Architecture](docs/architecture/AGENTS.md) - Quick setup guide for AI agents
 - [Architecture Review](docs/architecture/ARCHITECTURE_REVIEW.md) - Codebase analysis and refactoring plan
-- [Stagehand E2E Testing](docs/testing/STAGEHAND_E2E_TESTING.md) - AI-powered testing framework
+- [Quick Start Guide](docs/guides/QUICKSTART.md) - Getting started with sniping
 
 ### Deployment & Operations
 - [Deployment Guide](docs/deployment/DEPLOYMENT.md) - Production deployment
-- [NeonDB Best Practices](docs/deployment/neon-best-practices.md) - Database optimization
 
 ### Development
 - [Contributing Guide](docs/development/CONTRIBUTING.md) - Development guidelines
@@ -415,32 +320,13 @@ npm run test:e2e:debug
 npm run test:e2e:report
 ```
 
-#### **AI-Powered E2E Tests (Stagehand)**
-```bash
-# Run all Stagehand tests
-npm run test:stagehand
-
-# Run specific test suites
-npm run test:stagehand:auth        # Authentication flows
-npm run test:stagehand:dashboard   # Dashboard functionality
-npm run test:stagehand:patterns    # Pattern discovery
-npm run test:stagehand:api         # API integration
-npm run test:stagehand:integration # Complete user journeys
-
-# Run with UI (debugging)
-npm run test:stagehand:ui
-
-# Run in headed mode
-npm run test:stagehand:headed
-```
-
 #### **Complete Test Suite**
 ```bash
-# Run all tests (unit + E2E + Stagehand)
-npm run test:all
+# Run all tests (unit + E2E)
+npm run test
 
 # CI test pipeline
-npm run ci:test
+npm run test:fast
 ```
 
 ### Code Quality
@@ -501,8 +387,9 @@ make deps-update
 ### Development Guidelines
 
 - **TypeScript First**: All new code must be in TypeScript with strict type checking
-- **Testing Required**: Write unit tests (Vitest), E2E tests (Playwright), and Stagehand tests for new features
-- **Code Quality**: Use Biome.js for formatting and linting, maintain 100% test pass rate
+- **Testing Required**: Write unit tests (Vitest) and E2E tests (Playwright) for new features
+- **Code Quality**: Use Biome.js for formatting and linting, maintain high test pass rate
+- **Focus**: Keep code focused on sniping functionality - avoid adding non-essential features
 - **Database**: Use Drizzle ORM for all database operations with safe migrations
 - **Authentication**: All protected routes must use Supabase Auth integration
 - **Error Handling**: Implement comprehensive error handling with proper logging

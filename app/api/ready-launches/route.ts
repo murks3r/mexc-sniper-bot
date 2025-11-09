@@ -63,20 +63,15 @@ export async function GET(request: NextRequest) {
       const fromTimestamp = new Date(fromDate).getTime();
       const toTimestamp = Date.now();
 
-      const historicalReadyLaunches = calendarData.filter(
-        (entry: CalendarEntry) => {
-          try {
-            const launchTime = new Date(entry.firstOpenTime).getTime();
-            return launchTime >= fromTimestamp && launchTime <= toTimestamp;
-          } catch (_error) {
-            console.warn(
-              "Invalid date in calendar entry:",
-              entry.firstOpenTime
-            );
-            return false;
-          }
+      const historicalReadyLaunches = calendarData.filter((entry: CalendarEntry) => {
+        try {
+          const launchTime = new Date(entry.firstOpenTime).getTime();
+          return launchTime >= fromTimestamp && launchTime <= toTimestamp;
+        } catch (_error) {
+          console.warn("Invalid date in calendar entry:", entry.firstOpenTime);
+          return false;
         }
-      );
+      });
 
       return NextResponse.json({
         success: true,
@@ -97,8 +92,7 @@ export async function GET(request: NextRequest) {
       try {
         const launchTime = new Date(entry.firstOpenTime);
         return (
-          launchTime.getTime() > now.getTime() &&
-          launchTime.getTime() < now.getTime() + hours4
+          launchTime.getTime() > now.getTime() && launchTime.getTime() < now.getTime() + hours4
         );
       } catch (_error) {
         console.warn("Invalid date in calendar entry:", entry.firstOpenTime);

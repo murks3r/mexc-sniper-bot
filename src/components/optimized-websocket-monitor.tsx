@@ -6,13 +6,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCurrencyFormatting } from "../hooks/use-currency-formatting";
 import { webSocketPriceService } from "../services/data/websocket-price-service";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface MemoryStats {
   current: {
@@ -34,13 +28,7 @@ interface ServiceStatus {
 
 // Status indicator component
 const StatusIndicator = memo(
-  ({
-    isConnected,
-    isConnecting,
-  }: {
-    isConnected: boolean;
-    isConnecting: boolean;
-  }) => {
+  ({ isConnected, isConnecting }: { isConnected: boolean; isConnecting: boolean }) => {
     const statusColor = isConnected
       ? "text-green-500"
       : isConnecting
@@ -52,7 +40,7 @@ const StatusIndicator = memo(
         className={`inline-block w-2 h-2 rounded-full ${statusColor} ${isConnected ? "animate-pulse" : ""}`}
       />
     );
-  }
+  },
 );
 StatusIndicator.displayName = "StatusIndicator";
 
@@ -99,17 +87,13 @@ const MemoryStatsDisplay = memo(
           <div>
             <span className="text-muted-foreground">Usage:</span>
             <span className="ml-2">
-              {(
-                (stats.current.heapUsed / stats.current.heapTotal) *
-                100
-              ).toFixed(1)}
-              %
+              {((stats.current.heapUsed / stats.current.heapTotal) * 100).toFixed(1)}%
             </span>
           </div>
         </div>
       </div>
     );
-  }
+  },
 );
 MemoryStatsDisplay.displayName = "MemoryStatsDisplay";
 
@@ -130,9 +114,7 @@ const ActiveSymbolsDisplay = memo(({ symbols }: { symbols: string[] }) => {
           </span>
         ))}
         {remainingCount > 0 && (
-          <span className="px-2 py-1 text-xs text-muted-foreground">
-            +{remainingCount} more
-          </span>
+          <span className="px-2 py-1 text-xs text-muted-foreground">+{remainingCount} more</span>
         )}
       </div>
     </div>
@@ -155,8 +137,7 @@ const ActionButtons = memo(
     onDisconnect: () => void;
     onRestart: () => Promise<void>;
   }) => {
-    const showRestartButton =
-      memoryGrowthRate && memoryGrowthRate > 20 * 1024 * 1024;
+    const showRestartButton = memoryGrowthRate && memoryGrowthRate > 20 * 1024 * 1024;
 
     return (
       <div className="flex gap-2 pt-2">
@@ -187,7 +168,7 @@ const ActionButtons = memo(
         )}
       </div>
     );
-  }
+  },
 );
 ActionButtons.displayName = "ActionButtons";
 
@@ -290,9 +271,7 @@ export const OptimizedWebSocketMonitor = memo(() => {
                   : "Disconnected"}
             </CardDescription>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {isExpanded ? "▼" : "▶"}
-          </div>
+          <div className="text-sm text-muted-foreground">{isExpanded ? "▼" : "▶"}</div>
         </div>
       </CardHeader>
 
@@ -328,9 +307,7 @@ export const OptimizedWebSocketMonitor = memo(() => {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-muted-foreground">Subscriptions:</span>
-                <span className="ml-2">
-                  {serviceStatus.subscribedSymbols.length}
-                </span>
+                <span className="ml-2">{serviceStatus.subscribedSymbols.length}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Cached Prices:</span>

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 /**
  * Simplified Status Context
@@ -73,8 +67,7 @@ export function StatusProvider({ children }: StatusProviderProps) {
         message: data.statusMessage || "Status unknown",
       });
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load status";
+      const errorMessage = err instanceof Error ? err.message : "Failed to load status";
       setError(errorMessage);
       setStatus((prev) => ({
         ...prev,
@@ -98,11 +91,7 @@ export function StatusProvider({ children }: StatusProviderProps) {
     refreshStatus: loadStatus,
   };
 
-  return (
-    <StatusContext.Provider value={contextValue}>
-      {children}
-    </StatusContext.Provider>
-  );
+  return <StatusContext.Provider value={contextValue}>{children}</StatusContext.Provider>;
 }
 
 // Hook to use Status Context

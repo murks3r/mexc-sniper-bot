@@ -34,8 +34,7 @@ export class CalendarToDatabaseSyncService {
 
   static getInstance(): CalendarToDatabaseSyncService {
     if (!CalendarToDatabaseSyncService.instance) {
-      CalendarToDatabaseSyncService.instance =
-        new CalendarToDatabaseSyncService();
+      CalendarToDatabaseSyncService.instance = new CalendarToDatabaseSyncService();
     }
     return CalendarToDatabaseSyncService.instance;
   }
@@ -45,11 +44,7 @@ export class CalendarToDatabaseSyncService {
    */
   private async ensureSystemUser(): Promise<void> {
     try {
-      const existingUser = await db
-        .select()
-        .from(user)
-        .where(eq(user.id, "system"))
-        .limit(1);
+      const existingUser = await db.select().from(user).where(eq(user.id, "system")).limit(1);
 
       if (existingUser.length === 0) {
         await db.insert(user).values({
@@ -63,7 +58,7 @@ export class CalendarToDatabaseSyncService {
     } catch (error) {
       console.error("Failed to ensure system user exists:", error);
       throw new Error(
-        `System user creation failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `System user creation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -77,7 +72,7 @@ export class CalendarToDatabaseSyncService {
       timeWindowHours?: number;
       forceSync?: boolean;
       dryRun?: boolean;
-    } = {}
+    } = {},
   ): Promise<SyncResult> {
     const { timeWindowHours = 24, forceSync = false, dryRun = false } = options;
 
@@ -104,7 +99,7 @@ export class CalendarToDatabaseSyncService {
 
     try {
       console.info(
-        `🔄 Starting calendar-to-database sync (userId: ${userId}, window: ${timeWindowHours}h, dryRun: ${dryRun})`
+        `🔄 Starting calendar-to-database sync (userId: ${userId}, window: ${timeWindowHours}h, dryRun: ${dryRun})`,
       );
 
       // 0. Ensure system user exists (for system-level targets)
@@ -119,14 +114,11 @@ export class CalendarToDatabaseSyncService {
       }
 
       // 2. Filter qualifying launches (within time window)
-      const qualifyingLaunches = this.filterQualifyingLaunches(
-        calendarEntries,
-        timeWindowHours
-      );
+      const qualifyingLaunches = this.filterQualifyingLaunches(calendarEntries, timeWindowHours);
       result.processed = qualifyingLaunches.length;
 
       console.info(
-        `📅 Found ${calendarEntries.length} total launches, ${qualifyingLaunches.length} qualifying`
+        `📅 Found ${calendarEntries.length} total launches, ${qualifyingLaunches.length} qualifying`,
       );
 
       // 3. Process each qualifying launch
@@ -148,12 +140,11 @@ export class CalendarToDatabaseSyncService {
       this.lastSyncTime = new Date();
 
       console.info(
-        `✅ Sync completed: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped, ${result.errors.length} errors`
+        `✅ Sync completed: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped, ${result.errors.length} errors`,
       );
     } catch (error) {
       result.success = false;
-      const errorMsg =
-        error instanceof Error ? error.message : "Unknown sync error";
+      const errorMsg = error instanceof Error ? error.message : "Unknown sync error";
       result.errors.push(errorMsg);
       console.error("❌ Calendar sync failed:", errorMsg);
     } finally {
@@ -170,9 +161,7 @@ export class CalendarToDatabaseSyncService {
     try {
       const response = await fetch("http://localhost:3008/api/mexc/calendar");
       if (!response.ok) {
-        throw new Error(
-          `Calendar API error: ${response.status} ${response.statusText}`
-        );
+        throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -189,13 +178,16 @@ export class CalendarToDatabaseSyncService {
 
   /**
    * Filter calendar entries for qualifying launches
+   * Ensures tomorrow's listings are always included (minimum 48 hour window)
    */
   private filterQualifyingLaunches(
     entries: CalendarEntry[],
-    timeWindowHours: number
+    timeWindowHours: number,
   ): CalendarEntry[] {
     const now = Date.now();
-    const timeWindow = timeWindowHours * 60 * 60 * 1000; // Convert to milliseconds
+    // Ensure at least 48 hours to cover tomorrow's listings
+    const minWindowHours = Math.max(timeWindowHours, 48);
+    const timeWindow = minWindowHours * 60 * 60 * 1000; // Convert to milliseconds
 
     return entries.filter((entry) => {
       try {
@@ -204,18 +196,23 @@ export class CalendarToDatabaseSyncService {
 
         // Include launches that are:
         // 1. In the future (not already launched)
-        // 2. Within the specified time window
+        // 2. Within the specified time window (minimum 48h to cover tomorrow)
         const isUpcoming = launchTime > now;
         const isWithinWindow = launchTime < now + timeWindow;
 
+        // Also check if it's specifically tomorrow's listing (always include)
+        const listingDate = new Date(launchTime);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        listingDate.setHours(0, 0, 0, 0);
+        const isTomorrow = listingDate.getTime() === tomorrow.getTime();
+
         return (
-          isUpcoming && isWithinWindow && entry.vcoinId && entry.vcoinNameFull
+          ((isUpcoming && isWithinWindow) || isTomorrow) && entry.vcoinId && entry.vcoinNameFull
         );
       } catch (_error) {
-        console.warn(
-          `Invalid launch time for ${entry.vcoinId}:`,
-          entry.firstOpenTime
-        );
+        console.warn(`Invalid launch time for ${entry.vcoinId}:`, entry.firstOpenTime);
         return false;
       }
     });
@@ -228,7 +225,7 @@ export class CalendarToDatabaseSyncService {
     launch: CalendarEntry,
     userId: string,
     dryRun: boolean,
-    result: SyncResult
+    result: SyncResult,
   ): Promise<void> {
     const symbolName = launch.symbol || `${launch.vcoinNameFull}USDT`;
 
@@ -236,12 +233,7 @@ export class CalendarToDatabaseSyncService {
     const existingTarget = await db
       .select()
       .from(snipeTargets)
-      .where(
-        and(
-          eq(snipeTargets.vcoinId, launch.vcoinId),
-          eq(snipeTargets.userId, userId)
-        )
-      )
+      .where(and(eq(snipeTargets.vcoinId, launch.vcoinId), eq(snipeTargets.userId, userId)))
       .limit(1);
 
     if (existingTarget.length > 0) {
@@ -252,7 +244,7 @@ export class CalendarToDatabaseSyncService {
           .set({
             symbolName,
             targetExecutionTime: new Date(launch.firstOpenTime),
-            status: "ready",
+            status: "active", // Set to "active" so targets appear in dashboard
             confidenceScore: 85.0, // High confidence for calendar launches
             riskLevel: "medium",
             updatedAt: new Date(),
@@ -260,14 +252,12 @@ export class CalendarToDatabaseSyncService {
           .where(eq(snipeTargets.id, existingTarget[0].id));
       }
       result.updated++;
-      console.debug(
-        `Updated target for ${launch.vcoinNameFull} (${launch.vcoinId})`
-      );
+      console.debug(`Updated target for ${launch.vcoinNameFull} (${launch.vcoinId})`);
     } else {
       // Create new target
       if (!dryRun) {
         console.debug(
-          `🔧 Inserting target: vcoinId=${launch.vcoinId}, symbolName=${symbolName}, userId=${userId}`
+          `🔧 Inserting target: vcoinId=${launch.vcoinId}, symbolName=${symbolName}, userId=${userId}`,
         );
         try {
           const insertResult = await db.insert(snipeTargets).values({
@@ -278,51 +268,42 @@ export class CalendarToDatabaseSyncService {
             stopLossPercent: 15.0, // Default 15% stop loss
             takeProfitCustom: 25.0, // Default 25% take profit
             targetExecutionTime: new Date(launch.firstOpenTime),
+            status: "active", // Set status to "active" so targets appear in dashboard
+            confidenceScore: 85.0, // High confidence for calendar launches
+            riskLevel: "medium",
           });
           console.debug(`✅ Target inserted successfully:`, insertResult);
         } catch (insertError) {
-          console.error(
-            `❌ Database insert failed for ${launch.vcoinId}:`,
-            insertError
-          );
+          console.error(`❌ Database insert failed for ${launch.vcoinId}:`, insertError);
           throw insertError;
         }
       }
       result.created++;
-      console.debug(
-        `Created target for ${launch.vcoinNameFull} (${launch.vcoinId})`
-      );
+      console.debug(`Created target for ${launch.vcoinNameFull} (${launch.vcoinId})`);
     }
   }
 
   /**
    * Cleanup old targets that are past the time window
    */
-  private async cleanupOldTargets(
-    timeWindowHours: number,
-    result: SyncResult
-  ): Promise<void> {
+  private async cleanupOldTargets(timeWindowHours: number, result: SyncResult): Promise<void> {
     try {
-      const cutoffTime = new Date(
-        Date.now() - timeWindowHours * 60 * 60 * 1000
-      );
+      const cutoffTime = new Date(Date.now() - timeWindowHours * 60 * 60 * 1000);
 
       const _cleanupResult = await db
         .delete(snipeTargets)
         .where(
           and(
             lt(snipeTargets.targetExecutionTime, cutoffTime),
-            inArray(snipeTargets.status, ["pending", "ready"])
-          )
+            inArray(snipeTargets.status, ["pending", "ready"]),
+          ),
         );
 
-      console.info(
-        `🧹 Cleaned up old targets (cutoff: ${cutoffTime.toISOString()})`
-      );
+      console.info(`🧹 Cleaned up old targets (cutoff: ${cutoffTime.toISOString()})`);
     } catch (error) {
       console.error("Failed to cleanup old targets:", error);
       result.errors.push(
-        `Cleanup failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Cleanup failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -345,7 +326,7 @@ export class CalendarToDatabaseSyncService {
     options: {
       timeWindowHours?: number;
       forceSync?: boolean;
-    } = {}
+    } = {},
   ): Promise<SyncResult> {
     console.info("🔄 Manual sync triggered");
     return this.syncCalendarToDatabase(userId, { ...options, forceSync: true });

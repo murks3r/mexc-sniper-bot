@@ -1,12 +1,13 @@
 import { db } from "@/src/db";
-import { executionHistory } from "@/src/db/schemas/trading";
 import type { NewExecutionHistory } from "@/src/db/schemas/trading";
+import { executionHistory } from "@/src/db/schemas/trading";
 
 type Primitive = string | number | boolean | null | undefined;
 
 export interface SaveExecutionHistoryParams {
   userId: string;
   snipeTargetId?: number | null;
+  positionId?: number | null;
   vcoinId: string;
   symbolName: string;
   orderType: string; // "market" | "limit"
@@ -45,7 +46,7 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function coerceDate(value: unknown): Date | undefined {
+function _coerceDate(value: unknown): Date | undefined {
   if (value instanceof Date) return value;
   if (typeof value === "number") return new Date(value);
   if (typeof value === "string") {
@@ -55,10 +56,11 @@ function coerceDate(value: unknown): Date | undefined {
   return undefined;
 }
 
-export async function saveExecutionHistory(params: SaveExecutionHistoryParams): Promise<void> {
+export async function saveExecutionHistory(params: SaveExecutionHistoryParams): Promise<number> {
   const {
     userId,
     snipeTargetId = null,
+    positionId = null,
     vcoinId,
     symbolName,
     orderType,
@@ -84,6 +86,7 @@ export async function saveExecutionHistory(params: SaveExecutionHistoryParams): 
   const normalized: NewExecutionHistory = {
     userId,
     snipeTargetId,
+    positionId,
     vcoinId: String(vcoinId),
     symbolName: String(symbolName),
     action: orderSide === "buy" || orderSide === "sell" ? orderSide : "buy",
@@ -113,16 +116,9 @@ export async function saveExecutionHistory(params: SaveExecutionHistoryParams): 
     // createdAt is defaulted by DB
   } as NewExecutionHistory;
 
-  await db.insert(executionHistory).values(normalized);
+  const [inserted] = await db
+    .insert(executionHistory)
+    .values(normalized)
+    .returning({ id: executionHistory.id });
+  return inserted.id;
 }
-
-
-
-
-
-
-
-
-
-
-

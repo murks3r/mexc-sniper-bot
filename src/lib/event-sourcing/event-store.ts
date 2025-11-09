@@ -75,14 +75,14 @@ export class InMemoryEventStore extends EventEmitter {
   async appendEvents(
     aggregateId: string,
     expectedVersion: number,
-    events: DomainEvent[]
+    events: DomainEvent[],
   ): Promise<void> {
     const aggregateEvents = this.events.get(aggregateId) || [];
 
     // Optimistic concurrency check
     if (aggregateEvents.length !== expectedVersion) {
       throw new Error(
-        `Concurrency conflict: expected version ${expectedVersion}, got ${aggregateEvents.length}`
+        `Concurrency conflict: expected version ${expectedVersion}, got ${aggregateEvents.length}`,
       );
     }
 
@@ -117,7 +117,7 @@ export class InMemoryEventStore extends EventEmitter {
    */
   async getEventsForAggregate(
     aggregateId: string,
-    fromVersion: number = 0
+    fromVersion: number = 0,
   ): Promise<DomainEvent[]> {
     const events = this.events.get(aggregateId) || [];
     return events.filter((event) => event.eventVersion > fromVersion);
@@ -129,7 +129,7 @@ export class InMemoryEventStore extends EventEmitter {
   async getEventsByType(
     eventType: string,
     fromTimestamp?: Date,
-    limit: number = this.config.maxEventsPerRead
+    limit: number = this.config.maxEventsPerRead,
   ): Promise<DomainEvent[]> {
     const allEvents: DomainEvent[] = [];
 
@@ -144,9 +144,7 @@ export class InMemoryEventStore extends EventEmitter {
     }
 
     // Sort by timestamp
-    allEvents.sort(
-      (a, b) => a.metadata.timestamp.getTime() - b.metadata.timestamp.getTime()
-    );
+    allEvents.sort((a, b) => a.metadata.timestamp.getTime() - b.metadata.timestamp.getTime());
 
     return allEvents.slice(0, limit);
   }
@@ -156,7 +154,7 @@ export class InMemoryEventStore extends EventEmitter {
    */
   async getAllEvents(
     fromTimestamp?: Date,
-    limit: number = this.config.maxEventsPerRead
+    limit: number = this.config.maxEventsPerRead,
   ): Promise<DomainEvent[]> {
     const allEvents: DomainEvent[] = [];
 
@@ -170,9 +168,7 @@ export class InMemoryEventStore extends EventEmitter {
       : allEvents;
 
     // Sort by timestamp
-    filteredEvents.sort(
-      (a, b) => a.metadata.timestamp.getTime() - b.metadata.timestamp.getTime()
-    );
+    filteredEvents.sort((a, b) => a.metadata.timestamp.getTime() - b.metadata.timestamp.getTime());
 
     return filteredEvents.slice(0, limit);
   }
@@ -188,9 +184,7 @@ export class InMemoryEventStore extends EventEmitter {
   /**
    * Get latest snapshot for aggregate
    */
-  async getLatestSnapshot(
-    aggregateId: string
-  ): Promise<AggregateSnapshot | null> {
+  async getLatestSnapshot(aggregateId: string): Promise<AggregateSnapshot | null> {
     return this.snapshots.get(aggregateId) || null;
   }
 
@@ -205,15 +199,13 @@ export class InMemoryEventStore extends EventEmitter {
   } {
     const totalAggregates = this.events.size;
     const totalSnapshots = this.snapshots.size;
-    const averageEventsPerAggregate =
-      totalAggregates > 0 ? this.eventCounter / totalAggregates : 0;
+    const averageEventsPerAggregate = totalAggregates > 0 ? this.eventCounter / totalAggregates : 0;
 
     return {
       totalEvents: this.eventCounter,
       totalAggregates,
       totalSnapshots,
-      averageEventsPerAggregate:
-        Math.round(averageEventsPerAggregate * 100) / 100,
+      averageEventsPerAggregate: Math.round(averageEventsPerAggregate * 100) / 100,
     };
   }
 
@@ -222,7 +214,7 @@ export class InMemoryEventStore extends EventEmitter {
    */
   async replayEvents(
     fromTimestamp?: Date,
-    eventHandler?: (event: DomainEvent) => Promise<void>
+    eventHandler?: (event: DomainEvent) => Promise<void>,
   ): Promise<number> {
     const events = await this.getAllEvents(fromTimestamp);
     let processedCount = 0;
@@ -286,7 +278,7 @@ export class EventFactory {
     aggregateType: string,
     eventType: string,
     payload: any,
-    metadata: Partial<EventMetadata> = {}
+    metadata: Partial<EventMetadata> = {},
   ): DomainEvent {
     return {
       id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -320,7 +312,7 @@ export class EventStoreManager {
    */
   async getAggregate<T>(
     aggregateId: string,
-    aggregateFactory: (events: DomainEvent[]) => T
+    aggregateFactory: (events: DomainEvent[]) => T,
   ): Promise<T | null> {
     const events = await this.eventStore.getEventsForAggregate(aggregateId);
 
@@ -337,7 +329,7 @@ export class EventStoreManager {
   async saveAggregate(
     aggregateId: string,
     expectedVersion: number,
-    events: DomainEvent[]
+    events: DomainEvent[],
   ): Promise<void> {
     await this.eventStore.appendEvents(aggregateId, expectedVersion, events);
   }
@@ -375,7 +367,7 @@ export class EventStoreManager {
    */
   async replayEvents(
     fromTimestamp?: Date,
-    eventHandler?: (event: DomainEvent) => Promise<void>
+    eventHandler?: (event: DomainEvent) => Promise<void>,
   ): Promise<number> {
     return this.eventStore.replayEvents(fromTimestamp, eventHandler);
   }

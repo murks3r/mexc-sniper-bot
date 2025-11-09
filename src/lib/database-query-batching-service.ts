@@ -14,7 +14,7 @@ const defaultConfig: BatchConfig = {
 
 export async function executeBatchQuery<T>(
   queries: (() => Promise<T>)[],
-  _config: BatchConfig = defaultConfig
+  _config: BatchConfig = defaultConfig,
 ): Promise<T[]> {
   // Simple implementation - execute all queries
   return Promise.all(queries.map((query) => query()));

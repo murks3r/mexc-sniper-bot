@@ -108,9 +108,7 @@ export class EnhancedMexcConfig {
   /**
    * Create default configuration
    */
-  private createDefaultConfig(
-    overrides?: Partial<MexcTradingConfig>
-  ): MexcTradingConfig {
+  private createDefaultConfig(overrides?: Partial<MexcTradingConfig>): MexcTradingConfig {
     const baseConfig: MexcTradingConfig = {
       credentials: {
         apiKey: process.env.MEXC_API_KEY || "",
@@ -126,15 +124,11 @@ export class EnhancedMexcConfig {
       websocketUrl: process.env.MEXC_WEBSOCKET_URL || "wss://wbs.mexc.com/ws",
 
       // Trading Parameters
-      defaultPositionSize: parseFloat(
-        process.env.MEXC_DEFAULT_POSITION_SIZE || "50"
-      ),
+      defaultPositionSize: parseFloat(process.env.MEXC_DEFAULT_POSITION_SIZE || "50"),
       maxPositionSize: parseFloat(process.env.MEXC_MAX_POSITION_SIZE || "500"),
       minPositionSize: parseFloat(process.env.MEXC_MIN_POSITION_SIZE || "10"),
-      maxDailyTrades: parseInt(process.env.MEXC_MAX_DAILY_TRADES || "20"),
-      maxConcurrentPositions: parseInt(
-        process.env.MEXC_MAX_CONCURRENT_POSITIONS || "5"
-      ),
+      maxDailyTrades: parseInt(process.env.MEXC_MAX_DAILY_TRADES || "20", 10),
+      maxConcurrentPositions: parseInt(process.env.MEXC_MAX_CONCURRENT_POSITIONS || "5", 10),
 
       // Risk Management
       globalStopLoss: parseFloat(process.env.MEXC_GLOBAL_STOP_LOSS || "5"),
@@ -143,14 +137,14 @@ export class EnhancedMexcConfig {
       riskPerTrade: parseFloat(process.env.MEXC_RISK_PER_TRADE || "2"),
 
       // Execution Settings
-      orderTimeout: parseInt(process.env.MEXC_ORDER_TIMEOUT || "30000"),
+      orderTimeout: parseInt(process.env.MEXC_ORDER_TIMEOUT || "30000", 10),
       maxSlippage: parseFloat(process.env.MEXC_MAX_SLIPPAGE || "2"),
-      retryAttempts: parseInt(process.env.MEXC_RETRY_ATTEMPTS || "3"),
+      retryAttempts: parseInt(process.env.MEXC_RETRY_ATTEMPTS || "3", 10),
       paperTradingMode: process.env.MEXC_PAPER_TRADING === "true",
 
       // Rate Limiting
-      requestsPerSecond: parseInt(process.env.MEXC_REQUESTS_PER_SECOND || "10"),
-      burstAllowance: parseInt(process.env.MEXC_BURST_ALLOWANCE || "20"),
+      requestsPerSecond: parseInt(process.env.MEXC_REQUESTS_PER_SECOND || "10", 10),
+      burstAllowance: parseInt(process.env.MEXC_BURST_ALLOWANCE || "20", 10),
 
       // Monitoring
       enableLogging: process.env.MEXC_ENABLE_LOGGING !== "false",
@@ -322,9 +316,7 @@ export class EnhancedMexcConfig {
       }
 
       // Find symbol info
-      const symbolInfo = exchangeInfo.data.symbols?.find(
-        (s: any) => s.symbol === symbol
-      );
+      const symbolInfo = exchangeInfo.data.symbols?.find((s: any) => s.symbol === symbol);
       if (!symbolInfo) {
         this.logger.warn(`Symbol ${symbol} not found in exchange info`);
         return null;
@@ -332,20 +324,12 @@ export class EnhancedMexcConfig {
 
       // Extract filters (using fallback since filters may not be available)
       const filters = (symbolInfo as any).filters || [];
-      const lotSizeFilter = filters.find(
-        (f: any) => f.filterType === "LOT_SIZE"
-      );
-      const minNotionalFilter = filters.find(
-        (f: any) => f.filterType === "MIN_NOTIONAL"
-      );
-      const priceFilter = filters.find(
-        (f: any) => f.filterType === "PRICE_FILTER"
-      );
+      const lotSizeFilter = filters.find((f: any) => f.filterType === "LOT_SIZE");
+      const minNotionalFilter = filters.find((f: any) => f.filterType === "MIN_NOTIONAL");
+      const priceFilter = filters.find((f: any) => f.filterType === "PRICE_FILTER");
 
       const limits: TradingLimits = {
-        minTradeAmount: minNotionalFilter
-          ? parseFloat(minNotionalFilter.minNotional)
-          : 10,
+        minTradeAmount: minNotionalFilter ? parseFloat(minNotionalFilter.minNotional) : 10,
         maxTradeAmount: 1000000, // Default max
         tickSize: priceFilter ? parseFloat(priceFilter.tickSize) : 0.01,
         stepSize: lotSizeFilter ? parseFloat(lotSizeFilter.stepSize) : 0.001,
@@ -378,25 +362,18 @@ export class EnhancedMexcConfig {
     try {
       // Check if trading is enabled
       if (!this.config.credentials.apiKey && !this.config.paperTradingMode) {
-        errors.push(
-          "No API credentials configured and not in paper trading mode"
-        );
+        errors.push("No API credentials configured and not in paper trading mode");
       }
 
       // Validate position size
-      const positionValue =
-        order.quoteOrderQty || order.quantity * (order.price || 0);
+      const positionValue = order.quoteOrderQty || order.quantity * (order.price || 0);
 
       if (positionValue < this.config.minPositionSize) {
-        errors.push(
-          `Position size ${positionValue} below minimum ${this.config.minPositionSize}`
-        );
+        errors.push(`Position size ${positionValue} below minimum ${this.config.minPositionSize}`);
       }
 
       if (positionValue > this.config.maxPositionSize) {
-        errors.push(
-          `Position size ${positionValue} above maximum ${this.config.maxPositionSize}`
-        );
+        errors.push(`Position size ${positionValue} above maximum ${this.config.maxPositionSize}`);
       }
 
       // Validate symbol format
@@ -431,9 +408,7 @@ export class EnhancedMexcConfig {
         errors,
       };
     } catch (error) {
-      errors.push(
-        `Validation error: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      errors.push(`Validation error: ${error instanceof Error ? error.message : "Unknown error"}`);
       return { valid: false, errors };
     }
   }
@@ -442,9 +417,7 @@ export class EnhancedMexcConfig {
    * Check if credentials are configured
    */
   hasCredentials(): boolean {
-    return !!(
-      this.config.credentials.apiKey && this.config.credentials.secretKey
-    );
+    return !!(this.config.credentials.apiKey && this.config.credentials.secretKey);
   }
 
   /**
@@ -521,10 +494,7 @@ export class EnhancedMexcConfig {
       errors.push("Invalid base URL");
     }
 
-    if (
-      !this.config.websocketUrl ||
-      !this.config.websocketUrl.startsWith("ws")
-    ) {
+    if (!this.config.websocketUrl || !this.config.websocketUrl.startsWith("ws")) {
       errors.push("Invalid websocket URL");
     }
 
@@ -550,13 +520,7 @@ export class EnhancedMexcConfig {
    * Load trading limits for common symbols
    */
   private async loadTradingLimits(): Promise<void> {
-    const commonSymbols = [
-      "BTCUSDT",
-      "ETHUSDT",
-      "ADAUSDT",
-      "SOLUSDT",
-      "DOTUSDT",
-    ];
+    const commonSymbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"];
 
     this.logger.info("Loading trading limits for common symbols");
 
@@ -568,9 +532,7 @@ export class EnhancedMexcConfig {
       }
     }
 
-    this.logger.info(
-      `Loaded trading limits for ${this.symbolLimits.size} symbols`
-    );
+    this.logger.info(`Loaded trading limits for ${this.symbolLimits.size} symbols`);
   }
 
   /**
@@ -593,9 +555,7 @@ export class EnhancedMexcConfig {
 // Export singleton instance
 let enhancedMexcConfig: EnhancedMexcConfig | null = null;
 
-export function getEnhancedMexcConfig(
-  config?: Partial<MexcTradingConfig>
-): EnhancedMexcConfig {
+export function getEnhancedMexcConfig(config?: Partial<MexcTradingConfig>): EnhancedMexcConfig {
   if (!enhancedMexcConfig) {
     enhancedMexcConfig = new EnhancedMexcConfig(config);
   }
@@ -630,11 +590,7 @@ export function getEnvironmentConfig(): Partial<MexcTradingConfig> {
       sandbox: process.env.MEXC_SANDBOX === "true",
     },
     paperTradingMode: process.env.MEXC_PAPER_TRADING === "true",
-    defaultPositionSize: parseFloat(
-      process.env.MEXC_DEFAULT_POSITION_SIZE || "50"
-    ),
-    maxConcurrentPositions: parseInt(
-      process.env.MEXC_MAX_CONCURRENT_POSITIONS || "5"
-    ),
+    defaultPositionSize: parseFloat(process.env.MEXC_DEFAULT_POSITION_SIZE || "50"),
+    maxConcurrentPositions: parseInt(process.env.MEXC_MAX_CONCURRENT_POSITIONS || "5", 10),
   };
 }

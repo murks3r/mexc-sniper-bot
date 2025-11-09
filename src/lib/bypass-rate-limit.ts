@@ -20,11 +20,7 @@ class BypassRateLimit {
     this.config = { ...this.config, ...config };
   }
 
-  shouldBypass(context: {
-    apiKey?: string;
-    userId?: string;
-    ipAddress?: string;
-  }): boolean {
+  shouldBypass(context: { apiKey?: string; userId?: string; ipAddress?: string }): boolean {
     if (context.apiKey && this.config.apiKeys.includes(context.apiKey)) {
       return true;
     }
@@ -33,10 +29,7 @@ class BypassRateLimit {
       return true;
     }
 
-    if (
-      context.ipAddress &&
-      this.config.ipAddresses.includes(context.ipAddress)
-    ) {
+    if (context.ipAddress && this.config.ipAddresses.includes(context.ipAddress)) {
       return true;
     }
 
@@ -66,17 +59,13 @@ class BypassRateLimit {
   removeBypass(type: "apiKey" | "userId" | "ipAddress", value: string): void {
     switch (type) {
       case "apiKey":
-        this.config.apiKeys = this.config.apiKeys.filter(
-          (key) => key !== value
-        );
+        this.config.apiKeys = this.config.apiKeys.filter((key) => key !== value);
         break;
       case "userId":
         this.config.userIds = this.config.userIds.filter((id) => id !== value);
         break;
       case "ipAddress":
-        this.config.ipAddresses = this.config.ipAddresses.filter(
-          (ip) => ip !== value
-        );
+        this.config.ipAddresses = this.config.ipAddresses.filter((ip) => ip !== value);
         break;
     }
   }

@@ -10,27 +10,27 @@ export async function GET(_request: NextRequest) {
     // Check for environment credentials
     const mexcApiKey = process.env.MEXC_API_KEY?.trim();
     const mexcSecretKey = process.env.MEXC_SECRET_KEY?.trim();
-    
+
     const hasEnvironmentCredentials = !!(
-      mexcApiKey && 
-      mexcSecretKey && 
-      mexcApiKey.length >= 10 && 
+      mexcApiKey &&
+      mexcSecretKey &&
+      mexcApiKey.length >= 10 &&
       mexcSecretKey.length >= 10
     );
-    
+
     const hasCredentials = hasEnvironmentCredentials;
     const credentialSource = hasEnvironmentCredentials ? "environment" : "none";
-    
+
     // For now, assume credentials are valid if they exist and have proper format
     // TODO: Add actual API validation call
     const credentialsValid = hasCredentials;
     const canTrade = hasCredentials && credentialsValid;
-    
+
     const overallStatus = canTrade ? "healthy" : hasCredentials ? "warning" : "loading";
-    const statusMessage = canTrade 
-      ? "Ready to trade" 
-      : hasCredentials 
-        ? "Credentials need validation" 
+    const statusMessage = canTrade
+      ? "Ready to trade"
+      : hasCredentials
+        ? "Credentials need validation"
         : "No credentials configured";
 
     const response = {
@@ -47,15 +47,12 @@ export async function GET(_request: NextRequest) {
         statusMessage,
         lastChecked: new Date().toISOString(),
         source: hasCredentials ? "environment" : "fallback",
-        recommendations: hasCredentials 
-          ? ["Credentials configured successfully"] 
+        recommendations: hasCredentials
+          ? ["Credentials configured successfully"]
           : ["Configure MEXC API credentials"],
-        nextSteps: hasCredentials 
-          ? ["Start trading from dashboard"] 
-          : [
-              "Go to Configuration page",
-              "Enter your MEXC API credentials",
-            ],
+        nextSteps: hasCredentials
+          ? ["Start trading from dashboard"]
+          : ["Go to Configuration page", "Enter your MEXC API credentials"],
       },
       message: "Status retrieved successfully",
       timestamp: new Date().toISOString(),
@@ -69,7 +66,7 @@ export async function GET(_request: NextRequest) {
         error: "Failed to get status",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to refresh status",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

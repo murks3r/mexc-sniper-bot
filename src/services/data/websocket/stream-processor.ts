@@ -12,10 +12,7 @@ import type {
   TradingSignalMessage,
 } from "@/src/lib/websocket-types";
 import { webSocketServer } from "../websocket-server";
-import {
-  type ConnectionManagerOptions,
-  MexcConnectionManager,
-} from "./connection-manager";
+import { type ConnectionManagerOptions, MexcConnectionManager } from "./connection-manager";
 import { MarketDataManager } from "./market-data-manager";
 
 // ======================
@@ -118,7 +115,7 @@ export class MexcWebSocketStreamService extends EventEmitter {
     this.connectionManager = new MexcConnectionManager(
       connectionOptions,
       (data) => this.handleWebSocketMessage(data),
-      (error) => this.handleWebSocketError(error)
+      (error) => this.handleWebSocketError(error),
     );
 
     // Setup market data event handlers

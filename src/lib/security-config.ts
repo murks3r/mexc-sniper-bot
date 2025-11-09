@@ -110,11 +110,7 @@ export const SECURITY_CONFIG = {
   // API Security Configuration
   API_SECURITY: {
     // Allowed origins for CORS
-    ALLOWED_ORIGINS: [
-      "http://localhost:3008",
-      "https://mexcsniper.com",
-      "https://*.vercel.app",
-    ],
+    ALLOWED_ORIGINS: ["http://localhost:3008", "https://mexcsniper.com", "https://*.vercel.app"],
 
     // API timeout settings
     TIMEOUTS: {
@@ -255,7 +251,7 @@ export function getRateLimitConfig(type: "general" | "auth" | "trading") {
  */
 export function validateInput(
   value: string,
-  type: keyof typeof SECURITY_CONFIG.INPUT_VALIDATION.PATTERNS
+  type: keyof typeof SECURITY_CONFIG.INPUT_VALIDATION.PATTERNS,
 ): boolean {
   const pattern = SECURITY_CONFIG.INPUT_VALIDATION.PATTERNS[type];
   const maxLength = SECURITY_CONFIG.INPUT_VALIDATION.MAX_LENGTHS[type];
@@ -277,10 +273,7 @@ export function sanitizeInput(input: string): string {
   let sanitized = input.replace(/<[^>]*>/g, "");
 
   // Remove script content
-  sanitized = sanitized.replace(
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    ""
-  );
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
   // Escape potential SQL injection characters
   sanitized = sanitized.replace(/['";\\]/g, "\\$&");

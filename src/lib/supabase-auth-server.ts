@@ -1,9 +1,9 @@
 import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
+import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { user as authUser } from "@/src/db/schemas/auth";
-import { eq } from "drizzle-orm";
 import { createSupabaseAdminClient } from "@/src/lib/supabase-auth";
 
 interface SupabaseUser {
@@ -19,6 +19,36 @@ interface SupabaseSession {
   user: SupabaseUser | null;
   isAuthenticated: boolean;
   accessToken?: string;
+}
+
+/**
+ * Debug function to extract cookie information from request
+ */
+export function debugRequestCookies(request: NextRequest): Record<string, unknown> {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) {
+    return { present: false, cookies: [] };
+  }
+
+  const cookies = cookieHeader.split(";").map((c) => c.trim());
+  const cookieMap: Record<string, string> = {};
+
+  for (const cookie of cookies) {
+    const [name, ...valueParts] = cookie.split("=");
+    if (name) {
+      cookieMap[name.trim()] = decodeURIComponent(valueParts.join("="));
+    }
+  }
+
+  return {
+    present: true,
+    cookieHeader,
+    cookieCount: cookies.length,
+    cookies: cookieMap,
+    supabaseCookies: Object.keys(cookieMap).filter(
+      (key) => key.startsWith("sb-") || key.includes("supabase"),
+    ),
+  };
 }
 
 function createSupabaseServerClientFromRequest(request: NextRequest) {
@@ -49,9 +79,7 @@ function createSupabaseServerClientFromRequest(request: NextRequest) {
   });
 }
 
-export async function getSessionFromRequest(
-  request: NextRequest
-): Promise<SupabaseSession> {
+export async function getSessionFromRequest(request: NextRequest): Promise<SupabaseSession> {
   try {
     const supabase = createSupabaseServerClientFromRequest(request);
     const {
@@ -71,11 +99,7 @@ export async function getSessionFromRequest(
     const supabaseUser: SupabaseUser = {
       id: user.id,
       email: user.email ?? "",
-      name:
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email ||
-        "User",
+      name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || "User",
       username: user.user_metadata?.username,
       picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
       emailVerified: !!user.email_confirmed_at,
@@ -91,9 +115,7 @@ export async function getSessionFromRequest(
   }
 }
 
-export async function requireAuthFromRequest(
-  request: NextRequest
-): Promise<SupabaseUser> {
+export async function requireAuthFromRequest(request: NextRequest): Promise<SupabaseUser> {
   const session = await getSessionFromRequest(request);
   if (!session.isAuthenticated || !session.user) {
     throw new Error("Authentication required");
@@ -110,9 +132,7 @@ export async function requireAuthFromRequest(
     if (existing.length === 0) {
       try {
         const supabase = createSupabaseAdminClient();
-        const { data: userData, error } = await supabase.auth.admin.getUserById(
-          session.user.id
-        );
+        const { data: userData, error } = await supabase.auth.admin.getUserById(session.user.id);
 
         if (!error && userData?.user) {
           const realUserData = {
@@ -123,7 +143,7 @@ export async function requireAuthFromRequest(
               userData.user.user_metadata?.full_name ||
               session.user.name ||
               session.user.email,
-            emailVerified: userData.user.email_confirmed_at ? true : false,
+            emailVerified: !!userData.user.email_confirmed_at,
             createdAt: new Date(userData.user.created_at),
             updatedAt: new Date(userData.user.updated_at),
           };
@@ -186,4 +206,4 @@ export async function requireAuthFromRequest(
     // Non-blocking: if we fail to sync, protected route still proceeds
   }
   return session.user;
-} 
+}

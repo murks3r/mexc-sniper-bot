@@ -89,9 +89,7 @@ export async function GET() {
 
     // Check for environment credentials if no user credentials
     if (!hasCredentials) {
-      hasCredentials = !!(
-        process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY
-      );
+      hasCredentials = !!(process.env.MEXC_API_KEY && process.env.MEXC_SECRET_KEY);
       if (hasCredentials) {
         credentialSource = "environment";
       }
@@ -114,9 +112,7 @@ export async function GET() {
       retryCount = attempt;
 
       try {
-        const mexcService = getRecommendedMexcService(
-          userCredentials || undefined
-        );
+        const mexcService = getRecommendedMexcService(userCredentials || undefined);
         const connectivityResult = await mexcService.testConnectivity();
 
         networkLatency = Date.now() - attemptStart;
@@ -138,8 +134,7 @@ export async function GET() {
         }
       } catch (error) {
         networkLatency = Date.now() - attemptStart;
-        lastNetworkError =
-          error instanceof Error ? error.message : "Unknown error";
+        lastNetworkError = error instanceof Error ? error.message : "Unknown error";
 
         // Wait before retry (except on last attempt)
         if (attempt < maxRetries - 1) {
@@ -161,9 +156,7 @@ export async function GET() {
       const apiStart = Date.now();
 
       try {
-        const mexcService = getRecommendedMexcService(
-          userCredentials || undefined
-        );
+        const mexcService = getRecommendedMexcService(userCredentials || undefined);
         const accountResult = await mexcService.getAccountBalances();
 
         const apiLatency = Date.now() - apiStart;
@@ -269,8 +262,7 @@ export async function GET() {
       overallLatency,
       healthScore: 0,
     };
-    response.checks.network.error =
-      error instanceof Error ? error.message : "Unknown error";
+    response.checks.network.error = error instanceof Error ? error.message : "Unknown error";
 
     return NextResponse.json(response, {
       status: 503,
@@ -289,8 +281,7 @@ export async function HEAD() {
     const mexcService = getRecommendedMexcService();
     const result = await mexcService.testConnectivity();
 
-    const isConnected =
-      typeof result === "boolean" ? result : result?.success === true;
+    const isConnected = typeof result === "boolean" ? result : result?.success === true;
 
     return new NextResponse(null, {
       status: isConnected ? 200 : 503,

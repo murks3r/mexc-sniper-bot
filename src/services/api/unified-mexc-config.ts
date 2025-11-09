@@ -15,10 +15,7 @@ import type {
 // Configuration Types
 // ============================================================================
 
-export interface UnifiedMexcConfigV2
-  extends MexcApiConfig,
-    MexcCacheConfig,
-    MexcReliabilityConfig {
+export interface UnifiedMexcConfigV2 extends MexcApiConfig, MexcCacheConfig, MexcReliabilityConfig {
   enableEnhancedFeatures?: boolean;
   enablePaperTrading?: boolean;
   circuitBreakerThreshold?: number;
@@ -74,11 +71,11 @@ export const DEFAULT_CONFIG: Required<UnifiedMexcConfigV2> = {
  * Merge user config with defaults
  */
 export function mergeConfig(
-  userConfig: Partial<UnifiedMexcConfigV2> = {}
+  userConfig: Partial<UnifiedMexcConfigV2> = {},
 ): Required<UnifiedMexcConfigV2> {
   // Avoid overriding defaults with undefined values
   const sanitized = Object.fromEntries(
-    Object.entries(userConfig).filter(([, value]) => value !== undefined)
+    Object.entries(userConfig).filter(([, value]) => value !== undefined),
   ) as Partial<UnifiedMexcConfigV2>;
   return { ...DEFAULT_CONFIG, ...sanitized } as Required<UnifiedMexcConfigV2>;
 }
@@ -123,9 +120,6 @@ export function validateConfig(config: UnifiedMexcConfigV2): {
  */
 export function hasValidCredentials(config: UnifiedMexcConfigV2): boolean {
   return Boolean(
-    config.apiKey &&
-      config.secretKey &&
-      config.apiKey.length > 0 &&
-      config.secretKey.length > 0
+    config.apiKey && config.secretKey && config.apiKey.length > 0 && config.secretKey.length > 0,
   );
 }

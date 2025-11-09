@@ -66,10 +66,7 @@ export function validateData<T>(data: any): ValidationResult<T> {
   return { success: true, data };
 }
 
-export function createSuccessResponse<T>(
-  data: T,
-  message?: string
-): ApiResponse {
+export function createSuccessResponse<T>(data: T, message?: string): ApiResponse {
   return {
     success: true,
     data,

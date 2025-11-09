@@ -82,83 +82,7 @@ export interface WebSocketConnectionHealth {
 // ============================================================================
 
 export class RealTimePatternDetector {
-  private logger = {
-    info: (message: string, context?: any) => {
-      import("@/src/services/notification/error-logging-service")
-        .then(({ errorLogger }) => {
-          errorLogger.logInfo(message, {
-            component: "EnhancedMexcWebSocketService",
-            operation: "info",
-            ...context,
-          });
-        })
-        .catch(() => {
-          console.info(
-            "[enhanced-mexc-websocket-service]",
-            message,
-            context || ""
-          );
-        });
-    },
-    warn: (message: string, context?: any) => {
-      import("@/src/services/notification/error-logging-service")
-        .then(({ errorLogger }) => {
-          errorLogger.logWarning(message, {
-            component: "EnhancedMexcWebSocketService",
-            operation: "warning",
-            ...context,
-          });
-        })
-        .catch(() => {
-          console.warn(
-            "[enhanced-mexc-websocket-service]",
-            message,
-            context || ""
-          );
-        });
-    },
-    error: (message: string, context?: any, error?: Error) => {
-      import("@/src/services/notification/error-logging-service")
-        .then(({ errorLogger }) => {
-          const err = error || new Error(message);
-          errorLogger.logError(err, {
-            component: "EnhancedMexcWebSocketService",
-            operation: "error",
-            ...context,
-          });
-        })
-        .catch(() => {
-          console.error(
-            "[enhanced-mexc-websocket-service]",
-            message,
-            context || "",
-            error || ""
-          );
-        });
-    },
-    debug: (message: string, context?: any) => {
-      import("@/src/services/notification/error-logging-service")
-        .then(({ errorLogger }) => {
-          errorLogger.logDebug(message, {
-            component: "EnhancedMexcWebSocketService",
-            operation: "debug",
-            ...context,
-          });
-        })
-        .catch(() => {
-          console.debug(
-            "[enhanced-mexc-websocket-service]",
-            message,
-            context || ""
-          );
-        });
-    },
-  };
-
-  private patternCallbacks = new Map<
-    string,
-    Set<(pattern: RealTimePatternMatch) => void>
-  >();
+  private patternCallbacks = new Map<string, Set<(pattern: RealTimePatternMatch) => void>>();
   private priceHistory = new Map<string, RealTimePriceData[]>();
   private symbolStatuses = new Map<string, RealTimeSymbolStatus>();
   private readonly PRICE_HISTORY_LIMIT = 100;
@@ -194,10 +118,7 @@ export class RealTimePatternDetector {
     this.symbolStatuses.set(statusData.symbol, statusData);
 
     // Check for state transitions that indicate pattern formation
-    if (
-      previousStatus &&
-      this.hasSignificantStatusChange(previousStatus, statusData)
-    ) {
+    if (previousStatus && this.hasSignificantStatusChange(previousStatus, statusData)) {
       console.info(`🔍 Pattern formation detected for ${statusData.symbol}:`, {
         previous: {
           sts: previousStatus.sts,
@@ -214,7 +135,7 @@ export class RealTimePatternDetector {
    */
   subscribeToPatterns(
     symbol: string,
-    callback: (pattern: RealTimePatternMatch) => void
+    callback: (pattern: RealTimePatternMatch) => void,
   ): () => void {
     if (!this.patternCallbacks.has(symbol)) {
       this.patternCallbacks.set(symbol, new Set());
@@ -233,10 +154,7 @@ export class RealTimePatternDetector {
     };
   }
 
-  private updatePriceHistory(
-    symbol: string,
-    priceData: RealTimePriceData
-  ): void {
+  private updatePriceHistory(symbol: string, priceData: RealTimePriceData): void {
     if (!this.priceHistory.has(symbol)) {
       this.priceHistory.set(symbol, []);
     }
@@ -257,7 +175,7 @@ export class RealTimePatternDetector {
 
   private createReadyStatePattern(
     status: RealTimeSymbolStatus,
-    priceData: RealTimePriceData
+    priceData: RealTimePriceData,
   ): RealTimePatternMatch | null {
     const confidence = this.calculatePatternConfidence(status, priceData);
 
@@ -286,7 +204,7 @@ export class RealTimePatternDetector {
 
   private calculatePatternConfidence(
     status: RealTimeSymbolStatus,
-    priceData: RealTimePriceData
+    priceData: RealTimePriceData,
   ): number {
     let confidence = 70; // Base confidence for matching pattern
 
@@ -309,27 +227,22 @@ export class RealTimePatternDetector {
 
   private calculateAdvanceNotice(
     _status: RealTimeSymbolStatus,
-    priceData: RealTimePriceData
+    priceData: RealTimePriceData,
   ): number {
     // Estimate advance notice based on pattern strength and market conditions
     const baseNotice = 3.5 * 60 * 60 * 1000; // 3.5 hours in milliseconds
 
     // Adjust based on volume - higher volume might mean faster execution
-    const volumeAdjustment =
-      priceData.volume > 100000 ? -0.5 * 60 * 60 * 1000 : 0;
+    const volumeAdjustment = priceData.volume > 100000 ? -0.5 * 60 * 60 * 1000 : 0;
 
     return Math.max(baseNotice + volumeAdjustment, 1 * 60 * 60 * 1000); // Minimum 1 hour
   }
 
   private hasSignificantStatusChange(
     previous: RealTimeSymbolStatus,
-    current: RealTimeSymbolStatus
+    current: RealTimeSymbolStatus,
   ): boolean {
-    return (
-      previous.sts !== current.sts ||
-      previous.st !== current.st ||
-      previous.tt !== current.tt
-    );
+    return previous.sts !== current.sts || previous.st !== current.st || previous.tt !== current.tt;
   }
 
   private notifyPatternCallbacks(pattern: RealTimePatternMatch): void {
@@ -341,7 +254,7 @@ export class RealTimePatternDetector {
         } catch (error) {
           console.error(
             "Error in pattern callback:",
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       });
@@ -391,14 +304,8 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
 
   // Subscription management
   private subscriptions = new Map<string, Set<string>>(); // symbol -> set of subscription types
-  private priceCallbacks = new Map<
-    string,
-    Set<(data: RealTimePriceData) => void>
-  >();
-  private statusCallbacks = new Map<
-    string,
-    Set<(data: RealTimeSymbolStatus) => void>
-  >();
+  private priceCallbacks = new Map<string, Set<(data: RealTimePriceData) => void>>();
+  private statusCallbacks = new Map<string, Set<(data: RealTimeSymbolStatus) => void>>();
 
   // Health metrics
   private connectionHealth: WebSocketConnectionHealth = {
@@ -418,17 +325,14 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
 
   private constructor() {
     super();
-    this.circuitBreaker = createCoordinatedMexcWebSocketBreaker(
-      "enhanced-mexc-ws-service"
-    );
+    this.circuitBreaker = createCoordinatedMexcWebSocketBreaker("enhanced-mexc-ws-service");
     this.patternDetector = new RealTimePatternDetector();
     this.startHealthMonitoring();
   }
 
   public static getInstance(): EnhancedMexcWebSocketService {
     if (!EnhancedMexcWebSocketService.instance) {
-      EnhancedMexcWebSocketService.instance =
-        new EnhancedMexcWebSocketService();
+      EnhancedMexcWebSocketService.instance = new EnhancedMexcWebSocketService();
     }
     return EnhancedMexcWebSocketService.instance;
   }
@@ -484,8 +388,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
     } catch (error) {
       this.isConnecting = false;
       this.connectionHealth.errorCount++;
-      const _errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const _errorMessage = error instanceof Error ? error.message : String(error);
       if (this.ws) {
         this.ws = null;
       }
@@ -564,7 +467,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
     } catch (error) {
       console.error(
         "❌ Error parsing WebSocket message:",
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       this.connectionHealth.errorCount++;
     }
@@ -639,7 +542,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
     patterns.forEach((pattern) => {
       this.emit("pattern:detected", pattern);
       console.info(
-        `🎯 Pattern detected: ${pattern.patternType} for ${pattern.symbol} (confidence: ${pattern.confidence}%)`
+        `🎯 Pattern detected: ${pattern.patternType} for ${pattern.symbol} (confidence: ${pattern.confidence}%)`,
       );
     });
 
@@ -652,7 +555,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
         } catch (error) {
           console.error(
             "Error in price callback:",
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       });
@@ -682,10 +585,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
   /**
    * Subscribe to real-time price updates for a symbol
    */
-  subscribeToPrice(
-    symbol: string,
-    callback: (data: RealTimePriceData) => void
-  ): () => void {
+  subscribeToPrice(symbol: string, callback: (data: RealTimePriceData) => void): () => void {
     const normalizedSymbol = symbol.toUpperCase();
 
     // Add callback
@@ -714,7 +614,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
    */
   subscribeToSymbolStatus(
     symbol: string,
-    callback: (data: RealTimeSymbolStatus) => void
+    callback: (data: RealTimeSymbolStatus) => void,
   ): () => void {
     const normalizedSymbol = symbol.toUpperCase();
 
@@ -739,7 +639,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
    */
   subscribeToPatterns(
     symbol: string,
-    callback: (pattern: RealTimePatternMatch) => void
+    callback: (pattern: RealTimePatternMatch) => void,
   ): () => void {
     return this.patternDetector.subscribeToPatterns(symbol, callback);
   }
@@ -853,7 +753,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
     this.connectionHealth.reconnectCount = this.reconnectAttempts;
 
     console.info(
-      `🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${this.reconnectDelay}ms`
+      `🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${this.reconnectDelay}ms`,
     );
 
     setTimeout(() => {
@@ -905,7 +805,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
     vcoinId: string,
     sts: number,
     st: number,
-    tt: number
+    tt: number,
   ): void {
     const statusData: RealTimeSymbolStatus = {
       symbol: symbol.toUpperCase(),
@@ -952,8 +852,7 @@ export class EnhancedMexcWebSocketService extends EventEmitter {
 }
 
 // Export singleton instance
-export const enhancedMexcWebSocketService =
-  EnhancedMexcWebSocketService.getInstance();
+export const enhancedMexcWebSocketService = EnhancedMexcWebSocketService.getInstance();
 
 // Graceful shutdown
 if (typeof process !== "undefined") {

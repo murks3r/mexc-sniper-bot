@@ -1,12 +1,6 @@
 "use client";
 import { Target } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
@@ -19,9 +13,7 @@ interface AutomationSettings {
 
 interface AutomationSettingsProps {
   settings: AutomationSettings;
-  onSettingsChange: (
-    updater: (prev: AutomationSettings) => AutomationSettings
-  ) => void;
+  onSettingsChange: (updater: (prev: AutomationSettings) => AutomationSettings) => void;
   onDirty: () => void;
 }
 
@@ -56,9 +48,7 @@ export function UnifiedAutomationSettings({
             <Switch
               id="auto-snipe"
               checked={settings.autoSnipeEnabled}
-              onCheckedChange={(checked) =>
-                updateSetting("autoSnipeEnabled", checked)
-              }
+              onCheckedChange={(checked) => updateSetting("autoSnipeEnabled", checked)}
             />
           </div>
 
@@ -74,9 +64,7 @@ export function UnifiedAutomationSettings({
             <Switch
               id="auto-buy"
               checked={settings.autoBuyEnabled}
-              onCheckedChange={(checked) =>
-                updateSetting("autoBuyEnabled", checked)
-              }
+              onCheckedChange={(checked) => updateSetting("autoBuyEnabled", checked)}
             />
           </div>
 
@@ -92,18 +80,15 @@ export function UnifiedAutomationSettings({
             <Switch
               id="auto-sell"
               checked={settings.autoSellEnabled}
-              onCheckedChange={(checked) =>
-                updateSetting("autoSellEnabled", checked)
-              }
+              onCheckedChange={(checked) => updateSetting("autoSellEnabled", checked)}
             />
           </div>
         </div>
 
         <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950/20 p-4">
           <p className="text-sm text-yellow-600 dark:text-yellow-400">
-            <strong>Warning:</strong> Automated trading carries risks. Always
-            monitor your positions and ensure you understand the implications of
-            automated execution.
+            <strong>Warning:</strong> Automated trading carries risks. Always monitor your positions
+            and ensure you understand the implications of automated execution.
           </p>
         </div>
       </CardContent>

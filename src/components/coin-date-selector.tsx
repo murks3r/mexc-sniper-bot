@@ -21,9 +21,7 @@ export function CoinDateSelector({
   highlightDates = [],
   className,
 }: CoinDateSelectorProps) {
-  const [date, setDate] = useState<Date | undefined>(
-    selectedDate || new Date()
-  );
+  const [date, setDate] = useState<Date | undefined>(selectedDate || new Date());
 
   const handleDateSelect = (newDate: Date | undefined) => {
     setDate(newDate);
@@ -35,9 +33,7 @@ export function CoinDateSelector({
   const allHighlightDates = [...defaultHighlightDates, ...highlightDates];
 
   const isHighlightedDate = (checkDate: Date) => {
-    return allHighlightDates.some((highlightDate) =>
-      isSameDay(checkDate, highlightDate)
-    );
+    return allHighlightDates.some((highlightDate) => isSameDay(checkDate, highlightDate));
   };
 
   const getDateLabel = (checkDate: Date) => {
@@ -52,8 +48,7 @@ export function CoinDateSelector({
         <div className="space-y-1">
           <h3 className="text-lg font-semibold">Select Date</h3>
           <p className="text-sm text-muted-foreground">
-            Choose a date to view coin listings. Today and tomorrow are
-            highlighted.
+            Choose a date to view coin listings. Today and tomorrow are highlighted.
           </p>
         </div>
       </CardHeader>
@@ -111,12 +106,8 @@ export function CoinDateSelector({
         {/* Selected date display */}
         {date && (
           <div className="rounded-md bg-muted p-3 text-center">
-            <p className="text-sm font-medium">
-              Selected: {getDateLabel(date)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {format(date, "EEEE, MMMM d, yyyy")}
-            </p>
+            <p className="text-sm font-medium">Selected: {getDateLabel(date)}</p>
+            <p className="text-xs text-muted-foreground">{format(date, "EEEE, MMMM d, yyyy")}</p>
           </div>
         )}
       </CardContent>

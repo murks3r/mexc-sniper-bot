@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  apiResponse,
-  createSuccessResponse,
-  HTTP_STATUS,
-} from "@/src/lib/api-response";
-import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
-import { requireApiAuth } from "@/src/lib/api-auth";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { snipeTargets } from "@/src/db/schemas/trading";
-import { eq, and } from "drizzle-orm";
+import { positions, snipeTargets } from "@/src/db/schemas/trading";
+import { requireApiAuth } from "@/src/lib/api-auth";
+import { apiResponse, createSuccessResponse, HTTP_STATUS } from "@/src/lib/api-response";
+import { UnifiedMexcValidationService } from "@/src/lib/unified-mexc-validation";
+import { getUserCredentials } from "@/src/services/api/user-credentials-service";
+import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
 
 // Do not auto-initialize/start orchestrator from status endpoint to avoid side-effects
+// Module-level promise to prevent duplicate initialization
+let orchestratorInitPromise: Promise<void> | null = null;
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +33,51 @@ export async function GET(request: NextRequest) {
     // Get user-specific target counts from database
     const userTargetCounts = await getUserTargetCounts(user.id);
     console.info(`[API] User target counts for ${user.email}:`, userTargetCounts);
+
+    // Validate MEXC credentials
+    let credentialValidation: {
+      isValid: boolean;
+      error?: string;
+      canTrade?: boolean;
+      balanceUSDT?: number;
+    } = { isValid: false };
+    try {
+      const userCreds = await getUserCredentials(user.id, "mexc");
+      if (userCreds?.apiKey && userCreds?.secretKey) {
+        const validation = await UnifiedMexcValidationService.validateCredentials(
+          user.id,
+          {
+            apiKey: userCreds.apiKey,
+            secretKey: userCreds.secretKey,
+          },
+          { timeoutMs: 5000, includeAccountInfo: true },
+        );
+        credentialValidation = {
+          isValid: validation.credentialsValid,
+          error: validation.error,
+          canTrade: validation.credentialsValid && validation.connected === true,
+          balanceUSDT: validation.accountInfo?.totalValue || 0,
+        };
+      } else {
+        credentialValidation = {
+          isValid: false,
+          error: "No MEXC credentials configured",
+        };
+      }
+    } catch (credError) {
+      credentialValidation = {
+        isValid: false,
+        error: credError instanceof Error ? credError.message : "Credential validation failed",
+      };
+    }
+
+    // Get open positions count
+    const openPositionsCount = await db
+      .select()
+      .from(positions)
+      .where(eq(positions.userId, user.id))
+      .then((rows) => rows.filter((p) => p.status === "open").length)
+      .catch(() => 0);
 
     // Structure the status response to match frontend expectations
     // Use the same status data structure as the control endpoint
@@ -95,12 +140,21 @@ export async function GET(request: NextRequest) {
         successfulSnipes: (status as any).successfulSnipes ?? undefined,
         failedSnipes: (status as any).failedSnipes ?? undefined,
       },
+      // Credential validation
+      credentials: {
+        isValid: credentialValidation.isValid,
+        error: credentialValidation.error,
+        canTrade: credentialValidation.canTrade,
+        balanceUSDT: credentialValidation.balanceUSDT,
+      },
+      // Position tracking
+      openPositions: openPositionsCount,
     };
 
     console.info("[API] Auto-sniping status retrieved successfully:", {
       status: statusData.status,
       isActive: statusData.isActive,
-      autoSnipingActive: status.autoSnipingActive,
+      autoSnipingActive: status.isActive,
       activeTargets: statusData.activeTargets,
       targetConsistency: statusData.stateConsistency.isConsistent,
       executionCount: statusData.executionCount,
@@ -111,19 +165,22 @@ export async function GET(request: NextRequest) {
         message: "Auto-sniping status retrieved successfully",
         timestamp: new Date().toISOString(),
       }),
-      HTTP_STATUS.OK
+      HTTP_STATUS.OK,
     );
   } catch (error) {
     console.error("[API] Auto-sniping status error:", { error });
 
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
-      return NextResponse.json({
-        success: false,
-        error: "Authentication required",
-        message: "Please sign in to view auto-sniping status",
-        code: "AUTHENTICATION_REQUIRED",
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Authentication required",
+          message: "Please sign in to view auto-sniping status",
+          code: "AUTHENTICATION_REQUIRED",
+        },
+        { status: 401 },
+      );
     }
 
     // Return fallback status data on error
@@ -148,12 +205,8 @@ export async function GET(request: NextRequest) {
           },
           stateConsistency: {
             isConsistent: false,
-            inconsistencies: [
-              "Service error - cannot verify state consistency",
-            ],
-            recommendedActions: [
-              "Check service health and restart if necessary",
-            ],
+            inconsistencies: ["Service error - cannot verify state consistency"],
+            recommendedActions: ["Check service health and restart if necessary"],
             lastSyncTime: "Never",
           },
           executedToday: 0,
@@ -185,9 +238,9 @@ export async function GET(request: NextRequest) {
           message: "Auto-sniping status retrieved with fallback data",
           warning: "Service health check failed - using default values",
           timestamp: new Date().toISOString(),
-        }
+        },
       ),
-      HTTP_STATUS.OK
+      HTTP_STATUS.OK,
     );
   }
 }
@@ -204,14 +257,16 @@ async function getUserTargetCounts(userId: string) {
       .where(eq(snipeTargets.userId, userId));
 
     // Count targets by status
-    const readyTargets = allTargets.filter(t => t.status === "ready").length;
-    const activeTargets = allTargets.filter(t => 
-      t.status === "executing" || t.status === "active"
+    const readyTargets = allTargets.filter((t) => t.status === "ready").length;
+    const activeTargets = allTargets.filter(
+      (t) => t.status === "executing" || t.status === "active",
     ).length;
-    const pendingTargets = allTargets.filter(t => t.status === "pending").length;
+    const pendingTargets = allTargets.filter((t) => t.status === "pending").length;
     const totalTargets = allTargets.length;
 
-    console.info(`[getUserTargetCounts] User ${userId}: total=${totalTargets}, ready=${readyTargets}, active=${activeTargets}, pending=${pendingTargets}`);
+    console.info(
+      `[getUserTargetCounts] User ${userId}: total=${totalTargets}, ready=${readyTargets}, active=${activeTargets}, pending=${pendingTargets}`,
+    );
 
     return {
       totalTargets,
@@ -232,14 +287,11 @@ async function getUserTargetCounts(userId: string) {
 
 // For testing purposes, allow OPTIONS
 export async function OPTIONS() {
-  return NextResponse.json(
-    createSuccessResponse(null, { message: "CORS preflight request" }),
-    {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    }
-  );
+  return NextResponse.json(createSuccessResponse(null, { message: "CORS preflight request" }), {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 }

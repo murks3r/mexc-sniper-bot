@@ -93,9 +93,7 @@ export function useAutoSnipingExecution() {
         // Update state immediately for better UX
         setState((prev) => ({
           ...prev,
-          data: prev.data
-            ? { ...prev.data, isActive: true, status: "active" }
-            : null,
+          data: prev.data ? { ...prev.data, isActive: true, status: "active" } : null,
           isLoading: false,
         }));
 
@@ -114,8 +112,7 @@ export function useAutoSnipingExecution() {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error ? error.message : "Failed to start execution",
+        error: error instanceof Error ? error.message : "Failed to start execution",
       }));
       return false;
     }
@@ -138,9 +135,7 @@ export function useAutoSnipingExecution() {
         // Update state immediately for better UX
         setState((prev) => ({
           ...prev,
-          data: prev.data
-            ? { ...prev.data, isActive: false, status: "inactive" }
-            : null,
+          data: prev.data ? { ...prev.data, isActive: false, status: "inactive" } : null,
           isLoading: false,
         }));
 
@@ -159,8 +154,7 @@ export function useAutoSnipingExecution() {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error ? error.message : "Failed to stop execution",
+        error: error instanceof Error ? error.message : "Failed to stop execution",
       }));
       return false;
     }
@@ -200,8 +194,7 @@ export function useAutoSnipingExecution() {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error ? error.message : "Failed to pause execution",
+        error: error instanceof Error ? error.message : "Failed to pause execution",
       }));
       return false;
     }
@@ -241,8 +234,7 @@ export function useAutoSnipingExecution() {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error ? error.message : "Failed to resume execution",
+        error: error instanceof Error ? error.message : "Failed to resume execution",
       }));
       return false;
     }
@@ -292,10 +284,7 @@ export function useAutoSnipingExecution() {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to execute emergency stop",
+        error: error instanceof Error ? error.message : "Failed to execute emergency stop",
       }));
       return false;
     }

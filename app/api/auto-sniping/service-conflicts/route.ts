@@ -1,12 +1,12 @@
 /**
  * Auto-Sniping Service Conflicts API
- * 
+ *
  * Provides endpoint to check for service conflicts and get recommendations
  * for resolving duplicate auto-sniping services.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { createSuccessResponse, createErrorResponse } from "@/src/lib/api-response";
+import { type NextRequest, NextResponse } from "next/server";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 import { serviceConflictDetector } from "@/src/services/trading/service-conflict-detector";
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         isHealthy: !status.hasConflicts,
         timestamp: new Date().toISOString(),
       }),
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("[Service Conflicts] Error:", { error });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           message: "Please sign in to view service conflict status",
           code: "AUTHENTICATION_REQUIRED",
         }),
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       createErrorResponse("Failed to get service conflict status", {
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           reason: reason || "Manual reset requested",
           timestamp: new Date().toISOString(),
         }),
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         action,
         validActions: ["reset"],
       }),
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("[Service Conflicts] Reset error:", { error });
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           message: "Please sign in to reset service conflicts",
           code: "AUTHENTICATION_REQUIRED",
         }),
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -108,20 +108,7 @@ export async function POST(request: NextRequest) {
       createErrorResponse("Failed to reset service conflicts", {
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

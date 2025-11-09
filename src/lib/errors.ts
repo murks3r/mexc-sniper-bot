@@ -21,7 +21,7 @@ export class ApplicationError extends Error {
     code: string,
     statusCode: number,
     isOperational = true,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -68,12 +68,7 @@ export class ValidationError extends ApplicationError {
   public readonly field?: string;
   public readonly value?: unknown;
 
-  constructor(
-    message: string,
-    field?: string,
-    value?: unknown,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, field?: string, value?: unknown, context?: Record<string, unknown>) {
     super(message, "VALIDATION_ERROR", 400, true, { ...context, field, value });
     this.field = field;
     this.value = value;
@@ -91,10 +86,7 @@ export class ValidationError extends ApplicationError {
  * Authentication error for auth failures
  */
 export class AuthenticationError extends ApplicationError {
-  constructor(
-    message = "Authentication required",
-    context?: Record<string, unknown>
-  ) {
+  constructor(message = "Authentication required", context?: Record<string, unknown>) {
     super(message, "AUTHENTICATION_ERROR", 401, true, context);
   }
 
@@ -107,10 +99,7 @@ export class AuthenticationError extends ApplicationError {
  * Authorization error for permission failures
  */
 export class AuthorizationError extends ApplicationError {
-  constructor(
-    message = "Insufficient permissions",
-    context?: Record<string, unknown>
-  ) {
+  constructor(message = "Insufficient permissions", context?: Record<string, unknown>) {
     super(message, "AUTHORIZATION_ERROR", 403, true, context);
   }
 
@@ -132,7 +121,7 @@ export class ApiError extends ApplicationError {
     apiName: string,
     apiStatusCode?: number,
     apiResponse?: unknown,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message, "API_ERROR", apiStatusCode === 429 ? 429 : 502, true, {
       ...context,
@@ -160,22 +149,12 @@ export class RateLimitError extends ApplicationError {
   public readonly retryAfter: number;
   public readonly limit: number;
 
-  constructor(
-    retryAfter: number,
-    limit: number,
-    context?: Record<string, unknown>
-  ) {
-    super(
-      `Rate limit exceeded. Retry after ${retryAfter} seconds`,
-      "RATE_LIMIT_ERROR",
-      429,
-      true,
-      {
-        ...context,
-        retryAfter,
-        limit,
-      }
-    );
+  constructor(retryAfter: number, limit: number, context?: Record<string, unknown>) {
+    super(`Rate limit exceeded. Retry after ${retryAfter} seconds`, "RATE_LIMIT_ERROR", 429, true, {
+      ...context,
+      retryAfter,
+      limit,
+    });
     this.retryAfter = retryAfter;
     this.limit = limit;
   }
@@ -192,18 +171,13 @@ export class DatabaseError extends ApplicationError {
   public readonly query?: string;
   public readonly dbError?: Error;
 
-  constructor(
-    message: string,
-    query?: string,
-    dbError?: Error,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, query?: string, dbError?: Error, context?: Record<string, unknown>) {
     super(
       message,
       "DATABASE_ERROR",
       500,
       false, // Database errors are not operational
-      { ...context, query, dbError: dbError?.message }
+      { ...context, query, dbError: dbError?.message },
     );
     this.query = query;
     this.dbError = dbError;
@@ -221,11 +195,7 @@ export class NotFoundError extends ApplicationError {
   public readonly resourceType: string;
   public readonly resourceId?: string;
 
-  constructor(
-    resourceType: string,
-    resourceId?: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(resourceType: string, resourceId?: string, context?: Record<string, unknown>) {
     const message = resourceId
       ? `${resourceType} with ID '${resourceId}' not found`
       : `${resourceType} not found`;
@@ -250,11 +220,7 @@ export class NotFoundError extends ApplicationError {
 export class ConflictError extends ApplicationError {
   public readonly conflictType: string;
 
-  constructor(
-    message: string,
-    conflictType: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, conflictType: string, context?: Record<string, unknown>) {
     super(message, "CONFLICT_ERROR", 409, true, { ...context, conflictType });
     this.conflictType = conflictType;
   }
@@ -270,11 +236,7 @@ export class ConflictError extends ApplicationError {
 export class BusinessLogicError extends ApplicationError {
   public readonly businessRule: string;
 
-  constructor(
-    message: string,
-    businessRule: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, businessRule: string, context?: Record<string, unknown>) {
     super(message, "BUSINESS_LOGIC_ERROR", 422, true, {
       ...context,
       businessRule,
@@ -300,7 +262,7 @@ export class TradingError extends BusinessLogicError {
     symbol?: string,
     action?: "buy" | "sell",
     amount?: number,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message, "TRADING_ERROR", { ...context, symbol, action, amount });
     this.symbol = symbol;
@@ -315,17 +277,13 @@ export class TradingError extends BusinessLogicError {
 export class ConfigurationError extends ApplicationError {
   public readonly configKey: string;
 
-  constructor(
-    configKey: string,
-    message?: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(configKey: string, message?: string, context?: Record<string, unknown>) {
     super(
       message || `Missing or invalid configuration: ${configKey}`,
       "CONFIGURATION_ERROR",
       500,
       false, // Configuration errors are not operational
-      { ...context, configKey }
+      { ...context, configKey },
     );
     this.configKey = configKey;
   }
@@ -342,22 +300,12 @@ export class TimeoutError extends ApplicationError {
   public readonly operation: string;
   public readonly timeoutMs: number;
 
-  constructor(
-    operation: string,
-    timeoutMs: number,
-    context?: Record<string, unknown>
-  ) {
-    super(
-      `Operation '${operation}' timed out after ${timeoutMs}ms`,
-      "TIMEOUT_ERROR",
-      504,
-      true,
-      {
-        ...context,
-        operation,
-        timeoutMs,
-      }
-    );
+  constructor(operation: string, timeoutMs: number, context?: Record<string, unknown>) {
+    super(`Operation '${operation}' timed out after ${timeoutMs}ms`, "TIMEOUT_ERROR", 504, true, {
+      ...context,
+      operation,
+      timeoutMs,
+    });
     this.operation = operation;
     this.timeoutMs = timeoutMs;
   }
@@ -373,11 +321,7 @@ export class TimeoutError extends ApplicationError {
 export class NetworkError extends ApplicationError {
   public readonly endpoint?: string;
 
-  constructor(
-    message: string,
-    endpoint?: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, endpoint?: string, context?: Record<string, unknown>) {
     super(message, "NETWORK_ERROR", 503, true, { ...context, endpoint });
     this.endpoint = endpoint;
   }
@@ -390,9 +334,7 @@ export class NetworkError extends ApplicationError {
 /**
  * Error type guards
  */
-export const isApplicationError = (
-  error: unknown
-): error is ApplicationError => {
+export const isApplicationError = (error: unknown): error is ApplicationError => {
   return error instanceof ApplicationError;
 };
 
@@ -400,15 +342,11 @@ export const isValidationError = (error: unknown): error is ValidationError => {
   return error instanceof ValidationError;
 };
 
-export const isAuthenticationError = (
-  error: unknown
-): error is AuthenticationError => {
+export const isAuthenticationError = (error: unknown): error is AuthenticationError => {
   return error instanceof AuthenticationError;
 };
 
-export const isAuthorizationError = (
-  error: unknown
-): error is AuthorizationError => {
+export const isAuthorizationError = (error: unknown): error is AuthorizationError => {
   return error instanceof AuthorizationError;
 };
 
@@ -428,9 +366,7 @@ export const isNotFoundError = (error: unknown): error is NotFoundError => {
   return error instanceof NotFoundError;
 };
 
-export const isBusinessLogicError = (
-  error: unknown
-): error is BusinessLogicError => {
+export const isBusinessLogicError = (error: unknown): error is BusinessLogicError => {
   return error instanceof BusinessLogicError;
 };
 

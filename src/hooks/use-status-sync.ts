@@ -47,9 +47,7 @@ export function useStatusSync() {
       const effectiveUserId = targetUserId || userId;
 
       if (!effectiveUserId) {
-        console.warn(
-          "[useStatusSync] No user ID available for cache invalidation"
-        );
+        console.warn("[useStatusSync] No user ID available for cache invalidation");
         return [];
       }
 
@@ -80,7 +78,7 @@ export function useStatusSync() {
         ["trading-status", effectiveUserId],
       ];
     },
-    [userId]
+    [userId],
   );
 
   /**
@@ -113,7 +111,7 @@ export function useStatusSync() {
 
           // Invalidate all related queries
           const invalidationPromises = queryKeys.map((queryKey) =>
-            queryClient.invalidateQueries({ queryKey })
+            queryClient.invalidateQueries({ queryKey }),
           );
 
           await Promise.allSettled(invalidationPromises);
@@ -124,7 +122,7 @@ export function useStatusSync() {
               queryClient.refetchQueries({
                 queryKey,
                 type: "active",
-              })
+              }),
             );
 
             await Promise.allSettled(refetchPromises);
@@ -147,7 +145,7 @@ export function useStatusSync() {
         });
       }
     },
-    [queryClient, getQueryKeysToInvalidate]
+    [queryClient, getQueryKeysToInvalidate],
   );
 
   /**
@@ -163,7 +161,7 @@ export function useStatusSync() {
 
       try {
         const invalidationPromises = queryKeys.map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey })
+          queryClient.invalidateQueries({ queryKey }),
         );
 
         await Promise.allSettled(invalidationPromises);
@@ -173,7 +171,7 @@ export function useStatusSync() {
         console.error("[useStatusSync] Manual invalidation failed:", error);
       }
     },
-    [queryClient, getQueryKeysToInvalidate]
+    [queryClient, getQueryKeysToInvalidate],
   );
 
   /**
@@ -189,7 +187,7 @@ export function useStatusSync() {
 
       try {
         const refetchPromises = queryKeys.map((queryKey) =>
-          queryClient.refetchQueries({ queryKey })
+          queryClient.refetchQueries({ queryKey }),
         );
 
         await Promise.allSettled(refetchPromises);
@@ -199,7 +197,7 @@ export function useStatusSync() {
         console.error("[useStatusSync] Force refetch failed:", error);
       }
     },
-    [queryClient, getQueryKeysToInvalidate]
+    [queryClient, getQueryKeysToInvalidate],
   );
 
   /**

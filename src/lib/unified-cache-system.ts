@@ -56,16 +56,14 @@ export class UnifiedCacheSystem {
    */
   private getOrCreateCache(category: string): Cache {
     if (!this.caches.has(category)) {
-      const categoryTTL =
-        this.globalOptions.categoryTTLs[category] ||
-        this.globalOptions.globalTTL;
+      const categoryTTL = this.globalOptions.categoryTTLs[category] || this.globalOptions.globalTTL;
       this.caches.set(
         category,
         new Cache({
           ttl: categoryTTL,
           maxSize: this.globalOptions.maxSize,
           onEvict: this.globalOptions.onEvict,
-        })
+        }),
       );
     }
     return this.caches.get(category)!;
@@ -74,12 +72,7 @@ export class UnifiedCacheSystem {
   /**
    * Store a value in the cache
    */
-  async set<T>(
-    key: string,
-    value: T,
-    category: string = "default",
-    ttl?: number
-  ): Promise<void> {
+  async set<T>(key: string, value: T, category: string = "default", ttl?: number): Promise<void> {
     const cache = this.getOrCreateCache(category);
     cache.set(key, value, ttl);
     this.stats.sets++;
@@ -88,10 +81,7 @@ export class UnifiedCacheSystem {
   /**
    * Retrieve a value from the cache
    */
-  async get<T>(
-    key: string,
-    category: string = "default"
-  ): Promise<T | undefined> {
+  async get<T>(key: string, category: string = "default"): Promise<T | undefined> {
     const cache = this.getOrCreateCache(category);
     const value = cache.get(key);
 
@@ -237,9 +227,7 @@ export function getUnifiedCache(): UnifiedCacheSystem {
 /**
  * Helper function to create a new cache instance
  */
-export function createUnifiedCache(
-  options?: UnifiedCacheOptions
-): UnifiedCacheSystem {
+export function createUnifiedCache(options?: UnifiedCacheOptions): UnifiedCacheSystem {
   return new UnifiedCacheSystem(options);
 }
 

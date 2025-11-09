@@ -65,29 +65,13 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
 
   private logger = {
     info: (message: string, context?: unknown) =>
-      console.info(
-        `[circuit-breaker:${this.serviceName}]`,
-        message,
-        context || ""
-      ),
+      console.info(`[circuit-breaker:${this.serviceName}]`, message, context || ""),
     warn: (message: string, context?: unknown) =>
-      console.warn(
-        `[circuit-breaker:${this.serviceName}]`,
-        message,
-        context || ""
-      ),
+      console.warn(`[circuit-breaker:${this.serviceName}]`, message, context || ""),
     error: (message: string, context?: unknown) =>
-      console.error(
-        `[circuit-breaker:${this.serviceName}]`,
-        message,
-        context || ""
-      ),
+      console.error(`[circuit-breaker:${this.serviceName}]`, message, context || ""),
     debug: (message: string, context?: unknown) =>
-      console.debug(
-        `[circuit-breaker:${this.serviceName}]`,
-        message,
-        context || ""
-      ),
+      console.debug(`[circuit-breaker:${this.serviceName}]`, message, context || ""),
   };
 
   constructor(serviceName: string, config: Partial<CircuitBreakerConfig> = {}) {
@@ -128,24 +112,17 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
     return this.executeWithBreaker(operation, true);
   }
 
-  private async executeWithBreaker<T>(
-    operation: () => Promise<T>,
-    isAsync: boolean
-  ): Promise<T> {
+  private async executeWithBreaker<T>(operation: () => Promise<T>, isAsync: boolean): Promise<T> {
     // Check if circuit is open
     if (this.state === "open") {
       if (this.shouldAttemptReset()) {
         this.transitionToHalfOpen();
       } else {
-        const error = new Error(
-          `Circuit breaker is open for service: ${this.serviceName}`
-        );
+        const error = new Error(`Circuit breaker is open for service: ${this.serviceName}`);
         this.logger.warn("Circuit breaker open, rejecting call", {
           state: this.state,
           failureCount: this.failureCount,
-          timeSinceLastFailure: this.lastFailureTime
-            ? Date.now() - this.lastFailureTime
-            : null,
+          timeSinceLastFailure: this.lastFailureTime ? Date.now() - this.lastFailureTime : null,
         });
         throw error;
       }
@@ -154,7 +131,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
     // Check concurrent call limit
     if (this.activeCalls >= this.config.maxConcurrentCalls) {
       throw new Error(
-        `Max concurrent calls exceeded for service: ${this.serviceName} (${this.activeCalls}/${this.config.maxConcurrentCalls})`
+        `Max concurrent calls exceeded for service: ${this.serviceName} (${this.activeCalls}/${this.config.maxConcurrentCalls})`,
       );
     }
 
@@ -179,16 +156,11 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
     }
   }
 
-  private async executeWithTimeout<T>(
-    operation: () => Promise<T>,
-    timeoutMs: number
-  ): Promise<T> {
+  private async executeWithTimeout<T>(operation: () => Promise<T>, timeoutMs: number): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(
-          new Error(
-            `Operation timeout after ${timeoutMs}ms for service: ${this.serviceName}`
-          )
+          new Error(`Operation timeout after ${timeoutMs}ms for service: ${this.serviceName}`),
         );
       }, timeoutMs);
 
@@ -232,10 +204,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
       responseTime,
     });
 
-    if (
-      this.state === "closed" &&
-      this.failureCount >= this.config.failureThreshold
-    ) {
+    if (this.state === "closed" && this.failureCount >= this.config.failureThreshold) {
       this.transitionToOpen();
     } else if (this.state === "half-open") {
       this.transitionToOpen();
@@ -263,9 +232,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
 
     // Calculate slow call rate
     this.metrics.slowCallRate =
-      this.metrics.totalCalls > 0
-        ? this.slowCalls / this.metrics.totalCalls
-        : 0;
+      this.metrics.totalCalls > 0 ? this.slowCalls / this.metrics.totalCalls : 0;
   }
 
   private transitionToOpen(): void {
@@ -278,8 +245,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
       serviceName: this.serviceName,
       previousState,
       failureCount: this.failureCount,
-      timeSinceLastSuccess:
-        this.successCount > 0 ? Date.now() - this.lastStateChangeTime : null,
+      timeSinceLastSuccess: this.successCount > 0 ? Date.now() - this.lastStateChangeTime : null,
     });
 
     this.updateMetrics();
@@ -320,8 +286,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
 
   private shouldAttemptReset(): boolean {
     return (
-      this.lastFailureTime !== null &&
-      Date.now() - this.lastFailureTime > this.config.resetTimeout
+      this.lastFailureTime !== null && Date.now() - this.lastFailureTime > this.config.resetTimeout
     );
   }
 
@@ -396,7 +361,7 @@ class RealCoordinatedCircuitBreaker implements CoordinatedCircuitBreaker {
 
 // Factory functions for different service types
 export function createCoordinatedMexcWebSocketBreaker(
-  serviceName: string
+  serviceName: string,
 ): CoordinatedCircuitBreaker {
   return new RealCoordinatedCircuitBreaker(serviceName, {
     failureThreshold: 3,
@@ -408,9 +373,7 @@ export function createCoordinatedMexcWebSocketBreaker(
   });
 }
 
-export function createCoordinatedDatabaseBreaker(
-  serviceName: string
-): CoordinatedCircuitBreaker {
+export function createCoordinatedDatabaseBreaker(serviceName: string): CoordinatedCircuitBreaker {
   return new RealCoordinatedCircuitBreaker(serviceName, {
     failureThreshold: 5,
     successThreshold: 3,
@@ -422,9 +385,7 @@ export function createCoordinatedDatabaseBreaker(
   });
 }
 
-export function createCoordinatedApiBreaker(
-  serviceName: string
-): CoordinatedCircuitBreaker {
+export function createCoordinatedApiBreaker(serviceName: string): CoordinatedCircuitBreaker {
   return new RealCoordinatedCircuitBreaker(serviceName, {
     failureThreshold: 10,
     successThreshold: 5,

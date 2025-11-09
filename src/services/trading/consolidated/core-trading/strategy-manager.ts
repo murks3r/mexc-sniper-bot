@@ -6,12 +6,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
-import type {
-  ModuleContext,
-  ModuleState,
-  ServiceResponse,
-  TradingStrategy,
-} from "./types";
+import type { ModuleContext, ModuleState, ServiceResponse, TradingStrategy } from "./types";
 
 export class StrategyManager {
   private context: ModuleContext;
@@ -46,13 +41,10 @@ export class StrategyManager {
     this.initializeDefaultStrategies();
 
     this.state.isInitialized = true;
-    this.context.logger.info(
-      "Strategy Manager Module initialized successfully",
-      {
-        strategies: Array.from(this.tradingStrategies.keys()),
-        activeStrategy: this.activeStrategy,
-      }
-    );
+    this.context.logger.info("Strategy Manager Module initialized successfully", {
+      strategies: Array.from(this.tradingStrategies.keys()),
+      activeStrategy: this.activeStrategy,
+    });
   }
 
   /**
@@ -185,10 +177,7 @@ export class StrategyManager {
   /**
    * Update an existing strategy
    */
-  updateStrategy(
-    strategyName: string,
-    updates: Partial<TradingStrategy>
-  ): ServiceResponse<void> {
+  updateStrategy(strategyName: string, updates: Partial<TradingStrategy>): ServiceResponse<void> {
     try {
       const existingStrategy = this.tradingStrategies.get(strategyName);
       if (!existingStrategy) {
@@ -258,8 +247,7 @@ export class StrategyManager {
       if (this.activeStrategy === strategyName) {
         return {
           success: false,
-          error:
-            "Cannot remove active strategy. Switch to another strategy first.",
+          error: "Cannot remove active strategy. Switch to another strategy first.",
           timestamp: new Date().toISOString(),
         };
       }
@@ -289,8 +277,7 @@ export class StrategyManager {
   getStrategyPerformance(strategyName?: string): any {
     if (strategyName) {
       // Fix type indexing error - ensure strategyPerformance is a record/object
-      const performanceRecord = this.state.metrics
-        .strategyPerformance as Record<string, any>;
+      const performanceRecord = this.state.metrics.strategyPerformance as Record<string, any>;
       return performanceRecord?.[strategyName] || null;
     }
     return this.state.metrics.strategyPerformance;
@@ -304,7 +291,7 @@ export class StrategyManager {
     accountBalance: number,
     winRate: number,
     avgWin: number,
-    avgLoss: number
+    avgLoss: number,
   ): number {
     try {
       // Kelly Criterion: f* = (bp - q) / b
@@ -321,10 +308,7 @@ export class StrategyManager {
 
       // Apply safety constraints
       const maxKellyFraction = 0.25; // Never risk more than 25% (quarter Kelly)
-      const safeKellyFraction = Math.max(
-        0,
-        Math.min(kellyFraction, maxKellyFraction)
-      );
+      const safeKellyFraction = Math.max(0, Math.min(kellyFraction, maxKellyFraction));
 
       // Calculate position size
       const positionSize = accountBalance * safeKellyFraction;
@@ -348,7 +332,7 @@ export class StrategyManager {
     strategy: TradingStrategy,
     accountBalance: number,
     marketVolatility: number,
-    confidenceScore: number
+    confidenceScore: number,
   ): number {
     try {
       // Base position size from strategy
@@ -380,7 +364,7 @@ export class StrategyManager {
    */
   async optimizeStrategyParameters(
     strategyName: string,
-    historicalData: any[]
+    historicalData: any[],
   ): Promise<TradingStrategy | null> {
     try {
       const baseStrategy = this.tradingStrategies.get(strategyName);
@@ -407,10 +391,7 @@ export class StrategyManager {
               confidenceThreshold: confidence,
             };
 
-            const performance = this.backtestStrategy(
-              testStrategy,
-              historicalData
-            );
+            const performance = this.backtestStrategy(testStrategy, historicalData);
             if (performance.sharpeRatio > bestPerformance) {
               bestPerformance = performance.sharpeRatio;
               bestStrategy = testStrategy;
@@ -421,8 +402,7 @@ export class StrategyManager {
 
       this.context.logger.info("Strategy optimization completed", {
         strategyName,
-        originalSharpe: this.backtestStrategy(baseStrategy, historicalData)
-          .sharpeRatio,
+        originalSharpe: this.backtestStrategy(baseStrategy, historicalData).sharpeRatio,
         optimizedSharpe: bestPerformance,
         improvements: {
           stopLoss: `${baseStrategy.stopLossPercent}% → ${bestStrategy.stopLossPercent}%`,
@@ -443,10 +423,7 @@ export class StrategyManager {
   /**
    * Backtest strategy performance
    */
-  private backtestStrategy(
-    strategy: TradingStrategy,
-    historicalData: any[]
-  ): any {
+  private backtestStrategy(strategy: TradingStrategy, historicalData: any[]): any {
     try {
       let totalReturn = 0;
       let trades = 0;
@@ -458,8 +435,7 @@ export class StrategyManager {
         const signal = this.generateSignal(strategy, dataPoint);
         if (signal !== 0) {
           trades++;
-          const tradeReturn =
-            signal * dataPoint.priceChange * strategy.maxPositionSize;
+          const tradeReturn = signal * dataPoint.priceChange * strategy.maxPositionSize;
           totalReturn += tradeReturn;
           returns.push(tradeReturn);
 
@@ -515,8 +491,7 @@ export class StrategyManager {
     if (returns.length === 0) return 0;
 
     const mean = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-    const variance =
-      returns.reduce((sum, ret) => sum + (ret - mean) ** 2, 0) / returns.length;
+    const variance = returns.reduce((sum, ret) => sum + (ret - mean) ** 2, 0) / returns.length;
     return Math.sqrt(variance);
   }
 
@@ -660,10 +635,7 @@ export class StrategyManager {
       errors.push("Max drawdown percent must be between 0 and 100");
     }
 
-    if (
-      strategy.confidenceThreshold < 0 ||
-      strategy.confidenceThreshold > 100
-    ) {
+    if (strategy.confidenceThreshold < 0 || strategy.confidenceThreshold > 100) {
       errors.push("Confidence threshold must be between 0 and 100");
     }
 
@@ -684,20 +656,14 @@ export class StrategyManager {
 
     // Validate trailing stop
     if (strategy.enableTrailingStop && strategy.trailingStopPercent) {
-      if (
-        strategy.trailingStopPercent < 0 ||
-        strategy.trailingStopPercent > 50
-      ) {
+      if (strategy.trailingStopPercent < 0 || strategy.trailingStopPercent > 50) {
         errors.push("Trailing stop percent must be between 0 and 50");
       }
     }
 
     // Validate partial take profit
     if (strategy.enablePartialTakeProfit && strategy.partialTakeProfitPercent) {
-      if (
-        strategy.partialTakeProfitPercent < 0 ||
-        strategy.partialTakeProfitPercent > 100
-      ) {
+      if (strategy.partialTakeProfitPercent < 0 || strategy.partialTakeProfitPercent > 100) {
         errors.push("Partial take profit percent must be between 0 and 100");
       }
     }
@@ -711,9 +677,7 @@ export class StrategyManager {
 
     // Logical validations
     if (strategy.stopLossPercent >= strategy.takeProfitPercent) {
-      errors.push(
-        "Take profit percent should be higher than stop loss percent"
-      );
+      errors.push("Take profit percent should be higher than stop loss percent");
     }
 
     return {

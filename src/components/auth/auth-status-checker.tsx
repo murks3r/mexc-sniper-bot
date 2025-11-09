@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSupabaseAuth } from "@/src/components/auth/supabase-auth-provider-clean";
 import { Badge } from "@/src/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/src/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 
 interface AuthDiagnostics {
   supabaseConfigured: boolean;
@@ -36,8 +31,7 @@ export function AuthStatusChecker() {
     const runDiagnostics = async () => {
       // Check Supabase configuration
       const supabaseConfigured = !!(
-        process.env.NEXT_PUBLIC_SUPABASE_URL &&
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       );
 
       // Check if session API is accessible
@@ -64,9 +58,7 @@ export function AuthStatusChecker() {
   }, [user, session, isHydrated]);
 
   const getStatusBadge = (status: boolean) => (
-    <Badge variant={status ? "default" : "destructive"}>
-      {status ? "✓" : "✗"}
-    </Badge>
+    <Badge variant={status ? "default" : "destructive"}>{status ? "✓" : "✗"}</Badge>
   );
 
   return (
@@ -128,8 +120,7 @@ export function AuthStatusChecker() {
                 <strong>Email:</strong> {user.email}
               </p>
               <p>
-                <strong>Verified:</strong>{" "}
-                {user.email_confirmed_at ? "Yes" : "No"}
+                <strong>Verified:</strong> {user.email_confirmed_at ? "Yes" : "No"}
               </p>
               <p>
                 <strong>Created:</strong> {user.created_at}
@@ -143,12 +134,10 @@ export function AuthStatusChecker() {
             <h4 className="font-medium mb-2">Session Details:</h4>
             <div className="text-sm space-y-1">
               <p>
-                <strong>Access Token:</strong>{" "}
-                {session.access_token ? "Present" : "Missing"}
+                <strong>Access Token:</strong> {session.access_token ? "Present" : "Missing"}
               </p>
               <p>
-                <strong>Refresh Token:</strong>{" "}
-                {session.refresh_token ? "Present" : "Missing"}
+                <strong>Refresh Token:</strong> {session.refresh_token ? "Present" : "Missing"}
               </p>
               <p>
                 <strong>Expires:</strong>{" "}
@@ -169,9 +158,7 @@ export function AuthStatusChecker() {
             </p>
             <p>
               <strong>Anon Key:</strong>{" "}
-              {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                ? "Configured"
-                : "Missing"}
+              {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Configured" : "Missing"}
             </p>
             <p>
               <strong>Loading State:</strong> {isLoading ? "Loading" : "Ready"}

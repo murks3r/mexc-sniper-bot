@@ -95,15 +95,15 @@ class EnhancedAgentCache {
   async getAgentResponse(
     agentName: string,
     input: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): Promise<EnhancedAgentResponse | null> {
     const cacheKey = this.generateAgentCacheKey(agentName, input, context);
     const cached = this.get(cacheKey);
-    
+
     if (cached) {
       return cached as EnhancedAgentResponse;
     }
-    
+
     return null;
   }
 
@@ -115,11 +115,11 @@ class EnhancedAgentCache {
     input: string,
     response: EnhancedAgentResponse,
     context?: Record<string, any>,
-    options?: SetAgentResponseOptions
+    options?: SetAgentResponseOptions,
   ): Promise<void> {
     const cacheKey = this.generateAgentCacheKey(agentName, input, context);
     const ttl = options?.ttl || this.defaultTtl;
-    
+
     this.set(cacheKey, response, agentName, ttl);
   }
 
@@ -139,9 +139,9 @@ class EnhancedAgentCache {
   private generateAgentCacheKey(
     agentName: string,
     input: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): string {
-    const contextStr = context ? JSON.stringify(context) : '';
+    const contextStr = context ? JSON.stringify(context) : "";
     return `agent:${agentName}:${this.hashString(input + contextStr)}`;
   }
 
@@ -152,7 +152,7 @@ class EnhancedAgentCache {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(36);

@@ -10,10 +10,7 @@
 
 import { toSafeError } from "@/src/lib/error-type-utils";
 import type { CoreTradingService } from "./base-service";
-import {
-  createInitializedCoreTrading,
-  getInitializedCoreTrading,
-} from "./base-service";
+import { createInitializedCoreTrading, getInitializedCoreTrading } from "./base-service";
 
 /**
  * Service initialization states
@@ -62,8 +59,7 @@ export class ServiceInitializationManager {
   private static instance: ServiceInitializationManager | null = null;
   private currentState: ServiceInitializationState = "uninitialized";
   private currentService: CoreTradingService | null = null;
-  private initializationPromise: Promise<ServiceInitializationResult> | null =
-    null;
+  private initializationPromise: Promise<ServiceInitializationResult> | null = null;
   private initializationStartTime: number = 0;
 
   private logger = {
@@ -85,8 +81,7 @@ export class ServiceInitializationManager {
 
   public static getInstance(): ServiceInitializationManager {
     if (!ServiceInitializationManager.instance) {
-      ServiceInitializationManager.instance =
-        new ServiceInitializationManager();
+      ServiceInitializationManager.instance = new ServiceInitializationManager();
     }
     return ServiceInitializationManager.instance;
   }
@@ -95,9 +90,7 @@ export class ServiceInitializationManager {
    * FIXED: Get Core Trading Service with guaranteed initialization
    * Prevents "Core Trading Service is not initialized" errors
    */
-  public async getInitializedService(
-    config?: any
-  ): Promise<ServiceInitializationResult> {
+  public async getInitializedService(config?: any): Promise<ServiceInitializationResult> {
     // If already initializing, wait for completion
     if (this.initializationPromise) {
       this.logger.debug("Initialization already in progress, waiting...");
@@ -106,9 +99,7 @@ export class ServiceInitializationManager {
 
     // If already initialized, return existing service
     if (this.currentState === "initialized" && this.currentService) {
-      this.logger.debug(
-        "Service already initialized, returning existing instance"
-      );
+      this.logger.debug("Service already initialized, returning existing instance");
       return {
         success: true,
         state: "initialized",
@@ -133,9 +124,7 @@ export class ServiceInitializationManager {
   /**
    * FIXED: Perform Core Trading Service initialization with enhanced error handling
    */
-  private async performInitialization(
-    config?: any
-  ): Promise<ServiceInitializationResult> {
+  private async performInitialization(config?: any): Promise<ServiceInitializationResult> {
     const initConfig: ServiceInitializationConfig = {
       retryAttempts: 3,
       retryDelay: 1000,
@@ -155,22 +144,16 @@ export class ServiceInitializationManager {
       gracefulDegradation: initConfig.gracefulDegradation,
     });
 
-    for (
-      let attempt = 1;
-      attempt <= (initConfig.retryAttempts || 3);
-      attempt++
-    ) {
+    for (let attempt = 1; attempt <= (initConfig.retryAttempts || 3); attempt++) {
       try {
-        this.logger.debug(
-          `Initialization attempt ${attempt}/${initConfig.retryAttempts}`
-        );
+        this.logger.debug(`Initialization attempt ${attempt}/${initConfig.retryAttempts}`);
 
         // FIXED: Add timeout to prevent hanging initialization
         const initPromise = this.attemptServiceInitialization(config);
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(
             () => reject(new Error("Initialization timeout")),
-            initConfig.timeout || 30000
+            initConfig.timeout || 30000,
           );
         });
 
@@ -199,19 +182,13 @@ export class ServiceInitializationManager {
         } catch (statusError) {
           this.logger.warn("Service initialized but status check failed", {
             attempt,
-            error:
-              statusError instanceof Error
-                ? statusError.message
-                : "Unknown error",
+            error: statusError instanceof Error ? statusError.message : "Unknown error",
           });
           warnings.push(
-            `Status check failed on attempt ${attempt}: ${statusError instanceof Error ? statusError.message : "Unknown error"}`
+            `Status check failed on attempt ${attempt}: ${statusError instanceof Error ? statusError.message : "Unknown error"}`,
           );
 
-          if (
-            attempt === (initConfig.retryAttempts || 3) &&
-            initConfig.gracefulDegradation
-          ) {
+          if (attempt === (initConfig.retryAttempts || 3) && initConfig.gracefulDegradation) {
             // Return service in degraded state
             this.currentService = service;
             this.currentState = "degraded";
@@ -237,9 +214,7 @@ export class ServiceInitializationManager {
 
         // If not the last attempt, wait before retrying
         if (attempt < (initConfig.retryAttempts || 3)) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, initConfig.retryDelay || 1000)
-          );
+          await new Promise((resolve) => setTimeout(resolve, initConfig.retryDelay || 1000));
         }
       }
     }
@@ -248,14 +223,11 @@ export class ServiceInitializationManager {
     this.currentState = "failed";
     const initializationTime = Date.now() - this.initializationStartTime;
 
-    this.logger.error(
-      "Core Trading Service initialization failed after all attempts",
-      {
-        attempts: initConfig.retryAttempts,
-        initializationTime,
-        warnings: warnings.length,
-      }
-    );
+    this.logger.error("Core Trading Service initialization failed after all attempts", {
+      attempts: initConfig.retryAttempts,
+      initializationTime,
+      warnings: warnings.length,
+    });
 
     return {
       success: false,
@@ -270,9 +242,7 @@ export class ServiceInitializationManager {
   /**
    * FIXED: Attempt single service initialization with circuit breaker safety
    */
-  private async attemptServiceInitialization(
-    config?: any
-  ): Promise<CoreTradingService> {
+  private async attemptServiceInitialization(config?: any): Promise<CoreTradingService> {
     this.logger.debug("Attempting Core Trading Service initialization...");
 
     // FIXED: Use factory function with initialization guarantee
@@ -339,9 +309,7 @@ export class ServiceInitializationManager {
    */
   public getServiceOrThrow(): CoreTradingService {
     if (!this.currentService) {
-      throw new Error(
-        "Core Trading Service is not available. Call getInitializedService() first."
-      );
+      throw new Error("Core Trading Service is not available. Call getInitializedService() first.");
     }
     return this.currentService;
   }
@@ -353,22 +321,17 @@ const manager = ServiceInitializationManager.getInstance();
 /**
  * FIXED: Convenience function to get initialized Core Trading Service
  */
-export async function getInitializedCoreService(
-  config?: any
-): Promise<CoreTradingService> {
+export async function getInitializedCoreService(config?: any): Promise<CoreTradingService> {
   const result = await manager.getInitializedService(config);
 
   if (!result.success || !result.service) {
     throw new Error(
-      `Failed to initialize Core Trading Service: ${result.error || "Unknown error"}`
+      `Failed to initialize Core Trading Service: ${result.error || "Unknown error"}`,
     );
   }
 
   if (result.warnings && result.warnings.length > 0) {
-    console.warn(
-      "Core Trading Service initialized with warnings:",
-      result.warnings
-    );
+    console.warn("Core Trading Service initialized with warnings:", result.warnings);
   }
 
   return result.service;

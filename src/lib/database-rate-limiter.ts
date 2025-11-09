@@ -18,17 +18,14 @@ export class DatabaseRateLimiter {
       maxQueriesPerMinute?: number;
       maxQueryTimeMs?: number;
       emergencyThreshold?: number;
-    } = {}
+    } = {},
   ) {
     this.maxQueriesPerMinute = options.maxQueriesPerMinute ?? 100;
     this.maxQueryTime = options.maxQueryTimeMs ?? 10000; // 10 seconds
     this.emergencyThreshold = options.emergencyThreshold ?? 80; // 80% of limit
   }
 
-  async executeQuery<T>(
-    query: () => Promise<T>,
-    operationName = "database-query"
-  ): Promise<T> {
+  async executeQuery<T>(query: () => Promise<T>, operationName = "database-query"): Promise<T> {
     // Reset counter if minute has passed
     if (Date.now() - this.resetTime >= 60000) {
       this.queryCount = 0;
@@ -38,7 +35,7 @@ export class DatabaseRateLimiter {
     // Check if we should rate limit
     if (this.shouldRateLimit()) {
       const error = new Error(
-        `Database query rate limit exceeded - preventing cost overrun. Limit: ${this.maxQueriesPerMinute}/min`
+        `Database query rate limit exceeded - preventing cost overrun. Limit: ${this.maxQueriesPerMinute}/min`,
       );
       console.error(`🚨 [COST PROTECTION] ${error.message}`, {
         currentCount: this.queryCount,
@@ -52,18 +49,13 @@ export class DatabaseRateLimiter {
     this.queryCount++;
 
     // Warn when approaching limit (check after incrementing)
-    if (
-      this.queryCount >=
-      (this.maxQueriesPerMinute * this.emergencyThreshold) / 100
-    ) {
+    if (this.queryCount >= (this.maxQueriesPerMinute * this.emergencyThreshold) / 100) {
       console.warn(`⚠️ [COST WARNING] Approaching query limit`, {
         operation: operationName,
         currentCount: this.queryCount,
         limit: this.maxQueriesPerMinute,
         remaining: this.maxQueriesPerMinute - this.queryCount,
-        percentUsed: Math.round(
-          (this.queryCount / this.maxQueriesPerMinute) * 100
-        ),
+        percentUsed: Math.round((this.queryCount / this.maxQueriesPerMinute) * 100),
       });
     }
     const startTime = Date.now();
@@ -73,9 +65,7 @@ export class DatabaseRateLimiter {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(
-            new Error(
-              `Query timeout: ${operationName} exceeded ${this.maxQueryTime}ms limit`
-            )
+            new Error(`Query timeout: ${operationName} exceeded ${this.maxQueryTime}ms limit`),
           );
         }, this.maxQueryTime);
       });
@@ -136,12 +126,8 @@ export class DatabaseRateLimiter {
       limit: this.maxQueriesPerMinute,
       remaining: Math.max(0, this.maxQueriesPerMinute - this.queryCount),
       resetIn: Math.max(0, timeRemaining),
-      percentUsed: Math.round(
-        (this.queryCount / this.maxQueriesPerMinute) * 100
-      ),
-      isNearLimit:
-        this.queryCount >=
-        (this.maxQueriesPerMinute * this.emergencyThreshold) / 100,
+      percentUsed: Math.round((this.queryCount / this.maxQueriesPerMinute) * 100),
+      isNearLimit: this.queryCount >= (this.maxQueriesPerMinute * this.emergencyThreshold) / 100,
     };
   }
 
@@ -160,9 +146,9 @@ export class DatabaseRateLimiter {
 
 // Global rate limiter instance
 export const globalDatabaseRateLimiter = new DatabaseRateLimiter({
-  maxQueriesPerMinute: parseInt(process.env.DB_MAX_QUERIES_PER_MINUTE || "100"),
-  maxQueryTimeMs: parseInt(process.env.DB_MAX_QUERY_TIME_MS || "10000"),
-  emergencyThreshold: parseInt(process.env.DB_EMERGENCY_THRESHOLD || "80"),
+  maxQueriesPerMinute: parseInt(process.env.DB_MAX_QUERIES_PER_MINUTE || "100", 10),
+  maxQueryTimeMs: parseInt(process.env.DB_MAX_QUERY_TIME_MS || "10000", 10),
+  emergencyThreshold: parseInt(process.env.DB_EMERGENCY_THRESHOLD || "80", 10),
 });
 
 /**
@@ -170,7 +156,7 @@ export const globalDatabaseRateLimiter = new DatabaseRateLimiter({
  */
 export async function executeWithRateLimit<T>(
   query: () => Promise<T>,
-  operationName?: string
+  operationName?: string,
 ): Promise<T> {
   return globalDatabaseRateLimiter.executeQuery(query, operationName);
 }

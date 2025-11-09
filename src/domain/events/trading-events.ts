@@ -239,7 +239,7 @@ export class TradingEventFactory {
   static createTradeExecutionStarted(
     tradeId: string,
     userId: string,
-    payload: TradeExecutionStartedEvent["payload"]
+    payload: TradeExecutionStartedEvent["payload"],
   ): TradeExecutionStartedEvent {
     return {
       type: "trade.execution.started",
@@ -254,7 +254,7 @@ export class TradingEventFactory {
   static createTradeExecutionCompleted(
     tradeId: string,
     userId: string,
-    payload: TradeExecutionCompletedEvent["payload"]
+    payload: TradeExecutionCompletedEvent["payload"],
   ): TradeExecutionCompletedEvent {
     return {
       type: "trade.execution.completed",
@@ -269,7 +269,7 @@ export class TradingEventFactory {
   static createPositionOpened(
     positionId: string,
     userId: string,
-    payload: PositionOpenedEvent["payload"]
+    payload: PositionOpenedEvent["payload"],
   ): PositionOpenedEvent {
     return {
       type: "position.opened",
@@ -284,7 +284,7 @@ export class TradingEventFactory {
   static createAutoSnipeTriggered(
     targetId: string,
     userId: string,
-    payload: AutoSnipeTriggeredEvent["payload"]
+    payload: AutoSnipeTriggeredEvent["payload"],
   ): AutoSnipeTriggeredEvent {
     return {
       type: "auto_snipe.triggered",
@@ -299,7 +299,7 @@ export class TradingEventFactory {
   static createRiskLimitExceeded(
     aggregateId: string,
     userId: string,
-    payload: RiskLimitExceededEvent["payload"]
+    payload: RiskLimitExceededEvent["payload"],
   ): RiskLimitExceededEvent {
     return {
       type: "risk.limit.exceeded",

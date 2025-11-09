@@ -46,7 +46,7 @@ export class MexcRequestService {
    */
   async executeHttpRequestWithContext<T>(
     requestConfig: ApiRequestConfig,
-    context: RequestContext
+    context: RequestContext,
   ): Promise<MexcServiceResponse<T>> {
     const startTime = Date.now();
 
@@ -97,7 +97,7 @@ export class MexcRequestService {
    */
   private async executeHttpRequest<T>(
     requestConfig: ApiRequestConfig,
-    _context: RequestContext
+    _context: RequestContext,
   ): Promise<HttpResponse<T>> {
     const timeout = this.calculateTimeout(requestConfig);
     const url = this.buildUrl(requestConfig);
@@ -127,7 +127,7 @@ export class MexcRequestService {
 
       if (!response.ok) {
         throw new Error(
-          `HTTP ${response.status}: ${response.statusText} - ${JSON.stringify(data)}`
+          `HTTP ${response.status}: ${response.statusText} - ${JSON.stringify(data)}`,
         );
       }
 
@@ -142,15 +142,11 @@ export class MexcRequestService {
       clearTimeout(timeoutId); // Clear timeout on error
       if (error instanceof Error) {
         if (error.name === "AbortError") {
-          throw new Error(
-            `Request timeout after ${timeout}ms for ${requestConfig.endpoint}`
-          );
+          throw new Error(`Request timeout after ${timeout}ms for ${requestConfig.endpoint}`);
         }
         throw error;
       }
-      throw new Error(
-        `Unknown error during request to ${requestConfig.endpoint}`
-      );
+      throw new Error(`Unknown error during request to ${requestConfig.endpoint}`);
     }
   }
 
@@ -240,8 +236,7 @@ export class MexcRequestService {
     }
 
     // Use endpoint-specific timeout if available
-    const endpointTimeout =
-      this.timeoutConfig.endpointTimeouts[requestConfig.endpoint];
+    const endpointTimeout = this.timeoutConfig.endpointTimeouts[requestConfig.endpoint];
     if (endpointTimeout) {
       return endpointTimeout;
     }
@@ -291,7 +286,7 @@ export class MexcRequestService {
     requestConfig: ApiRequestConfig,
     context: RequestContext,
     response: HttpResponse,
-    cacheHit: boolean = false
+    cacheHit: boolean = false,
   ): PerformanceMetrics {
     const responseTime = Date.now() - context.startTime;
 
@@ -313,9 +308,7 @@ export class MexcRequestService {
   private estimateRequestSize(requestConfig: ApiRequestConfig): number {
     const url = this.buildUrl(requestConfig);
     const headers = JSON.stringify({ "Content-Type": "application/json" });
-    const body = requestConfig.params
-      ? JSON.stringify(requestConfig.params)
-      : "";
+    const body = requestConfig.params ? JSON.stringify(requestConfig.params) : "";
 
     return Buffer.byteLength(url + headers + body, "utf8");
   }
@@ -350,7 +343,7 @@ export class MexcRequestService {
   createRequestContext(
     endpoint: string,
     correlationId?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
   ): RequestContext {
     return {
       requestId: crypto.randomUUID(),

@@ -18,33 +18,6 @@ import { MexcTradingApiClient } from "./mexc-trading-api";
  * This is the main client that applications should use
  */
 export class UnifiedMexcClient extends MexcTradingApiClient {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-  private getLogger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[mexc-client-factory]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[mexc-client-factory]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error(
-            "[mexc-client-factory]",
-            message,
-            context || "",
-            error || ""
-          ),
-        debug: (message: string, context?: any) =>
-          console.debug("[mexc-client-factory]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
-
   constructor(config: UnifiedMexcConfig = {}) {
     super(config);
     console.info("[UnifiedMexcClient] Initialized with modular architecture");
@@ -195,9 +168,7 @@ let globalUnifiedMexcClient: UnifiedMexcClient | null = null;
 /**
  * Get the global MEXC client instance (singleton pattern)
  */
-export function getUnifiedMexcClient(
-  config?: UnifiedMexcConfig
-): UnifiedMexcClient {
+export function getUnifiedMexcClient(config?: UnifiedMexcConfig): UnifiedMexcClient {
   if (!globalUnifiedMexcClient) {
     globalUnifiedMexcClient = new UnifiedMexcClient(config);
     // Note: Global MEXC client created
@@ -232,7 +203,7 @@ export function createMexcClient(config: UnifiedMexcConfig): UnifiedMexcClient {
 export function createMexcClientWithCredentials(
   apiKey: string,
   secretKey: string,
-  additionalConfig?: Partial<UnifiedMexcConfig>
+  additionalConfig?: Partial<UnifiedMexcConfig>,
 ): UnifiedMexcClient {
   return new UnifiedMexcClient({
     apiKey,
@@ -307,10 +278,7 @@ export function createMexcClientBuilder(): MexcClientBuilder {
 /**
  * Create a client optimized for trading
  */
-export function createTradingClient(
-  apiKey: string,
-  secretKey: string
-): UnifiedMexcClient {
+export function createTradingClient(apiKey: string, secretKey: string): UnifiedMexcClient {
   return new UnifiedMexcClient({
     apiKey,
     secretKey,

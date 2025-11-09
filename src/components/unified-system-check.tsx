@@ -1,6 +1,15 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Eye, EyeOff, RefreshCw, Save, TestTube, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Save,
+  TestTube,
+  XCircle,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useSaveApiCredentials, useTestApiCredentials } from "@/src/hooks/use-api-credentials";
 import { useAuth } from "./auth/supabase-auth-provider";
@@ -13,10 +22,7 @@ import { Label } from "./ui/label";
 import { useToast } from "./ui/use-toast";
 
 // Debounce function
-function useDebounce<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
-): T {
+function useDebounce<T extends (...args: any[]) => any>(callback: T, delay: number): T {
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout>();
 
   const debouncedCallback = useCallback(
@@ -29,7 +35,7 @@ function useDebounce<T extends (...args: any[]) => any>(
       }, delay);
       setDebounceTimer(newTimer);
     },
-    [callback, delay, debounceTimer]
+    [callback, delay, debounceTimer],
   ) as T;
 
   return debouncedCallback;
@@ -38,13 +44,13 @@ function useDebounce<T extends (...args: any[]) => any>(
 export function UnifiedSystemCheck() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // Form state
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [_isRefreshing, setIsRefreshing] = useState(false);
 
   // System status state
   const [systemStatus, setSystemStatus] = useState([
@@ -80,15 +86,15 @@ export function UnifiedSystemCheck() {
         const [healthResponse, credentialsResponse] = await Promise.allSettled([
           fetch("/api/health/quick", {
             signal: controller.signal,
-            cache: 'no-cache',
-            headers: { 'Cache-Control': 'no-cache' },
-            credentials: 'include',
+            cache: "no-cache",
+            headers: { "Cache-Control": "no-cache" },
+            credentials: "include",
           }),
           fetch(`/api/api-credentials?userId=${user.id}&skipCache=true`, {
             signal: controller.signal,
-            cache: 'no-cache',
-            headers: { 'Cache-Control': 'no-cache' },
-            credentials: 'include',
+            cache: "no-cache",
+            headers: { "Cache-Control": "no-cache" },
+            credentials: "include",
           }),
         ]);
 
@@ -112,29 +118,37 @@ export function UnifiedSystemCheck() {
           {
             name: "Database Connection",
             status: healthData ? "pass" : "warning",
-            message: healthData ? "Database healthy" : "Database status unknown"
+            message: healthData ? "Database healthy" : "Database status unknown",
           },
           {
             name: "API Credentials",
-            status: credentialsData?.hasCredentials && credentialsData?.credentialsValid ? "pass" : "warning",
-            message: credentialsData?.hasCredentials 
-              ? (credentialsData?.credentialsValid ? "Credentials valid" : "Credentials need testing")
-              : "No credentials configured"
+            status:
+              credentialsData?.hasCredentials && credentialsData?.credentialsValid
+                ? "pass"
+                : "warning",
+            message: credentialsData?.hasCredentials
+              ? credentialsData?.credentialsValid
+                ? "Credentials valid"
+                : "Credentials need testing"
+              : "No credentials configured",
           },
           {
             name: "Network Connectivity",
             status: "pass",
-            message: "Network connectivity available"
+            message: "Network connectivity available",
           },
           {
             name: "Trading Engine",
-            status: credentialsData?.hasCredentials && credentialsData?.credentialsValid ? "pass" : "warning",
-            message: credentialsData?.hasCredentials && credentialsData?.credentialsValid 
-              ? "Trading engine ready" 
-              : "Waiting for valid credentials"
+            status:
+              credentialsData?.hasCredentials && credentialsData?.credentialsValid
+                ? "pass"
+                : "warning",
+            message:
+              credentialsData?.hasCredentials && credentialsData?.credentialsValid
+                ? "Trading engine ready"
+                : "Waiting for valid credentials",
           },
         ]);
-
       } catch (error) {
         console.error("System check error:", error);
         setSystemStatus([
@@ -144,14 +158,15 @@ export function UnifiedSystemCheck() {
           { name: "Trading Engine", status: "warning", message: "Check timed out" },
         ]);
       }
-
     } catch (error) {
       console.error("System status check failed:", error);
-      setSystemStatus(prev => prev.map(item => ({
-        ...item,
-        status: "warning",
-        message: "Status check failed"
-      })));
+      setSystemStatus((prev) =>
+        prev.map((item) => ({
+          ...item,
+          status: "warning",
+          message: "Status check failed",
+        })),
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -170,12 +185,12 @@ export function UnifiedSystemCheck() {
   // Validate form
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
-    
+
     if (!apiKey.trim()) newErrors.push("API Key is required");
     if (!secretKey.trim()) newErrors.push("Secret Key is required");
     if (apiKey.length < 10) newErrors.push("API Key must be at least 10 characters");
     if (secretKey.length < 10) newErrors.push("Secret Key must be at least 10 characters");
-    
+
     setErrors(newErrors);
     return newErrors.length === 0;
   };
@@ -200,34 +215,35 @@ export function UnifiedSystemCheck() {
 
       toast({ title: "Success", description: "API credentials saved successfully" });
       // Use server validation result from save response
-      const isValid = !!(result?.data?.credentialsValid);
-      setSystemStatus(prev => prev.map(item => {
-        if (item.name === "API Credentials") {
-          return {
-            ...item,
-            status: isValid ? "pass" : "warning",
-            message: isValid ? "Credentials valid" : "Validation failed or pending",
-          };
-        }
-        if (item.name === "Trading Engine") {
-          return {
-            ...item,
-            status: isValid ? "pass" : "warning",
-            message: isValid ? "Trading engine ready" : "Waiting for valid credentials",
-          };
-        }
-        return item;
-      }));
-      
+      const isValid = !!result?.data?.credentialsValid;
+      setSystemStatus((prev) =>
+        prev.map((item) => {
+          if (item.name === "API Credentials") {
+            return {
+              ...item,
+              status: isValid ? "pass" : "warning",
+              message: isValid ? "Credentials valid" : "Validation failed or pending",
+            };
+          }
+          if (item.name === "Trading Engine") {
+            return {
+              ...item,
+              status: isValid ? "pass" : "warning",
+              message: isValid ? "Trading engine ready" : "Waiting for valid credentials",
+            };
+          }
+          return item;
+        }),
+      );
+
       // Quick refresh after save
       setTimeout(() => debouncedCheckSystemStatus(), 500);
-      
     } catch (error) {
       console.error("Save credentials error:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to save credentials. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to save credentials. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -241,36 +257,37 @@ export function UnifiedSystemCheck() {
 
     try {
       const result = await testCredentials.mutateAsync({ userId: user.id });
-      
+
       if (result.success) {
         toast({ title: "Success", description: "API credentials tested successfully" });
         // Optimistically mark credentials and engine as valid
-        setSystemStatus(prev => prev.map(item => {
-          if (item.name === "API Credentials") {
-            return { ...item, status: "pass", message: "Credentials valid" };
-          }
-          if (item.name === "Trading Engine") {
-            return { ...item, status: "pass", message: "Trading engine ready" };
-          }
-          return item;
-        }));
+        setSystemStatus((prev) =>
+          prev.map((item) => {
+            if (item.name === "API Credentials") {
+              return { ...item, status: "pass", message: "Credentials valid" };
+            }
+            if (item.name === "Trading Engine") {
+              return { ...item, status: "pass", message: "Trading engine ready" };
+            }
+            return item;
+          }),
+        );
       } else {
-        toast({ 
-          title: "Test Failed", 
-          description: result.error || "API credentials test failed", 
-          variant: "destructive" 
+        toast({
+          title: "Test Failed",
+          description: result.error || "API credentials test failed",
+          variant: "destructive",
         });
       }
-      
+
       // Quick refresh after test
       setTimeout(() => debouncedCheckSystemStatus(), 500);
-      
     } catch (error) {
       console.error("Test credentials error:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to test credentials. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to test credentials. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -340,7 +357,9 @@ export function UnifiedSystemCheck() {
               return (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${check.status === "checking" ? "animate-spin" : ""}`} />
+                    <Icon
+                      className={`w-4 h-4 ${check.status === "checking" ? "animate-spin" : ""}`}
+                    />
                     <span>{check.name}</span>
                   </div>
                   <Badge variant={getStatusColor(check.status) as any}>
@@ -369,7 +388,16 @@ export function UnifiedSystemCheck() {
               <AlertDescription>
                 <strong>Get your credentials:</strong>
                 <br />
-                1. Go to <a href="https://mexc.com" target="_blank" rel="noopener noreferrer" className="underline">MEXC.com</a> → Account → API Management
+                1. Go to{" "}
+                <a
+                  href="https://mexc.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  MEXC.com
+                </a>{" "}
+                → Account → API Management
                 <br />
                 2. Create new API key with <strong>Spot Trading</strong> permissions
                 <br />
@@ -393,9 +421,7 @@ export function UnifiedSystemCheck() {
                 }}
                 className={errors.length > 0 ? "border-red-500" : ""}
               />
-              {errors.length > 0 && (
-                <p className="text-sm text-red-500">{errors[0]}</p>
-              )}
+              {errors.length > 0 && <p className="text-sm text-red-500">{errors[0]}</p>}
             </div>
 
             {/* Secret Key Input */}
@@ -425,9 +451,7 @@ export function UnifiedSystemCheck() {
                   {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              {errors.length > 0 && (
-                <p className="text-sm text-red-500">{errors[0]}</p>
-              )}
+              {errors.length > 0 && <p className="text-sm text-red-500">{errors[0]}</p>}
             </div>
 
             {/* Action Buttons */}
@@ -440,7 +464,7 @@ export function UnifiedSystemCheck() {
                 <Save className="h-4 w-4 mr-2" />
                 {saveCredentials.isPending ? "Saving..." : "Save Credentials"}
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={handleTestCredentials}

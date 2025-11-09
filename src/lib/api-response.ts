@@ -9,14 +9,7 @@ export interface ApiResponse<T = unknown> {
   /** Indicates if the request was successful */
   success: boolean;
   /** Response status (healthy, warning, unhealthy, error) */
-  status?:
-    | "healthy"
-    | "warning"
-    | "unhealthy"
-    | "error"
-    | "pending"
-    | "active"
-    | "inactive";
+  status?: "healthy" | "warning" | "unhealthy" | "error" | "pending" | "active" | "inactive";
   /** Human-readable message */
   message?: string;
   /** The actual response data */
@@ -96,10 +89,7 @@ function getLogger(): {
   return _logger;
 }
 
-export function createSuccessResponse<T>(
-  data: T,
-  meta?: ApiResponse<T>["meta"]
-): ApiResponse<T> {
+export function createSuccessResponse<T>(data: T, meta?: ApiResponse<T>["meta"]): ApiResponse<T> {
   return {
     success: true,
     data,
@@ -113,10 +103,7 @@ export function createSuccessResponse<T>(
 /**
  * Creates an error API response
  */
-export function createErrorResponse(
-  error: string,
-  meta?: ApiResponse["meta"]
-): ApiResponse {
+export function createErrorResponse(error: string, meta?: ApiResponse["meta"]): ApiResponse {
   return {
     success: false,
     error,
@@ -134,7 +121,7 @@ export function createPaginatedResponse<T>(
   data: T[],
   page: number,
   limit: number,
-  total: number
+  total: number,
 ): ApiResponse<T[]> {
   return createSuccessResponse(data, {
     count: data.length,
@@ -157,7 +144,7 @@ export function apiResponse<T>(response: ApiResponse<T>, status = 200) {
 apiResponse.success = <T>(
   data: T,
   meta?: ApiResponse<T>["meta"],
-  status: number = HTTP_STATUS.OK
+  status: number = HTTP_STATUS.OK,
 ) => {
   const { NextResponse } = require("next/server");
   return NextResponse.json(createSuccessResponse(data, meta), { status });
@@ -166,7 +153,7 @@ apiResponse.success = <T>(
 apiResponse.error = (
   error: string,
   status: number = HTTP_STATUS.INTERNAL_SERVER_ERROR,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ) => {
   const { NextResponse } = require("next/server");
   const response = createErrorResponse(error);
@@ -221,10 +208,7 @@ export const HTTP_STATUS = {
 /**
  * Validation error response helper
  */
-export function createValidationErrorResponse(
-  field: string,
-  message: string
-): ApiResponse {
+export function createValidationErrorResponse(field: string, message: string): ApiResponse {
   return createErrorResponse(`Validation error: ${field} - ${message}`, {
     validationError: true,
     field,
@@ -234,9 +218,7 @@ export function createValidationErrorResponse(
 /**
  * Authentication error response helper
  */
-export function createAuthErrorResponse(
-  message = "Authentication required"
-): ApiResponse {
+export function createAuthErrorResponse(message = "Authentication required"): ApiResponse {
   return createErrorResponse(message, {
     authRequired: true,
   });
@@ -257,13 +239,9 @@ export function createRateLimitErrorResponse(resetTime: number): ApiResponse {
  * Generic API response creator that handles both success and error cases
  * This is the main function used by API routes
  */
-export function createApiResponse<T>(
-  response: ApiResponse<T>,
-  status?: number
-): Response {
+export function createApiResponse<T>(response: ApiResponse<T>, status?: number): Response {
   const statusCode =
-    status ||
-    (response.success ? HTTP_STATUS.OK : HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    status || (response.success ? HTTP_STATUS.OK : HTTP_STATUS.INTERNAL_SERVER_ERROR);
 
   return new Response(JSON.stringify(response), {
     status: statusCode,
@@ -276,18 +254,12 @@ export function createApiResponse<T>(
 /**
  * Handle API errors and return appropriate error response
  */
-export function handleApiError(
-  error: unknown,
-  defaultMessage = "An error occurred"
-): Response {
+export function handleApiError(error: unknown, defaultMessage = "An error occurred"): Response {
   const safeError = toSafeError(error);
   getLogger().error("API Error:", safeError);
 
   const errorMessage = safeError.message || defaultMessage;
-  return createApiResponse(
-    createErrorResponse(errorMessage),
-    HTTP_STATUS.INTERNAL_SERVER_ERROR
-  );
+  return createApiResponse(createErrorResponse(errorMessage), HTTP_STATUS.INTERNAL_SERVER_ERROR);
 }
 
 // ============================================================================
@@ -308,7 +280,7 @@ export interface HealthCheckResult {
 
 export function createHealthResponse(
   result: HealthCheckResult,
-  additionalData?: Record<string, unknown>
+  additionalData?: Record<string, unknown>,
 ): ApiResponse<Record<string, unknown>> {
   const isHealthy = result.status === "healthy";
   const _statusCode = isHealthy
@@ -341,14 +313,12 @@ export function createHealthResponse(
  */
 export function createApiRouteHandler<T = Record<string, unknown>>(
   serviceName: string,
-  handler: () => Promise<ApiResponse<T>>
+  handler: () => Promise<ApiResponse<T>>,
 ) {
   return async (): Promise<Response> => {
     try {
       const result = await handler();
-      const statusCode = result.success
-        ? HTTP_STATUS.OK
-        : HTTP_STATUS.BAD_REQUEST;
+      const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
       return createApiResponse(result, statusCode);
     } catch (error) {
       getLogger().error(`[${serviceName}] API request failed:`, error);
@@ -364,7 +334,7 @@ export function createApiRouteHandler<T = Record<string, unknown>>(
 export function createTimestampedSuccessResponse<T>(
   message: string,
   data: T,
-  additionalMeta?: Record<string, unknown>
+  additionalMeta?: Record<string, unknown>,
 ): ApiResponse<T> {
   return createSuccessResponse(data, {
     message,
@@ -379,7 +349,7 @@ export function createTimestampedSuccessResponse<T>(
  */
 export function createTimestampedErrorResponse(
   message: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): ApiResponse {
   return createErrorResponse(message, {
     ...details,
@@ -402,7 +372,7 @@ export interface CredentialValidationResult {
 
 export function createCredentialResponse(
   result: CredentialValidationResult,
-  additionalData?: Record<string, unknown>
+  additionalData?: Record<string, unknown>,
 ): ApiResponse<Record<string, unknown>> {
   const isValid = result.hasCredentials && result.credentialsValid;
   const status = !result.hasCredentials
@@ -445,7 +415,7 @@ export interface ServiceStatusResult {
 }
 
 export function createServiceStatusResponse(
-  result: ServiceStatusResult
+  result: ServiceStatusResult,
 ): ApiResponse<ServiceStatusResult> {
   const isActive = result.status === "active";
 
@@ -476,22 +446,15 @@ export interface ConfigValidationResult {
 
 export function createConfigResponse(
   result: ConfigValidationResult,
-  configData?: Record<string, unknown>
+  configData?: Record<string, unknown>,
 ): ApiResponse<Record<string, unknown>> {
-  const allValid =
-    result.valid && !result.missingVars?.length && !result.invalidVars?.length;
-  const status = !result.valid
-    ? "error"
-    : result.warnings?.length
-      ? "warning"
-      : "healthy";
+  const allValid = result.valid && !result.missingVars?.length && !result.invalidVars?.length;
+  const status = !result.valid ? "error" : result.warnings?.length ? "warning" : "healthy";
 
   return {
     success: allValid,
     status,
-    message: allValid
-      ? "Configuration is valid"
-      : "Configuration issues detected",
+    message: allValid ? "Configuration is valid" : "Configuration issues detected",
     data: configData,
     details: {
       missingVars: result.missingVars,
@@ -531,7 +494,7 @@ export interface SystemOverviewResult {
 }
 
 export function createSystemOverviewResponse(
-  result: SystemOverviewResult
+  result: SystemOverviewResult,
 ): ApiResponse<SystemOverviewResult> {
   return {
     success: result.overallStatus === "healthy",
@@ -562,9 +525,7 @@ export interface OperationResult<T = Record<string, unknown>> {
   warnings?: string[];
 }
 
-export function createOperationResponse<T>(
-  result: OperationResult<T>
-): ApiResponse<T> {
+export function createOperationResponse<T>(result: OperationResult<T>): ApiResponse<T> {
   return {
     success: result.success,
     status: result.success ? "healthy" : "error",

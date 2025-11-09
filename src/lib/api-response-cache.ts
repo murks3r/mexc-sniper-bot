@@ -148,10 +148,9 @@ class GlobalApiResponseCache {
   private generateCacheKey(
     endpoint: string,
     parameters: Record<string, any>,
-    options: CacheGetOptions | CacheSetOptions = {}
+    options: CacheGetOptions | CacheSetOptions = {},
   ): string {
-    const paramStr =
-      Object.keys(parameters).length > 0 ? JSON.stringify(parameters) : "";
+    const paramStr = Object.keys(parameters).length > 0 ? JSON.stringify(parameters) : "";
     const method = options.method || "GET";
     return `${method}:${endpoint}:${paramStr}`;
   }
@@ -160,7 +159,7 @@ class GlobalApiResponseCache {
   async get(
     endpoint: string,
     parameters: Record<string, any> = {},
-    options: CacheGetOptions = {}
+    options: CacheGetOptions = {},
   ): Promise<CachedResponse | null> {
     if (!this.config.enabled) return null;
 
@@ -179,11 +178,7 @@ class GlobalApiResponseCache {
     }
 
     // Determine freshness based on age and requirements
-    const freshness = this.calculateFreshness(
-      age,
-      entry.ttl,
-      options.requiredFreshness
-    );
+    const freshness = this.calculateFreshness(age, entry.ttl, options.requiredFreshness);
 
     // If freshness requirement is strict and data is stale, return null
     if (options.requiredFreshness === "strict" && age > entry.ttl * 0.5) {
@@ -207,7 +202,7 @@ class GlobalApiResponseCache {
     endpoint: string,
     data: any,
     parameters: Record<string, any> = {},
-    options: CacheSetOptions = {}
+    options: CacheSetOptions = {},
   ): Promise<void> {
     if (!this.config.enabled) return;
 
@@ -228,11 +223,7 @@ class GlobalApiResponseCache {
     this.cache.set(cacheKey, entry);
   }
 
-  private calculateFreshness(
-    age: number,
-    ttl: number,
-    requiredFreshness?: string
-  ): string {
+  private calculateFreshness(age: number, ttl: number, _requiredFreshness?: string): string {
     const ratio = age / ttl;
 
     if (ratio < 0.2) return "fresh";

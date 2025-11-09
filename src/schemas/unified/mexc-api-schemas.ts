@@ -102,7 +102,7 @@ export const AccountInfoSchema = z.object({
       asset: z.string(),
       free: z.string(),
       locked: z.string(),
-    })
+    }),
   ),
 });
 
@@ -208,7 +208,7 @@ export const SymbolInfoSchema = z.object({
     .array(
       z.object({
         filterType: z.string(),
-      })
+      }),
     )
     .optional(),
 });
@@ -310,7 +310,7 @@ export const OrderResponseSchema = z.object({
         qty: z.string(),
         commission: z.string(),
         commissionAsset: z.string(),
-      })
+      }),
     )
     .optional(),
 });
@@ -398,10 +398,8 @@ export const calculateActivityBoost = (activities: ActivityData[]): number => {
 
   const maxBoost = Math.max(
     ...activities.map(
-      (activity) =>
-        activityScores[activity.activityType as keyof typeof activityScores] ||
-        5
-    )
+      (activity) => activityScores[activity.activityType as keyof typeof activityScores] || 5,
+    ),
   );
 
   const multipleActivitiesBonus = activities.length > 1 ? 5 : 0;
@@ -409,18 +407,12 @@ export const calculateActivityBoost = (activities: ActivityData[]): number => {
   return Math.min(maxBoost + multipleActivitiesBonus, 20);
 };
 
-export const hasHighPriorityActivity = (
-  activities: ActivityData[]
-): boolean => {
+export const hasHighPriorityActivity = (activities: ActivityData[]): boolean => {
   const highPriorityTypes = ["LAUNCH_EVENT", "LISTING_EVENT", "SUN_SHINE"];
-  return activities.some((activity) =>
-    highPriorityTypes.includes(activity.activityType)
-  );
+  return activities.some((activity) => highPriorityTypes.includes(activity.activityType));
 };
 
-export const getUniqueActivityTypes = (
-  activities: ActivityData[]
-): string[] => {
+export const getUniqueActivityTypes = (activities: ActivityData[]): string[] => {
   return [...new Set(activities.map((activity) => activity.activityType))];
 };
 
@@ -473,9 +465,7 @@ export function validateCalendarEntry(data: unknown): {
     }
     return {
       isValid: false,
-      errors: [
-        error instanceof Error ? error.message : "Unknown validation error",
-      ],
+      errors: [error instanceof Error ? error.message : "Unknown validation error"],
     };
   }
 }
@@ -500,9 +490,7 @@ export function validateSymbolV2Entry(data: unknown): {
     }
     return {
       isValid: false,
-      errors: [
-        error instanceof Error ? error.message : "Unknown validation error",
-      ],
+      errors: [error instanceof Error ? error.message : "Unknown validation error"],
     };
   }
 }
@@ -652,7 +640,7 @@ export const PortfolioSchema = z.object({
       locked: z.string(),
       total: z.number(),
       usdtValue: z.number().optional(),
-    })
+    }),
   ),
   balances: z
     .array(
@@ -662,7 +650,7 @@ export const PortfolioSchema = z.object({
         locked: z.string(),
         total: z.number(),
         usdtValue: z.number().optional(),
-      })
+      }),
     )
     .optional(), // Alias for backward compatibility
   lastUpdated: z.string(),
@@ -694,7 +682,7 @@ export type Kline = z.infer<typeof KlineSchema>;
 
 export const validateMexcData = <T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: boolean; data?: T; error?: string } => {
   try {
     const result = schema.parse(data);
@@ -708,8 +696,7 @@ export const validateMexcData = <T>(
     }
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Unknown validation error",
+      error: error instanceof Error ? error.message : "Unknown validation error",
     };
   }
 };

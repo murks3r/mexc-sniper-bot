@@ -12,10 +12,7 @@ import {
   parseJsonRequest,
   validateRequiredFields,
 } from "@/src/lib/api-json-parser";
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from "@/src/lib/api-response";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import {
   RealTimeSafetyMonitoringService,
   type SafetyConfiguration,
@@ -44,7 +41,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
   const severity = searchParams.get("severity");
-  const limit = parseInt(searchParams.get("limit") || "10");
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
 
   try {
     console.info(`[SafetyMonitoringAPI] Processing GET action: ${action}`);
@@ -59,7 +56,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
             isActive: service.getMonitoringStatus(),
             timerOperations,
             lastChecked: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -74,7 +71,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
           createSuccessResponse({
             riskMetrics,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -84,9 +81,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
 
         // Filter by severity if specified
         if (severity && severity !== "invalid_severity") {
-          filteredAlerts = filteredAlerts.filter(
-            (alert) => alert.severity === severity
-          );
+          filteredAlerts = filteredAlerts.filter((alert) => alert.severity === severity);
         }
 
         // Apply limit
@@ -97,7 +92,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
             alerts: limitedAlerts,
             totalCount: safetyReport.activeAlerts?.length || 0,
             filteredCount: filteredAlerts.length,
-          })
+          }),
         );
       }
 
@@ -110,7 +105,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
             status: healthReport.status,
             recommendations: healthReport.recommendations,
             lastUpdated: healthReport.lastUpdated,
-          })
+          }),
         );
       }
 
@@ -120,7 +115,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
           createSuccessResponse({
             configuration: config,
             isActive: service.getMonitoringStatus(),
-          })
+          }),
         );
       }
 
@@ -136,7 +131,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
             currentDrawdown: currentRiskMetrics.currentDrawdown,
             successRate: currentRiskMetrics.successRate,
             consecutiveLosses: currentRiskMetrics.consecutiveLosses,
-          })
+          }),
         );
       }
 
@@ -154,7 +149,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
               "check-safety",
             ],
           }),
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error: any) {
@@ -174,7 +169,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
           code: "SERVICE_UNAVAILABLE",
           details: "Service initialization failed",
         }),
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -185,7 +180,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
         code: "GET_ACTION_FAILED",
         details: error.message,
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
@@ -227,7 +222,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
           code: "MISSING_ACTION",
           missingField: fieldValidation.missingField,
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -243,7 +238,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Safety monitoring is already active", {
               code: "ALREADY_ACTIVE",
             }),
-            { status: 409 }
+            { status: 409 },
           );
         }
 
@@ -253,7 +248,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             message: "Real-time safety monitoring started successfully",
             isActive: true,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
 
       case "stop_monitoring":
@@ -263,7 +258,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Safety monitoring is not currently active", {
               code: "NOT_ACTIVE",
             }),
-            { status: 409 }
+            { status: 409 },
           );
         }
 
@@ -273,7 +268,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             message: "Real-time safety monitoring stopped successfully",
             isActive: false,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
 
       case "update_configuration":
@@ -282,19 +277,17 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Configuration is required for update action", {
               code: "MISSING_CONFIGURATION",
             }),
-            { status: 400 }
+            { status: 400 },
           );
         }
 
-        service.updateConfiguration(
-          configuration as Partial<SafetyConfiguration>
-        );
+        service.updateConfiguration(configuration as Partial<SafetyConfiguration>);
         return NextResponse.json(
           createSuccessResponse({
             message: "Safety monitoring configuration updated successfully",
             updatedFields: Object.keys(configuration),
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
 
       case "update_thresholds": {
@@ -303,7 +296,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Thresholds are required for update action", {
               code: "MISSING_THRESHOLDS",
             }),
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -346,7 +339,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             message: "Safety monitoring thresholds updated successfully",
             updatedThresholds: Object.keys(filteredThresholds),
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -356,7 +349,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Emergency reason is required", {
               code: "MISSING_REASON",
             }),
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -367,7 +360,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             actionsExecuted: emergencyActions,
             reason,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -377,7 +370,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Alert ID is required for acknowledgment", {
               code: "MISSING_ALERT_ID",
             }),
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -387,7 +380,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             createErrorResponse("Alert not found or already acknowledged", {
               code: "ALERT_NOT_FOUND",
             }),
-            { status: 404 }
+            { status: 404 },
           );
         }
 
@@ -396,7 +389,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             message: "Alert acknowledged successfully",
             alertId,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -407,7 +400,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             message: `${clearedCount} acknowledged alerts cleared successfully`,
             clearedCount,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -422,7 +415,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
             riskMetrics: currentRiskMetrics,
             overallRiskScore,
             timestamp: new Date().toISOString(),
-          })
+          }),
         );
       }
 
@@ -441,14 +434,13 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
               "force_risk_assessment",
             ],
           }),
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error: any) {
     console.error("[SafetyMonitoringAPI] POST action failed:", {
       error: error.message || "Unknown error",
-      action:
-        typeof body === "object" && body ? body.action || "unknown" : "unknown",
+      action: typeof body === "object" && body ? body.action || "unknown" : "unknown",
       url: request.url,
     });
 
@@ -462,7 +454,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
           code: "SERVICE_UNAVAILABLE",
           details: "Service initialization failed",
         }),
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -473,7 +465,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         code: "ACTION_FAILED",
         details: error.message,
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

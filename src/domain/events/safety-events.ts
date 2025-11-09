@@ -182,11 +182,7 @@ export interface SafetyAlertCreated extends BaseSafetyEvent {
     alertId: string;
     userId: string;
     portfolioId: string;
-    alertType:
-      | "RISK_WARNING"
-      | "THRESHOLD_BREACH"
-      | "EMERGENCY_TRIGGER"
-      | "SYSTEM_ANOMALY";
+    alertType: "RISK_WARNING" | "THRESHOLD_BREACH" | "EMERGENCY_TRIGGER" | "SYSTEM_ANOMALY";
     severity: "low" | "medium" | "high" | "critical";
     title: string;
     message: string;
@@ -230,7 +226,7 @@ export class SafetyEventFactory {
   static createEmergencyStopCreated(
     emergencyStopId: string,
     userId: string,
-    data: EmergencyStopCreated["data"]
+    data: EmergencyStopCreated["data"],
   ): EmergencyStopCreated {
     return {
       type: "EmergencyStopCreated",
@@ -245,7 +241,7 @@ export class SafetyEventFactory {
   static createEmergencyStopTriggered(
     emergencyStopId: string,
     userId: string,
-    data: EmergencyStopTriggered["data"]
+    data: EmergencyStopTriggered["data"],
   ): EmergencyStopTriggered {
     return {
       type: "EmergencyStopTriggered",
@@ -260,7 +256,7 @@ export class SafetyEventFactory {
   static createEmergencyStopCompleted(
     emergencyStopId: string,
     userId: string,
-    data: EmergencyStopCompleted["data"]
+    data: EmergencyStopCompleted["data"],
   ): EmergencyStopCompleted {
     return {
       type: "EmergencyStopCompleted",
@@ -275,7 +271,7 @@ export class SafetyEventFactory {
   static createEmergencyStopFailed(
     emergencyStopId: string,
     userId: string,
-    data: EmergencyStopFailed["data"]
+    data: EmergencyStopFailed["data"],
   ): EmergencyStopFailed {
     return {
       type: "EmergencyStopFailed",
@@ -290,7 +286,7 @@ export class SafetyEventFactory {
   static createRiskProfileCreated(
     riskProfileId: string,
     userId: string,
-    data: RiskProfileCreated["data"]
+    data: RiskProfileCreated["data"],
   ): RiskProfileCreated {
     return {
       type: "RiskProfileCreated",
@@ -305,7 +301,7 @@ export class SafetyEventFactory {
   static createRiskProfileUpdated(
     riskProfileId: string,
     userId: string,
-    data: RiskProfileUpdated["data"]
+    data: RiskProfileUpdated["data"],
   ): RiskProfileUpdated {
     return {
       type: "RiskProfileUpdated",
@@ -320,7 +316,7 @@ export class SafetyEventFactory {
   static createRiskThresholdViolated(
     riskProfileId: string,
     userId: string,
-    data: RiskThresholdViolated["data"]
+    data: RiskThresholdViolated["data"],
   ): RiskThresholdViolated {
     return {
       type: "RiskThresholdViolated",
@@ -335,7 +331,7 @@ export class SafetyEventFactory {
   static createSafetyAlertCreated(
     alertId: string,
     userId: string,
-    data: SafetyAlertCreated["data"]
+    data: SafetyAlertCreated["data"],
   ): SafetyAlertCreated {
     return {
       type: "SafetyAlertCreated",
@@ -350,7 +346,7 @@ export class SafetyEventFactory {
   static createSafetyAlertResolved(
     alertId: string,
     userId: string,
-    data: SafetyAlertResolved["data"]
+    data: SafetyAlertResolved["data"],
   ): SafetyAlertResolved {
     return {
       type: "SafetyAlertResolved",

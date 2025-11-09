@@ -41,7 +41,6 @@ export {
   getInitializedCoreTrading,
   resetCoreTrading,
 } from "./base-service";
-export { ManualTradingModule } from "./manual-trading";
 // Module utilities
 export * from "./modules";
 export { PerformanceTracker } from "./performance-tracker";
@@ -79,8 +78,6 @@ export type {
   CoreTradingEvents,
   ExtendedServiceStatus,
   ModuleContext,
-  MultiPhaseConfig,
-  MultiPhaseResult,
   PerformanceMetrics,
   Position,
   ServiceResponse,

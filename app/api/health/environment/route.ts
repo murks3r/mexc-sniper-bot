@@ -26,15 +26,9 @@ export async function GET(_request: NextRequest) {
       healthSummary = environmentValidation.getHealthSummary();
       missingByCategory = environmentValidation.getMissingByCategory();
     } catch (validationError) {
-      console.warn(
-        "[Environment Health] Validation service failed, using fallback:",
-        {
-          error:
-            validationError instanceof Error
-              ? validationError.message
-              : String(validationError),
-        }
-      );
+      console.warn("[Environment Health] Validation service failed, using fallback:", {
+        error: validationError instanceof Error ? validationError.message : String(validationError),
+      });
 
       // Fallback validation response
       validation = {
@@ -42,9 +36,7 @@ export async function GET(_request: NextRequest) {
         status: "warning",
         summary: { total: 0, configured: 0, missing: 0, invalid: 0 },
         results: [],
-        recommendations: [
-          "Environment validation service temporarily unavailable",
-        ],
+        recommendations: ["Environment validation service temporarily unavailable"],
         developmentDefaults: {},
       };
 
@@ -52,9 +44,7 @@ export async function GET(_request: NextRequest) {
         status: "warning",
         score: 50,
         issues: ["Environment validation service error"],
-        recommendedActions: [
-          "Check environment validation service configuration",
-        ],
+        recommendedActions: ["Check environment validation service configuration"],
       };
 
       missingByCategory = {};
@@ -89,71 +79,56 @@ export async function GET(_request: NextRequest) {
         core: {
           total: validation.results.filter((r) => r.category === "core").length,
           configured: validation.results.filter(
-            (r) =>
-              r.category === "core" &&
-              (r.status === "configured" || r.status === "default")
+            (r) => r.category === "core" && (r.status === "configured" || r.status === "default"),
           ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "core" && r.status === "missing"
-          ).length,
+          missing: validation.results.filter((r) => r.category === "core" && r.status === "missing")
+            .length,
         },
         api: {
           total: validation.results.filter((r) => r.category === "api").length,
           configured: validation.results.filter(
-            (r) =>
-              r.category === "api" &&
-              (r.status === "configured" || r.status === "default")
+            (r) => r.category === "api" && (r.status === "configured" || r.status === "default"),
           ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "api" && r.status === "missing"
-          ).length,
+          missing: validation.results.filter((r) => r.category === "api" && r.status === "missing")
+            .length,
         },
         database: {
-          total: validation.results.filter((r) => r.category === "database")
-            .length,
+          total: validation.results.filter((r) => r.category === "database").length,
           configured: validation.results.filter(
             (r) =>
-              r.category === "database" &&
-              (r.status === "configured" || r.status === "default")
+              r.category === "database" && (r.status === "configured" || r.status === "default"),
           ).length,
           missing: validation.results.filter(
-            (r) => r.category === "database" && r.status === "missing"
+            (r) => r.category === "database" && r.status === "missing",
           ).length,
         },
         cache: {
-          total: validation.results.filter((r) => r.category === "cache")
-            .length,
+          total: validation.results.filter((r) => r.category === "cache").length,
           configured: validation.results.filter(
-            (r) =>
-              r.category === "cache" &&
-              (r.status === "configured" || r.status === "default")
+            (r) => r.category === "cache" && (r.status === "configured" || r.status === "default"),
           ).length,
           missing: validation.results.filter(
-            (r) => r.category === "cache" && r.status === "missing"
+            (r) => r.category === "cache" && r.status === "missing",
           ).length,
         },
         monitoring: {
-          total: validation.results.filter((r) => r.category === "monitoring")
-            .length,
+          total: validation.results.filter((r) => r.category === "monitoring").length,
           configured: validation.results.filter(
             (r) =>
-              r.category === "monitoring" &&
-              (r.status === "configured" || r.status === "default")
+              r.category === "monitoring" && (r.status === "configured" || r.status === "default"),
           ).length,
           missing: validation.results.filter(
-            (r) => r.category === "monitoring" && r.status === "missing"
+            (r) => r.category === "monitoring" && r.status === "missing",
           ).length,
         },
         security: {
-          total: validation.results.filter((r) => r.category === "security")
-            .length,
+          total: validation.results.filter((r) => r.category === "security").length,
           configured: validation.results.filter(
             (r) =>
-              r.category === "security" &&
-              (r.status === "configured" || r.status === "default")
+              r.category === "security" && (r.status === "configured" || r.status === "default"),
           ).length,
           missing: validation.results.filter(
-            (r) => r.category === "security" && r.status === "missing"
+            (r) => r.category === "security" && r.status === "missing",
           ).length,
         },
       },
@@ -214,47 +189,36 @@ export async function POST(request: NextRequest) {
         },
         {
           message: "Development environment template generated successfully",
-        }
+        },
       );
     }
 
     if (action === "validate_specific") {
       const { variables } = body;
       if (!Array.isArray(variables)) {
-        return apiResponse.error(
-          "Variables array required for specific validation",
-          400
-        );
+        return apiResponse.error("Variables array required for specific validation", 400);
       }
 
       const validation = environmentValidation.validateEnvironment();
-      const specificResults = validation.results.filter((r) =>
-        variables.includes(r.key)
-      );
+      const specificResults = validation.results.filter((r) => variables.includes(r.key));
 
       return apiResponse.success(
         {
           results: specificResults,
           summary: {
             total: specificResults.length,
-            configured: specificResults.filter((r) => r.status === "configured")
-              .length,
-            missing: specificResults.filter((r) => r.status === "missing")
-              .length,
-            invalid: specificResults.filter((r) => r.status === "invalid")
-              .length,
+            configured: specificResults.filter((r) => r.status === "configured").length,
+            missing: specificResults.filter((r) => r.status === "missing").length,
+            invalid: specificResults.filter((r) => r.status === "invalid").length,
           },
         },
         {
           message: "Specific variable validation completed",
-        }
+        },
       );
     }
 
-    return apiResponse.error(
-      'Invalid action. Use "generate_template" or "validate_specific"',
-      400
-    );
+    return apiResponse.error('Invalid action. Use "generate_template" or "validate_specific"', 400);
   } catch (error) {
     console.error("[Environment Health] POST request failed:", { error });
 

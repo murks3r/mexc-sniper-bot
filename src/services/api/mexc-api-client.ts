@@ -85,11 +85,8 @@ export { MexcTradingService } from "./mexc-trading-service";
 export class MexcApiClient {
   private config: Required<UnifiedMexcConfig>;
   private authService: MexcAuthService;
-  private retryService: MexcRetryService;
   private requestService: MexcRequestService;
   private tradingService: MexcTradingService;
-  private cache: MexcRequestCache;
-  private reliabilityManager: CircuitBreaker;
   private stats: ApiClientStats;
 
   constructor(
@@ -97,7 +94,7 @@ export class MexcApiClient {
     cache: MexcRequestCache,
     reliabilityManager: CircuitBreaker,
     _enhancedCache?: EnhancedUnifiedCacheSystem,
-    _performanceMonitoring?: PerformanceMonitoringService
+    _performanceMonitoring?: PerformanceMonitoringService,
   ) {
     this.config = config;
     this.cache = cache;
@@ -129,28 +126,28 @@ export class MexcApiClient {
   async get<T>(endpoint: string, params?: any, options?: any) {
     return this.requestService.executeHttpRequestWithContext<T>(
       { method: "GET", endpoint, params, ...options },
-      this.requestService.createRequestContext(endpoint)
+      this.requestService.createRequestContext(endpoint),
     );
   }
 
   async post<T>(endpoint: string, params?: any, options?: any) {
     return this.requestService.executeHttpRequestWithContext<T>(
       { method: "POST", endpoint, params, ...options },
-      this.requestService.createRequestContext(endpoint)
+      this.requestService.createRequestContext(endpoint),
     );
   }
 
   async put<T>(endpoint: string, params?: any, options?: any) {
     return this.requestService.executeHttpRequestWithContext<T>(
       { method: "PUT", endpoint, params, ...options },
-      this.requestService.createRequestContext(endpoint)
+      this.requestService.createRequestContext(endpoint),
     );
   }
 
   async delete<T>(endpoint: string, params?: any, options?: any) {
     return this.requestService.executeHttpRequestWithContext<T>(
       { method: "DELETE", endpoint, params, ...options },
-      this.requestService.createRequestContext(endpoint)
+      this.requestService.createRequestContext(endpoint),
     );
   }
 

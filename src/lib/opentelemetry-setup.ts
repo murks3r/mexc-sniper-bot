@@ -76,8 +76,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
     const resource = new Resource({
       [SEMRESATTRS_SERVICE_NAME]: "mexc-trading-bot",
       [SEMRESATTRS_SERVICE_VERSION]: process.env.APP_VERSION || "1.0.0",
-      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]:
-        process.env.NODE_ENV || "development",
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || "development",
       [SEMRESATTRS_SERVICE_NAMESPACE]: "trading",
       [SEMRESATTRS_SERVICE_INSTANCE_ID]: process.env.HOSTNAME || "localhost",
     });
@@ -86,17 +85,14 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
     const traceExporters = [];
 
     // Use OTLP HTTP exporter (compatible with Jaeger and other OTLP receivers)
-    if (
-      process.env.JAEGER_ENDPOINT ||
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT
-    ) {
+    if (process.env.JAEGER_ENDPOINT || process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       traceExporters.push(
         new OTLPTraceExporter({
           url:
             process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
             process.env.JAEGER_ENDPOINT ||
             "http://localhost:4318/v1/traces", // Default OTLP HTTP endpoint
-        })
+        }),
       );
     }
 
@@ -112,7 +108,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
           maxQueueSize: isProduction ? 8192 : 2048,
           exportTimeoutMillis: 5000,
           scheduledDelayMillis: isProduction ? 5000 : 1000,
-        })
+        }),
     );
 
     // Metrics configuration
@@ -121,7 +117,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
     // Prometheus metrics exporter
     if (process.env.PROMETHEUS_PORT || !isProduction) {
       const prometheusExporter = new PrometheusExporter({
-        port: Number.parseInt(process.env.PROMETHEUS_PORT || "9464"),
+        port: Number.parseInt(process.env.PROMETHEUS_PORT || "9464", 10),
         preventServerStart: isTesting, // Don't start server in tests
       });
 
@@ -134,7 +130,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
           new PeriodicExportingMetricReader({
             exporter: prometheusExporter as any, // Type assertion for compatibility
             exportIntervalMillis: isProduction ? 15000 : 5000, // 15s in prod, 5s in dev
-          })
+          }),
         );
       }
     }
@@ -212,9 +208,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
       sdk
         .shutdown()
         .then(() => logger.info("[OpenTelemetry] SDK shut down successfully"))
-        .catch((error: any) =>
-          logger.error("[OpenTelemetry] Error shutting down SDK", error)
-        )
+        .catch((error: any) => logger.error("[OpenTelemetry] Error shutting down SDK", error))
         .finally(() => process.exit(0));
     });
 

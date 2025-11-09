@@ -54,11 +54,9 @@ export function useLivePrices(symbols: string[], enabled = true) {
       }
       eventSourceRef.current = null;
     };
-  }, [enabled, symbols.join(",")]);
+  }, [enabled, symbols.join, symbols.length]);
 
   const lastPrices = useMemo(() => prices, [prices]);
 
   return { prices: lastPrices, connected };
 }
-
-

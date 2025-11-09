@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useTakeProfitLevels,
-  useUpdateTakeProfitLevels,
-} from "../hooks/use-user-preferences";
+import { useTakeProfitLevels, useUpdateTakeProfitLevels } from "../hooks/use-user-preferences";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 
 interface TakeProfitLevelsProps {
@@ -66,8 +57,7 @@ export function TakeProfitLevels({ userId }: TakeProfitLevelsProps) {
       <CardHeader>
         <CardTitle className="text-white">Take Profit Levels</CardTitle>
         <CardDescription className="text-slate-400">
-          Configure your default take profit percentages for different risk
-          levels
+          Configure your default take profit percentages for different risk levels
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -79,9 +69,7 @@ export function TakeProfitLevels({ userId }: TakeProfitLevelsProps) {
               level={level}
               index={index}
               isEditing={editingLevels}
-              isDefault={
-                level.id === (editingLevels ? tempDefaultLevel : defaultLevel)
-              }
+              isDefault={level.id === (editingLevels ? tempDefaultLevel : defaultLevel)}
               onUpdateLevel={updateTempLevel}
               onSetDefault={() => setTempDefaultLevel(level.id)}
             />
@@ -146,9 +134,7 @@ function TakeProfitLevelCard({
           <Input
             type="number"
             value={level.value}
-            onChange={(e) =>
-              onUpdateLevel(index, Number.parseFloat(e.target.value) || 0)
-            }
+            onChange={(e) => onUpdateLevel(index, Number.parseFloat(e.target.value) || 0)}
             min="0.1"
             max="100"
             step="0.1"
@@ -169,9 +155,7 @@ function TakeProfitLevelCard({
         </div>
       ) : (
         <div className="text-center p-3 bg-slate-700/30 border border-slate-600/50 rounded-lg">
-          <div className="text-2xl font-bold text-green-400">
-            {level.value}%
-          </div>
+          <div className="text-2xl font-bold text-green-400">{level.value}%</div>
           <div className="text-xs text-slate-400 mt-1">{level.description}</div>
         </div>
       )}
@@ -192,10 +176,7 @@ function CustomLevelSection({
 }: CustomLevelSectionProps) {
   return (
     <div className="space-y-2">
-      <label
-        htmlFor="custom-take-profit"
-        className="text-sm font-medium text-white"
-      >
+      <label htmlFor="custom-take-profit" className="text-sm font-medium text-white">
         Custom Level (Optional)
       </label>
       {editingLevels ? (
@@ -204,11 +185,7 @@ function CustomLevelSection({
             id="custom-take-profit"
             type="number"
             value={customLevel || ""}
-            onChange={(e) =>
-              onCustomLevelChange(
-                Number.parseFloat(e.target.value) || undefined
-              )
-            }
+            onChange={(e) => onCustomLevelChange(Number.parseFloat(e.target.value) || undefined)}
             placeholder="Enter custom percentage"
             min="0.1"
             max="1000"
@@ -219,9 +196,7 @@ function CustomLevelSection({
         </div>
       ) : (
         <div className="text-sm text-slate-400">
-          {customLevel
-            ? `${customLevel}% - Custom user-defined level`
-            : "Not set"}
+          {customLevel ? `${customLevel}% - Custom user-defined level` : "Not set"}
         </div>
       )}
     </div>
@@ -263,10 +238,7 @@ function TakeProfitLevelActions({
           </Button>
         </>
       ) : (
-        <Button
-          onClick={onEdit}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
+        <Button onClick={onEdit} className="bg-blue-600 hover:bg-blue-700 text-white">
           Edit Levels
         </Button>
       )}

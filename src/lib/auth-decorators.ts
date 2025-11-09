@@ -13,7 +13,7 @@ export interface AuthConfig {
 
 export function withAuth<T extends (...args: any[]) => Promise<NextResponse>>(
   handler: T,
-  _config: AuthConfig = {}
+  _config: AuthConfig = {},
 ): T {
   return (async (...args: Parameters<T>) => {
     // Simple pass-through implementation - actual auth would go here
@@ -21,15 +21,11 @@ export function withAuth<T extends (...args: any[]) => Promise<NextResponse>>(
   }) as T;
 }
 
-export function requireAuth<
-  T extends (...args: any[]) => Promise<NextResponse>,
->(handler: T): T {
+export function requireAuth<T extends (...args: any[]) => Promise<NextResponse>>(handler: T): T {
   return withAuth(handler, { requireAuth: true });
 }
 
-export function allowGuest<T extends (...args: any[]) => Promise<NextResponse>>(
-  handler: T
-): T {
+export function allowGuest<T extends (...args: any[]) => Promise<NextResponse>>(handler: T): T {
   return withAuth(handler, { allowGuest: true });
 }
 

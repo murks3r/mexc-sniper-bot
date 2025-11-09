@@ -17,9 +17,7 @@ try {
       apiKey: apiKey,
     });
   } else {
-    console.debug(
-      "OpenAI API key not found - embeddings will use fallback method"
-    );
+    console.debug("OpenAI API key not found - embeddings will use fallback method");
   }
 } catch (error) {
   console.warn("Failed to initialize OpenAI client:", error);
@@ -69,7 +67,7 @@ export interface ChatCompletionResponse {
 // Utility functions for common operations
 export async function generateEmbedding(
   text: string,
-  model = "text-embedding-3-small"
+  model = "text-embedding-3-small",
 ): Promise<number[] | null> {
   if (!openai) {
     return null;
@@ -90,7 +88,7 @@ export async function generateEmbedding(
 
 export async function generateChatCompletion(
   messages: Array<{ role: string; content: string }>,
-  model = "gpt-3.5-turbo"
+  model = "gpt-3.5-turbo",
 ): Promise<string | null> {
   if (!openai) {
     return null;

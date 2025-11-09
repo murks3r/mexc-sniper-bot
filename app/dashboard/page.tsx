@@ -1,11 +1,10 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import { AutoSnipingControlPanel } from "@/src/components/auto-sniping-control-panel";
-import { AIEnhancedPatternDisplay } from "@/src/components/dashboard/ai-intelligence/ai-enhanced-pattern-display";
+// Removed: AIEnhancedPatternDisplay - pattern detection simplified
 import { DashboardLayout } from "@/src/components/dashboard-layout";
 import {
   CoinListingsBoard,
@@ -17,22 +16,12 @@ import {
   TradingChart,
   UpcomingCoinsSection,
 } from "@/src/components/dynamic-component-loader";
-import { ManualTradingPanel } from "@/src/components/manual-trading-panel";
-import { Button } from "@/src/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/src/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import { useToast } from "@/src/components/ui/use-toast";
 import { useAccountBalance } from "@/src/hooks/use-account-balance";
-import { useEnhancedPatterns } from "@/src/hooks/use-enhanced-patterns";
+// Removed: useEnhancedPatterns - pattern detection simplified
 import { useMexcCalendar, useReadyLaunches } from "@/src/hooks/use-mexc-data";
-import {
-  useDeleteSnipeTarget,
-  useSnipeTargets,
-} from "@/src/hooks/use-portfolio";
+import { useDeleteSnipeTarget, useSnipeTargets } from "@/src/hooks/use-portfolio";
 import { queryKeys } from "@/src/lib/query-client";
 
 export default function DashboardPage() {
@@ -47,22 +36,34 @@ export default function DashboardPage() {
   // Hooks for trading operations
   const deleteSnipeTarget = useDeleteSnipeTarget();
 
-  const { data: accountBalance, isLoading: balanceLoading } = useAccountBalance(
-    {
-      userId: userId || "system",
-      enabled: activeTab === "overview",
-    }
-  );
-  const { data: calendarData } = useMexcCalendar({ enabled: true });
-  const { data: readyLaunches } = useReadyLaunches({ enabled: true });
-  // Show both user-owned and system-owned targets (read-only) in overview
-  const { data: userSnipeTargets, isLoading: userSnipeLoading } =
-    useSnipeTargets(userId || "", undefined, { enabled: activeTab === "overview" });
-  // Also fetch all visible targets (user + system) from the unified API semantics
-  const {
-    data: allSnipeTargets,
-    isLoading: allSnipeLoading,
-  } = useQuery({
+  const { data: accountBalance, isLoading: balanceLoading } = useAccountBalance({
+    userId: userId || "system",
+    enabled: activeTab === "overview",
+  });
+  // Only fetch data when on overview tab to improve performance
+  const { data: calendarData } = useMexcCalendar({ enabled: activeTab === "overview" });
+  const { data: readyLaunches } = useReadyLaunches({ enabled: activeTab === "overview" });
+
+  // Fetch active snipe targets specifically (include system targets)
+  const { data: activeSnipeTargets, isLoading: activeSnipeLoading } = useQuery({
+    queryKey: ["snipeTargets", userId || "system", "active"],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("status", "active");
+      params.set("includeSystem", "true"); // Include system targets
+      const res = await fetch(`/api/snipe-targets?${params.toString()}`, {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!json.success) return [];
+      return json.data || [];
+    },
+    enabled: activeTab === "overview",
+    staleTime: 10_000,
+  });
+
+  // Fetch all snipe targets (for display, includes ready/pending/active)
+  const { data: allSnipeTargets, isLoading: allSnipeLoading } = useQuery({
     queryKey: ["snipeTargets", userId, "all"],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -74,16 +75,11 @@ export default function DashboardPage() {
       if (!json.success) return [];
       return json.data || [];
     },
-    enabled: true,
+    enabled: activeTab === "overview" && !!userId,
     staleTime: 10_000,
   });
-  const { data: enhancedPatterns, isLoading: patternsLoading } =
-    useEnhancedPatterns({
-      enableAI: true,
-      confidenceThreshold: 70,
-      includeAdvanceDetection: true,
-      enabled: true,
-    });
+
+  // Removed: enhancedPatterns - pattern detection simplified
 
   // Handler functions for trading targets
   const handleExecuteSnipe = async (target: any) => {
@@ -127,8 +123,7 @@ export default function DashboardPage() {
       console.error("Failed to execute snipe:", error);
       toast({
         title: "Snipe Execution Failed",
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
     }
@@ -149,8 +144,7 @@ export default function DashboardPage() {
       console.error("Failed to remove target:", error);
       toast({
         title: "Removal Failed",
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
     }
@@ -162,12 +156,10 @@ export default function DashboardPage() {
     queryFn: async () => {
       if (!userId) return null;
 
-      const thirtyDaysAgo = Math.floor(
-        (Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000
-      );
+      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
       const response = await fetch(
         `/api/execution-history?userId=${encodeURIComponent(userId)}&fromDate=${thirtyDaysAgo}&limit=1000`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
 
       if (!response.ok) return null;
@@ -185,12 +177,10 @@ export default function DashboardPage() {
     queryFn: async () => {
       if (!userId) return null;
 
-      const twentyFourHoursAgo = Math.floor(
-        (Date.now() - 24 * 60 * 60 * 1000) / 1000
-      );
+      const twentyFourHoursAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
       const response = await fetch(
         `/api/account/balance?userId=${encodeURIComponent(userId)}&timestamp=${twentyFourHoursAgo}`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
 
       if (!response.ok) return null;
@@ -210,10 +200,9 @@ export default function DashboardPage() {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const response = await fetch(
-          `/api/mexc/calendar?fromDate=${sevenDaysAgo.toISOString()}`,
-          { credentials: "include" }
-        );
+        const response = await fetch(`/api/mexc/calendar?fromDate=${sevenDaysAgo.toISOString()}`, {
+          credentials: "include",
+        });
 
         if (!response.ok) return [];
         const data = await response.json();
@@ -228,44 +217,54 @@ export default function DashboardPage() {
     placeholderData: [],
   });
 
-  // Fetch historical ready launches for active targets change calculation
-  const { data: historicalReadyLaunches } = useQuery({
-    queryKey: ["historical-ready-launches"],
+  // Fetch historical active snipe targets for comparison (compare apples to apples)
+  const { data: historicalActiveTargets } = useQuery({
+    queryKey: ["historical-active-targets"],
     queryFn: async () => {
       try {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const response = await fetch(
-          `/api/ready-launches?fromDate=${sevenDaysAgo.toISOString()}`,
-          { credentials: "include" }
-        );
+        // Get targets created in the last 7 days (regardless of current status)
+        // This gives us a baseline of how many targets were active/created last week
+        const params = new URLSearchParams();
+        params.set("includeAll", "true");
+        params.set("includeSystem", "true");
+        const response = await fetch(`/api/snipe-targets?${params.toString()}`, {
+          credentials: "include",
+        });
 
         if (!response.ok) return [];
         const data = await response.json();
-        return data.success ? data.data || [] : [];
+        if (!data.success) return [];
+
+        // Filter targets created in the last 7 days
+        const allTargets = data.data || [];
+        const cutoffTime = sevenDaysAgo.getTime();
+        return allTargets.filter((target: any) => {
+          const createdAt = new Date(target.createdAt).getTime();
+          return createdAt >= cutoffTime;
+        });
       } catch (error) {
-        console.error("Failed to fetch historical ready launches:", error);
+        console.error("Failed to fetch historical active targets:", error);
         return [];
       }
     },
-    enabled: true,
+    enabled: activeTab === "overview",
     staleTime: 10 * 60 * 1000, // 10 minute cache
     placeholderData: [],
   });
 
   // Transform snipe targets for display
   const transformedReadyTargets = useMemo(() => {
-    const combined = Array.isArray(allSnipeTargets) && allSnipeTargets.length > 0
-      ? allSnipeTargets
-      : (Array.isArray(userSnipeTargets) ? userSnipeTargets : []);
+    const combined = Array.isArray(allSnipeTargets) ? allSnipeTargets : [];
 
     if (combined.length === 0) return [];
 
     // Filter to pending/ready and sort logically:
     // 1) ready first, 2) earlier execution time first, 3) higher confidence, 4) higher priority (lower number) first
     const filtered = combined.filter(
-      (target: any) => target.status === "pending" || target.status === "ready"
+      (target: any) => target.status === "pending" || target.status === "ready",
     );
 
     const getExecMs = (te: any): number => {
@@ -319,7 +318,7 @@ export default function DashboardPage() {
       stopLossPercent: target.stopLossPercent,
       takeProfitCustom: target.takeProfitCustom,
     }));
-  }, [userSnipeTargets, allSnipeTargets]);
+  }, [allSnipeTargets]);
 
   // Transform calendar data for pending targets
   const transformedCalendarTargets = useMemo(() => {
@@ -337,12 +336,14 @@ export default function DashboardPage() {
   const totalBalance = accountBalance?.totalUsdtValue || 0;
   const balanceChange = totalBalance - (historicalBalance || totalBalance);
   const newListings = Array.isArray(calendarData) ? calendarData.length : 0;
-  const activeTargets = transformedReadyTargets.length;
+  // Use active snipe targets from database, fallback to ready targets count
+  const activeTargets = Array.isArray(activeSnipeTargets)
+    ? activeSnipeTargets.length
+    : transformedReadyTargets.length;
 
   // Calculate new listings change percentage
   const newListingsChange = useMemo(() => {
-    if (!historicalCalendarData || historicalCalendarData.length === 0)
-      return 0;
+    if (!historicalCalendarData || historicalCalendarData.length === 0) return 0;
 
     const currentWeekListings = newListings;
     const lastWeekListings = historicalCalendarData.length;
@@ -353,20 +354,27 @@ export default function DashboardPage() {
   }, [newListings, historicalCalendarData]);
 
   // Calculate active targets change percentage
+  // Compare current active targets to targets created in the last 7 days
   const activeTargetsChange = useMemo(() => {
-    if (!historicalReadyLaunches || historicalReadyLaunches.length === 0)
+    if (!historicalActiveTargets || historicalActiveTargets.length === 0) {
+      // If no historical data, show neutral (0%) instead of alarming negative
       return 0;
+    }
 
     const currentActiveTargets = activeTargets;
-    const lastWeekActiveTargets = historicalReadyLaunches.length;
+    // Count how many of the historical targets are still active
+    const historicalStillActive = historicalActiveTargets.filter(
+      (target: any) => target.status === "active" || target.status === "executing",
+    ).length;
 
-    if (lastWeekActiveTargets === 0) return currentActiveTargets > 0 ? 100 : 0;
+    // Use the count of historical targets created as baseline
+    const baseline = historicalActiveTargets.length;
 
-    return (
-      ((currentActiveTargets - lastWeekActiveTargets) / lastWeekActiveTargets) *
-      100
-    );
-  }, [activeTargets, historicalReadyLaunches]);
+    if (baseline === 0) return currentActiveTargets > 0 ? 100 : 0;
+
+    // Calculate change: positive if we have more active targets now than historical baseline
+    return ((currentActiveTargets - baseline) / baseline) * 100;
+  }, [activeTargets, historicalActiveTargets]);
 
   // Calculate win rate from execution history
   const winRate = useMemo(() => {
@@ -390,7 +398,7 @@ export default function DashboardPage() {
     historicalCalendarCount: historicalCalendarData?.length || 0,
     activeTargets,
     activeTargetsChange,
-    historicalReadyLaunchesCount: historicalReadyLaunches?.length || 0,
+    historicalActiveTargetsCount: historicalActiveTargets?.length || 0,
     winRate,
   });
 
@@ -436,16 +444,8 @@ export default function DashboardPage() {
           <MetricCard
             title="Win Rate"
             value={`${winRate.toFixed(1)}%`}
-            change={
-              winRate > 50
-                ? +(winRate - 50).toFixed(1)
-                : -(50 - winRate).toFixed(1)
-            }
-            changeLabel={
-              winRate > 50
-                ? "Above average performance"
-                : "Below average performance"
-            }
+            change={winRate > 50 ? +(winRate - 50).toFixed(1) : -(50 - winRate).toFixed(1)}
+            changeLabel={winRate > 50 ? "Above average performance" : "Below average performance"}
             description={`Based on ${executionHistoryData?.summary?.totalExecutions || 0} trades`}
             trend={winRate > 50 ? "up" : "down"}
           />
@@ -461,42 +461,18 @@ export default function DashboardPage() {
           onValueChange={setActiveTab}
           className="space-y-4"
         >
-          <div className="flex items-center justify-between">
             <TabsList>
-              <TabsTrigger value="auto-sniping">
-                Auto-Sniping Control
-              </TabsTrigger>
+              <TabsTrigger value="auto-sniping">Auto-Sniping Control</TabsTrigger>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger
-                value="patterns"
-              >
-                Pattern Detection
-                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
-                  {readyLaunches ? readyLaunches.length : 0}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="trades"
-              >
-                Trading History
-              </TabsTrigger>
-              <TabsTrigger
-                value="listings"
-              >
+            {/* Removed: Pattern Detection tab - simplified to trading focus */}
+              <TabsTrigger value="trades">Trading History</TabsTrigger>
+              <TabsTrigger value="listings">
                 New Listings
                 <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
                   {newListings}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="manual-trading">Manual Trading</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-2">
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Section
-              </Button>
-            </div>
-          </div>
 
           <TabsContent value="auto-sniping" className="space-y-4">
             <AutoSnipingControlPanel />
@@ -519,7 +495,7 @@ export default function DashboardPage() {
                   calendarTargets={transformedCalendarTargets}
                   onExecuteSnipe={handleExecuteSnipe}
                   onRemoveTarget={handleRemoveTarget}
-                  isLoading={userSnipeLoading || allSnipeLoading}
+                  isLoading={allSnipeLoading || activeSnipeLoading}
                 />
               </div>
             </div>
@@ -534,20 +510,8 @@ export default function DashboardPage() {
             <RecentTradesTable userId={userId || undefined} />
           </TabsContent>
 
-          <TabsContent value="manual-trading" className="space-y-4">
-            <ManualTradingPanel userId={userId || ""} />
-          </TabsContent>
 
-          <TabsContent value="patterns" className="space-y-4">
-            <div className="grid gap-4">
-              <AIEnhancedPatternDisplay
-                patterns={enhancedPatterns?.patterns || []}
-                isLoading={patternsLoading}
-                showAdvanceDetection={true}
-              />
-              <CoinListingsBoard />
-            </div>
-          </TabsContent>
+          {/* Removed: Pattern Detection tab content - simplified to trading focus */}
         </Tabs>
       </div>
     </DashboardLayout>

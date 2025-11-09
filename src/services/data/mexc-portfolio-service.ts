@@ -19,10 +19,7 @@ import { MexcApiClient } from "./mexc-api-client";
  * Handles account balances, portfolio analysis, and asset management
  * Implements PortfolioService interface for service compliance
  */
-export class MexcPortfolioService
-  extends BaseMexcService
-  implements PortfolioService
-{
+export class MexcPortfolioService extends BaseMexcService implements PortfolioService {
   private apiClient: MexcApiClient;
 
   constructor(config: Partial<UnifiedMexcConfig> = {}) {
@@ -82,9 +79,7 @@ export class MexcPortfolioService
   /**
    * Get account balances (enhanced portfolio) - Internal method
    */
-  private async getAccountBalancesInternal(): Promise<
-    MexcServiceResponse<Portfolio>
-  > {
+  private async getAccountBalancesInternal(): Promise<MexcServiceResponse<Portfolio>> {
     try {
       const balancesResponse = await this.apiClient.getAccountBalances();
 
@@ -98,14 +93,12 @@ export class MexcPortfolioService
 
       const validatedBalances = this.validateAndMapArray(
         balancesResponse.data.balances,
-        BalanceEntrySchema
+        BalanceEntrySchema,
       ) as BalanceEntry[];
 
       // Filter out zero balances for performance
       const nonZeroBalances = validatedBalances.filter(
-        (balance) =>
-          Number.parseFloat(balance.free) > 0 ||
-          Number.parseFloat(balance.locked) > 0
+        (balance) => Number.parseFloat(balance.free) > 0 || Number.parseFloat(balance.locked) > 0,
       );
 
       const portfolio: Portfolio = {
@@ -116,9 +109,7 @@ export class MexcPortfolioService
 
       const portfolioValidation = validateMexcData(PortfolioSchema, portfolio);
       if (!portfolioValidation.success) {
-        throw new Error(
-          portfolioValidation.error || "Failed to validate portfolio data"
-        );
+        throw new Error(portfolioValidation.error || "Failed to validate portfolio data");
       }
 
       return {
@@ -178,12 +169,10 @@ export class MexcPortfolioService
             asset: asset.asset,
             free: asset.free,
             locked: asset.locked,
-            total:
-              Number.parseFloat(asset.free) + Number.parseFloat(asset.locked),
+            total: Number.parseFloat(asset.free) + Number.parseFloat(asset.locked),
             usdtValue: asset.usdtValue,
           })),
-          totalUsdtValue:
-            portfolioData.totalValueUsdt || portfolioData.totalValue || 0,
+          totalUsdtValue: portfolioData.totalValueUsdt || portfolioData.totalValue || 0,
           totalValue: portfolioData.totalValue || 0,
           totalValueBTC: 0, // Calculate BTC value if needed
           allocation: {}, // Calculate allocation percentages if needed
@@ -261,11 +250,7 @@ export class MexcPortfolioService
       if (!portfolioResponse.success || !portfolioResponse.data) {
         return 0;
       }
-      return (
-        portfolioResponse.data.totalValueUsdt ||
-        portfolioResponse.data.totalValue ||
-        0
-      );
+      return portfolioResponse.data.totalValueUsdt || portfolioResponse.data.totalValue || 0;
     } catch (_error) {
       return 0;
     }
@@ -275,19 +260,14 @@ export class MexcPortfolioService
    * Check if user has sufficient balance for trading
    * Implements PortfolioService.hasSufficientBalance interface
    */
-  async hasSufficientBalance(
-    asset: string,
-    requiredAmount: number
-  ): Promise<boolean> {
+  async hasSufficientBalance(asset: string, requiredAmount: number): Promise<boolean> {
     try {
       const portfolioResponse = await this.getAccountBalancesInternal();
       if (!portfolioResponse.success || !portfolioResponse.data) {
         return false;
       }
 
-      const assetBalance = portfolioResponse.data.assets.find(
-        (balance) => balance.asset === asset
-      );
+      const assetBalance = portfolioResponse.data.assets.find((balance) => balance.asset === asset);
 
       if (!assetBalance) {
         return false;
@@ -304,18 +284,14 @@ export class MexcPortfolioService
    * Get balance for a specific asset
    * Implements PortfolioService.getAssetBalance interface
    */
-  async getAssetBalance(
-    asset: string
-  ): Promise<{ free: string; locked: string } | null> {
+  async getAssetBalance(asset: string): Promise<{ free: string; locked: string } | null> {
     try {
       const portfolioResponse = await this.getAccountBalancesInternal();
       if (!portfolioResponse.success || !portfolioResponse.data) {
         return null;
       }
 
-      const assetBalance = portfolioResponse.data.assets.find(
-        (balance) => balance.asset === asset
-      );
+      const assetBalance = portfolioResponse.data.assets.find((balance) => balance.asset === asset);
 
       return assetBalance
         ? {
@@ -335,9 +311,7 @@ export class MexcPortfolioService
   /**
    * Get enhanced portfolio with market data
    */
-  async getEnhancedPortfolio(
-    tickers?: Ticker[]
-  ): Promise<MexcServiceResponse<Portfolio>> {
+  async getEnhancedPortfolio(tickers?: Ticker[]): Promise<MexcServiceResponse<Portfolio>> {
     try {
       const balancesResponse = await this.getAccountBalancesInternal();
 
@@ -349,10 +323,7 @@ export class MexcPortfolioService
 
       // If tickers provided, calculate enhanced metrics
       if (tickers && tickers.length > 0) {
-        const enhancedPortfolio = this.calculatePortfolioMetrics(
-          portfolio.assets,
-          tickers
-        );
+        const enhancedPortfolio = this.calculatePortfolioMetrics(portfolio.assets, tickers);
         return {
           success: true,
           data: enhancedPortfolio,
@@ -380,18 +351,14 @@ export class MexcPortfolioService
   /**
    * Calculate detailed portfolio metrics
    */
-  private calculatePortfolioMetrics(
-    assets: BalanceEntry[],
-    tickers: Ticker[]
-  ): Portfolio {
+  private calculatePortfolioMetrics(assets: BalanceEntry[], tickers: Ticker[]): Portfolio {
     const tickerMap = new Map(tickers.map((t) => [t.symbol, t]));
     let totalUsdtValue = 0;
     let totalPnl = 0;
 
     // Calculate enhanced balance data
     const enhancedAssets = assets.map((balance) => {
-      const total =
-        Number.parseFloat(balance.free) + Number.parseFloat(balance.locked);
+      const total = Number.parseFloat(balance.free) + Number.parseFloat(balance.locked);
       let usdtValue = 0;
 
       if (balance.asset === "USDT") {
@@ -439,8 +406,7 @@ export class MexcPortfolioService
       };
     });
 
-    const pnlPercent =
-      totalUsdtValue > 0 ? (totalPnl / totalUsdtValue) * 100 : 0;
+    const pnlPercent = totalUsdtValue > 0 ? (totalPnl / totalUsdtValue) * 100 : 0;
 
     return {
       totalValue: Number.parseFloat(totalUsdtValue.toFixed(6)),
@@ -470,10 +436,7 @@ export class MexcPortfolioService
       // Create simple allocation based on asset values
       const allocation = this.calculateAllocation(portfolio.assets);
       const concentrationRisk = this.calculateConcentrationRisk(allocation);
-      const diversificationScore = this.calculateDiversificationScore(
-        assetCount,
-        allocation
-      );
+      const diversificationScore = this.calculateDiversificationScore(assetCount, allocation);
 
       const analysisData = {
         summary: {
@@ -487,15 +450,9 @@ export class MexcPortfolioService
         risk: {
           concentrationRisk,
           diversificationScore,
-          riskLevel: this.assessRiskLevel(
-            concentrationRisk,
-            diversificationScore
-          ),
+          riskLevel: this.assessRiskLevel(concentrationRisk, diversificationScore),
         },
-        recommendations: this.generateRecommendations(
-          concentrationRisk,
-          diversificationScore
-        ),
+        recommendations: this.generateRecommendations(concentrationRisk, diversificationScore),
       };
 
       return {
@@ -533,7 +490,7 @@ export class MexcPortfolioService
       assets.forEach((asset) => {
         if (asset.usdtValue && asset.usdtValue > 0) {
           allocation[asset.asset] = Number.parseFloat(
-            ((asset.usdtValue / totalValue) * 100).toFixed(2)
+            ((asset.usdtValue / totalValue) * 100).toFixed(2),
           );
         }
       });
@@ -545,17 +502,12 @@ export class MexcPortfolioService
   /**
    * Calculate concentration risk (0-100, higher = more risk)
    */
-  private calculateConcentrationRisk(
-    allocation: Record<string, number>
-  ): number {
+  private calculateConcentrationRisk(allocation: Record<string, number>): number {
     const allocations = Object.values(allocation);
     if (allocations.length === 0) return 0;
 
     // Calculate Herfindahl-Hirschman Index (HHI)
-    const hhi = allocations.reduce(
-      (sum, percentage) => sum + (percentage / 100) ** 2,
-      0
-    );
+    const hhi = allocations.reduce((sum, percentage) => sum + (percentage / 100) ** 2, 0);
 
     // Convert to 0-100 scale (higher = more concentrated = more risk)
     return Number.parseFloat((hhi * 100).toFixed(2));
@@ -566,7 +518,7 @@ export class MexcPortfolioService
    */
   private calculateDiversificationScore(
     assetCount: number,
-    allocation: Record<string, number>
+    allocation: Record<string, number>,
   ): number {
     if (assetCount === 0) return 0;
 
@@ -582,10 +534,7 @@ export class MexcPortfolioService
   /**
    * Assess overall risk level
    */
-  private assessRiskLevel(
-    concentrationRisk: number,
-    diversificationScore: number
-  ): string {
+  private assessRiskLevel(concentrationRisk: number, diversificationScore: number): string {
     if (concentrationRisk > 50 || diversificationScore < 30) return "HIGH";
     if (concentrationRisk > 25 || diversificationScore < 60) return "MEDIUM";
     return "LOW";
@@ -596,14 +545,12 @@ export class MexcPortfolioService
    */
   private generateRecommendations(
     concentrationRisk: number,
-    diversificationScore: number
+    diversificationScore: number,
   ): string[] {
     const recommendations: string[] = [];
 
     if (concentrationRisk > 50) {
-      recommendations.push(
-        "Consider reducing position sizes in dominant assets"
-      );
+      recommendations.push("Consider reducing position sizes in dominant assets");
     }
 
     if (diversificationScore < 40) {
@@ -623,9 +570,7 @@ export class MexcPortfolioService
  */
 let portfolioServiceInstance: MexcPortfolioService | null = null;
 
-export function getMexcPortfolioService(
-  config?: UnifiedMexcConfig
-): MexcPortfolioService {
+export function getMexcPortfolioService(config?: UnifiedMexcConfig): MexcPortfolioService {
   if (!portfolioServiceInstance) {
     portfolioServiceInstance = new MexcPortfolioService(config);
   }
