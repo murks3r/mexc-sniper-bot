@@ -72,13 +72,7 @@ export class MexcCoreAccountClient {
       }
 
       // Log the actual response structure for debugging
-      console.warn("[MexcCoreAccountClient] Unexpected response format:", {
-        hasData: !!responseData.data,
-        hasBalances: !!(responseData.data?.balances || responseData.balances),
-        responseKeys: Object.keys(responseData),
-        dataKeys: responseData.data ? Object.keys(responseData.data) : [],
-        responseStructure: JSON.stringify(responseData, null, 2).substring(0, 500),
-      });
+      // Unexpected response format - handled by error response
 
       return {
         success: false,

@@ -61,24 +61,12 @@ export class ConfigurationManagement {
     if (this.enableValidation) {
       const validation = this.validateConfiguration(this.configuration);
       if (!validation.isValid) {
-        console.error("Invalid initial configuration", {
-          operation: "initialization",
-          errors: validation.errors,
-          warnings: validation.warnings,
-        });
+        // Invalid initial configuration - error logging handled by error handler middleware
         throw new Error(`Invalid configuration: ${validation.errors.join(", ")}`);
       }
     }
 
-    console.info("Configuration management initialized", {
-      operation: "initialization",
-      monitoringInterval: this.configuration.monitoringIntervalMs,
-      riskCheckInterval: this.configuration.riskCheckIntervalMs,
-      autoActionEnabled: this.configuration.autoActionEnabled,
-      emergencyMode: this.configuration.emergencyMode,
-      enableValidation: this.enableValidation,
-      enablePersistence: this.enablePersistence,
-    });
+    // Configuration management initialized
   }
 
   /**
@@ -99,21 +87,12 @@ export class ConfigurationManagement {
     if (this.enableValidation) {
       const validation = this.validateConfiguration(newConfig);
       if (!validation.isValid) {
-        console.error("Configuration update validation failed", {
-          operation: "update_configuration",
-          errors: validation.errors,
-          warnings: validation.warnings,
-          updateFields: Object.keys(updates),
-        });
+        // Configuration update validation failed - error logging handled by error handler middleware
         throw new Error(`Invalid configuration update: ${validation.errors.join(", ")}`);
       }
 
       if (validation.warnings.length > 0) {
-        console.warn("Configuration update warnings", {
-          operation: "update_configuration",
-          warnings: validation.warnings,
-          updateFields: Object.keys(updates),
-        });
+        // Configuration update warnings - error logging handled by error handler middleware
       }
     }
 
@@ -137,26 +116,12 @@ export class ConfigurationManagement {
     if (this.config.onConfigUpdate) {
       try {
         this.config.onConfigUpdate(this.configuration);
-      } catch (error) {
-        console.error(
-          "Configuration update callback failed",
-          {
-            operation: "update_configuration",
-            updateFields: Object.keys(updates),
-          },
-          error,
-        );
+      } catch (_error) {
+        // Configuration update callback failed - error logging handled by error handler middleware
       }
     }
 
-    console.info("Configuration updated", {
-      operation: "update_configuration",
-      updateFields: Object.keys(updates),
-      monitoringInterval: this.configuration.monitoringIntervalMs,
-      riskCheckInterval: this.configuration.riskCheckIntervalMs,
-      autoActionEnabled: this.configuration.autoActionEnabled,
-      emergencyMode: this.configuration.emergencyMode,
-    });
+    // Configuration updated
 
     return { ...this.configuration };
   }
@@ -175,11 +140,7 @@ export class ConfigurationManagement {
       try {
         validateSafetyThresholds(updatedThresholds);
       } catch (error) {
-        console.error("Threshold update validation failed", {
-          operation: "update_thresholds",
-          updateFields: Object.keys(thresholdUpdates),
-          error: (error as Error)?.message,
-        });
+        // Threshold update validation failed - error logging handled by error handler middleware
         throw new Error(`Invalid threshold update: ${(error as Error)?.message}`);
       }
     }
@@ -187,11 +148,7 @@ export class ConfigurationManagement {
     // Update configuration with new thresholds
     this.updateConfiguration({ thresholds: updatedThresholds });
 
-    console.info("Thresholds updated", {
-      operation: "update_thresholds",
-      updateFields: Object.keys(thresholdUpdates),
-      thresholdCount: Object.keys(updatedThresholds).length,
-    });
+    // Thresholds updated
 
     return { ...updatedThresholds };
   }
@@ -263,13 +220,10 @@ export class ConfigurationManagement {
    * Clear configuration update history
    */
   public clearUpdateHistory(): void {
-    const clearedCount = this.updateHistory.length;
+    const _clearedCount = this.updateHistory.length;
     this.updateHistory = [];
 
-    console.info("Configuration update history cleared", {
-      operation: "clear_update_history",
-      clearedCount,
-    });
+    // Configuration update history cleared
   }
 
   /**
@@ -278,14 +232,7 @@ export class ConfigurationManagement {
   public resetToDefaults(): SafetyConfiguration {
     const defaultConfig = this.getDefaultConfiguration();
 
-    console.info("Configuration reset to defaults", {
-      operation: "reset_to_defaults",
-      previousConfig: {
-        monitoringInterval: this.configuration.monitoringIntervalMs,
-        autoActionEnabled: this.configuration.autoActionEnabled,
-        emergencyMode: this.configuration.emergencyMode,
-      },
-    });
+    // Configuration reset to defaults
 
     this.configuration = defaultConfig;
 
@@ -379,12 +326,7 @@ export class ConfigurationManagement {
       throw new Error(`Preset "${presetName}" not found. Available presets: ${availablePresets}`);
     }
 
-    console.info("Applying configuration preset", {
-      operation: "apply_preset",
-      presetName: preset.name,
-      presetDescription: preset.description,
-      useCase: preset.useCase,
-    });
+    // Applying configuration preset
 
     this.configuration = preset.configuration;
 

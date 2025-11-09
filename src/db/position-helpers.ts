@@ -53,7 +53,7 @@ export async function createPosition(params: CreatePositionParams): Promise<numb
     status: "open",
   };
 
-  const [inserted] = await db.insert(positions).values(newPosition).returning({ id: positions.id });
+  const [inserted] = await db.insert(positions).values(newPosition).returning();
   return inserted.id;
 }
 

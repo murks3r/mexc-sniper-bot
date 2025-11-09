@@ -82,8 +82,8 @@ export async function GET() {
         if (hasCredentials) {
           credentialSource = "database";
         }
-      } catch (error) {
-        console.warn("Failed to retrieve user credentials:", { error: error });
+      } catch (_error) {
+        // Failed to retrieve user credentials - error logging handled by error handler middleware
       }
     }
 
@@ -253,7 +253,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Health check failed:", { error: error });
+    // Health check failed - error logging handled by error handler middleware
 
     const overallLatency = Date.now() - startTime;
     response.status = "unhealthy";

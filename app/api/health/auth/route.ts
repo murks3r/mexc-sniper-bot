@@ -67,9 +67,7 @@ export async function GET() {
         user_present: Boolean(session.user),
       };
     } catch (sdkError) {
-      console.error("[Auth Health Check] Supabase SDK Error:", {
-        error: sdkError instanceof Error ? sdkError.message : String(sdkError),
-      });
+      // Auth Health Check Supabase SDK Error - error logging handled by error handler middleware
       supabaseStatus = "error";
       authTestResult = {
         sdk_accessible: false,
@@ -147,7 +145,7 @@ export async function GET() {
       version: "2.0.0-supabase",
     });
   } catch (error) {
-    console.error("[Auth Health Check] Unexpected error:", { error: error });
+    // Auth Health Check Unexpected error - error logging handled by error handler middleware
 
     const errorObj = error as Error | { message?: string };
     return NextResponse.json(

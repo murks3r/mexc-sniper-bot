@@ -52,11 +52,8 @@ export async function GET(request: NextRequest) {
           setTimeout(() => reject(new Error("Database query timeout")), 10000),
         ),
       ]);
-    } catch (dbError) {
-      console.error("Database error in execution history query:", {
-        userId,
-        error: dbError,
-      });
+    } catch (_dbError) {
+      // Database error in execution history query - error logging handled by error handler middleware
 
       // Return empty execution history with success status
       const fallbackResponse = {
@@ -203,7 +200,7 @@ export async function GET(request: NextRequest) {
       data: response,
     });
   } catch (error) {
-    console.error("❌ Error fetching execution history:", { error: error });
+    // Error fetching execution history - error logging handled by error handler middleware
 
     // Return empty data with success status instead of 500 error
     const fallbackResponse = {

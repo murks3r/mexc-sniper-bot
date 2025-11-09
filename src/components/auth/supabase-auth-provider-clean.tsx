@@ -4,6 +4,7 @@ import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
+import { createSimpleLogger } from "../../lib/unified-logger";
 
 type SupabaseAuthContextType = {
   user: User | null;
@@ -11,9 +12,9 @@ type SupabaseAuthContextType = {
   isLoading: boolean;
   isHydrated: boolean;
   signOut: () => Promise<AuthError | null>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithProvider: (provider: "google" | "github") => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithProvider: (provider: "google" | "github") => Promise<{ error: Error | null }>;
 };
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
@@ -27,6 +28,7 @@ export function SupabaseAuthProvider({
   children,
   initialSession = null,
 }: SupabaseAuthProviderProps) {
+  const logger = createSimpleLogger("SupabaseAuthProvider");
   const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [session, setSession] = useState<Session | null>(initialSession);
   const [isLoading, setIsLoading] = useState(!initialSession);
@@ -78,7 +80,7 @@ export function SupabaseAuthProvider({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.email);
+      logger.debug("Auth state changed", { event, email: session?.user?.email });
 
       setSession(session);
       setUser(session?.user ?? null);
@@ -111,7 +113,7 @@ export function SupabaseAuthProvider({
     });
 
     return () => subscription.unsubscribe();
-  }, [router, initialSession]);
+  }, [router, initialSession, logger.debug]);
 
   const signOut = async () => {
     const supabase = getSupabaseBrowserClient();

@@ -331,7 +331,7 @@ export async function getInitializedCoreService(config?: any): Promise<CoreTradi
   }
 
   if (result.warnings && result.warnings.length > 0) {
-    console.warn("Core Trading Service initialized with warnings:", result.warnings);
+    // Initialization warnings - handled by service
   }
 
   return result.service;

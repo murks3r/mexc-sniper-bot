@@ -11,6 +11,7 @@
 
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "@/src/db";
+import { createSimpleLogger } from "./unified-logger";
 
 // Type definitions for real-time events
 export interface TradingDataUpdate {
@@ -72,6 +73,7 @@ export class SupabaseRealtimeManager {
   private isConnected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private logger = createSimpleLogger("SupabaseRealtimeManager");
   private reconnectDelay = 1000;
 
   constructor() {
@@ -121,16 +123,18 @@ export class SupabaseRealtimeManager {
    */
   private async handleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[Realtime] Max reconnection attempts reached");
+      this.logger.error("Max reconnection attempts reached");
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * 2 ** (this.reconnectAttempts - 1);
 
-    console.log(
-      `[Realtime] Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`,
-    );
+    this.logger.info("Attempting reconnect", {
+      attempt: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
+      delay,
+    });
 
     setTimeout(() => {
       this.resubscribeAll();
@@ -141,13 +145,17 @@ export class SupabaseRealtimeManager {
    * Resubscribe to all channels after reconnection
    */
   private resubscribeAll() {
-    console.log("[Realtime] Resubscribing to all channels");
+    this.logger.info("Resubscribing to all channels");
     for (const [channelName, channel] of this.channels) {
       try {
         channel.unsubscribe();
         // The individual subscribe methods will recreate the channels
       } catch (error) {
-        console.error(`[Realtime] Error resubscribing to ${channelName}:`, error);
+        this.logger.error(
+          "Error resubscribing to channel",
+          { channelName },
+          error instanceof Error ? error : new Error(String(error)),
+        );
       }
     }
   }
@@ -180,7 +188,7 @@ export class SupabaseRealtimeManager {
         },
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Transactions subscription status: ${status}`);
+        this.logger.debug("Transactions subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -222,7 +230,7 @@ export class SupabaseRealtimeManager {
         },
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Portfolio subscription status: ${status}`);
+        this.logger.debug("Portfolio subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -264,7 +272,7 @@ export class SupabaseRealtimeManager {
         },
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Snipe targets subscription status: ${status}`);
+        this.logger.debug("Snipe targets subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -303,7 +311,7 @@ export class SupabaseRealtimeManager {
         },
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Execution history subscription status: ${status}`);
+        this.logger.debug("Execution history subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -330,7 +338,7 @@ export class SupabaseRealtimeManager {
         }
       })
       .subscribe((status) => {
-        console.log(`[Realtime] Price updates subscription status: ${status}`);
+        this.logger.debug("Price updates subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -357,7 +365,7 @@ export class SupabaseRealtimeManager {
         }
       })
       .subscribe((status) => {
-        console.log(`[Realtime] System alerts subscription status: ${status}`);
+        this.logger.debug("System alerts subscription status", { status });
       });
 
     this.channels.set(channelName, channel);
@@ -417,7 +425,7 @@ export class SupabaseRealtimeManager {
    * Disconnect all subscriptions
    */
   disconnectAll(): void {
-    console.log("[Realtime] Disconnecting all subscriptions");
+    this.logger.info("Disconnecting all subscriptions");
 
     for (const [channelName, channel] of this.channels) {
       try {

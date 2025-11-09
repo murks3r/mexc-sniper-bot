@@ -19,9 +19,7 @@ export async function GET(request: NextRequest) {
     try {
       userCredentials = await getUserCredentials(userId, "mexc");
     } catch (error) {
-      console.error(`Error retrieving credentials for user ${userId}:`, {
-        error,
-      });
+      // Error retrieving credentials - error logging handled by error handler middleware
       // Check if it's an encryption service error
       if (error instanceof Error && error.message.includes("Encryption service unavailable")) {
         return NextResponse.json(
@@ -80,9 +78,7 @@ export async function GET(request: NextRequest) {
     const balancesResponse = await mexcService.getAccountBalances();
 
     if (!balancesResponse.success) {
-      console.error(`❌ MEXC Account Service Error:`, {
-        error: balancesResponse.error,
-      });
+      // MEXC Account Service Error - error logging handled by error handler middleware
 
       // Determine appropriate status code based on error type
       let statusCode = 502; // Default: Bad Gateway (upstream service issue)
@@ -133,9 +129,7 @@ export async function GET(request: NextRequest) {
 
     const { balances, totalUsdtValue } = balancesResponse.data;
     const lastUpdated = (balancesResponse.data as any).lastUpdated || new Date().toISOString();
-    console.info(
-      `✅ MEXC Account Service Success - Found ${balances.length} balances with total value: ${totalUsdtValue.toFixed(2)} USDT`,
-    );
+    // MEXC Account Service Success
 
     const message = userCredentials
       ? `Using user API credentials - ${balances.length} assets with balance`
@@ -155,7 +149,7 @@ export async function GET(request: NextRequest) {
       timestamp: balancesResponse.timestamp,
     });
   } catch (error) {
-    console.error("MEXC account fetch failed:", { error: error });
+    // MEXC account fetch failed - error logging handled by error handler middleware
 
     return NextResponse.json(
       {

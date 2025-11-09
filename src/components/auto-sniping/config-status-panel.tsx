@@ -32,7 +32,15 @@ import {
 import { Progress } from "@/src/components/ui/progress";
 import { Separator } from "@/src/components/ui/separator";
 import { useConfigValidation } from "@/src/hooks/use-config-validation";
-import type { ConfigValidationResult } from "@/src/services/api/mexc-config-validator";
+
+type ConfigValidationResult = {
+  component: string;
+  status: string;
+  isValid: boolean;
+  message?: string;
+  timestamp?: string | number | Date;
+  details?: Record<string, unknown>;
+};
 
 interface ConfigStatusPanelProps {
   className?: string;
@@ -360,10 +368,12 @@ export function ConfigStatusPanel({
                       <>
                         <Separator className="my-3" />
                         <div className="space-y-2">
-                          <div className="text-sm">
-                            <strong>Timestamp:</strong>{" "}
-                            {new Date(result.timestamp).toLocaleString()}
-                          </div>
+                          {result.timestamp && (
+                            <div className="text-sm">
+                              <strong>Timestamp:</strong>{" "}
+                              {new Date(result.timestamp).toLocaleString()}
+                            </div>
+                          )}
                           {result.details && (
                             <div className="text-sm">
                               <strong>Details:</strong>

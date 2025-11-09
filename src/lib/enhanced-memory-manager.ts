@@ -6,6 +6,7 @@
  */
 
 import { EventEmitter } from "node:events";
+import { createSimpleLogger } from "./unified-logger";
 
 export interface MemoryMetrics {
   heapUsed: number;
@@ -49,6 +50,7 @@ export class EnhancedMemoryManager extends EventEmitter {
   private lastGcTime: number = 0;
   private cacheCleanupHandlers: (() => void)[] = [];
   private memoryLeakDetected: boolean = false;
+  private logger = createSimpleLogger("EnhancedMemoryManager");
 
   private readonly config: MemoryPressureConfig = {
     warningThreshold: 0.7, // 70%
@@ -74,7 +76,7 @@ export class EnhancedMemoryManager extends EventEmitter {
       this.collectMetrics();
     }, this.config.monitoringInterval);
 
-    console.log("[Memory Manager] Started memory monitoring");
+    this.logger.info("Started memory monitoring");
   }
 
   stopMonitoring(): void {
@@ -86,7 +88,7 @@ export class EnhancedMemoryManager extends EventEmitter {
       this.monitoringInterval = undefined;
     }
 
-    console.log("[Memory Manager] Stopped memory monitoring");
+    this.logger.info("Stopped memory monitoring");
   }
 
   private collectMetrics(): void {
@@ -234,9 +236,9 @@ export class EnhancedMemoryManager extends EventEmitter {
 
         const heapFreed = beforeGc.heapUsed - afterGc.heapUsed;
 
-        console.log(
-          `[Memory Manager] Garbage collection completed: freed ${(heapFreed / 1024 / 1024).toFixed(2)}MB`,
-        );
+        this.logger.info("Garbage collection completed", {
+          heapFreedMB: (heapFreed / 1024 / 1024).toFixed(2),
+        });
 
         this.emit("gc-completed", {
           beforeGc,
@@ -245,21 +247,29 @@ export class EnhancedMemoryManager extends EventEmitter {
           timestamp: now,
         });
       } else {
-        console.warn("[Memory Manager] Garbage collection not available (--expose-gc not enabled)");
+        this.logger.warn("Garbage collection not available (--expose-gc not enabled)");
       }
     } catch (error) {
-      console.error("[Memory Manager] Garbage collection failed:", error);
+      this.logger.error(
+        "Garbage collection failed",
+        {},
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
   }
 
   triggerCacheCleanup(): void {
-    console.log("[Memory Manager] Triggering cache cleanup");
+    this.logger.info("Triggering cache cleanup");
 
     this.cacheCleanupHandlers.forEach((handler, index) => {
       try {
         handler();
       } catch (error) {
-        console.error(`[Memory Manager] Cache cleanup handler ${index} failed:`, error);
+        this.logger.error(
+          "Cache cleanup handler failed",
+          { index },
+          error instanceof Error ? error : new Error(String(error)),
+        );
       }
     });
 
@@ -387,7 +397,7 @@ export class EnhancedMemoryManager extends EventEmitter {
 
   // Utility method for manual cleanup
   async forceCleanup(): Promise<void> {
-    console.log("[Memory Manager] Force cleanup initiated");
+    this.logger.info("Force cleanup initiated");
 
     this.triggerGarbageCollection();
     this.triggerCacheCleanup();
@@ -397,9 +407,9 @@ export class EnhancedMemoryManager extends EventEmitter {
 
     const afterMetrics = this.getCurrentMetrics();
     if (afterMetrics) {
-      console.log(
-        `[Memory Manager] Force cleanup completed. Heap utilization: ${(afterMetrics.heapUtilization * 100).toFixed(2)}%`,
-      );
+      this.logger.info("Force cleanup completed", {
+        heapUtilizationPercent: (afterMetrics.heapUtilization * 100).toFixed(2),
+      });
     }
   }
 }

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getLogger } from "@/src/lib/unified-logger";
 import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 
 export async function GET(request: NextRequest) {
@@ -8,7 +9,8 @@ export async function GET(request: NextRequest) {
     const interval = searchParams.get("interval") || "1d";
     const limit = parseInt(searchParams.get("limit") || "90", 10);
 
-    console.log("[API] Fetching klines data:", { symbol, interval, limit });
+    const logger = getLogger("market-data-api");
+    logger.info("Fetching klines data", { symbol, interval, limit });
 
     const mexcService = await getUnifiedMexcService();
 
@@ -36,9 +38,9 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Fallback to ticker data if klines not available
-      console.log("[API] Klines not available, falling back to ticker data");
+      logger.warn("Klines not available, falling back to ticker data", { symbol });
 
-      const tickerResponse = await mexcService.get24hrTicker(symbol);
+      const tickerResponse = await mexcService.getTicker(symbol);
 
       if (
         tickerResponse?.success &&
@@ -77,11 +79,17 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (error) {
-    console.error("[API] Error fetching market data:", error);
+    const logger = getLogger("market-data-api");
+    const url = new URL(request.url);
+    const symbol = url.searchParams.get("symbol") || "BTCUSDT";
+    const interval = url.searchParams.get("interval") || "1d";
+    const limit = parseInt(url.searchParams.get("limit") || "90", 10);
 
-    // Return mock data as final fallback
-    const symbol = new URL(request.url).searchParams.get("symbol") || "BTCUSDT";
-    const limit = parseInt(new URL(request.url).searchParams.get("limit") || "90", 10);
+    logger.error(
+      "Error fetching market data",
+      { symbol, interval, limit },
+      error instanceof Error ? error : new Error(String(error)),
+    );
 
     const mockData = Array.from({ length: limit }, (_, i) => {
       const date = new Date();

@@ -12,12 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { userId = "system", timeWindowHours = 24, forceSync = false, dryRun = false } = body;
 
-    console.info("📅 Calendar-to-database sync triggered", {
-      userId,
-      timeWindowHours,
-      forceSync,
-      dryRun,
-    });
+    // Calendar-to-database sync triggered
 
     const result = await calendarSyncService.syncCalendarToDatabase(userId, {
       timeWindowHours,
@@ -42,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("❌ Calendar sync API error:", error);
+    // Calendar sync API error - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown sync error"),
       HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -61,7 +56,7 @@ export async function GET() {
       HTTP_STATUS.OK,
     );
   } catch (error) {
-    console.error("❌ Calendar sync status error:", error);
+    // Calendar sync status error - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown status error"),
       HTTP_STATUS.INTERNAL_SERVER_ERROR,

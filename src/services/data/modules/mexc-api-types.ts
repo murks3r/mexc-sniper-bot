@@ -191,9 +191,4 @@ export type {
   SimpleMarketStats as MarketStats,
   SimplePortfolio as Portfolio,
   SimpleRiskAssessment as RiskAssessment,
-  MexcApiResponse,
-  MexcServiceResponse,
-  MexcApiConfig,
-  MexcCacheConfig,
-  MexcReliabilityConfig,
 };

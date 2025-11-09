@@ -136,6 +136,24 @@ export function useMexcServerTime() {
 }
 
 // MEXC Connectivity Test Hook with Enhanced Source Information and Health Metrics
+export interface MexcConnectivityAlert {
+  type: string;
+  severity: "info" | "warning" | "critical";
+  message: string;
+  timestamp: string;
+  metrics: Record<string, number>;
+}
+
+export interface MexcConnectivityMetrics {
+  totalChecks: number;
+  successRate: number;
+  averageLatency: number;
+  uptime: number;
+  consecutiveFailures: number;
+  qualityScore: number;
+  lastCheckTime?: string;
+}
+
 export interface MexcConnectivityResult {
   connected: boolean;
   hasCredentials: boolean;
@@ -150,7 +168,12 @@ export interface MexcConnectivityResult {
   retryCount?: number;
   latency?: number;
   lastSuccessfulCheck?: string;
-  connectionHealth?: "excellent" | "good" | "poor" | "failed";
+  connectionHealth?: "excellent" | "good" | "fair" | "poor";
+  metrics: MexcConnectivityMetrics;
+  alerts: {
+    count: number;
+    items: MexcConnectivityAlert[];
+  };
 }
 
 export function useMexcConnectivity() {

@@ -65,9 +65,9 @@ export const pollMexcCalendar = inngest.createFunction(
       throw new Error("Invalid sync result format");
     }
 
-      if (!syncResult.success) {
-        throw new Error(`Calendar sync failed: ${syncResult.errors.join(", ")}`);
-      }
+    if (!syncResult.success) {
+      throw new Error(`Calendar sync failed: ${syncResult.errors.join(", ")}`);
+    }
 
     return {
       status: "success",

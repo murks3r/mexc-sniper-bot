@@ -24,7 +24,7 @@ export interface EnhancedValidationResult<T> extends ValidationResult<T> {
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public details?: any,
+    public details?: unknown,
   ) {
     super(message);
     this.name = "ValidationError";

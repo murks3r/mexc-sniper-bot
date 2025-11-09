@@ -12,8 +12,8 @@ interface MemoryStats {
   current: {
     heapUsed: number;
     heapTotal: number;
-    subscriptionCount: number;
-    cacheSize: number;
+    subscriptionCount?: number;
+    cacheSize?: number;
   } | null;
   growthRate: number | null;
 }
@@ -198,7 +198,7 @@ export const OptimizedWebSocketMonitor = memo(() => {
       isConnected: status.isConnected,
       isConnecting: status.isConnecting,
       subscribedSymbols: status.subscribedSymbols,
-      cachedPrices: status.cachedPrices,
+      cachedPrices: Object.keys(status.cachedPrices || {}).length,
       reconnectAttempts: status.reconnectAttempts,
     });
 
@@ -208,8 +208,8 @@ export const OptimizedWebSocketMonitor = memo(() => {
         ? {
             heapUsed: stats.current.heapUsed,
             heapTotal: stats.current.heapTotal,
-            subscriptionCount: stats.current.subscriptionCount,
-            cacheSize: stats.current.cacheSize,
+            subscriptionCount: 0,
+            cacheSize: 0,
           }
         : null,
       growthRate: stats.growthRate,

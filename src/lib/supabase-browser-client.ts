@@ -43,7 +43,7 @@ export function createSupabaseBrowserClient() {
     isSupabaseConfigured = checkSupabaseConfiguration();
 
     if (!isSupabaseConfigured) {
-      console.info("[Supabase] Environment not configured, auth features disabled");
+      // Supabase environment not configured - auth features disabled
       return null;
     }
   }
@@ -62,8 +62,8 @@ export function createSupabaseBrowserClient() {
                 .split("; ")
                 .find((row) => row.startsWith(`${name}=`))
                 ?.split("=")[1];
-            } catch (error) {
-              console.warn("[Supabase] Cookie get error:", error);
+            } catch {
+              // Cookie get error - return undefined
               return undefined;
             }
           },
@@ -78,16 +78,16 @@ export function createSupabaseBrowserClient() {
               if (options?.httpOnly) cookieString += "; httponly";
               if (options?.sameSite) cookieString += `; samesite=${options.sameSite}`;
               document.cookie = cookieString;
-            } catch (error) {
-              console.warn("[Supabase] Cookie set error:", error);
+            } catch {
+              // Cookie set error - handled silently
             }
           },
           remove(name: string, options: any) {
             if (typeof document === "undefined") return;
             try {
               document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${options?.path || "/"}`;
-            } catch (error) {
-              console.warn("[Supabase] Cookie remove error:", error);
+            } catch {
+              // Cookie remove error - handled silently
             }
           },
         },
@@ -112,11 +112,8 @@ export function createSupabaseBrowserClient() {
               })
               .catch((error) => {
                 if (error.name === "AbortError") {
-                  const urlStr = typeof url === "string" ? url : url.toString();
-                  console.warn("[Supabase] Request timeout after 15 seconds", {
-                    url: urlStr.includes("auth") ? "auth endpoint" : urlStr,
-                    note: "This may be normal if Supabase is unreachable or network is slow",
-                  });
+                  const _urlStr = typeof url === "string" ? url : url.toString();
+                  // Request timeout - handled by error handling
                   throw new Error("Request timeout after 15 seconds");
                 }
                 throw error;

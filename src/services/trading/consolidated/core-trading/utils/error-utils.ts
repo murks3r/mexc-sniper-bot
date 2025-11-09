@@ -31,5 +31,3 @@ export function calculateRetryDelay(attempt: number, maxDelay: number = 5000): n
   return Math.min(1000 * 2 ** (attempt - 1), maxDelay);
 }
 
-
-

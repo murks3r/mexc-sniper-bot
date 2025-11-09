@@ -6,9 +6,14 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { PatternDetectionCore } from "@/src/core/pattern-detection";
-import type { NotificationMessage, TradingPriceMessage } from "@/src/lib/websocket-types";
-// Removed: webSocketAgentBridge - agents removed
+// Pattern detection removed per minimization plan
+// import { PatternDetectionCore } from "@/src/core/pattern-detection";
+import type {
+  NotificationMessage,
+  TradingPriceMessage,
+  TradingSignalMessage,
+} from "@/src/lib/websocket-types";
+import { webSocketAgentBridge } from "./websocket-agent-bridge";
 
 // ======================
 // MEXC WebSocket Types
@@ -61,6 +66,8 @@ interface SymbolStatusData {
   timestamp: number;
 }
 
+const AGENT_BRIDGE_ENABLED = process.env.ENABLE_AGENT_BRIDGE === "true";
+
 // ======================
 // Market Data Manager
 // ======================
@@ -69,14 +76,18 @@ export class MarketDataManager {
   private static instance: MarketDataManager;
 
   private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[market-data-manager]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[market-data-manager]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[market-data-manager]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[market-data-manager]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: any, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
   };
 
   // Data caches
@@ -84,10 +95,9 @@ export class MarketDataManager {
   private depthCache = new Map<string, MexcDepthData>();
   private statusCache = new Map<string, SymbolStatusData>();
 
-  // Pattern detection
-  private patternDetection: PatternDetectionCore;
-  private lastPatternCheck = new Map<string, number>();
-  private readonly patternCheckInterval = 15000; // 15 seconds (reduced from 5s)
+  // Pattern detection properties
+  public lastPatternCheck = new Map<string, number>();
+  public readonly patternCheckInterval = 15000; // 15 seconds (reduced from 5s)
 
   // Event handlers
   private onPriceUpdate?: (price: TradingPriceMessage) => void;
@@ -96,7 +106,8 @@ export class MarketDataManager {
   private onNotification?: (notification: NotificationMessage) => void;
 
   private constructor() {
-    this.patternDetection = PatternDetectionCore.getInstance();
+    // Pattern detection removed per minimization plan
+    // this.patternDetection = PatternDetectionCore.getInstance();
   }
 
   static getInstance(): MarketDataManager {
@@ -224,22 +235,27 @@ export class MarketDataManager {
         change: price.changePercent,
       });
 
-      // Notify WebSocket agent bridge via broadcasting
-      if (webSocketAgentBridge.isRunning()) {
-        webSocketAgentBridge.broadcastTradingSignal({
+      if (AGENT_BRIDGE_ENABLED && webSocketAgentBridge.isRunning()) {
+        const signalStrength = Math.min(Math.abs(price.changePercent) * 10, 100);
+        const signal: TradingSignalMessage = {
+          signalId: randomUUID(),
           symbol: price.symbol,
           type: "monitor",
-          strength: Math.min(Math.abs(price.changePercent) * 10, 100),
-          confidence: 0.6,
+          strength: signalStrength,
+          confidence: Math.min(signalStrength + 10, 100),
           source: "price_movement",
-          reasoning: `Significant price movement detected: ${price.changePercent.toFixed(2)}%`,
-          timeframe: "1h",
+          reasoning: `Significant price movement: ${price.changePercent.toFixed(2)}%`,
+          timeframe: "1m",
+          timestamp: Date.now(),
           metadata: {
+            price: price.price,
             priceChange: price.change,
             priceChangePercent: price.changePercent,
             volume: price.volume,
           },
-        });
+        };
+
+        await webSocketAgentBridge.broadcastTradingSignal(signal);
       }
     }
   }
@@ -304,15 +320,17 @@ export class MarketDataManager {
       }
 
       // Create trading signal for auto-sniping
-      const tradingSignal = {
+      const tradingSignal: TradingSignalMessage = {
+        signalId: randomUUID(),
         symbol: status.symbol,
-        type: "buy" as const,
+        type: "buy",
         strength: 85,
-        confidence: 0.85,
-        source: "pattern_discovery" as const,
+        confidence: 85,
+        source: "pattern_discovery",
         reasoning: "Ready state pattern detected (sts:2, st:2, tt:4)",
         targetPrice: priceData?.price,
         timeframe: "1h",
+        timestamp: Date.now(),
         metadata: {
           patternType: "ready_state",
           sts: status.sts,
@@ -322,7 +340,9 @@ export class MarketDataManager {
         },
       };
 
-      // Removed: WebSocket agent bridge notification - agents removed
+      if (AGENT_BRIDGE_ENABLED && webSocketAgentBridge.isRunning()) {
+        await webSocketAgentBridge.broadcastTradingSignal(tradingSignal);
+      }
 
       this.logger.info("Ready state pattern broadcasted", {
         symbol: status.symbol,
@@ -379,55 +399,8 @@ export class MarketDataManager {
         timestamp: status.timestamp,
       };
 
-      // Analyze pattern with the pattern detection core using mock symbol entry
-      const mockSymbolEntry = {
-        cd: status.symbol,
-        sts: status.sts,
-        st: status.st,
-        tt: status.tt,
-        ps: status.ps,
-        qs: status.qs,
-        ca: status.ca,
-      };
-
-      const analysisResult = await this.patternDetection.analyzePatterns({
-        symbols: [mockSymbolEntry],
-        analysisType: "monitoring" as const,
-        confidenceThreshold: 70,
-      });
-
-      if (analysisResult && analysisResult.matches.length > 0) {
-        const bestMatch = analysisResult.matches[0];
-        if (bestMatch.confidence > 70) {
-          // High confidence pattern found
-          const notification: NotificationMessage = {
-            notificationId: randomUUID(),
-            type: "info",
-            title: "Enhanced Pattern Detected",
-            message: `Enhanced analysis found ${bestMatch.patternType} pattern for ${status.symbol}`,
-            priority: "medium",
-            category: "pattern",
-            timestamp: Date.now(),
-            metadata: {
-              symbol: status.symbol,
-              confidence: bestMatch.confidence,
-              sts: status.sts,
-              st: status.st,
-              tt: status.tt,
-            },
-          };
-
-          if (this.onNotification) {
-            this.onNotification(notification);
-          }
-
-          this.logger.info("Enhanced analysis pattern detected", {
-            symbol: status.symbol,
-            confidence: bestMatch.confidence,
-            patternType: bestMatch.patternType,
-          });
-        }
-      }
+      // Pattern detection removed per minimization plan (1b - no pattern detection)
+      // Pattern analysis functionality has been removed to focus on core auto-sniping
     } catch (error) {
       this.logger.error("Enhanced analysis failed", {
         symbol: status.symbol,

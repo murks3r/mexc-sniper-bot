@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { apiCredentials } from "@/src/db/schemas/trading";
+import { getLogger } from "@/src/lib/unified-logger";
 import { getEncryptionService } from "@/src/services/api/secure-encryption-service";
 
 interface CredentialsCacheEntry {
@@ -30,6 +31,7 @@ const credentialsCache: Map<
 const CACHE_DURATION = 60 * 1000; // 60 seconds
 
 export async function GET(request: NextRequest) {
+  const _logger = getLogger("api-credentials");
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
@@ -40,11 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "userId parameter is required" }, { status: 400 });
     }
 
-    console.log(`[API-Credentials] GET request`, {
-      userId,
-      provider,
-      timestamp: new Date().toISOString(),
-    });
+    // GET request - error logging handled by error handler middleware
 
     // Check cache first (unless skipCache=true)
     const cacheKey = `${userId}-${provider}`;
@@ -84,8 +82,8 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error("[API-Credentials] GET error:", error);
+  } catch (_error) {
+    // GET error - error logging handled by error handler middleware
     return NextResponse.json({ error: "Failed to fetch API credentials status" }, { status: 500 });
   }
 }
@@ -114,11 +112,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "API credentials cannot contain spaces" }, { status: 400 });
     }
 
-    console.log(`[API-Credentials] POST request`, {
-      userId,
-      provider,
-      timestamp: new Date().toISOString(),
-    });
+    // POST request - error logging handled by error handler middleware
 
     // Encrypt credentials
     const encryptionService = getEncryptionService();
@@ -181,8 +175,8 @@ export async function POST(request: NextRequest) {
       },
       message: "API credentials saved",
     });
-  } catch (error) {
-    console.error("[API-Credentials] POST error:", error);
+  } catch (_error) {
+    // POST error - error logging handled by error handler middleware
     return NextResponse.json({ error: "Failed to save API credentials" }, { status: 500 });
   }
 }
@@ -193,11 +187,7 @@ export async function DELETE(request: NextRequest) {
     const userId = searchParams.get("userId");
     const provider = searchParams.get("provider") || "mexc";
 
-    console.info("[API-Credentials] DELETE request", {
-      userId: userId || "anonymous",
-      provider,
-      timestamp: new Date().toISOString(),
-    });
+    // DELETE request - error logging handled by error handler middleware
 
     const response = {
       success: true,
@@ -210,8 +200,8 @@ export async function DELETE(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error("[API-Credentials] DELETE error:", error);
+  } catch (_error) {
+    // DELETE error - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

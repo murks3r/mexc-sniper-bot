@@ -456,8 +456,15 @@ export const StandardErrors = {
     return handleApiError(error);
   },
 
-  badRequest: (message: string, details?: any) => {
-    const error = new ValidationError(message, undefined, undefined, details);
+  badRequest: (message: string, details?: unknown) => {
+    const error = new ValidationError(
+      message,
+      undefined,
+      undefined,
+      details && typeof details === "object" && details !== null
+        ? (details as Record<string, unknown>)
+        : undefined,
+    );
     return handleApiError(error);
   },
 

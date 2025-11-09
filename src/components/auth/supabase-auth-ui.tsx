@@ -21,7 +21,12 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
   const supabase = getSupabaseBrowserClient();
   const router = useRouter();
   // Use session from provider to avoid duplicate session checks
-  const { user: contextUser, isLoading: contextLoading, signInAnonymously, isAnonymous } = useAuth();
+  const {
+    user: contextUser,
+    isLoading: contextLoading,
+    signInAnonymously,
+    isAnonymous,
+  } = useAuth();
   const [user, setUser] = useState<any>(contextUser);
   const [isLoading, setIsLoading] = useState(contextLoading);
   const [mounted, setMounted] = useState(false);
@@ -218,9 +223,7 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
         <CardHeader>
           <CardTitle className="text-foreground">Welcome back!</CardTitle>
           <CardDescription className="text-muted-foreground">
-            {isAnonymous
-              ? "Signed in as Guest"
-              : `Signed in as ${user.email || "User"}`}
+            {isAnonymous ? "Signed in as Guest" : `Signed in as ${user.email || "User"}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -292,7 +295,7 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
         )}
 
         <Auth
-          supabaseClient={supabase}
+          supabaseClient={supabase as any}
           appearance={{
             theme: ThemeSupa,
             variables: {

@@ -436,6 +436,7 @@ import { databaseOptimizationManager } from "../lib/database-optimization-manage
 import { queryPerformanceMonitor } from "../services/query-performance-monitor";
 // Import necessary schema elements for user preferences (conditional based on database type)
 import { userPreferences as originalUserPreferences } from "./schemas/auth";
+import { userPreferences as supabaseUserPreferences } from "./schemas/supabase-auth";
 
 // Database utilities with retry logic
 export async function initializeDatabase() {

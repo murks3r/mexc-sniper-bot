@@ -26,6 +26,7 @@ export class DatabaseConnectionPool {
   private cache: Map<string, CacheEntry<any>> = new Map();
   private connections: any[] = [];
   private activeConnections: number = 0;
+  public config: ConnectionPoolConfig;
 
   constructor(config: ConnectionPoolConfig = defaultConfig) {
     this.config = config;

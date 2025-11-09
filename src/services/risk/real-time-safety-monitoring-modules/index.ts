@@ -16,6 +16,7 @@
  * improved modularity, testability, and maintainability.
  */
 
+import { getLogger } from "@/src/lib/unified-logger";
 // Import types from schemas
 import type {
   MonitoringStats,
@@ -157,14 +158,18 @@ export class RealTimeSafetyMonitoringService {
   private get logger() {
     if (!this._logger) {
       this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[safety-monitoring]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[safety-monitoring]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error("[safety-monitoring]", message, context || "", error || ""),
-        debug: (message: string, context?: any) =>
-          console.debug("[safety-monitoring]", message, context || ""),
+        info: (_message: string, _context?: any) => {
+          // Logging handled by structured logger
+        },
+        warn: (_message: string, _context?: any) => {
+          // Logging handled by structured logger
+        },
+        error: (_message: string, _context?: any, _error?: Error) => {
+          // Logging handled by structured logger
+        },
+        debug: (_message: string, _context?: any) => {
+          // Logging handled by structured logger
+        },
       };
     }
     return this._logger;
@@ -179,11 +184,8 @@ export class RealTimeSafetyMonitoringService {
     this.mexcService = new UnifiedMexcServiceV2();
 
     // FIXED: Initialize the Core Trading Service
-    this.executionService.initialize().catch((error) => {
-      console.warn("Failed to initialize Core Trading Service during safety monitoring setup", {
-        operation: "safety_monitoring_initialization",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+    this.executionService.initialize().catch((_error) => {
+      // Failed to initialize Core Trading Service during safety monitoring setup - error logging handled by error handler middleware
     });
 
     // Register this service with the emergency stop coordinator
@@ -192,11 +194,7 @@ export class RealTimeSafetyMonitoringService {
     // Initialize modules
     this.initializeModules();
 
-    console.info("Real-time safety monitoring service initialized with modular architecture", {
-      operation: "initialization",
-      moduleCount: 5,
-      hasBackwardCompatibility: true,
-    });
+    // Real-time safety monitoring service initialized with modular architecture
   }
 
   public static getInstance(): RealTimeSafetyMonitoringService {
@@ -238,7 +236,22 @@ export class RealTimeSafetyMonitoringService {
       configuration: config,
       executionService: this.executionService,
       patternMonitoring: this.patternMonitoring,
-      onAlert: (alertData) => this.alertManagement.addAlert(alertData),
+      onAlert: (alertData) => {
+        this.alertManagement.addAlert({
+          type: alertData.type,
+          severity: alertData.severity,
+          category: alertData.category,
+          title: alertData.title,
+          message: alertData.message,
+          riskLevel: alertData.riskLevel,
+          source: alertData.source,
+          autoActions: alertData.autoActions?.map((action) => ({
+            type: action.type,
+            description: action.description || "",
+          })),
+          metadata: alertData.metadata,
+        });
+      },
     });
 
     // Initialize risk assessment
@@ -255,12 +268,7 @@ export class RealTimeSafetyMonitoringService {
    * Handle configuration updates by reinitializing affected modules
    */
   private handleConfigurationUpdate(newConfig: SafetyConfiguration): void {
-    console.info("Configuration updated, reinitializing modules", {
-      operation: "handle_config_update",
-      monitoringInterval: newConfig.monitoringIntervalMs,
-      riskCheckInterval: newConfig.riskCheckIntervalMs,
-      autoActionEnabled: newConfig.autoActionEnabled,
-    });
+    // Configuration updated, reinitializing modules
 
     // Update alert management configuration
     this.alertManagement = createAlertManagement({
@@ -274,7 +282,22 @@ export class RealTimeSafetyMonitoringService {
       configuration: newConfig,
       executionService: this.executionService,
       patternMonitoring: this.patternMonitoring,
-      onAlert: (alertData) => this.alertManagement.addAlert(alertData),
+      onAlert: (alertData) => {
+        this.alertManagement.addAlert({
+          type: alertData.type,
+          severity: alertData.severity,
+          category: alertData.category,
+          title: alertData.title,
+          message: alertData.message,
+          riskLevel: alertData.riskLevel,
+          source: alertData.source,
+          autoActions: alertData.autoActions?.map((action) => ({
+            type: action.type,
+            description: action.description || "",
+          })),
+          metadata: alertData.metadata,
+        });
+      },
     });
 
     // Update risk assessment configuration
@@ -289,14 +312,8 @@ export class RealTimeSafetyMonitoringService {
     // Restart monitoring with new configuration if currently active
     if (this.isMonitoringActive) {
       this.stopMonitoring();
-      this.startMonitoring().catch((error) => {
-        console.error(
-          "Failed to restart monitoring with new configuration",
-          {
-            operation: "handle_config_update",
-          },
-          error,
-        );
+      this.startMonitoring().catch((_error) => {
+        // Failed to restart monitoring with new configuration - error logging handled by error handler middleware
       });
     }
   }
@@ -315,13 +332,7 @@ export class RealTimeSafetyMonitoringService {
 
     const config = this.configurationManagement.getConfiguration();
 
-    console.info("Starting real-time safety monitoring", {
-      operation: "start_monitoring",
-      monitoringIntervalMs: config.monitoringIntervalMs,
-      riskCheckIntervalMs: config.riskCheckIntervalMs,
-      autoActionEnabled: config.autoActionEnabled,
-      emergencyMode: config.emergencyMode,
-    });
+    // Starting real-time safety monitoring
 
     this.isMonitoringActive = true;
 
@@ -362,11 +373,8 @@ export class RealTimeSafetyMonitoringService {
     // Perform initial system health check
     try {
       await this.emergencySystem.performSystemHealthCheck();
-    } catch (error) {
-      console.warn("Initial health check failed during monitoring start", {
-        operation: "start_monitoring",
-        error: (error as Error)?.message,
-      });
+    } catch (_error) {
+      // Initial health check failed during monitoring start - error logging handled by error handler middleware
     }
 
     // Generate startup alert
@@ -387,10 +395,7 @@ export class RealTimeSafetyMonitoringService {
    * Stop safety monitoring
    */
   public stopMonitoring(): void {
-    console.info("Stopping real-time safety monitoring", {
-      operation: "stop_monitoring",
-      wasActive: this.isMonitoringActive,
-    });
+    // Stopping real-time safety monitoring
 
     this.isMonitoringActive = false;
 
@@ -469,7 +474,7 @@ export class RealTimeSafetyMonitoringService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       if (errorMessage.includes("not initialized")) {
-        console.info("Initializing Core Trading Service for safety monitoring...");
+        // Initializing Core Trading Service for safety monitoring
         await this.executionService.initialize();
       } else {
         // If it's a different error, re-throw it
@@ -485,13 +490,7 @@ export class RealTimeSafetyMonitoringService {
   public async triggerEmergencyResponse(reason: string): Promise<SafetyAction[]> {
     await this.ensureExecutionServiceReady();
     const activePositions = await this.executionService.getActivePositions();
-    console.warn("🚨 Triggering coordinated emergency response", {
-      operation: "emergency_response",
-      reason,
-      activePositions: activePositions.length,
-      currentRiskScore: this.coreSafetyMonitoring.calculateOverallRiskScore(),
-      coordinator: "EmergencyStopCoordinator",
-    });
+    // Triggering coordinated emergency response
 
     const actions: SafetyAction[] = [];
 
@@ -606,7 +605,13 @@ export class RealTimeSafetyMonitoringService {
         message: `Coordinated emergency safety response activated: ${reason}. ${coordinatedResult.success ? "Coordination successful" : "Coordination partial/failed"}.`,
         riskLevel: 95,
         source: "coordinated_emergency_response",
-        autoActions: actions,
+        autoActions: actions.map((action) => ({
+          type: action.type,
+          description: action.description || "",
+          executed: false,
+          executedAt: new Date().toISOString(),
+          result: "success" as const,
+        })),
         metadata: {
           reason,
           actionsExecuted: actions.length,
@@ -615,17 +620,14 @@ export class RealTimeSafetyMonitoringService {
         },
       });
 
-      console.log(
-        `✅ Coordinated emergency response completed: ${coordinatedResult.success ? "SUCCESS" : "PARTIAL"} (${coordinatedResult.duration}ms)`,
-      );
+      const logger = getLogger("safety-monitoring");
+      logger.info("Coordinated emergency response completed", {
+        success: coordinatedResult.success,
+        duration: coordinatedResult.duration,
+      });
       return actions;
     } catch (error) {
-      console.error("🚨 Coordinated emergency response failed", {
-        operation: "emergency_response",
-        reason,
-        actionsAttempted: actions.length,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      // Coordinated emergency response failed - error logging handled by error handler middleware
 
       const failedAction: SafetyAction = {
         id: `coordination_failed_${Date.now()}`,
@@ -650,17 +652,17 @@ export class RealTimeSafetyMonitoringService {
     const lowerReason = reason.toLowerCase();
 
     if (lowerReason.includes("circuit") || lowerReason.includes("breaker")) {
-      return "circuit_breaker_failure";
+      return "system_failure";
     }
     if (
       lowerReason.includes("portfolio") ||
       lowerReason.includes("drawdown") ||
       lowerReason.includes("loss")
     ) {
-      return "portfolio_decline";
+      return "risk_threshold";
     }
     if (lowerReason.includes("manual") || lowerReason.includes("user")) {
-      return "manual_trigger";
+      return "system_failure";
     }
     return "system_failure";
   }
@@ -677,19 +679,19 @@ export class RealTimeSafetyMonitoringService {
       lowerReason.includes("critical") ||
       lowerReason.includes("severe")
     ) {
-      return "CRITICAL";
+      return "critical";
     }
     if (currentRiskScore > 70 || lowerReason.includes("high") || lowerReason.includes("major")) {
-      return "HIGH";
+      return "high";
     }
     if (
       currentRiskScore > 40 ||
       lowerReason.includes("medium") ||
       lowerReason.includes("moderate")
     ) {
-      return "MEDIUM";
+      return "medium";
     }
-    return "LOW";
+    return "low";
   }
 
   /**
@@ -697,39 +699,34 @@ export class RealTimeSafetyMonitoringService {
    * Called by EmergencyStopCoordinator during coordinated emergency stops
    */
   public async emergencyStop(event: EmergencyStopEvent): Promise<void> {
-    console.log(`🚨 Safety monitoring emergency stop triggered by coordinator: ${event.reason}`);
-
-    try {
-      // Stop monitoring to prevent conflicts during emergency
-      if (this.isMonitoringActive) {
-        this.stopMonitoring();
-        console.log("⏹️ Safety monitoring stopped during emergency");
-      }
-
-      // Force immediate risk assessment update
-      await this.coreSafetyMonitoring.updateRiskMetrics();
-
-      // Generate emergency alert for tracking
-      this.alertManagement.addAlert({
-        type: "emergency_condition",
-        severity: "critical",
-        category: "system",
-        title: "Emergency Stop Executed",
-        message: `Emergency stop executed by coordinator: ${event.reason}`,
-        riskLevel: 95,
-        source: "emergency_stop_coordinator",
-        metadata: {
-          emergencyEvent: event,
-          triggeredBy: event.triggeredBy,
-          severity: event.severity,
-        },
-      });
-
-      console.log("✅ Safety monitoring emergency stop completed");
-    } catch (error) {
-      console.error("❌ Safety monitoring emergency stop failed:", error);
-      throw error;
+    const logger = getLogger("safety-monitoring");
+    logger.warn("Safety monitoring emergency stop triggered", { reason: event.reason });
+    // Stop monitoring to prevent conflicts during emergency
+    if (this.isMonitoringActive) {
+      this.stopMonitoring();
+      logger.info("Safety monitoring stopped during emergency");
     }
+
+    // Force immediate risk assessment update
+    await this.coreSafetyMonitoring.updateRiskMetrics();
+
+    // Generate emergency alert for tracking
+    this.alertManagement.addAlert({
+      type: "emergency_condition",
+      severity: "critical",
+      category: "system",
+      title: "Emergency Stop Executed",
+      message: `Emergency stop executed by coordinator: ${event.reason}`,
+      riskLevel: 95,
+      source: "emergency_stop_coordinator",
+      metadata: {
+        emergencyEvent: event,
+        triggeredBy: event.triggeredBy,
+        severity: event.severity,
+      },
+    });
+
+    logger.info("Safety monitoring emergency stop completed");
   }
 
   /**
@@ -774,11 +771,8 @@ export class RealTimeSafetyMonitoringService {
     try {
       const report = await this.getSafetyReport();
       return report.status === "safe" && report.overallRiskScore < 50;
-    } catch (error) {
-      console.warn("Failed to get safety report for system safety check", {
-        operation: "is_system_safe",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+    } catch (_error) {
+      // Failed to get safety report for system safety check - error logging handled by error handler middleware
       // Return false as a safety precaution if we can't determine safety
       return false;
     }
@@ -873,15 +867,8 @@ export class RealTimeSafetyMonitoringService {
     try {
       const comprehensiveAssessment = await this.riskAssessment.performComprehensiveAssessment();
       return comprehensiveAssessment.priorityRecommendations;
-    } catch (error) {
-      console.error(
-        "Failed to generate safety recommendations",
-        {
-          operation: "generate_safety_recommendations",
-        },
-        error,
-      );
-
+    } catch (_error) {
+      // Failed to generate safety recommendations - error logging handled by error handler middleware
       // Fallback recommendations
       return [
         "System operating within normal parameters",

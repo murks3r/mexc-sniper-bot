@@ -102,8 +102,8 @@ export async function GET() {
       message: "Trading settings retrieved successfully",
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error("[Trading Settings] GET error:", error);
+  } catch (_error) {
+    // Trading Settings GET error - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,
@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
       message: "Trading settings updated successfully",
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error("[Trading Settings] POST error:", error);
+  } catch (_error) {
+    // Trading Settings POST error - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

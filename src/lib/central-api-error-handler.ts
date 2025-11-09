@@ -9,7 +9,7 @@ export interface ApiError {
   message: string;
   code?: string;
   status?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export function handleApiError(error: unknown): NextResponse {
@@ -40,7 +40,7 @@ export function createApiError(
   message: string,
   code: string = "API_ERROR",
   status: number = 400,
-  details?: any,
+  details?: unknown,
 ): ApiError {
   return {
     message,

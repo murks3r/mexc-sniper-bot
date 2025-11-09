@@ -90,7 +90,7 @@ export class EmergencyManager extends EventEmitter {
    * Execute emergency shutdown
    */
   async executeEmergencyShutdown(reason: string, userId: string): Promise<boolean> {
-    console.info(`[EmergencyManager] Executing emergency shutdown: ${reason}`);
+    /* console.info(`[EmergencyManager] Executing emergency shutdown: ${reason}`); */
 
     try {
       // Update emergency state
@@ -133,7 +133,7 @@ export class EmergencyManager extends EventEmitter {
 
       return true;
     } catch (error) {
-      console.error("[EmergencyManager] Emergency shutdown failed:", error);
+      /* console.error("[EmergencyManager] Emergency shutdown failed:", error); */
 
       await this.alertsManager.createAlert({
         type: "system_degradation",
@@ -242,7 +242,7 @@ export class EmergencyManager extends EventEmitter {
       throw new Error(`Emergency procedure not found: ${procedureId}`);
     }
 
-    console.info(`[EmergencyManager] Executing procedure: ${procedure.name}`);
+    /* console.info(`[EmergencyManager] Executing procedure: ${procedure.name}`); */
 
     try {
       // Removed: Consensus check - agents removed
@@ -287,7 +287,7 @@ export class EmergencyManager extends EventEmitter {
 
       return true;
     } catch (error) {
-      console.error(`[EmergencyManager] Procedure execution failed:`, error);
+      /* console.error(`[EmergencyManager] Procedure execution failed:`, error); */
 
       await this.alertsManager.createAlert({
         type: "emergency_condition",
@@ -418,7 +418,7 @@ export class EmergencyManager extends EventEmitter {
    * Execute an emergency step
    */
   private async executeEmergencyStep(step: EmergencyStep, _procedureId: string): Promise<void> {
-    console.info(`[EmergencyManager] Executing step: ${step.name}`);
+    /* console.info(`[EmergencyManager] Executing step: ${step.name}`); */
 
     // Add timeout wrapper
     const executeWithTimeout = new Promise<void>((resolve, reject) => {
@@ -444,9 +444,9 @@ export class EmergencyManager extends EventEmitter {
   /**
    * Execute a step action (placeholder implementation)
    */
-  private async executeStepAction(action: string): Promise<void> {
+  private async executeStepAction(_action: string): Promise<void> {
     // This would contain the actual implementation of various emergency actions
-    console.info(`[EmergencyManager] Executing action: ${action}`);
+    /* console.info(`[EmergencyManager] Executing action: ${action}`); */
 
     // For now, just simulate the action
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -470,6 +470,6 @@ export class EmergencyManager extends EventEmitter {
       this.procedureHistory = this.procedureHistory.slice(-100);
     }
 
-    console.info(`[EmergencyManager] Recorded action: ${action.type} - ${action.reason}`);
+    /* console.info(`[EmergencyManager] Recorded action: ${action.type} - ${action.reason}`); */
   }
 }

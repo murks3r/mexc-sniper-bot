@@ -13,14 +13,18 @@ import type { AutoSnipeTarget } from "../types";
 
 export class DatabaseOperations {
   private static logger = {
-    info: (message: string, context?: any) =>
-      console.info("[database-operations]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[database-operations]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[database-operations]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[database-operations]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
   };
 
   /**

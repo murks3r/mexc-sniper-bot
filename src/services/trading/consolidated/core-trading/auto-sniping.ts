@@ -15,15 +15,11 @@ import { createPosition, updatePositionOnSell } from "@/src/db/position-helpers"
 import { userPreferences as userPreferencesTable } from "@/src/db/schemas/auth";
 import { executionHistory, positions, snipeTargets } from "@/src/db/schemas/trading";
 import { toSafeError } from "@/src/lib/error-type-utils";
-import { TradingStrategyManager } from "@/src/services/trading/trading-strategy-manager";
-import { serviceConflictDetector } from "../../service-conflict-detector";
-import { calculateRetryDelay, isNonRetryableError } from "./utils/error-utils";
-import { savePositionCloseHistory } from "./utils/execution-history-helpers";
 import {
-  calculateRealizedPnL,
-  shouldTriggerPriceLevel,
-} from "./utils/position-monitoring-utils";
-
+  TradingStrategyManager,
+  tradingStrategyManager,
+} from "@/src/services/trading/trading-strategy-manager";
+import { serviceConflictDetector } from "../../service-conflict-detector";
 import type {
   AutoSnipeTarget,
   CoreTradingConfig,
@@ -33,9 +29,10 @@ import type {
   ServiceResponse,
   TradeParameters,
   TradeResult,
-  TradingStrategy,
 } from "./types";
-
+import { calculateRetryDelay, isNonRetryableError } from "./utils/error-utils";
+import { savePositionCloseHistory } from "./utils/execution-history-helpers";
+import { calculateRealizedPnL, shouldTriggerPriceLevel } from "./utils/position-monitoring-utils";
 
 // Statistics interface for updateStats method
 interface StatsUpdate {
@@ -177,33 +174,70 @@ export class AutoSnipingModule {
       this.context.logger.info("Starting auto-sniping monitoring", {
         interval: this.context.config.snipeCheckInterval,
         confidenceThreshold: this.context.config.confidenceThreshold,
+        currentUserId: this.currentUserId || "not set",
       });
+
+      // CRITICAL: Verify user ID is set before starting (warn if not set, but allow system targets)
+      if (!this.currentUserId) {
+        this.context.logger.warn("Starting auto-sniping without user ID set - will process system targets only", {
+          note: "User ID should be set via setCurrentUser() before starting",
+        });
+      }
 
       this.isActive = true;
 
-      await this.rehydrateOpenPositions().catch((rehydrateError) => {
-        const safe = toSafeError(rehydrateError);
-        this.context.logger.error("Failed to rehydrate open positions", safe);
-      });
+      // Track if intervals were created for cleanup on error
+      let intervalsCreated = false;
 
-      this.autoSnipingInterval = setInterval(() => {
-        void this.processSnipeTargets(this.currentUserId ?? undefined);
-      }, this.context.config.snipeCheckInterval);
+      try {
+        await this.rehydrateOpenPositions().catch((rehydrateError) => {
+          const safe = toSafeError(rehydrateError);
+          this.context.logger.error("Failed to rehydrate open positions", safe);
+        });
 
-      // Start DB-driven SL/TP monitoring loop (idempotent, restart-safe)
-      this.positionCloseInterval = setInterval(() => {
-        void this.monitorDbPositionsAndExecuteSells();
-      }, this.context.config.snipeCheckInterval);
+        this.autoSnipingInterval = setInterval(() => {
+          void this.processSnipeTargets(this.currentUserId ?? undefined);
+        }, this.context.config.snipeCheckInterval);
+        intervalsCreated = true;
 
-      this.triggerPatternDetection();
+        // Start DB-driven SL/TP monitoring loop (idempotent, restart-safe)
+        this.positionCloseInterval = setInterval(() => {
+          void this.monitorDbPositionsAndExecuteSells();
+        }, this.context.config.snipeCheckInterval);
 
-      return {
-        success: true,
-        timestamp: new Date().toISOString(),
-      };
+        this.triggerPatternDetection();
+
+        this.context.logger.info("Auto-sniping monitoring started successfully", {
+          interval: this.context.config.snipeCheckInterval,
+          currentUserId: this.currentUserId || "system only",
+        });
+
+        return {
+          success: true,
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        // Cleanup intervals if they were created
+        if (intervalsCreated) {
+          if (this.autoSnipingInterval) {
+            clearInterval(this.autoSnipingInterval);
+            this.autoSnipingInterval = null;
+          }
+          if (this.positionCloseInterval) {
+            clearInterval(this.positionCloseInterval);
+            this.positionCloseInterval = null;
+          }
+        }
+        // Reset active flag on error
+        this.isActive = false;
+        throw error;
+      }
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Failed to start auto-sniping", safeError);
+
+      // Ensure state is clean on error
+      this.isActive = false;
 
       return {
         success: false,
@@ -406,7 +440,7 @@ export class AutoSnipingModule {
             exitPrice,
             quantity: executedQty,
             realizedPnl,
-            realizedPnlPercent: realizedPnlPercent.toFixed(2) + "%",
+            realizedPnlPercent: `${realizedPnlPercent.toFixed(2)}%`,
           });
         } catch (closeError) {
           const safe = toSafeError(closeError);
@@ -570,6 +604,7 @@ export class AutoSnipingModule {
       failedSnipes: this.failedSnipes,
       successRate:
         this.processedTargets > 0 ? (this.successfulSnipes / this.processedTargets) * 100 : 0,
+      currentUserId: this.currentUserId,
     };
   }
 
@@ -980,9 +1015,7 @@ export class AutoSnipingModule {
   /**
    * Attempt to claim target for execution (atomic operation)
    */
-  private async claimTargetForExecution(
-    target: AutoSnipeTarget,
-  ): Promise<TradeResult | null> {
+  private async claimTargetForExecution(target: AutoSnipeTarget): Promise<TradeResult | null> {
     this.context.logger.info("🔒 Attempting to claim target for execution", {
       targetId: target.id,
       symbol: target.symbolName,
@@ -1057,8 +1090,8 @@ export class AutoSnipingModule {
           .select({
             amount: userPreferencesTable.defaultBuyAmountUsdt,
             stopLoss: userPreferencesTable.stopLossPercent,
-            takeProfit: userPreferencesTable.takeProfitPercent,
-            maxHold: userPreferencesTable.maxHoldHours,
+            takeProfit: userPreferencesTable.takeProfitLevel1, // Use takeProfitLevel1 as default
+            maxHold: 24, // Default max hold hours
           })
           .from(userPreferencesTable)
           .where(eq(userPreferencesTable.userId, uid))
@@ -1086,9 +1119,7 @@ export class AutoSnipingModule {
       }
     }
 
-    if (
-      !(typeof uiMaxBuyUsdt === "number" && Number.isFinite(uiMaxBuyUsdt) && uiMaxBuyUsdt > 0)
-    ) {
+    if (!(typeof uiMaxBuyUsdt === "number" && Number.isFinite(uiMaxBuyUsdt) && uiMaxBuyUsdt > 0)) {
       const prefsErrorMsg = `Default buy amount not set in user preferences (defaultBuyAmountUsdt) for user ${prefsUserId}`;
       this.context.logger.error("❌ Missing required default buy amount; aborting snipe", {
         userId: prefsUserId,
@@ -1164,15 +1195,14 @@ export class AutoSnipingModule {
       // Update local target status for consistency
       target.status = "ready";
     }
-    
+
     const claimResult = await this.claimTargetForExecution(target);
     if (claimResult) {
       return claimResult;
     }
 
     try {
-      const strategyManager = new TradingStrategyManager(target.entryStrategy || "normal");
-      const strategy = strategyManager.getActiveStrategy();
+      const strategy = tradingStrategyManager.getStrategy();
 
       this.context.logger.info(`Using strategy: ${strategy.name}`, {
         levels: strategy.levels.length,
@@ -1189,8 +1219,13 @@ export class AutoSnipingModule {
         } as unknown as TradeResult;
       }
 
-      const { userId: prefsUserId, uiMaxBuyUsdt, stopLossPercent, takeProfitPercent, maxHoldHours } =
-        userValidation;
+      const {
+        userId: prefsUserId,
+        uiMaxBuyUsdt,
+        stopLossPercent,
+        takeProfitPercent,
+        maxHoldHours,
+      } = userValidation;
 
       // Clamp buy amount to the UI-configured maximum
       const buyUsdt = Math.min(Number(target.positionSizeUsdt || 0), uiMaxBuyUsdt);
@@ -1590,7 +1625,6 @@ export class AutoSnipingModule {
           return result;
         }
 
-
         // Emit auto-snipe event with strategy info
         this.context.eventEmitter.emit("auto_snipe_executed", {
           target,
@@ -1730,7 +1764,6 @@ export class AutoSnipingModule {
     }
   }
 
-
   // ============================================================================
   // Private Helper Methods
   // ============================================================================
@@ -1838,7 +1871,10 @@ export class AutoSnipingModule {
         or(
           eq(snipeTargets.status, "ready"),
           // Also include "active" targets whose execution time has passed (they should be executed)
-          and(eq(snipeTargets.status, "active"), or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now))),
+          and(
+            eq(snipeTargets.status, "active"),
+            or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now)),
+          ),
         ),
         or(isNull(snipeTargets.targetExecutionTime), lt(snipeTargets.targetExecutionTime, now)),
         // Limit retries for new listing issues (max 10 attempts = ~5 minutes at 30s intervals)
@@ -3046,38 +3082,6 @@ export class AutoSnipingModule {
   }
 
   /**
-   * Setup stop-loss and take-profit monitoring for a position
-   */
-  private async setupPositionMonitoring(
-    position: Position,
-    _params: TradeParameters,
-  ): Promise<void> {
-    try {
-      // Setup stop-loss monitoring
-      if (position.stopLossPrice) {
-        this.setupStopLossMonitoring(position);
-      }
-
-      // Setup take-profit monitoring
-      if (position.takeProfitPrice) {
-        this.setupTakeProfitMonitoring(position);
-      }
-
-      this.context.logger.info("Position monitoring setup completed", {
-        positionId: position.id,
-        hasStopLoss: !!position.stopLossPrice,
-        hasTakeProfit: !!position.takeProfitPrice,
-      });
-    } catch (error) {
-      const safeError = toSafeError(error);
-      this.context.logger.error("Failed to setup position monitoring", {
-        positionId: position.id,
-        error: safeError.message,
-      });
-    }
-  }
-
-  /**
    * Shared method for setting up price level monitoring (stop-loss or take-profit)
    */
   private setupPriceLevelMonitoring(config: PriceLevelMonitoringConfig): void {
@@ -3880,7 +3884,6 @@ export class AutoSnipingModule {
     }
   }
 
-
   /**
    * Execute a market buy order using quote order quantity (splits into multiple orders if needed)
    */
@@ -3945,12 +3948,23 @@ export class AutoSnipingModule {
 
       const chunkOrder = {
         ...mexcOrderData,
-        quantity: this.formatQuantity(qty, tradeRules),
+        quantity: this.formatQuantity(qty, {
+          lotSizeDecimals: tradeRules.stepSize
+            ? Math.abs(Math.log10(tradeRules.stepSize))
+            : undefined,
+          baseAssetPrecision: tradeRules.stepSize
+            ? Math.abs(Math.log10(tradeRules.stepSize))
+            : undefined,
+        }),
       };
       let placeRes = await this.context.mexcService.placeOrder(chunkOrder);
 
       // Retry once as MARKET if we somehow hit price-limit on LIMIT (defensive)
-      if (!placeRes.success && chunkOrder.type === "LIMIT" && this.isPriceLimitError(placeRes.error)) {
+      if (
+        !placeRes.success &&
+        chunkOrder.type === "LIMIT" &&
+        this.isPriceLimitError(placeRes.error)
+      ) {
         const marketOrderData = { ...chunkOrder };
         delete (marketOrderData as any).price;
         marketOrderData.type = "MARKET";
@@ -3964,12 +3978,8 @@ export class AutoSnipingModule {
       }
 
       lastOrderResult = placeRes;
-      const executedQty = Number(
-        placeRes.data?.executedQty ?? placeRes.data?.quantity ?? qty,
-      );
-      const spentQuote = Number(
-        placeRes.data?.cummulativeQuoteQty ?? executedQty * currentPrice,
-      );
+      const executedQty = Number(placeRes.data?.executedQty ?? placeRes.data?.quantity ?? qty);
+      const spentQuote = Number(placeRes.data?.cummulativeQuoteQty ?? executedQty * currentPrice);
       totalExecutedQty += executedQty;
       totalQuoteSpent += spentQuote;
       remainingQuote = Math.max(0, remainingQuote - spentQuote);
@@ -3994,25 +4004,6 @@ export class AutoSnipingModule {
     }
 
     return null;
-  }
-
-  /**
-   * Check if an error message indicates a non-retryable error
-   */
-  private isNonRetryableError(errorMessage: string): boolean {
-    const nonRetryablePatterns = [
-      "insufficient balance",
-      "invalid symbol",
-      "trading disabled",
-      "MARKET_LOT_SIZE",
-      "MIN_NOTIONAL",
-      "Order price cannot exceed",
-      "exceeds maximum allowed price",
-      "below minimum allowed price",
-      "price limit",
-      "30010", // MEXC price limit error code
-    ];
-    return nonRetryablePatterns.some((pattern) => errorMessage.includes(pattern));
   }
 
   /**

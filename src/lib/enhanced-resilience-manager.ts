@@ -6,6 +6,7 @@
  */
 
 import { EventEmitter } from "node:events";
+import { createSimpleLogger } from "./unified-logger";
 
 // ===================== CIRCUIT BREAKER IMPLEMENTATION =====================
 
@@ -378,6 +379,7 @@ export class FallbackManager {
 export class ResilienceCoordinator {
   private circuitBreakers = new Map<string, EnhancedCircuitBreaker>();
   private metrics = new Map<string, any>();
+  private logger = createSimpleLogger("ResilienceCoordinator");
 
   getOrCreateCircuitBreaker(
     name: string,
@@ -388,9 +390,11 @@ export class ResilienceCoordinator {
 
       // Listen to circuit breaker events for monitoring
       circuitBreaker.on("state-change", (event) => {
-        console.log(
-          `[Resilience] Circuit breaker [${event.name}] state changed: ${event.from} → ${event.to}`,
-        );
+        this.logger.info("Circuit breaker state changed", {
+          name: event.name,
+          from: event.from,
+          to: event.to,
+        });
       });
 
       circuitBreaker.on("metrics", (event) => {

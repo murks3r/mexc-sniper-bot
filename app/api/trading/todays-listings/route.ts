@@ -9,7 +9,7 @@ import { getTodaysListings } from "@/src/utils/todays-listings";
  * Returns filtered list of today's listings from MEXC calendar.
  * Cached for performance.
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const mexcService = getRecommendedMexcService();
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       }),
     );
   } catch (error) {
-    console.error("[Today's Listings API] Error:", error);
+    // Today's Listings API Error - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(
         error instanceof Error ? error.message : "Failed to fetch today's listings",

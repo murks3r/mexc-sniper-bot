@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       }),
     );
   } catch (error) {
-    console.error("MEXC symbols fetch failed:", { error: error });
+    // MEXC symbols fetch failed - error logging handled by error handler middleware
 
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error", {

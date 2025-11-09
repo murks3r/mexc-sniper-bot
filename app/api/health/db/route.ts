@@ -79,7 +79,7 @@ async function healthHandler(request: Request) {
     // Check for cached health result first
     const cachedResult = getCachedHealthResult(cacheKey);
     if (cachedResult) {
-      console.info("[Health Check] Returning cached result");
+      // Returning cached result
       return apiResponse(cachedResult, cachedResult.status === "healthy" ? 200 : 503);
     }
 
@@ -113,7 +113,7 @@ async function healthHandler(request: Request) {
         message: "Database connectivity failed",
         error: dbError instanceof Error ? dbError.message : String(dbError),
       };
-      console.error("[Health Check] Database connectivity error:", dbError);
+      // Database connectivity error - error logging handled by error handler middleware
     }
 
     // Only check auth tables if basic connectivity works (skip expensive checks)
@@ -132,7 +132,7 @@ async function healthHandler(request: Request) {
           message: "Auth tables check failed",
           error: authError instanceof Error ? authError.message : String(authError),
         };
-        console.error("[Health Check] Auth tables check error:", authError);
+        // Auth tables check error - error logging handled by error handler middleware
       }
     } else {
       // Skip auth table checks if basic connectivity fails
@@ -186,7 +186,7 @@ async function healthHandler(request: Request) {
     const response = createHealthResponse(healthResult);
     return apiResponse(response, isHealthy ? 200 : 503);
   } catch (error) {
-    console.error("[Health Check] Unexpected error:", error);
+    // Unexpected error - error logging handled by error handler middleware
 
     const criticalHealthResult = {
       status: "error" as const,

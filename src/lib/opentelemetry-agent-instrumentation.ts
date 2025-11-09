@@ -3,6 +3,8 @@
  * Minimal implementation for build optimization
  */
 
+import { createSimpleLogger } from "./unified-logger";
+
 export interface AgentInstrumentationConfig {
   enabled: boolean;
   traceAgentOperations: boolean;
@@ -15,6 +17,7 @@ class AgentInstrumentation {
     traceAgentOperations: false,
     includeAgentMetadata: false,
   };
+  private logger = createSimpleLogger("AgentInstrumentation");
 
   initialize(config?: Partial<AgentInstrumentationConfig>): void {
     if (config) {
@@ -22,7 +25,7 @@ class AgentInstrumentation {
     }
 
     if (this.config.enabled) {
-      console.log("Agent instrumentation initialized");
+      this.logger.info("Agent instrumentation initialized");
     }
   }
 

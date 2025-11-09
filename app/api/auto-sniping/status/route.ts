@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
   try {
     // Initialize unified orchestrator once
     const orchestrator = getUnifiedAutoSnipingOrchestrator();
-    if (!orchestrator.getStatus().isInitialized) {
+    const initialStatus = await orchestrator.getStatus();
+    if (!initialStatus.isInitialized) {
       if (!orchestratorInitPromise) {
         orchestratorInitPromise = orchestrator.initialize();
       }
@@ -25,14 +26,12 @@ export async function GET(request: NextRequest) {
 
     // Get authenticated user for user-specific status (session-based)
     const user = await requireApiAuth(request);
-    console.info(`[API] Auto-sniping status request from user: ${user.email} (${user.id})`);
 
     // Get current orchestrator status
-    const status = orchestrator.getStatus();
+    const status = await orchestrator.getStatus();
 
     // Get user-specific target counts from database
     const userTargetCounts = await getUserTargetCounts(user.id);
-    console.info(`[API] User target counts for ${user.email}:`, userTargetCounts);
 
     // Validate MEXC credentials
     let credentialValidation: {
@@ -82,7 +81,7 @@ export async function GET(request: NextRequest) {
     // Structure the status response to match frontend expectations
     // Use the same status data structure as the control endpoint
     const statusData = {
-      enabled: true,
+      enabled: status.autoSnipingEnabled,
       status: status.isActive ? "active" : "idle",
       isActive: status.isActive,
       isIdle: !status.isActive,
@@ -118,7 +117,7 @@ export async function GET(request: NextRequest) {
       executionCount: 0,
       successCount: 0,
       errorCount: 0,
-      uptime: status.metrics?.uptime || 0,
+      uptime: status.uptime || 0,
       config: {
         maxConcurrentTargets: 5,
         retryAttempts: 3,
@@ -133,12 +132,12 @@ export async function GET(request: NextRequest) {
       },
       // Diagnostics
       diagnostics: {
-        lastSnipeCheck: (status as any).lastSnipeCheck
-          ? new Date((status as any).lastSnipeCheck).toISOString()
+        lastSnipeCheck: status.lastTradeTime
+          ? new Date(status.lastTradeTime).toISOString()
           : undefined,
-        processedTargets: (status as any).processedTargets ?? undefined,
-        successfulSnipes: (status as any).successfulSnipes ?? undefined,
-        failedSnipes: (status as any).failedSnipes ?? undefined,
+        processedTargets: status.processedTargets ?? undefined,
+        successfulSnipes: status.metrics?.successfulTrades ?? undefined,
+        failedSnipes: status.metrics?.failedTrades ?? undefined,
       },
       // Credential validation
       credentials: {
@@ -151,14 +150,7 @@ export async function GET(request: NextRequest) {
       openPositions: openPositionsCount,
     };
 
-    console.info("[API] Auto-sniping status retrieved successfully:", {
-      status: statusData.status,
-      isActive: statusData.isActive,
-      autoSnipingActive: status.isActive,
-      activeTargets: statusData.activeTargets,
-      targetConsistency: statusData.stateConsistency.isConsistent,
-      executionCount: statusData.executionCount,
-    });
+    // Status retrieved successfully
 
     return apiResponse(
       createSuccessResponse(statusData, {
@@ -168,7 +160,7 @@ export async function GET(request: NextRequest) {
       HTTP_STATUS.OK,
     );
   } catch (error) {
-    console.error("[API] Auto-sniping status error:", { error });
+    // Auto-sniping status error - error logging handled by error handler middleware
 
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
@@ -264,9 +256,7 @@ async function getUserTargetCounts(userId: string) {
     const pendingTargets = allTargets.filter((t) => t.status === "pending").length;
     const totalTargets = allTargets.length;
 
-    console.info(
-      `[getUserTargetCounts] User ${userId}: total=${totalTargets}, ready=${readyTargets}, active=${activeTargets}, pending=${pendingTargets}`,
-    );
+    // User target counts
 
     return {
       totalTargets,
@@ -274,8 +264,8 @@ async function getUserTargetCounts(userId: string) {
       activeTargets,
       pendingTargets,
     };
-  } catch (error) {
-    console.error("[getUserTargetCounts] Failed to get user target counts:", error);
+  } catch (_error) {
+    // Failed to get user target counts - error logging handled by error handler middleware
     return {
       totalTargets: 0,
       readyTargets: 0,

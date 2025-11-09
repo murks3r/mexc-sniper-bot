@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { createSimpleLogger } from "../lib/unified-logger";
 
 /**
  * Hook for comprehensive status refresh across all auto-sniping components
@@ -7,9 +8,10 @@ import { useCallback } from "react";
  */
 export function useStatusRefresh() {
   const queryClient = useQueryClient();
+  const logger = createSimpleLogger("useStatusRefresh");
 
   const refreshAllStatus = useCallback(async () => {
-    console.log("🔄 Refreshing all status queries for immediate UI updates...");
+    logger.debug("Refreshing all status queries for immediate UI updates");
 
     // 1. Auto-sniping specific queries
     queryClient.invalidateQueries({ queryKey: ["autoSniping"] });
@@ -26,11 +28,11 @@ export function useStatusRefresh() {
     // 4. Force immediate refetch of critical auto-sniping status
     await queryClient.refetchQueries({ queryKey: ["autoSniping", "status"], type: "all" });
 
-    console.log("✅ All status queries refreshed");
-  }, [queryClient]);
+    logger.debug("All status queries refreshed");
+  }, [queryClient, logger.debug]);
 
   const refreshAutoSnipingStatus = useCallback(async () => {
-    console.log("🔄 Refreshing auto-sniping status...");
+    logger.debug("Refreshing auto-sniping status");
 
     // Target just auto-sniping related queries for faster updates
     queryClient.invalidateQueries({ queryKey: ["autoSniping"] });
@@ -38,8 +40,8 @@ export function useStatusRefresh() {
 
     await queryClient.refetchQueries({ queryKey: ["autoSniping", "status"], type: "all" });
 
-    console.log("✅ Auto-sniping status refreshed");
-  }, [queryClient]);
+    logger.debug("Auto-sniping status refreshed");
+  }, [queryClient, logger.debug]);
 
   return {
     refreshAllStatus,

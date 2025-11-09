@@ -32,14 +32,18 @@ export class WebSocketMessageRouter {
   };
 
   private logger = {
-    info: (message: string, context?: unknown) =>
-      console.info("[websocket-message-router]", message, context || ""),
-    warn: (message: string, context?: unknown) =>
-      console.warn("[websocket-message-router]", message, context || ""),
-    error: (message: string, context?: unknown, error?: Error) =>
-      console.error("[websocket-message-router]", message, context || "", error || ""),
-    debug: (message: string, context?: unknown) =>
-      console.debug("[websocket-message-router]", message, context || ""),
+    info: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: unknown, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
   };
 
   /**

@@ -1,6 +1,6 @@
 import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { user as authUser } from "@/src/db/schemas/auth";
@@ -147,59 +147,96 @@ export async function requireAuthFromRequest(request: NextRequest): Promise<Supa
             createdAt: new Date(userData.user.created_at),
             updatedAt: new Date(userData.user.updated_at),
           };
-          await db
-            .insert(authUser)
-            .values(realUserData)
-            .onConflictDoUpdate({
-              target: authUser.id,
-              set: {
-                email: realUserData.email,
-                name: realUserData.name,
-                emailVerified: realUserData.emailVerified,
-                updatedAt: new Date(),
-              },
-            });
+          // Simple upsert logic
+          try {
+            await db.insert(authUser).values(realUserData);
+          } catch (error: any) {
+            if (error.code === "23505") {
+              // Unique violation
+              await db
+                .update(authUser)
+                .set({
+                  email: realUserData.email,
+                  name: realUserData.name,
+                  emailVerified: realUserData.emailVerified,
+                  updatedAt: new Date(),
+                })
+                .where(eq(authUser.id, realUserData.id));
+            } else {
+              throw error;
+            }
+          }
         } else {
-          await db
-            .insert(authUser)
-            .values({
-              id: session.user.id,
-              email: session.user.email,
-              name: session.user.name || session.user.email,
-              emailVerified: !!session.user.emailVerified,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .onConflictDoUpdate({
-              target: authUser.id,
-              set: {
-                email: session.user.email,
-                name: session.user.name || session.user.email,
-                emailVerified: !!session.user.emailVerified,
-                updatedAt: new Date(),
-              },
-            });
-        }
-      } catch (_adminErr) {
-        await db
-          .insert(authUser)
-          .values({
+          await db.insert(authUser).values({
             id: session.user.id,
             email: session.user.email,
             name: session.user.name || session.user.email,
             emailVerified: !!session.user.emailVerified,
             createdAt: new Date(),
             updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: authUser.id,
-            set: {
+          });
+          // Simple upsert logic
+          try {
+            await db.insert(authUser).values({
+              id: session.user.id,
               email: session.user.email,
               name: session.user.name || session.user.email,
               emailVerified: !!session.user.emailVerified,
+              createdAt: new Date(),
               updatedAt: new Date(),
-            },
+            });
+          } catch (error: any) {
+            if (error.code === "23505") {
+              // Unique violation
+              await db
+                .update(authUser)
+                .set({
+                  email: session.user.email,
+                  name: session.user.name || session.user.email,
+                  emailVerified: !!session.user.emailVerified,
+                  updatedAt: new Date(),
+                })
+                .where(eq(authUser.id, session.user.id));
+            } else {
+              throw error;
+            }
+          }
+        }
+      } catch (_adminErr) {
+        await db.insert(authUser).values({
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name || session.user.email,
+          emailVerified: !!session.user.emailVerified,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        // Simple upsert logic
+        try {
+          await db.insert(authUser).values({
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.name || session.user.email,
+            emailVerified: !!session.user.emailVerified,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           });
+        } catch (error: any) {
+          if (error.code === "23505") {
+            // Unique violation
+            await db
+              .update(authUser)
+              .set({
+                email: session.user.email,
+                name: session.user.name || session.user.email,
+                emailVerified: !!session.user.emailVerified,
+                updatedAt: new Date(),
+              })
+              .where(eq(authUser.id, session.user.id));
+          } else {
+            throw error;
+          }
+        }
       }
     }
   } catch (_syncErr) {

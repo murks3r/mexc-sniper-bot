@@ -54,8 +54,9 @@ export class MexcCoreTradingClient {
     try {
       // Construct order parameters
       // For MARKET BUY orders, use quoteOrderQty if provided (MEXC API requirement)
-      const isMarketBuyWithQuoteQty = orderData.side === "BUY" && orderData.type === "MARKET" && orderData.quoteOrderQty;
-      
+      const isMarketBuyWithQuoteQty =
+        orderData.side === "BUY" && orderData.type === "MARKET" && orderData.quoteOrderQty;
+
       const params = new URLSearchParams({
         symbol: orderData.symbol,
         side: orderData.side,

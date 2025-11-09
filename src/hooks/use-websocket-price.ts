@@ -87,7 +87,8 @@ export function useWebSocketPrice(
       setIsConnecting(true);
 
       // Connect to WebSocket service if not connected
-      if (!webSocketPriceService.getStatus().isConnected) {
+      const status = webSocketPriceService.getStatus();
+      if (!status.isConnected) {
         await webSocketPriceService.connect();
       }
 
@@ -100,33 +101,45 @@ export function useWebSocketPrice(
         }
       });
 
-      setUnsubscribeFn(() => unsubscribe);
-
-      // Get current cached price immediately
-      const cachedPrice = webSocketPriceService.getCurrentPrice(symbol);
-      if (cachedPrice) {
-        setPrice(cachedPrice);
+      if (isMountedRef.current) {
+        setUnsubscribeFn(() => unsubscribe);
       }
 
-      console.info(`📊 Subscribed to price updates for ${symbol}`);
+      // Get current cached price immediately
+      const currentPrice = webSocketPriceService.getPrice(symbol);
+      if (currentPrice && isMountedRef.current) {
+        setPrice({
+          symbol,
+          price: currentPrice,
+          change: 0,
+          changePercent: 0,
+          volume: 0,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Price subscription successful
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to subscribe to price updates";
-      setError(errorMessage);
-      console.error(`❌ Failed to subscribe to ${symbol}:`, err);
+      if (isMountedRef.current) {
+        setError(errorMessage);
 
-      // Retry logic
-      if (retryOnError && retryCount < maxRetries) {
-        setRetryCount((prev) => prev + 1);
-        setTimeout(
-          () => {
-            subscribe();
-          },
-          2 ** retryCount * 1000,
-        ); // Exponential backoff
+        // Retry logic
+        if (retryOnError && retryCount < maxRetries) {
+          setRetryCount((prev) => prev + 1);
+          setTimeout(
+            () => {
+              subscribe();
+            },
+            2 ** retryCount * 1000,
+          ); // Exponential backoff
+        }
       }
     } finally {
-      setIsConnecting(false);
+      if (isMountedRef.current) {
+        setIsConnecting(false);
+      }
     }
   }, [symbol, unsubscribeFn, retryOnError, retryCount, maxRetries]);
 
@@ -135,9 +148,8 @@ export function useWebSocketPrice(
       unsubscribeFn();
       setUnsubscribeFn(null);
       setPrice(null);
-      console.info(`📊 Unsubscribed from price updates for ${symbol}`);
     }
-  }, [unsubscribeFn, symbol]);
+  }, [unsubscribeFn]);
 
   const reconnect = useCallback(async () => {
     unsubscribe();
@@ -265,17 +277,23 @@ export function useWebSocketPrices(
         setUnsubscribeFns((prev) => new Map(prev).set(symbol, unsubscribe));
 
         // Get current cached price immediately
-        const cachedPrice = webSocketPriceService.getCurrentPrice(symbol);
-        if (cachedPrice) {
-          setPrices((prev) => new Map(prev).set(symbol, cachedPrice));
+        const currentPrice = webSocketPriceService.getPrice(symbol);
+        if (currentPrice) {
+          setPrices((prev) =>
+            new Map(prev).set(symbol, {
+              symbol,
+              price: currentPrice,
+              change: 0,
+              changePercent: 0,
+              volume: 0,
+              timestamp: Date.now(),
+            }),
+          );
         }
-
-        console.info(`📊 Subscribed to price updates for ${symbol}`);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to subscribe to price updates";
         setErrors((prev) => new Map(prev).set(symbol, errorMessage));
-        console.error(`❌ Failed to subscribe to ${symbol}:`, err);
 
         // Retry logic
         const currentRetryCount = retryCounts.get(symbol) || 0;
@@ -308,7 +326,6 @@ export function useWebSocketPrices(
           newMap.delete(symbol);
           return newMap;
         });
-        console.info(`📊 Unsubscribed from price updates for ${symbol}`);
       }
     },
     [unsubscribeFns],
@@ -365,12 +382,11 @@ export function useWebSocketService(): {
     isConnected: boolean;
     isConnecting: boolean;
     subscribedSymbols: string[];
-    cachedPrices: number;
+    cachedPrices: Record<string, number>;
     reconnectAttempts: number;
   };
   connect: () => Promise<void>;
   disconnect: () => void;
-  getAllPrices: () => Map<string, PriceUpdate>;
 } {
   const [status, setStatus] = useState(() => webSocketPriceService.getStatus());
 
@@ -394,14 +410,9 @@ export function useWebSocketService(): {
     webSocketPriceService.disconnect();
   }, []);
 
-  const getAllPrices = useCallback(() => {
-    return webSocketPriceService.getAllPrices();
-  }, []);
-
   return {
     status,
     connect,
     disconnect,
-    getAllPrices,
   };
 }

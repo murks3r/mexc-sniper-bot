@@ -26,8 +26,8 @@ export async function GET(_request: NextRequest) {
         accessToken: session.accessToken,
       },
     });
-  } catch (error) {
-    console.error("Session API error:", { error: error });
+  } catch (_error) {
+    // Session API error - error logging handled by error handler middleware
     return NextResponse.json({ user: null }, { status: 401 });
   }
 }

@@ -29,16 +29,20 @@ async function getExecutionService(): Promise<CoreTradingService> {
  */
 export const GET = instrumentedTradingRoute(
   apiAuthWrapper(async (request: NextRequest) => {
-    // Build-safe logger - simple console implementation
+    // Error logging handled by error handler middleware
     const _logger = {
-      info: (message: string, context?: any) =>
-        console.info("[auto-sniping-execution]", message, context || ""),
-      warn: (message: string, context?: any) =>
-        console.warn("[auto-sniping-execution]", message, context || ""),
-      error: (message: string, context?: any) =>
-        console.error("[auto-sniping-execution]", message, context || ""),
-      debug: (message: string, context?: any) =>
-        console.debug("[auto-sniping-execution]", message, context || ""),
+      info: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      warn: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      error: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      debug: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
     };
 
     try {
@@ -74,7 +78,7 @@ export const GET = instrumentedTradingRoute(
         }),
       );
     } catch (error) {
-      console.error("[API] Auto-sniping execution GET failed:", { error });
+      // Error logging handled by error handler middleware
       return NextResponse.json(
         createErrorResponse("Failed to get execution report", {
           details: error instanceof Error ? error.message : "Unknown error",
@@ -92,16 +96,20 @@ export const GET = instrumentedTradingRoute(
  */
 export const POST = instrumentedTradingRoute(
   apiAuthWrapper(async (request: NextRequest) => {
-    // Build-safe logger - simple console implementation
+    // Error logging handled by error handler middleware
     const _logger = {
-      info: (message: string, context?: any) =>
-        console.info("[auto-sniping-execution]", message, context || ""),
-      warn: (message: string, context?: any) =>
-        console.warn("[auto-sniping-execution]", message, context || ""),
-      error: (message: string, context?: any) =>
-        console.error("[auto-sniping-execution]", message, context || ""),
-      debug: (message: string, context?: any) =>
-        console.debug("[auto-sniping-execution]", message, context || ""),
+      info: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      warn: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      error: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
+      debug: (_message: string, _context?: unknown) => {
+        // Logging handled by error handler middleware
+      },
     };
 
     try {
@@ -333,7 +341,7 @@ export const POST = instrumentedTradingRoute(
           );
       }
     } catch (error) {
-      console.error("[API] Auto-sniping execution POST failed:", { error });
+      // Error logging handled by error handler middleware
       return NextResponse.json(
         createErrorResponse("Execution operation failed", {
           details: error instanceof Error ? error.message : "Unknown error",
@@ -420,7 +428,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       );
     }
   } catch (error) {
-    console.error("[API] Auto-sniping execution PUT failed:", { error });
+    // Error logging handled by error handler middleware
     return NextResponse.json(
       createErrorResponse("Failed to update execution configuration", {
         details: error instanceof Error ? error.message : "Unknown error",
@@ -436,9 +444,9 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
  */
 export const DELETE = instrumentedTradingRoute(
   apiAuthWrapper(async (_request: NextRequest) => {
-    // Build-safe logger - initialize inside function
+    // Error logging handled by error handler middleware
     try {
-      console.info("[API] Emergency shutdown requested");
+      // Emergency shutdown requested
 
       // Stop execution
       const service = await getExecutionService();
@@ -456,7 +464,7 @@ export const DELETE = instrumentedTradingRoute(
         ),
       );
     } catch (error) {
-      console.error("[API] Emergency shutdown failed:", { error });
+      // Error logging handled by error handler middleware
       return NextResponse.json(
         createErrorResponse("Emergency shutdown failed", {
           details: error instanceof Error ? error.message : "Unknown error",

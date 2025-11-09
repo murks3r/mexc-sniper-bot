@@ -21,10 +21,12 @@ import { useToast } from "@/src/components/ui/use-toast";
 import { useAccountBalance } from "@/src/hooks/use-account-balance";
 // Removed: useEnhancedPatterns - pattern detection simplified
 import { useMexcCalendar, useReadyLaunches } from "@/src/hooks/use-mexc-data";
-import { useDeleteSnipeTarget, useSnipeTargets } from "@/src/hooks/use-portfolio";
+import { useDeleteSnipeTarget } from "@/src/hooks/use-portfolio";
 import { queryKeys } from "@/src/lib/query-client";
+import { createSimpleLogger } from "@/src/lib/unified-logger";
 
 export default function DashboardPage() {
+  const logger = createSimpleLogger("DashboardPage");
   const { user, isLoading: userLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
@@ -83,7 +85,7 @@ export default function DashboardPage() {
 
   // Handler functions for trading targets
   const handleExecuteSnipe = async (target: any) => {
-    console.info("Executing snipe for target:", target);
+    logger.info("Executing snipe for target", { target });
 
     try {
       // Execute snipe using the auto-sniping execution API
@@ -120,7 +122,11 @@ export default function DashboardPage() {
         throw new Error(result.error || "Failed to execute snipe");
       }
     } catch (error) {
-      console.error("Failed to execute snipe:", error);
+      logger.error(
+        "Failed to execute snipe",
+        {},
+        error instanceof Error ? error : new Error(String(error)),
+      );
       toast({
         title: "Snipe Execution Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -130,7 +136,7 @@ export default function DashboardPage() {
   };
 
   const handleRemoveTarget = async (targetId: string | number) => {
-    console.info("Removing target:", { targetId });
+    logger.info("Removing target", { targetId });
 
     try {
       await deleteSnipeTarget.mutateAsync(Number(targetId));
@@ -141,7 +147,11 @@ export default function DashboardPage() {
         variant: "default",
       });
     } catch (error) {
-      console.error("Failed to remove target:", error);
+      logger.error(
+        "Failed to remove target",
+        {},
+        error instanceof Error ? error : new Error(String(error)),
+      );
       toast({
         title: "Removal Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -208,7 +218,7 @@ export default function DashboardPage() {
         const data = await response.json();
         return data.success ? data.data || [] : [];
       } catch (error) {
-        console.error("Failed to fetch historical calendar data:", error);
+        logger.error("Failed to fetch historical calendar data", { error });
         return [];
       }
     },
@@ -246,7 +256,7 @@ export default function DashboardPage() {
           return createdAt >= cutoffTime;
         });
       } catch (error) {
-        console.error("Failed to fetch historical active targets:", error);
+        logger.error("Failed to fetch historical active targets", { error });
         return [];
       }
     },
@@ -363,7 +373,7 @@ export default function DashboardPage() {
 
     const currentActiveTargets = activeTargets;
     // Count how many of the historical targets are still active
-    const historicalStillActive = historicalActiveTargets.filter(
+    const _historicalStillActive = historicalActiveTargets.filter(
       (target: any) => target.status === "active" || target.status === "executing",
     ).length;
 
@@ -385,14 +395,14 @@ export default function DashboardPage() {
   }, [executionHistoryData]);
 
   // Debug logging
-  console.debug("[Dashboard] Balance data:", {
+  logger.debug("Dashboard balance data", {
     accountBalance,
     totalBalance,
     balanceLoading,
     userId,
   });
 
-  console.debug("[Dashboard] Calculated metrics:", {
+  logger.debug("Dashboard calculated metrics", {
     newListings,
     newListingsChange,
     historicalCalendarCount: historicalCalendarData?.length || 0,
@@ -461,18 +471,18 @@ export default function DashboardPage() {
           onValueChange={setActiveTab}
           className="space-y-4"
         >
-            <TabsList>
-              <TabsTrigger value="auto-sniping">Auto-Sniping Control</TabsTrigger>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsList>
+            <TabsTrigger value="auto-sniping">Auto-Sniping Control</TabsTrigger>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             {/* Removed: Pattern Detection tab - simplified to trading focus */}
-              <TabsTrigger value="trades">Trading History</TabsTrigger>
-              <TabsTrigger value="listings">
-                New Listings
-                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
-                  {newListings}
-                </span>
-              </TabsTrigger>
-            </TabsList>
+            <TabsTrigger value="trades">Trading History</TabsTrigger>
+            <TabsTrigger value="listings">
+              New Listings
+              <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
+                {newListings}
+              </span>
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="auto-sniping" className="space-y-4">
             <AutoSnipingControlPanel />
@@ -509,7 +519,6 @@ export default function DashboardPage() {
           <TabsContent value="trades" className="space-y-4">
             <RecentTradesTable userId={userId || undefined} />
           </TabsContent>
-
 
           {/* Removed: Pattern Detection tab content - simplified to trading focus */}
         </Tabs>

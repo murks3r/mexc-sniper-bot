@@ -231,6 +231,13 @@ export interface TradingSignalMessage {
     priceChange?: number;
     priceChangePercent?: number;
     volume?: number;
+    price?: number;
+    patternType?: string;
+    sts?: number;
+    st?: number;
+    tt?: number;
+    autoSniping?: boolean;
+    [key: string]: unknown;
   };
 }
 

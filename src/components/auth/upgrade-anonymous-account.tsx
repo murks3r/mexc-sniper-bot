@@ -1,26 +1,23 @@
 "use client";
 
-import { AlertTriangle, CheckCircle, Mail } from "lucide-react";
+import { AlertTriangle, CheckCircle } from "lucide-react";
 import { useState } from "react";
-import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 import { canUpgradeAnonymousUser } from "@/src/lib/auth-utils";
-import { useAuth } from "./supabase-auth-provider";
+import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useToast } from "../ui/use-toast";
+import { useAuth } from "./supabase-auth-provider";
 
 interface UpgradeAnonymousAccountProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function UpgradeAnonymousAccount({
-  onSuccess,
-  onCancel,
-}: UpgradeAnonymousAccountProps) {
+export function UpgradeAnonymousAccount({ onSuccess, onCancel }: UpgradeAnonymousAccountProps) {
   const { user, isAnonymous } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -53,9 +50,7 @@ export function UpgradeAnonymousAccount({
       if (updateError) {
         // Check if email belongs to existing user
         if (updateError.message.includes("already registered")) {
-          setError(
-            "This email is already registered. Please sign in to that account instead.",
-          );
+          setError("This email is already registered. Please sign in to that account instead.");
           setIsLoading(false);
           return;
         }
@@ -67,7 +62,8 @@ export function UpgradeAnonymousAccount({
       setIsLoading(false);
       toast({
         title: "Verification email sent",
-        description: "Please check your email and click the verification link before setting a password.",
+        description:
+          "Please check your email and click the verification link before setting a password.",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update email");
@@ -243,4 +239,3 @@ export function UpgradeAnonymousAccount({
     </Card>
   );
 }
-

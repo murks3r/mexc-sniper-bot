@@ -7,6 +7,7 @@
 
 import { EventEmitter } from "node:events";
 import { type DomainEvent, EventFactory, eventStoreManager } from "../event-sourcing/event-store";
+import { createSimpleLogger } from "../unified-logger";
 
 // Base Command Interface
 export interface Command {
@@ -165,11 +166,14 @@ export interface CommandMiddleware {
  * Logging Middleware
  */
 export class LoggingMiddleware implements CommandMiddleware {
+  private logger = createSimpleLogger("LoggingMiddleware");
+
   async execute<T extends Command>(
     command: T,
     next: (command: T) => Promise<T>,
   ): Promise<T | null> {
-    console.log(`[COMMAND] Executing: ${command.type}`, {
+    this.logger.info("Executing command", {
+      type: command.type,
       id: command.id,
       aggregateId: command.aggregateId,
       userId: command.metadata.userId,
@@ -178,7 +182,8 @@ export class LoggingMiddleware implements CommandMiddleware {
 
     const result = await next(command);
 
-    console.log(`[COMMAND] Completed: ${command.type}`, {
+    this.logger.info("Command completed", {
+      type: command.type,
       id: command.id,
       success: result !== null,
     });

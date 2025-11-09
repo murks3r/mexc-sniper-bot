@@ -66,7 +66,7 @@ function TradeRows({
       {trades.map((trade) => {
         const isOpenPosition = trade.status === "pending" && !trade.sellPrice;
         const isSelling = sellingSymbol === trade.symbolName;
-        
+
         return (
           <TableRow key={trade.id}>
             <TableCell className="font-medium">{trade.symbolName}</TableCell>

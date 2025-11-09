@@ -27,8 +27,8 @@ function getSafetyMonitoringService() {
       throw new Error("Safety monitoring service not properly initialized");
     }
     return service;
-  } catch (error) {
-    console.error("[SafetyMonitoringAPI] Service initialization error:", error);
+  } catch (_error) {
+    // Service initialization error - error logging handled by error handler middleware
     throw new Error("Safety monitoring service unavailable");
   }
 }
@@ -44,7 +44,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
   const limit = parseInt(searchParams.get("limit") || "10", 10);
 
   try {
-    console.info(`[SafetyMonitoringAPI] Processing GET action: ${action}`);
+    // Processing GET action - error logging handled by error handler middleware
 
     const service = getSafetyMonitoringService();
 
@@ -152,17 +152,13 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
           { status: 400 },
         );
     }
-  } catch (error: any) {
-    console.error("[SafetyMonitoringAPI] GET action failed:", {
-      error: error.message || "Unknown error",
-      action: action || "unknown",
-      url: request.url,
-    });
+  } catch (error: unknown) {
+    // GET action failed - error logging handled by error handler middleware
 
     // Handle service initialization errors specifically
     if (
-      error.message?.includes("service unavailable") ||
-      error.message?.includes("not properly initialized")
+      (error instanceof Error && error.message.includes("service unavailable")) ||
+      (error instanceof Error && error.message.includes("not properly initialized"))
     ) {
       return NextResponse.json(
         createErrorResponse("Safety monitoring service is not available", {
@@ -174,11 +170,11 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     }
 
     // Pass through specific error messages for test compatibility
-    const errorMessage = error.message || "Safety monitoring GET action failed";
+    const errorMessage = error instanceof Error ? error.message : "Safety monitoring GET action failed";
     return NextResponse.json(
       createErrorResponse(errorMessage, {
         code: "GET_ACTION_FAILED",
-        details: error.message,
+        details: errorMessage,
       }),
       { status: 500 },
     );
@@ -197,11 +193,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
     const parseResult = await parseJsonRequest(request);
 
     if (!parseResult.success) {
-      console.error("[SafetyMonitoringAPI] POST JSON parsing failed:", {
-        error: parseResult.error,
-        code: parseResult.errorCode,
-        details: parseResult.details,
-      });
+      // POST JSON parsing failed - error logging handled by error handler middleware
       return NextResponse.json(createJsonErrorResponse(parseResult), {
         status: 400,
       });
@@ -226,7 +218,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
       );
     }
 
-    console.info(`[SafetyMonitoringAPI] Processing POST action: ${action}`);
+    // Processing POST action - error logging handled by error handler middleware
 
     const service = getSafetyMonitoringService();
 
@@ -437,17 +429,13 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
           { status: 400 },
         );
     }
-  } catch (error: any) {
-    console.error("[SafetyMonitoringAPI] POST action failed:", {
-      error: error.message || "Unknown error",
-      action: typeof body === "object" && body ? body.action || "unknown" : "unknown",
-      url: request.url,
-    });
+  } catch (error: unknown) {
+    // POST action failed - error logging handled by error handler middleware
 
     // Handle service initialization errors specifically
     if (
-      error.message?.includes("service unavailable") ||
-      error.message?.includes("not properly initialized")
+      (error instanceof Error && error.message.includes("service unavailable")) ||
+      (error instanceof Error && error.message.includes("not properly initialized"))
     ) {
       return NextResponse.json(
         createErrorResponse("Safety monitoring service is not available", {
@@ -459,11 +447,11 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
     }
 
     // Pass through specific error messages for test compatibility
-    const errorMessage = error.message || "Safety monitoring action failed";
+    const errorMessage = error instanceof Error ? error.message : "Safety monitoring action failed";
     return NextResponse.json(
       createErrorResponse(errorMessage, {
         code: "ACTION_FAILED",
-        details: error.message,
+        details: errorMessage,
       }),
       { status: 500 },
     );

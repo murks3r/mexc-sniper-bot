@@ -21,7 +21,7 @@ export async function savePositionCloseHistory(
   await dbSaveExecutionHistory({
     userId,
     snipeTargetId,
-    vcoinId,
+    vcoinId: vcoinId ? String(vcoinId) : null,
     symbolName: position.symbol,
     orderType: (closeResult.data?.type || "MARKET").toString().toLowerCase(),
     orderSide: "sell",
@@ -30,12 +30,8 @@ export async function savePositionCloseHistory(
     executedQuantity: Number(
       closeResult.data?.executedQty ?? closeResult.data?.quantity ?? position.quantity,
     ),
-    executedPrice: Number(
-      closeResult.data?.price ?? exitPrice,
-    ),
-    totalCost: Number(
-      closeResult.data?.cummulativeQuoteQty ?? exitPrice * position.quantity,
-    ),
+    executedPrice: Number(closeResult.data?.price ?? exitPrice),
+    totalCost: Number(closeResult.data?.cummulativeQuoteQty ?? exitPrice * position.quantity),
     fees: closeResult.data?.fees ? Number(closeResult.data.fees) : null,
     exchangeOrderId: closeResult.data?.orderId ? String(closeResult.data.orderId) : null,
     exchangeStatus: (closeResult.data?.status || "FILLED").toString(),
@@ -47,6 +43,3 @@ export async function savePositionCloseHistory(
     executedAt: closeExecutedAt,
   });
 }
-
-
-

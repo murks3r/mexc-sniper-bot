@@ -14,10 +14,13 @@
     "organize-imports": "npx biome check --fix --unsafe --only=organizeImports",
     "sync-format": "npm run format && npm run organize-imports",
     "type-check": "tsc --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

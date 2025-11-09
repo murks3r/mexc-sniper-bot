@@ -15,6 +15,7 @@ export class RequestThrottlingService {
   private queue: ThrottleRequest[] = [];
   private processing = false;
   private delayMs: number;
+  public maxConcurrent: number;
 
   constructor(maxConcurrent: number = 5, delayMs: number = 100) {
     this.maxConcurrent = maxConcurrent;

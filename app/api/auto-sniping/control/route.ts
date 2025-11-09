@@ -13,6 +13,7 @@
 
 import type { NextRequest } from "next/server";
 import { requireApiAuth } from "@/src/lib/api-auth";
+import { handleApiRouteError } from "@/src/lib/api-error-handler";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import * as SupabaseAuthServer from "@/src/lib/supabase-auth-server";
 import { getUserCredentials } from "@/src/services/api/user-credentials-service";
@@ -28,7 +29,7 @@ export const POST = async (request: NextRequest) => {
   try {
     // Use unified API auth (session-based) – consistent with settings flow
     const user = await requireApiAuth(request);
-    console.log(`[Auto-Sniping Control] Authenticated user: ${user.email} (${user.id})`);
+    // User authenticated via requireApiAuth
 
     const body = await request.json();
     const { action, config, reason } = body;
@@ -46,8 +47,6 @@ export const POST = async (request: NextRequest) => {
 
     switch (action) {
       case "start": {
-        console.info("[Auto-Sniping Control] Starting auto-sniping...");
-
         // Load authenticated user's MEXC credentials and apply to orchestrator config
         try {
           const userCreds = await getUserCredentials(user.id, "mexc");
@@ -63,7 +62,9 @@ export const POST = async (request: NextRequest) => {
           }
 
           // Update orchestrator MEXC config with per-user credentials before init/start
-          orchestrator.updateConfig({
+          // CRITICAL: Explicitly enable auto-sniping and set credentials
+          await orchestrator.updateConfig({
+            enabled: true,
             mexcConfig: {
               credentials: {
                 apiKey: userCreds.apiKey,
@@ -71,6 +72,15 @@ export const POST = async (request: NextRequest) => {
               },
               paperTradingMode: false,
             },
+          });
+
+          // Ensure auto-sniping is explicitly enabled in core trading service
+          const coreTrading = getCoreTrading();
+          await coreTrading.updateConfig({
+            autoSnipingEnabled: true,
+            apiKey: userCreds.apiKey,
+            secretKey: userCreds.secretKey,
+            paperTradingMode: false,
           });
         } catch (credError) {
           return Response.json(
@@ -88,51 +98,45 @@ export const POST = async (request: NextRequest) => {
         // Always set session user on orchestrator immediately (new API)
         try {
           (orchestrator as any).setCurrentUser?.(user.id);
-          console.info("[Auto-Sniping Control] Session user applied to orchestrator", {
-            userId: user.id,
-          });
+          // Session user applied to orchestrator
         } catch {}
 
         // Ensure orchestrator is initialized before starting
         // CRITICAL: Disable auto-start during initialization to prevent starting without user ID
-        const orchestratorStatus = orchestrator.getStatus();
+        const orchestratorStatus = await orchestrator.getStatus();
         if (!orchestratorStatus.isInitialized) {
-          console.info("[Auto-Sniping Control] Orchestrator not initialized, initializing now...");
-
           // Temporarily disable auto-start to prevent premature execution
-          const originalConfig = { ...orchestrator.getConfig() };
-          orchestrator.updateConfig({ enabled: false });
-          console.info("[Auto-Sniping Control] Disabled auto-start during initialization");
+          const originalConfig = orchestrator.getConfig();
+          await orchestrator.updateConfig({ enabled: false });
 
           await orchestrator.initialize();
-          console.info("[Auto-Sniping Control] Orchestrator initialized successfully");
 
           // Restore original enabled setting (we'll manually start below with user ID set)
-          orchestrator.updateConfig({ enabled: originalConfig.enabled });
+          await orchestrator.updateConfig({ enabled: originalConfig.enabled });
         }
 
         // CRITICAL: Set the current session user ID on the auto-sniping module AFTER initialization
         // but BEFORE starting. This ensures the preference lookup has the correct userId from the session.
-        console.info("[Auto-Sniping Control] Setting current user ID for auto-sniping module", {
-          userId: user.id,
-        });
         try {
           const coreTrading = getCoreTrading();
-          const autoSnipingModule = (coreTrading as any).autoSniping;
+          const autoSnipingModule = (
+            coreTrading as unknown as {
+              autoSniping?: { setCurrentUser?: (userId: string) => void; getStatus?: () => { currentUserId?: string | null } };
+            }
+          ).autoSniping;
           if (autoSnipingModule && typeof autoSnipingModule.setCurrentUser === "function") {
             autoSnipingModule.setCurrentUser(user.id);
-            console.info("[Auto-Sniping Control] Current user ID set successfully", {
-              userId: user.id,
-            });
+            // Verify user ID was set correctly
+            const moduleStatus = autoSnipingModule.getStatus?.();
+            if (moduleStatus?.currentUserId !== user.id) {
+              throw new Error("Failed to verify user ID was set on auto-sniping module");
+            }
+            // Current user ID set and verified successfully
           } else {
-            console.warn(
-              "[Auto-Sniping Control] Could not find setCurrentUser method on autoSniping module",
-            );
+            throw new Error("Auto-sniping module does not support setCurrentUser");
           }
         } catch (setUserErr) {
-          console.error("[Auto-Sniping Control] Failed to set current user ID", {
-            error: setUserErr,
-          });
+          // Failed to set current user ID
           throw new Error(
             `Failed to set session user ID: ${setUserErr instanceof Error ? setUserErr.message : String(setUserErr)}`,
           );
@@ -143,7 +147,7 @@ export const POST = async (request: NextRequest) => {
           await orchestrator.start();
         } catch (startErr) {
           const msg = startErr instanceof Error ? startErr.message : String(startErr);
-          console.error("[Auto-Sniping Control] Orchestrator start failed", { error: msg });
+          // Orchestrator start failed
           return Response.json(
             createErrorResponse(`Failed to start auto-sniping: ${msg}`, {
               action: "start",
@@ -153,7 +157,7 @@ export const POST = async (request: NextRequest) => {
           );
         }
 
-        const status = orchestrator.getStatus();
+        const status = await orchestrator.getStatus();
 
         // Best-effort: sync upcoming calendar listings into snipe targets for the system user only
         let syncSummary: { created?: number; updated?: number } | undefined;
@@ -164,8 +168,8 @@ export const POST = async (request: NextRequest) => {
             dryRun: false,
           });
           syncSummary = { created: syncResult.created, updated: syncResult.updated };
-        } catch (syncError) {
-          console.warn("[Auto-Sniping Control] Calendar sync skipped:", syncError);
+        } catch (_syncError) {
+          // Calendar sync failed, continue without it
         }
 
         return Response.json(
@@ -184,14 +188,14 @@ export const POST = async (request: NextRequest) => {
       }
 
       case "stop": {
-        console.info("[Auto-Sniping Control] Stopping auto-sniping...");
-        await orchestrator.stop("Manual stop via API");
+        await orchestrator.stop();
+        const finalStatus = await orchestrator.getStatus();
         return Response.json(
           createSuccessResponse({
             message: "Auto-sniping stopped successfully",
             data: {
               stopped: true,
-              finalStatus: orchestrator.getStatus(),
+              finalStatus,
               timestamp: new Date().toISOString(),
             },
           }),
@@ -199,7 +203,7 @@ export const POST = async (request: NextRequest) => {
       }
 
       case "status": {
-        const status = orchestrator.getStatus();
+        const status = await orchestrator.getStatus();
 
         return Response.json(
           createSuccessResponse({
@@ -214,9 +218,8 @@ export const POST = async (request: NextRequest) => {
 
       case "emergency_stop": {
         const stopReason = reason || "Manual emergency stop requested";
-        console.warn(`[Auto-Sniping Control] Emergency stop requested: ${stopReason}`);
 
-        await orchestrator.emergencyStop(stopReason);
+        await orchestrator.emergencyStop();
 
         return Response.json(
           createSuccessResponse({
@@ -238,7 +241,7 @@ export const POST = async (request: NextRequest) => {
           );
         }
 
-        orchestrator.updateConfig(config);
+        await orchestrator.updateConfig(config);
         return Response.json(
           createSuccessResponse({
             message: "Configuration updated successfully",
@@ -261,22 +264,7 @@ export const POST = async (request: NextRequest) => {
         );
     }
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[Auto-Sniping Control] API request failed:", { error: msg });
-
-    if (error instanceof Error && error.message.includes("Authentication required")) {
-      return Response.json(
-        createErrorResponse("Authentication required", {
-          message: "Please sign in to access this resource",
-          code: "AUTHENTICATION_REQUIRED",
-        }),
-        { status: 401 },
-      );
-    }
-
-    return Response.json(createErrorResponse(`Auto-sniping control request failed: ${msg}`), {
-      status: 500,
-    });
+    return handleApiRouteError(error, "Auto-sniping control request failed");
   }
 };
 
@@ -309,25 +297,7 @@ export const GET = async (request: NextRequest) => {
       }),
     );
   } catch (error) {
-    console.error("[Auto-Sniping Control] Status request failed:", { error });
-
-    // Handle authentication errors specifically
-    if (error instanceof Error && error.message.includes("Authentication required")) {
-      return Response.json(
-        createErrorResponse("Authentication required", {
-          message: "Please sign in to access this resource",
-          code: "AUTHENTICATION_REQUIRED",
-        }),
-        { status: 401 },
-      );
-    }
-
-    return Response.json(
-      createErrorResponse("Failed to retrieve auto-sniping status", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 },
-    );
+    return handleApiRouteError(error, "Failed to retrieve auto-sniping status");
   }
 };
 
@@ -338,8 +308,7 @@ export const GET = async (request: NextRequest) => {
 export const PUT = async (request: NextRequest) => {
   try {
     // Use new request-aware authentication
-    const user = await SupabaseAuthServer.requireAuthFromRequest(request);
-    console.log(`[Auto-Sniping Control] Config update by user: ${user.email} (${user.id})`);
+    const _user = await SupabaseAuthServer.requireAuthFromRequest(request);
 
     const config = await request.json();
 
@@ -366,27 +335,7 @@ export const PUT = async (request: NextRequest) => {
       );
     }
   } catch (error) {
-    console.error("[Auto-Sniping Control] Configuration update failed:", {
-      error,
-    });
-
-    // Handle authentication errors specifically
-    if (error instanceof Error && error.message.includes("Authentication required")) {
-      return Response.json(
-        createErrorResponse("Authentication required", {
-          message: "Please sign in to access this resource",
-          code: "AUTHENTICATION_REQUIRED",
-        }),
-        { status: 401 },
-      );
-    }
-
-    return Response.json(
-      createErrorResponse("Configuration update failed", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 },
-    );
+    return handleApiRouteError(error, "Configuration update failed");
   }
 };
 
@@ -397,14 +346,12 @@ export const PUT = async (request: NextRequest) => {
 export const DELETE = async (request: NextRequest) => {
   try {
     // Use new request-aware authentication
-    const user = await SupabaseAuthServer.requireAuthFromRequest(request);
-    console.log(`[Auto-Sniping Control] Emergency stop by user: ${user.email} (${user.id})`);
+    const _user = await SupabaseAuthServer.requireAuthFromRequest(request);
 
     const body = await request.json().catch(() => ({}));
     const { reason } = body;
 
     const stopReason = reason || "Emergency stop via DELETE endpoint";
-    console.warn(`[Auto-Sniping Control] Emergency stop via DELETE: ${stopReason}`);
 
     const coreTrading = getCoreTrading();
     await coreTrading.stopAutoSniping();
@@ -421,24 +368,6 @@ export const DELETE = async (request: NextRequest) => {
       }),
     );
   } catch (error) {
-    console.error("[Auto-Sniping Control] Emergency stop failed:", { error });
-
-    // Handle authentication errors specifically
-    if (error instanceof Error && error.message.includes("Authentication required")) {
-      return Response.json(
-        createErrorResponse("Authentication required", {
-          message: "Please sign in to access this resource",
-          code: "AUTHENTICATION_REQUIRED",
-        }),
-        { status: 401 },
-      );
-    }
-
-    return Response.json(
-      createErrorResponse("Emergency stop failed", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 },
-    );
+    return handleApiRouteError(error, "Emergency stop failed");
   }
 };

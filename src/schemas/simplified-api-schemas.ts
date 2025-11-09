@@ -44,10 +44,10 @@ export interface AutoSnipeConfig {
 }
 
 export interface Phase3Configuration {
-  performance?: any;
-  aiIntelligence?: any;
-  patternDetection?: any;
-  cacheWarming?: any;
+  performance?: Record<string, unknown>;
+  aiIntelligence?: Record<string, unknown>;
+  patternDetection?: Record<string, unknown>;
+  cacheWarming?: Record<string, unknown>;
 }
 
 export interface PortfolioData {

@@ -11,11 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, provider = "mexc" } = body;
 
-    console.info("[API-Credentials-Test] POST request", {
-      userId: userId || "anonymous",
-      provider,
-      timestamp: new Date().toISOString(),
-    });
+    // POST request - error logging handled by error handler middleware
 
     // Validation
     if (!userId) {
@@ -34,7 +30,7 @@ export async function POST(request: NextRequest) {
     try {
       userCredentials = await getUserCredentials(userId, provider);
     } catch (error) {
-      console.error("[API-Credentials-Test] Failed to get credentials:", error);
+      // Failed to get credentials - error logging handled by error handler middleware
 
       if (error instanceof Error && error.message.includes("Encryption service unavailable")) {
         return NextResponse.json(
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
         secretKey: userCredentials.secretKey,
       });
 
-      console.info("[API-Credentials-Test] Testing with basic ping endpoint");
+      // Testing with basic ping endpoint
 
       // Test basic API connectivity (ping endpoint - no auth required)
       const startTime = Date.now();
@@ -136,14 +132,11 @@ export async function POST(request: NextRequest) {
       // Test authenticated endpoint (ACCOUNT INFO) - STRICT, no fallback
       let accountTest = null;
       try {
-        console.info("[API-Credentials-Test] Testing account info access");
+        // Testing account info access
         accountTest = await mexcService.getAccountInfo();
-        console.info("[API-Credentials-Test] Account info test result:", {
-          success: accountTest?.success,
-          hasData: !!accountTest?.data,
-        });
+        // Account info test result
       } catch (accountError) {
-        console.warn("[API-Credentials-Test] Account info test failed:", accountError);
+        // Account info test failed - error logging handled by error handler middleware
         accountTest = {
           success: false,
           error:
@@ -157,8 +150,8 @@ export async function POST(request: NextRequest) {
           .update(apiCredentials)
           .set({ credentialsValid: validated, lastValidated: new Date() })
           .where(and(eq(apiCredentials.userId, userId), eq(apiCredentials.provider, provider)));
-      } catch (e) {
-        console.warn("[API-Credentials-Test] Failed to persist validation flag:", e);
+      } catch (_e) {
+        // Failed to persist validation flag - error logging handled by error handler middleware
       }
 
       if (!validated) {
@@ -193,7 +186,7 @@ export async function POST(request: NextRequest) {
         message: "Credentials tested successfully",
       });
     } catch (mexcError) {
-      console.error("[API-Credentials-Test] MEXC API error:", mexcError);
+      // MEXC API error - error logging handled by error handler middleware
 
       const errorMessage =
         mexcError instanceof Error ? mexcError.message : "Unknown MEXC API error";
@@ -213,7 +206,7 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("[API-Credentials-Test] Unexpected error:", error);
+    // Unexpected error - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

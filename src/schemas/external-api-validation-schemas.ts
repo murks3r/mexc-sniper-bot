@@ -6,6 +6,9 @@
  */
 
 import { z } from "zod";
+import { createSimpleLogger } from "../lib/unified-logger";
+
+const logger = createSimpleLogger("external-api-validation");
 
 // ============================================================================
 // MEXC API Response Validation Schemas
@@ -355,7 +358,7 @@ export function validateMexcResponse<T extends z.ZodSchema>(
   schema: T,
   response: unknown,
   apiEndpoint: string = "unknown",
-): { success?: boolean; data?: z.infer<T>; error?: string; details?: any } {
+): { success?: boolean; data?: z.infer<T>; error?: string; details?: unknown } {
   try {
     // First check if it's a MEXC error response
     const errorCheck = MexcErrorResponseSchema.safeParse(response);
@@ -375,7 +378,7 @@ export function validateMexcResponse<T extends z.ZodSchema>(
         .map((err) => `${(err.path as string[]).join(".")}: ${err.message}`)
         .join(", ");
 
-      console.error(`[MEXC API Validation] ${apiEndpoint} validation failed:`, {
+      logger.error(`MEXC API validation failed for ${apiEndpoint}`, {
         errors: error.errors,
         receivedData: JSON.stringify(response, null, 2).substring(0, 500),
       });
@@ -404,7 +407,7 @@ export function validateCriticalTradingData<T extends z.ZodSchema>(
 ): z.infer<T> {
   try {
     const result = schema.parse(data);
-    console.debug(`[CriticalValidation] ${dataType} validated successfully`);
+    logger.debug(`Critical validation succeeded for ${dataType}`);
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -412,7 +415,7 @@ export function validateCriticalTradingData<T extends z.ZodSchema>(
         .map((err) => `${(err.path as string[]).join(".")}: ${err.message}`)
         .join(", ");
 
-      console.error(`[CriticalValidation] CRITICAL FAILURE - ${dataType} validation failed:`, {
+      logger.error(`Critical validation failed for ${dataType}`, {
         errors: error.errors,
         data: JSON.stringify(data, null, 2).substring(0, 300),
       });
@@ -437,7 +440,7 @@ export function safeValidateWithDefault<T extends z.ZodSchema>(
   try {
     return schema.parse(data);
   } catch (error) {
-    console.warn(`[SafeValidation] Validation failed, using default:`, {
+    logger.warn("Validation failed, using default", {
       error: error instanceof z.ZodError ? error.errors : error,
       defaultValue,
     });

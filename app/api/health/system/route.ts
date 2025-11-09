@@ -21,8 +21,7 @@ async function getSystemHealthFast() {
     database: { status: "pass", message: "Database connection healthy" },
     environment: { status: "pass", message: "Environment configured" },
     connectivity: { status: "pass", message: "Network connectivity available" },
-    workflows: { status: "pass", message: "Workflow system operational" }
-
+    workflows: { status: "pass", message: "Workflow system operational" },
   };
 
   // Cache the result
@@ -43,8 +42,8 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       services: healthData,
     });
-  } catch (error) {
-    console.error("System health check failed:", error);
+  } catch (_error) {
+    // System health check failed - error logging handled by error handler middleware
     return NextResponse.json(
       {
         status: "unhealthy",

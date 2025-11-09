@@ -109,10 +109,7 @@ export async function GET(request: NextRequest) {
         }
         conditions.push(gte(transactions.transactionTime, fromTimestamp));
       } catch (dateError) {
-        console.error("Error parsing fromDate:", {
-          fromDate,
-          error: dateError,
-        });
+        // Error parsing fromDate - error logging handled by error handler middleware
         return apiResponse(
           createValidationErrorResponse("fromDate", "Invalid fromDate format"),
           HTTP_STATUS.BAD_REQUEST,
@@ -131,7 +128,7 @@ export async function GET(request: NextRequest) {
         }
         conditions.push(lte(transactions.transactionTime, toTimestamp));
       } catch (dateError) {
-        console.error("Error parsing toDate:", { toDate, error: dateError });
+        // Error parsing toDate - error logging handled by error handler middleware
         return apiResponse(
           createValidationErrorResponse("toDate", "Invalid toDate format"),
           HTTP_STATUS.BAD_REQUEST,
@@ -151,11 +148,7 @@ export async function GET(request: NextRequest) {
         ),
       ]);
     } catch (dbError) {
-      console.error("Database error in transactions query:", {
-        userId,
-        error: dbError,
-        conditions: conditions.length,
-      });
+      // Database error in transactions query - error logging handled by error handler middleware
 
       // Check if this is a database connectivity issue
       const isDbConnectivityError =
@@ -237,7 +230,7 @@ export async function GET(request: NextRequest) {
       ),
     );
   } catch (error) {
-    console.error("Error fetching transactions:", { error });
+    // Error fetching transactions - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
       HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -290,10 +283,7 @@ export async function POST(request: NextRequest) {
               }
               return date;
             } catch (error) {
-              console.error("Error converting buyTimestamp:", {
-                timestamp: transactionData.buyTimestamp,
-                error,
-              });
+              // Error converting buyTimestamp - error logging handled by error handler middleware
               return new Date(); // Fallback to current time
             }
           })()
@@ -311,10 +301,7 @@ export async function POST(request: NextRequest) {
               }
               return date;
             } catch (error) {
-              console.error("Error converting sellTimestamp:", {
-                timestamp: transactionData.sellTimestamp,
-                error,
-              });
+              // Error converting sellTimestamp - error logging handled by error handler middleware
               return new Date(); // Fallback to current time
             }
           })()
@@ -339,11 +326,7 @@ export async function POST(request: NextRequest) {
         ),
       ]);
     } catch (dbError) {
-      console.error("Database error creating transaction:", {
-        userId: transactionData.userId,
-        transactionType: transactionData.transactionType,
-        error: dbError,
-      });
+      // Database error creating transaction - error logging handled by error handler middleware
 
       // Check if this is a database connectivity issue
       const isDbConnectivityError =
@@ -375,7 +358,7 @@ export async function POST(request: NextRequest) {
       HTTP_STATUS.CREATED,
     );
   } catch (error) {
-    console.error("Error creating transaction:", { error });
+    // Error creating transaction - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
       HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -409,10 +392,7 @@ export async function PUT(request: NextRequest) {
         ),
       ]);
     } catch (dbError) {
-      console.error("Database error updating transaction:", {
-        id,
-        error: dbError,
-      });
+      // Database error updating transaction - error logging handled by error handler middleware
 
       // Check if this is a database connectivity issue
       const isDbConnectivityError =
@@ -447,7 +427,7 @@ export async function PUT(request: NextRequest) {
       }),
     );
   } catch (error) {
-    console.error("Error updating transaction:", { error });
+    // Error updating transaction - error logging handled by error handler middleware
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error occurred"),
       HTTP_STATUS.INTERNAL_SERVER_ERROR,

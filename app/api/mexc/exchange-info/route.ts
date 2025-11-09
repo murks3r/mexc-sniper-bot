@@ -11,15 +11,12 @@ export async function GET(_request: NextRequest) {
   try {
     const mexcService = getRecommendedMexcService();
 
-    console.info("[exchange-info-api] Fetching exchange info...");
+    // Fetching exchange info
 
     const exchangeInfoResponse = await mexcService.getExchangeInfo();
 
     if (!exchangeInfoResponse.success) {
-      console.warn(
-        "[exchange-info-api] Failed to fetch exchange info:",
-        exchangeInfoResponse.error,
-      );
+      // Failed to fetch exchange info - error logging handled by error handler middleware
       return apiResponse(
         createErrorResponse(exchangeInfoResponse.error || "Failed to fetch exchange info", {
           fallbackData: { symbols: [] },
@@ -33,9 +30,7 @@ export async function GET(_request: NextRequest) {
     const usdtPairs =
       exchangeInfoResponse.data?.symbols?.filter((s) => s.quoteAsset === "USDT") || [];
 
-    console.info(
-      `[exchange-info-api] ✅ Successfully fetched exchange info: ${symbolsCount} total symbols, ${usdtPairs.length} USDT pairs`,
-    );
+    // Successfully fetched exchange info
 
     return apiResponse(
       createSuccessResponse(exchangeInfoResponse.data, {
@@ -46,7 +41,7 @@ export async function GET(_request: NextRequest) {
       }),
     );
   } catch (error) {
-    console.error("[exchange-info-api] Exchange info fetch failed:", { error });
+    // Exchange info fetch failed - error logging handled by error handler middleware
 
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error", {

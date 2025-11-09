@@ -36,6 +36,7 @@ import { Progress } from "@/src/components/ui/progress";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Switch } from "@/src/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import { createSimpleLogger } from "../../lib/unified-logger";
 
 interface RealTimeSafetyDashboardProps {
   className?: string;
@@ -595,6 +596,7 @@ export function RealTimeSafetyDashboard({
   autoRefresh = true,
   showControls = true,
 }: RealTimeSafetyDashboardProps) {
+  const logger = createSimpleLogger("RealTimeSafetyDashboard");
   const [selectedTab, setSelectedTab] = useState("overview");
   const [configEditMode, setConfigEditMode] = useState(false);
   const [emergencyReason, setEmergencyReason] = useState("");
@@ -620,7 +622,7 @@ export function RealTimeSafetyDashboard({
     );
 
     if (confirmed) {
-      console.log("Emergency response triggered:", emergencyReason);
+      logger.info("Emergency response triggered", { emergencyReason });
       setEmergencyReason("");
     }
   };
@@ -638,11 +640,11 @@ export function RealTimeSafetyDashboard({
   };
 
   const handleAcknowledgeAlert = (alertId: string) => {
-    console.log("Acknowledging alert:", alertId);
+    logger.info("Acknowledging alert", { alertId });
   };
 
   const handleClearAlerts = () => {
-    console.log("Clearing acknowledged alerts");
+    logger.info("Clearing acknowledged alerts");
   };
 
   const refreshData = () => {

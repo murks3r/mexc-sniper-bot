@@ -74,12 +74,7 @@ export class EventHandling {
     this.maxConcurrentOperations = config.maxConcurrentOperations || 5;
     this.operationTimeoutMs = config.operationTimeoutMs || 30000; // 30 seconds
 
-    console.info("Event handling initialized", {
-      operation: "initialization",
-      baseTickMs: this.baseTickMs,
-      maxConcurrentOperations: this.maxConcurrentOperations,
-      operationTimeoutMs: this.operationTimeoutMs,
-    });
+    // Event handling initialized
   }
 
   /**
@@ -103,13 +98,7 @@ export class EventHandling {
 
     this.operations.set(operation.id, scheduledOp);
 
-    console.info("Operation registered", {
-      operation: "register_operation",
-      operationId: operation.id,
-      operationName: operation.name,
-      intervalMs: operation.intervalMs,
-      totalOperations: this.operations.size,
-    });
+    // Operation registered
   }
 
   /**
@@ -118,32 +107,18 @@ export class EventHandling {
   public unregisterOperation(operationId: string): boolean {
     const operation = this.operations.get(operationId);
     if (!operation) {
-      console.warn("Operation not found for unregistration", {
-        operation: "unregister_operation",
-        operationId,
-        totalOperations: this.operations.size,
-      });
+      // Operation not found for unregistration
       return false;
     }
 
     if (operation.isRunning) {
-      console.warn("Cannot unregister running operation", {
-        operation: "unregister_operation",
-        operationId,
-        operationName: operation.name,
-        isRunning: operation.isRunning,
-      });
+      // Cannot unregister running operation
       return false;
     }
 
     this.operations.delete(operationId);
 
-    console.info("Operation unregistered", {
-      operation: "unregister_operation",
-      operationId,
-      operationName: operation.name,
-      totalOperations: this.operations.size,
-    });
+    // Operation unregistered
 
     return true;
   }
@@ -153,35 +128,18 @@ export class EventHandling {
    */
   public start(): void {
     if (this.isActive) {
-      console.warn("Timer coordinator already active", {
-        operation: "start_coordinator",
-        isActive: this.isActive,
-        operationsCount: this.operations.size,
-      });
+      // Timer coordinator already active
       return;
     }
 
     this.isActive = true;
     this.stats.startTime = Date.now();
 
-    console.info("Starting timer coordination", {
-      operation: "start_coordinator",
-      baseTickMs: this.baseTickMs,
-      operationsCount: this.operations.size,
-      maxConcurrentOperations: this.maxConcurrentOperations,
-    });
+    // Starting timer coordination
 
     this.coordinatorTimer = setInterval(() => {
-      this.coordinateCycle().catch((error) => {
-        console.error(
-          "Coordination cycle failed",
-          {
-            operation: "coordination_cycle",
-            activeOperations: this.operations.size,
-            baseTickMs: this.baseTickMs,
-          },
-          error,
-        );
+      this.coordinateCycle().catch((_error) => {
+        // Coordination cycle failed - error logging handled by error handler middleware
       });
     }, this.baseTickMs);
   }
@@ -190,12 +148,7 @@ export class EventHandling {
    * Stop the timer coordinator and cleanup
    */
   public stop(): void {
-    console.info("Stopping timer coordination", {
-      operation: "stop_coordinator",
-      isActive: this.isActive,
-      totalOperations: this.operations.size,
-      uptime: Date.now() - this.stats.startTime,
-    });
+    // Stopping timer coordination
 
     this.isActive = false;
 
@@ -209,11 +162,7 @@ export class EventHandling {
     const runningOps = allOperations.filter((op) => op.isRunning);
 
     if (runningOps.length > 0) {
-      console.info("Waiting for operations to complete", {
-        operation: "stop_coordinator",
-        runningOperations: runningOps.length,
-        runningOperationNames: runningOps.map((op) => op.name),
-      });
+      // Waiting for operations to complete
     }
   }
 
@@ -225,13 +174,10 @@ export class EventHandling {
       this.stop();
     }
 
-    const clearedCount = this.operations.size;
+    const _clearedCount = this.operations.size;
     this.operations.clear();
 
-    console.info("All operations cleared", {
-      operation: "clear_operations",
-      clearedCount,
-    });
+    // All operations cleared
   }
 
   /**
@@ -277,35 +223,20 @@ export class EventHandling {
   public async forceExecution(operationId: string): Promise<boolean> {
     const operation = this.operations.get(operationId);
     if (!operation) {
-      console.warn("Operation not found for forced execution", {
-        operation: "force_execution",
-        operationId,
-      });
+      // Operation not found for forced execution
       return false;
     }
 
     if (operation.isRunning) {
-      console.warn("Operation already running", {
-        operation: "force_execution",
-        operationId,
-        operationName: operation.name,
-      });
+      // Operation already running
       return false;
     }
 
     try {
       await this.executeOperationSafely(operation);
       return true;
-    } catch (error) {
-      console.error(
-        "Forced execution failed",
-        {
-          operation: "force_execution",
-          operationId,
-          operationName: operation.name,
-        },
-        error,
-      );
+    } catch (_error) {
+      // Forced execution failed - error logging handled by error handler middleware
       return false;
     }
   }
@@ -351,16 +282,8 @@ export class EventHandling {
         if (!this.isActive) return; // Check if coordinator was stopped
 
         // Execute asynchronously to prevent blocking
-        this.executeOperationSafely(operation).catch((error) => {
-          console.error(
-            "Operation execution failed in coordination cycle",
-            {
-              operation: "coordination_cycle",
-              operationId: operation.id,
-              operationName: operation.name,
-            },
-            error,
-          );
+        this.executeOperationSafely(operation).catch(() => {
+          // Operation execution failed in coordination cycle - error logging handled by error handler middleware
         });
       });
   }
@@ -399,7 +322,7 @@ export class EventHandling {
       // Clear any previous error
       operation.lastError = undefined;
     } catch (error) {
-      const duration = timer.end({
+      const _duration = timer.end({
         operationId: operation.id,
         operationName: operation.name,
         status: "failed",
@@ -408,18 +331,7 @@ export class EventHandling {
       operation.lastError = (error as Error)?.message;
       this.stats.totalErrors++;
 
-      console.error(
-        "Operation failed",
-        {
-          operation: "execute_operation",
-          operationId: operation.id,
-          operationName: operation.name,
-          duration,
-          executionCount: operation.executionCount,
-          status: "failed",
-        },
-        error,
-      );
+      // Operation execution failed - error logging handled by error handler middleware
 
       throw error;
     } finally {

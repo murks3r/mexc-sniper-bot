@@ -65,4 +65,3 @@ export function canUpgradeAnonymousUser(user: User | null | undefined): boolean 
   if (!user) return false;
   return isAnonymousUser(user) && !user.email && !user.phone;
 }
-

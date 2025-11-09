@@ -8,6 +8,7 @@
 import type { EventEmitter } from "node:events";
 import { z } from "zod";
 import { getPaperTradingDefault } from "@/src/lib/trading-config-helpers";
+import type { TradingPriceMessage } from "@/src/lib/websocket-types";
 import type { UnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
 import type { ComprehensiveSafetyCoordinator } from "@/src/services/risk/comprehensive-safety-coordinator";
 
@@ -496,6 +497,7 @@ export interface CoreTradingEvents {
   strategy_changed: [data: { oldStrategy: string; newStrategy: string }];
   performance_updated: [metrics: PerformanceMetrics];
   error_occurred: [error: Error];
+  market_price_update: [price: TradingPriceMessage];
 }
 
 // ============================================================================
@@ -534,6 +536,9 @@ export interface ModuleContext {
   };
   marketDataService: {
     getCurrentPrice: (symbol: string) => Promise<{ price: number } | null>;
+  };
+  marketData?: {
+    getLatestPrice: (symbol: string) => number;
   };
   logger: {
     info: (message: string, context?: Record<string, unknown>) => void;

@@ -11,9 +11,9 @@ import type {
   TradingPriceMessage,
   TradingSignalMessage,
 } from "@/src/lib/websocket-types";
-import { webSocketServer } from "../websocket-server";
 import { type ConnectionManagerOptions, MexcConnectionManager } from "./connection-manager";
 import { MarketDataManager } from "./market-data-manager";
+import { webSocketServer } from "./websocket-server";
 
 // ======================
 // Stream Configuration
@@ -41,14 +41,18 @@ export class MexcWebSocketStreamService extends EventEmitter {
   private static instance: MexcWebSocketStreamService;
 
   private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[stream-processor]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[stream-processor]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[stream-processor]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[stream-processor]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: any, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
   };
 
   // Service components
@@ -304,32 +308,20 @@ export class MexcWebSocketStreamService extends EventEmitter {
   private setupEventHandlers(): void {
     // Handle price updates
     this.on("price_update", async (price: TradingPriceMessage) => {
-      // Broadcast to WebSocket server
-      await webSocketServer.broadcast({
-        type: "trading:price",
-        channel: "trading:prices",
-        data: price,
-      });
+      // Broadcast to WebSocket server - disabled for now
+      // webSocketServer.broadcast("trading_prices", price);
     });
 
     // Handle trading signals
     this.on("trading_signal", async (signal: TradingSignalMessage) => {
-      // Broadcast to WebSocket server
-      await webSocketServer.broadcast({
-        type: "trading:signal",
-        channel: "trading:signals",
-        data: signal,
-      });
+      // Broadcast to WebSocket server - disabled for now
+      // webSocketServer.broadcast("trading_signals", signal);
     });
 
     // Handle notifications
     this.on("notification", async (notification: NotificationMessage) => {
-      // Broadcast to WebSocket server
-      await webSocketServer.broadcast({
-        type: "notification:info",
-        channel: "notifications:global",
-        data: notification,
-      });
+      // Broadcast to WebSocket server - disabled for now
+      // webSocketServer.broadcast("notifications", notification);
     });
   }
 

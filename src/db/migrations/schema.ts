@@ -585,6 +585,7 @@ export const account = pgTable(
 
 export const alertRules = pgTable("alert_rules", {
   id: text().primaryKey().notNull(),
+  userId: text("user_id").notNull(),
   name: text().notNull(),
   description: text(),
   category: text().notNull(),
@@ -682,6 +683,7 @@ export const alertNotifications = pgTable(
 
 export const notificationChannels = pgTable("notification_channels", {
   id: text().primaryKey().notNull(),
+  userId: text("user_id").notNull(),
   name: text().notNull(),
   type: text().notNull(),
   config: text().notNull(),
@@ -694,6 +696,8 @@ export const notificationChannels = pgTable("notification_channels", {
   rateLimitPerHour: integer("rate_limit_per_hour").default(100),
   messageTemplate: text("message_template"),
   titleTemplate: text("title_template"),
+  credentials: text(),
+  webhookUrl: text("webhook_url"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
   createdBy: text("created_by").notNull(),

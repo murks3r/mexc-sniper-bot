@@ -12,8 +12,8 @@ export async function POST(_request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Sign out error:", error);
+  } catch (_error) {
+    // Sign out error - error logging handled by error handler middleware
     return NextResponse.json({ error: "Failed to sign out" }, { status: 500 });
   }
 }

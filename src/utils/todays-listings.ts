@@ -2,12 +2,8 @@
  * Utility functions for filtering and working with today's listings
  */
 
-import type { CalendarEntry } from "@/src/services/api/mexc-market-data";
-import {
-  filterTodaysListings,
-  getListingsByDate,
-  isTodayListing,
-} from "./listings-utils";
+import type { CalendarEntry } from "@/src/services/api/mexc-unified-exports";
+import { filterTodaysListings, getListingsByDate, isTodayListing } from "./listings-utils";
 
 export { filterTodaysListings, isTodayListing };
 

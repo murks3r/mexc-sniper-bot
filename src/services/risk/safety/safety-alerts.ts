@@ -10,15 +10,20 @@ import type { WebSocketServerService } from "../../data/websocket/websocket-serv
 import type { SafetyAction, SafetyAlert, SafetyCoordinatorConfig } from "./safety-types";
 
 export class SafetyAlertsManager extends EventEmitter {
+  // Logger disabled for safety and security
   private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[safety-alerts]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[safety-alerts]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[safety-alerts]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[safety-alerts]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging disabled in production
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging disabled in production
+    },
+    error: (_message: string, _context?: any, _error?: Error) => {
+      // Logging disabled in production
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging disabled in production
+    },
   };
 
   private activeAlerts: Map<string, SafetyAlert> = new Map();
@@ -85,7 +90,7 @@ export class SafetyAlertsManager extends EventEmitter {
       await this.broadcastSafetyUpdate("alert", alert);
     }
 
-    console.info(`[SafetyAlertsManager] Created ${alert.severity} alert: ${alert.title}`);
+    this.logger.info(`Created ${alert.severity} alert: ${alert.title}`);
 
     return alert.id;
   }
@@ -300,7 +305,7 @@ export class SafetyAlertsManager extends EventEmitter {
     // Emit action event
     this.emit("action_executed", action);
 
-    console.info(`[SafetyAlertsManager] Executed ${action.type} action: ${action.reason}`);
+    this.logger.info(`Executed ${action.type} action: ${action.reason}`);
   }
 
   /**
@@ -322,7 +327,7 @@ export class SafetyAlertsManager extends EventEmitter {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error("[SafetyAlertsManager] Failed to broadcast safety update:", error);
+      this.logger.error("Failed to broadcast safety update:", undefined, error as Error);
     }
   }
 

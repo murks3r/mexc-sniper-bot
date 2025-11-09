@@ -340,7 +340,7 @@ async function createSpanProcessors(config: ProductionTelemetryConfig) {
     });
 
     processors.push(
-      new BatchSpanProcessor(jaegerExporter, {
+      new BatchSpanProcessor(jaegerExporter as any, {
         scheduledDelayMillis: config.performance.batchTimeout,
         maxExportBatchSize: Math.min(config.performance.maxBatchSize, 200), // Limit Jaeger batch size
       }),

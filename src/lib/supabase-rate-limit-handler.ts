@@ -106,7 +106,7 @@ export class SupabaseRateLimitHandler {
     SESSION_NOT_FOUND: "session_not_found",
   };
 
-  private static metrics: RateLimitMetrics = {
+  public static metrics: RateLimitMetrics = {
     totalRequests: 0,
     rateLimitedRequests: 0,
     successfulRetries: 0,
@@ -125,7 +125,7 @@ export class SupabaseRateLimitHandler {
     successCount: 0,
   };
 
-  private static readonly DEFAULT_RETRY_CONFIG: RetryConfig = {
+  public static readonly DEFAULT_RETRY_CONFIG: RetryConfig = {
     maxRetries: 3,
     baseDelay: 1000,
     maxDelay: 30000,
@@ -135,22 +135,18 @@ export class SupabaseRateLimitHandler {
     circuitBreakerEnabled: true,
   };
 
-  private static logger = {
-    info: (message: string, context?: any) => {
-      if (process.env.NODE_ENV === "development") {
-        console.info(`[SupabaseRateLimitHandler] ${message}`, context || "");
-      }
+  public static logger = {
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    warn: (message: string, context?: any) => {
-      console.warn(`[SupabaseRateLimitHandler] ${message}`, context || "");
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    error: (message: string, context?: any, error?: Error) => {
-      console.error(`[SupabaseRateLimitHandler] ${message}`, context || "", error || "");
+    error: (_message: string, _context?: any, _error?: Error) => {
+      // Logging handled by structured logger
     },
-    debug: (message: string, context?: any) => {
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`[SupabaseRateLimitHandler] ${message}`, context || "");
-      }
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
   };
 

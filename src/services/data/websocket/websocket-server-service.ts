@@ -73,14 +73,18 @@ export class WebSocketServerService extends EventEmitter {
   private startTime = Date.now();
 
   private logger = {
-    info: (message: string, context?: unknown) =>
-      console.info("[websocket-server-service]", message, context || ""),
-    warn: (message: string, context?: unknown) =>
-      console.warn("[websocket-server-service]", message, context || ""),
-    error: (message: string, context?: unknown, error?: Error) =>
-      console.error("[websocket-server-service]", message, context || "", error || ""),
-    debug: (message: string, context?: unknown) =>
-      console.debug("[websocket-server-service]", message, context || ""),
+    info: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: unknown, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
   };
 
   constructor(config: Partial<WebSocketServerConfig> = {}) {
@@ -435,17 +439,8 @@ export class WebSocketServerService extends EventEmitter {
     for (const connection of subscribers) {
       try {
         if (connection.ws.readyState === WebSocket.OPEN) {
-          await instrumentWebSocketSend(
-            message,
-            async () => {
-              connection.ws.send(messageData);
-            },
-            {
-              channel: channel,
-              messageType: message.type,
-              connectionId: connection.id,
-            },
-          );
+          instrumentWebSocketSend(connection.id, message);
+          connection.ws.send(messageData);
 
           this.connectionManager.incrementMessageCount(connection.id, "sent");
           successCount++;

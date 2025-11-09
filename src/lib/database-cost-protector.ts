@@ -87,6 +87,10 @@ export class DatabaseCostProtector {
       status: "healthy" as const,
     };
   }
+
+  getEndpointMetrics(): Map<string, { calls: number; cost: number; avgLatency: number }> {
+    return new Map();
+  }
 }
 
 // Export global instance

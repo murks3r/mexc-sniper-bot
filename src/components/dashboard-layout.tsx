@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { queryKeys } from "@/src/lib/query-client";
 import { useAuth } from "../components/auth/supabase-auth-provider";
 import { useAuthCacheManager } from "../hooks/use-auth-cache-manager";
+import { Badge } from "./ui/badge";
 import {
   Avatar,
   AvatarFallback,
@@ -23,7 +24,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -31,15 +31,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "./ui/optimized-exports";
-import {
-  ChevronRight,
-  LayoutDashboard,
-  LogOut,
-  Shield,
-  User,
-  Zap,
-} from "./ui/optimized-icons";
-import { Badge } from "./ui/badge";
+import { ChevronRight, LayoutDashboard, LogOut, Shield, User, Zap } from "./ui/optimized-icons";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -67,7 +59,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     // Removed: Safety, Monitoring, Agents, Workflows, Strategies pages - simplified to trading focus
   ];
 
-  const secondaryNavItems = [
+  const _secondaryNavItems = [
     // Removed: Settings and Config pages - merged into dashboard
   ];
 
@@ -194,7 +186,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
           </SidebarContent>
 
           <SidebarFooter className="border-t p-4">
@@ -209,11 +200,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </Avatar>
                   <div className="flex flex-col items-start text-sm">
                     <div className="flex items-center gap-2">
-                    <span className="font-medium">
+                      <span className="font-medium">
                         {isAnonymous
                           ? "Guest User"
                           : user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
-                    </span>
+                      </span>
                       {isAnonymous && (
                         <Badge variant="secondary" className="text-xs">
                           Guest
@@ -240,7 +231,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       <Shield className="mr-2 h-4 w-4" />
                       Upgrade Account
                     </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                    <DropdownMenuSeparator />
                   </>
                 )}
                 <DropdownMenuItem>

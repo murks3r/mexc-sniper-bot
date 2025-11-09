@@ -57,6 +57,7 @@ export class SecureEncryptionService {
   }
 
   private masterKey: Buffer;
+  public keyId: string;
 
   constructor() {
     // Validate and load master key from environment

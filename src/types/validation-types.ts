@@ -8,25 +8,25 @@
 // UNIVERSAL VALIDATION RESULT TYPES
 // ============================================================================
 
-export interface ValidationResult<T = any> {
+export interface ValidationResult<T = unknown> {
   success?: boolean;
   data?: T;
   error?: string;
-  details?: any;
+  details?: unknown;
   statusCode?: number;
   code?: string;
   message?: string;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success?: boolean;
   data?: T;
   error?: string;
   code?: string;
-  details?: any;
+  details?: unknown;
   message?: string;
   timestamp?: string;
-  meta?: any;
+  meta?: unknown;
   statusCode?: number;
 }
 

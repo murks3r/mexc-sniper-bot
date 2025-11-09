@@ -8,11 +8,7 @@
  * - Optimized bundle size through tree-shaking
  */
 
-import type {
-  MarketService,
-  PortfolioService,
-  TradingService,
-} from "@/src/application/interfaces/trading-repository";
+// Removed non-existent interface import - interfaces are defined inline
 import type { ActivityQueryOptionsType } from "@/src/schemas/unified/mexc-api-schemas";
 // Build-safe imports - modular architecture
 import type {
@@ -40,7 +36,7 @@ import {
 // Unified MEXC Service v2
 // ============================================================================
 
-export class UnifiedMexcServiceV2 implements PortfolioService, TradingService, MarketService {
+export class UnifiedMexcServiceV2 {
   // Simple console logger to avoid webpack bundling issues
   private logger = {
     info: (message: string, context?: any) =>
@@ -129,10 +125,10 @@ export class UnifiedMexcServiceV2 implements PortfolioService, TradingService, M
     const result = await this.tradingModule.executeTrade({
       symbol: params.symbol,
       side: params.side,
-      type: params.type,
-      quantity: params.quantity || 0,
-      price: params.price,
-      stopPrice: params.stopPrice,
+      type: params.type === "STOP_LIMIT" ? "LIMIT" : params.type, // Convert STOP_LIMIT to LIMIT for compatibility
+      quantity: String(params.quantity || 0),
+      price: params.price ? String(params.price) : undefined,
+      stopPrice: params.stopPrice ? String(params.stopPrice) : undefined,
       timeInForce: params.timeInForce,
       paperTrade: params.paperTrade, // Pass through the paper trade parameter
     });
@@ -660,7 +656,7 @@ export class UnifiedMexcServiceV2 implements PortfolioService, TradingService, M
     currencies: string[],
     options?: ActivityQueryOptionsType,
   ): Promise<MexcServiceResponse<any[]>> {
-    return this.coreModule.getBulkActivityData(currencies, options);
+    return this.coreModule.getBulkActivityData(currencies);
   }
 
   async hasRecentActivity(

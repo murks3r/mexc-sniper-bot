@@ -230,25 +230,11 @@ export class PositionManager {
       const mexcService = await getUnifiedMexcService();
 
       // Get current price from MEXC API
-      const priceResponse = await mexcService.getPrice(symbol);
-
-      if (!priceResponse.success || !priceResponse.data || priceResponse.data.length === 0) {
-        this.context.logger.warn("Failed to get current price from MEXC API", {
-          symbol,
-          error: priceResponse.error,
-          success: priceResponse.success,
-        });
-        return null;
-      }
-
-      // Parse price from response
-      const priceData = priceResponse.data[0];
-      const price = parseFloat(priceData.price);
+      const price = await mexcService.getCurrentPrice(symbol);
 
       if (Number.isNaN(price) || price <= 0) {
         this.context.logger.warn("Invalid price received from MEXC API", {
           symbol,
-          priceString: priceData.price,
           parsedPrice: price,
         });
         return null;

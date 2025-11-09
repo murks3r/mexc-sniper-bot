@@ -69,9 +69,9 @@ export const GET = publicRoute(async (request: NextRequest) => {
     }
 
     console.info('[API] Connectivity test completed successfully', {
-      connected: testResult.data.connected,
-      credentialsValid: testResult.data.credentialsValid,
-      connectionHealth: testResult.data.metrics?.connectionHealth,
+      connected: testResult.data?.connected ?? testResult.connected ?? false,
+      credentialsValid: testResult.credentialsValid ?? false,
+      connectionHealth: testResult.metrics?.qualityScore,
       requestDuration: `${Date.now() - startTime}ms`
     });
 
@@ -142,12 +142,30 @@ export const GET = createPublicApiRoute(
     }
 
     console.info("Connectivity test completed successfully", {
-      connected: testResult.data.connected,
-      credentialsValid: testResult.data.credentialsValid,
-      connectionHealth: testResult.data.metrics?.connectionHealth,
+      connected: testResult.connected,
+      credentialsValid: testResult.credentialsValid,
+      metrics: testResult.metrics,
     });
 
-    return testResult.data;
+    // Transform ConnectivityResult to match ConnectivityTestResponse schema
+    return {
+      message: testResult.success ? "MEXC connectivity test completed successfully" : "MEXC connectivity test failed",
+      status: testResult.success ? "success" : "error",
+      connected: testResult.connected ?? testResult.data?.connected ?? false,
+      hasCredentials: !!testResult.credentialsValid,
+      credentialsValid: testResult.credentialsValid ?? false,
+      credentialSource: "database" as const,
+      hasUserCredentials: !!testResult.credentialsValid,
+      hasEnvironmentCredentials: false,
+      error: testResult.error,
+      timestamp: new Date().toISOString(),
+      metrics: testResult.metrics ? {
+        latency: testResult.latency,
+        retryCount: 0,
+        connectionHealth: testResult.metrics.qualityScore ? (testResult.metrics.qualityScore > 80 ? "excellent" as const : testResult.metrics.qualityScore > 50 ? "good" as const : "poor" as const) : "failed" as const,
+        lastSuccessfulCheck: testResult.success ? new Date().toISOString() : undefined,
+      } : undefined,
+    };
   },
 );
 

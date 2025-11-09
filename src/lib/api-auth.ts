@@ -48,7 +48,7 @@ export async function requireApiAuth(
   const endpoint = new URL(request.url).pathname;
 
   // Check for suspicious IP before proceeding (bypass in development)
-  if (!shouldBypassRateLimit(ip) && isIPSuspicious(ip)) {
+  if (!shouldBypassRateLimit({ ipAddress: ip }) && isIPSuspicious(ip)) {
     logSecurityEvent({
       type: "SUSPICIOUS_ACTIVITY",
       ip,
@@ -75,7 +75,7 @@ export async function requireApiAuth(
   }
 
   // Apply rate limiting unless explicitly skipped or bypassed
-  if (!options?.skipRateLimit && !shouldBypassRateLimit(ip)) {
+  if (!options?.skipRateLimit && !shouldBypassRateLimit({ ipAddress: ip })) {
     const rateLimitType = options?.rateLimitType || "auth";
     const rateLimitResult = await checkRateLimit(ip, endpoint, rateLimitType, userAgent);
 
@@ -475,8 +475,11 @@ export async function checkAdminRole(user: any): Promise<boolean> {
         LIMIT 1
       `);
 
-      if (roleResult.rows.length > 0) {
-        const userRole = roleResult.rows[0].role;
+      const rows = Array.isArray(roleResult)
+        ? roleResult
+        : (roleResult as { rows?: Array<{ role: string }> }).rows || [];
+      if (rows.length > 0) {
+        const userRole = (rows[0] as { role: string }).role;
         return userRole === "admin" || userRole === "super_admin";
       }
     } catch (dbError) {

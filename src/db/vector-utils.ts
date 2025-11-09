@@ -97,10 +97,9 @@ export class VectorUtils {
           patternId: patternEmbeddings.patternId,
           patternType: patternEmbeddings.patternType,
           symbolName: patternEmbeddings.symbolName,
-          embedding: patternEmbeddings.embedding,
+          vcoinId: patternEmbeddings.vcoinId,
           patternData: patternEmbeddings.patternData,
-          confidenceScore: patternEmbeddings.confidenceScore,
-          similarityScore: patternEmbeddings.similarityScore,
+          confidence: patternEmbeddings.confidence,
           createdAt: patternEmbeddings.createdAt,
         })
         .from(patternEmbeddings)
@@ -157,15 +156,7 @@ export class VectorUtils {
           calculatedAt: now,
           expiresAt,
         })
-        .onConflictDoUpdate({
-          target: [patternSimilarityCache.patternId1, patternSimilarityCache.patternId2],
-          set: {
-            cosineSimilarity,
-            euclideanDistance,
-            calculatedAt: now,
-            expiresAt,
-          },
-        });
+        .returning();
     }, "Cache pattern similarity");
   }
 
@@ -392,8 +383,7 @@ export class VectorUtils {
           vcoinId: patternEmbeddings.vcoinId,
           patternData: patternEmbeddings.patternData,
           embedding: patternEmbeddings.embedding,
-          confidenceScore: patternEmbeddings.confidenceScore,
-          similarityScore: patternEmbeddings.similarityScore,
+          confidence: patternEmbeddings.confidence,
           discoveredAt: patternEmbeddings.discoveredAt,
           createdAt: patternEmbeddings.createdAt,
           updatedAt: patternEmbeddings.updatedAt,

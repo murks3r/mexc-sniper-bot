@@ -7,12 +7,7 @@ async function getInngestSetup() {
     // Dynamic imports to avoid build-time module evaluation
     const { inngest } = await import("@/src/inngest/client");
     const { pollMexcCalendar } = await import("@/src/inngest/functions");
-    const {
-      scheduledCalendarMonitoring,
-      scheduledHealthCheck,
-      scheduledDailyReport,
-      emergencyResponseHandler,
-    } = await import("@/src/inngest/scheduled-functions");
+    const { scheduledCalendarMonitoring } = await import("@/src/inngest/scheduled-functions");
 
     return {
       client: inngest,
@@ -20,17 +15,14 @@ async function getInngestSetup() {
         // Core workflow functions (simplified - no agents)
         pollMexcCalendar, // Calendar sync to database
 
-        // Scheduled monitoring functions
-        scheduledCalendarMonitoring, // Every 30 minutes
-        scheduledHealthCheck, // Every 5 minutes
-        scheduledDailyReport, // Daily at 9 AM UTC
-        emergencyResponseHandler, // Event-triggered emergency response
+        // Scheduled monitoring functions (minimized)
+        scheduledCalendarMonitoring, // Every 30 minutes - essential for auto-sniping
+        // Removed: scheduledHealthCheck, scheduledDailyReport, emergencyResponseHandler
         // Removed: scheduledPatternAnalysis, scheduledIntensiveAnalysis (agent-based)
       ],
     };
-  } catch (error) {
-    // Fallback for build-time safety
-    console.warn("Inngest setup failed during build:", error);
+  } catch (_error) {
+    // Fallback for build-time safety - error logging handled by error handler middleware
     return null;
   }
 }
@@ -47,8 +39,8 @@ if (typeof window === "undefined" && process.env.NODE_ENV !== "test") {
         inngestHandler = serve(setup);
       }
     })
-    .catch((error) => {
-      console.warn("Failed to initialize inngest handler:", error);
+    .catch((_error) => {
+      // Failed to initialize inngest handler - error logging handled by error handler middleware
     });
 }
 

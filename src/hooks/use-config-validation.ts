@@ -103,7 +103,7 @@ export function useConfigValidation(
         lastUpdated: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error("[useConfigValidation] Failed to generate readiness report:", error);
+      // Error logging handled by error handler middleware
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -140,7 +140,7 @@ export function useConfigValidation(
 
         return validationResult;
       } catch (error) {
-        console.error(`[useConfigValidation] Failed to validate ${component}:`, error);
+        // Error logging handled by error handler middleware
         setState((prev) => ({
           ...prev,
           isValidating: false,
@@ -175,7 +175,7 @@ export function useConfigValidation(
         lastUpdated: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error("[useConfigValidation] Health check failed:", error);
+      // Error logging handled by error handler middleware
       setState((prev) => ({
         ...prev,
         isValidating: false,

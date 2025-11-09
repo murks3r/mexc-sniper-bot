@@ -337,23 +337,26 @@ export class AlertConfigurationService {
   async createAlertRule(
     config: z.infer<typeof AlertRuleConfigSchema>,
     createdBy: string,
+    userId?: string,
   ): Promise<string> {
     const validated = AlertRuleConfigSchema.parse(config);
     const ruleId = `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const ruleData: InsertAlertRule = {
       id: ruleId,
+      userId: userId || createdBy,
       name: validated.name,
       description: validated.description,
       category: validated.category,
       severity: validated.severity,
       metricName: validated.metricName,
       operator: validated.operator,
-      threshold: validated.threshold,
+      threshold: validated.threshold !== undefined ? validated.threshold : null,
       aggregationWindow: validated.aggregationWindow,
       evaluationInterval: validated.evaluationInterval,
       useAnomalyDetection: validated.useAnomalyDetection,
-      anomalyThreshold: validated.anomalyThreshold,
+      anomalyThreshold:
+        validated.anomalyThreshold !== undefined ? validated.anomalyThreshold : null,
       learningWindow: validated.learningWindow,
       isEnabled: true,
       suppressionDuration: validated.suppressionDuration,
@@ -361,15 +364,15 @@ export class AlertConfigurationService {
       maxAlerts: validated.maxAlerts,
       correlationKey: validated.correlationKey,
       parentRuleId: validated.parentRuleId,
-      tags: JSON.stringify(validated.tags),
-      customFields: JSON.stringify(validated.customFields),
+      tags: validated.tags ? JSON.stringify(validated.tags) : null,
+      customFields: validated.customFields ? JSON.stringify(validated.customFields) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy,
     };
 
     await this.db.insert(alertRules).values(ruleData);
-    console.info(`Created alert rule: ${ruleId} - ${validated.name}`);
+    // Alert rule created successfully
     return ruleId;
   }
 
@@ -404,7 +407,7 @@ export class AlertConfigurationService {
 
     await this.db.update(alertRules).set(updateData).where(eq(alertRules.id, ruleId));
 
-    console.info(`Updated alert rule: ${ruleId}`);
+    // Alert rule updated successfully
   }
 
   async deleteAlertRule(ruleId: string): Promise<void> {
@@ -413,7 +416,7 @@ export class AlertConfigurationService {
       .set({ isEnabled: false, updatedAt: new Date() })
       .where(eq(alertRules.id, ruleId));
 
-    console.info(`Disabled alert rule: ${ruleId}`);
+    // Alert rule disabled successfully
   }
 
   async getAlertRule(ruleId: string): Promise<SelectAlertRule | null> {
@@ -521,15 +524,28 @@ export class AlertConfigurationService {
       timestamp: new Date().toISOString(),
       rules: rules.map((rule) => ({
         ...rule,
-        tags: rule.tags ? JSON.parse(rule.tags) : [],
-        customFields: rule.customFields ? JSON.parse(rule.customFields) : {},
+        tags: rule.tags && typeof rule.tags === "string" ? JSON.parse(rule.tags) : [],
+        customFields:
+          rule.customFields && typeof rule.customFields === "string"
+            ? JSON.parse(rule.customFields)
+            : {},
       })),
       channels: channels.map((channel) => ({
         ...channel,
-        config: JSON.parse(channel.config),
-        severityFilter: channel.severityFilter ? JSON.parse(channel.severityFilter) : null,
-        categoryFilter: channel.categoryFilter ? JSON.parse(channel.categoryFilter) : null,
-        tagFilter: channel.tagFilter ? JSON.parse(channel.tagFilter) : null,
+        config:
+          channel.config && typeof channel.config === "string" ? JSON.parse(channel.config) : {},
+        severityFilter:
+          channel.severityFilter && typeof channel.severityFilter === "string"
+            ? JSON.parse(channel.severityFilter)
+            : null,
+        categoryFilter:
+          channel.categoryFilter && typeof channel.categoryFilter === "string"
+            ? JSON.parse(channel.categoryFilter)
+            : null,
+        tagFilter:
+          channel.tagFilter && typeof channel.tagFilter === "string"
+            ? JSON.parse(channel.tagFilter)
+            : null,
       })),
     };
   }

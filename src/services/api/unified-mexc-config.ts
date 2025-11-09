@@ -1,125 +1,78 @@
-/**
- * Unified MEXC Service Configuration
- *
- * Configuration types, defaults, and interfaces for the MEXC service v2.
- * Extracted from unified-mexc-service-v2.ts for better modularity.
- */
+// Minimal configuration helpers for UnifiedMexcServiceV2
 
-import type {
-  MexcApiConfig,
-  MexcCacheConfig,
-  MexcReliabilityConfig,
-} from "../data/modules/mexc-api-types";
+import type { MexcApiConfig, MexcCacheConfig } from "../data/modules/mexc-api-types";
 
-// ============================================================================
-// Configuration Types
-// ============================================================================
-
-export interface UnifiedMexcConfigV2 extends MexcApiConfig, MexcCacheConfig, MexcReliabilityConfig {
+export interface UnifiedMexcConfigV2 extends Partial<MexcApiConfig>, Partial<MexcCacheConfig> {
+  enableCircuitBreaker?: boolean;
   enableEnhancedFeatures?: boolean;
-  enablePaperTrading?: boolean;
-  circuitBreakerThreshold?: number;
-  circuitBreakerResetTime?: number;
-  enableTestMode?: boolean;
-  enableMetrics?: boolean;
 }
 
-// ============================================================================
-// Default Configuration
-// ============================================================================
-
-export const DEFAULT_CONFIG: Required<UnifiedMexcConfigV2> = {
-  // API Configuration
-  apiKey: process.env.MEXC_API_KEY || "",
-  secretKey: process.env.MEXC_SECRET_KEY || "",
-  passphrase: process.env.MEXC_PASSPHRASE || "",
-  baseUrl: "https://api.mexc.com",
-  timeout: 10000,
+const DEFAULT_CONFIG: Required<UnifiedMexcConfigV2> = {
+  apiKey: process.env.MEXC_API_KEY?.trim() || "",
+  secretKey: process.env.MEXC_SECRET_KEY?.trim() || "",
+  passphrase: process.env.MEXC_API_PASSPHRASE?.trim() || "",
+  baseUrl: process.env.MEXC_API_BASE_URL?.trim() || "https://api.mexc.com",
+  timeout: 10_000,
   maxRetries: 3,
-  retryDelay: 1000,
+  retryDelay: 500,
   rateLimitDelay: 100,
-
-  // Cache Configuration
   enableCaching: true,
-  cacheTTL: 30000,
-  apiResponseTTL: 1500,
-
-  // Reliability Configuration
-  enableCircuitBreaker: true,
-  enableRateLimiter: true,
-  maxFailures: 5,
-  resetTimeout: 60000,
-
-  // Trading Configuration - Add missing properties
-  enablePaperTrading: true,
-  circuitBreakerThreshold: 5,
-  circuitBreakerResetTime: 30000,
-
-  // Feature Flags
-  enableEnhancedFeatures: true,
-
-  // Optional test configurations
-  enableTestMode: false,
-  enableMetrics: true,
+  cacheTTL: 60_000,
+  apiResponseTTL: 30_000,
+  enableCircuitBreaker: false,
+  enableEnhancedFeatures: false,
 };
 
-// ============================================================================
-// Configuration Utilities
-// ============================================================================
-
-/**
- * Merge user config with defaults
- */
-export function mergeConfig(
-  userConfig: Partial<UnifiedMexcConfigV2> = {},
-): Required<UnifiedMexcConfigV2> {
-  // Avoid overriding defaults with undefined values
-  const sanitized = Object.fromEntries(
-    Object.entries(userConfig).filter(([, value]) => value !== undefined),
-  ) as Partial<UnifiedMexcConfigV2>;
-  return { ...DEFAULT_CONFIG, ...sanitized } as Required<UnifiedMexcConfigV2>;
+function mergeStrings(preferred?: string, fallback?: string): string {
+  if (preferred && preferred.trim().length > 0) {
+    return preferred.trim();
+  }
+  return fallback ? fallback.trim() : "";
 }
 
-/**
- * Validate configuration
- */
-export function validateConfig(config: UnifiedMexcConfigV2): {
-  isValid: boolean;
-  errors: string[];
-} {
-  const errors: string[] = [];
-
-  if (!config.baseUrl || !config.baseUrl.startsWith("http")) {
-    errors.push("Invalid baseUrl: must be a valid HTTP URL");
-  }
-
-  if (config.timeout <= 0) {
-    errors.push("Invalid timeout: must be greater than 0");
-  }
-
-  if (config.maxRetries < 0) {
-    errors.push("Invalid maxRetries: must be >= 0");
-  }
-
-  if (config.retryDelay < 0) {
-    errors.push("Invalid retryDelay: must be >= 0");
-  }
-
-  if (config.cacheTTL < 0) {
-    errors.push("Invalid cacheTTL: must be >= 0");
-  }
-
+export function mergeConfig(
+  overrides: Partial<UnifiedMexcConfigV2> = {},
+): Required<UnifiedMexcConfigV2> {
   return {
-    isValid: errors.length === 0,
-    errors,
+    apiKey: mergeStrings(overrides.apiKey, DEFAULT_CONFIG.apiKey),
+    secretKey: mergeStrings(overrides.secretKey, DEFAULT_CONFIG.secretKey),
+    passphrase: mergeStrings(overrides.passphrase, DEFAULT_CONFIG.passphrase),
+    baseUrl: mergeStrings(overrides.baseUrl, DEFAULT_CONFIG.baseUrl),
+    timeout: overrides.timeout ?? DEFAULT_CONFIG.timeout,
+    maxRetries: overrides.maxRetries ?? DEFAULT_CONFIG.maxRetries,
+    retryDelay: overrides.retryDelay ?? DEFAULT_CONFIG.retryDelay,
+    rateLimitDelay: overrides.rateLimitDelay ?? DEFAULT_CONFIG.rateLimitDelay,
+    enableCaching: overrides.enableCaching ?? DEFAULT_CONFIG.enableCaching,
+    cacheTTL: overrides.cacheTTL ?? DEFAULT_CONFIG.cacheTTL,
+    apiResponseTTL: overrides.apiResponseTTL ?? DEFAULT_CONFIG.apiResponseTTL,
+    enableCircuitBreaker: overrides.enableCircuitBreaker ?? DEFAULT_CONFIG.enableCircuitBreaker,
+    enableEnhancedFeatures:
+      overrides.enableEnhancedFeatures ?? DEFAULT_CONFIG.enableEnhancedFeatures,
   };
 }
 
-/**
- * Check if API credentials are configured
- */
 export function hasValidCredentials(config: UnifiedMexcConfigV2): boolean {
-  return Boolean(
-    config.apiKey && config.secretKey && config.apiKey.length > 0 && config.secretKey.length > 0,
-  );
+  return Boolean(config.apiKey?.trim() && config.secretKey && config.secretKey.trim());
 }
+
+export function toApiConfig(config: Required<UnifiedMexcConfigV2>): MexcApiConfig {
+  return {
+    apiKey: config.apiKey,
+    secretKey: config.secretKey,
+    passphrase: config.passphrase,
+    baseUrl: config.baseUrl,
+    timeout: config.timeout,
+    maxRetries: config.maxRetries,
+    retryDelay: config.retryDelay,
+    rateLimitDelay: config.rateLimitDelay,
+  };
+}
+
+export function toCacheConfig(config: Required<UnifiedMexcConfigV2>): MexcCacheConfig {
+  return {
+    enableCaching: config.enableCaching,
+    cacheTTL: config.cacheTTL,
+    apiResponseTTL: config.apiResponseTTL,
+  };
+}
+

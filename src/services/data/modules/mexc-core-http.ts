@@ -14,14 +14,18 @@ import type { MexcApiConfig, MexcApiResponse, MexcServiceResponse } from "./mexc
 export class MexcCoreHttpClient {
   // Simple console logger to avoid webpack bundling issues
   private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[mexc-core-http]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[mexc-core-http]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[mexc-core-http]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[mexc-core-http]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
   };
 
   private config: MexcApiConfig;

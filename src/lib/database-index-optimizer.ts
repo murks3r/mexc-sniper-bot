@@ -2,6 +2,8 @@
  * Database Index Optimizer - Simple implementation
  */
 
+import { createSimpleLogger } from "./unified-logger";
+
 export interface IndexRecommendation {
   table: string;
   columns: string[];
@@ -11,15 +13,18 @@ export interface IndexRecommendation {
 }
 
 export class DatabaseIndexOptimizer {
+  private logger = createSimpleLogger("DatabaseIndexOptimizer");
+
   async analyzeIndexes(): Promise<IndexRecommendation[]> {
     // Simple implementation - return empty recommendations
     return [];
   }
 
   async createIndex(recommendation: IndexRecommendation): Promise<boolean> {
-    console.log(
-      `[Index Optimizer] Would create index on ${recommendation.table}(${recommendation.columns.join(", ")})`,
-    );
+    this.logger.info("Would create index", {
+      table: recommendation.table,
+      columns: recommendation.columns.join(", "),
+    });
     return true;
   }
 

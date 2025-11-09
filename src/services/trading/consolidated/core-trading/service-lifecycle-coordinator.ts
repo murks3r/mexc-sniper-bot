@@ -90,17 +90,17 @@ export class ServiceLifecycleCoordinator extends EventEmitter<ServiceLifecycleEv
   };
 
   private logger = {
-    info: (message: string, context?: any) => {
-      console.info("[service-lifecycle]", message, context || "");
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    warn: (message: string, context?: any) => {
-      console.warn("[service-lifecycle]", message, context || "");
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    error: (message: string, context?: any) => {
-      console.error("[service-lifecycle]", message, context || "");
+    error: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    debug: (message: string, context?: any) => {
-      console.debug("[service-lifecycle]", message, context || "");
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
   };
 

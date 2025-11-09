@@ -27,18 +27,40 @@ export class OrderExecutor {
         quantity: params.quantity,
       });
 
-      if (!this.context.manualTradingModule) {
-        throw new Error("Manual trading module not available");
-      }
-
-      const result = await this.context.manualTradingModule.executeTrade(params);
-
-      this.context.logger.info("Manual trade execution completed", {
-        success: result.success,
-        orderId: result.data?.orderId,
+      // Use mexcService.executeTrade instead of manualTradingModule
+      const result = await this.context.mexcService.executeTrade({
+        symbol: params.symbol,
+        side: params.side.toUpperCase() as "BUY" | "SELL",
+        type: params.type,
+        quantity: params.quantity,
+        quoteOrderQty: params.quoteOrderQty,
+        price: params.price,
+        stopPrice: params.stopPrice,
+        timeInForce: params.timeInForce,
+        paperTrade: this.context.config.paperTradingMode,
       });
 
-      return result;
+      // Transform result to TradeResult format
+      if (result.success && result.data) {
+        const tradeResult: TradeResult = {
+          success: true,
+          orderId: result.data.orderId,
+          symbol: result.data.symbol,
+          side: result.data.side,
+          type: result.data.type,
+          quantity: result.data.quantity,
+          price: result.data.price,
+          status: result.data.status,
+          executedQty: result.data.executedQty,
+          timestamp: result.data.timestamp,
+        };
+        return tradeResult;
+      }
+
+      return {
+        success: false,
+        error: result.error || "Trade execution failed",
+      };
     } catch (error) {
       const safeError = toSafeError(error);
       this.context.logger.error("Manual trade execution failed", {

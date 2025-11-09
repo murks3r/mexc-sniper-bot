@@ -116,9 +116,6 @@ export async function saveExecutionHistory(params: SaveExecutionHistoryParams): 
     // createdAt is defaulted by DB
   } as NewExecutionHistory;
 
-  const [inserted] = await db
-    .insert(executionHistory)
-    .values(normalized)
-    .returning({ id: executionHistory.id });
+  const [inserted] = await db.insert(executionHistory).values(normalized).returning();
   return inserted.id;
 }

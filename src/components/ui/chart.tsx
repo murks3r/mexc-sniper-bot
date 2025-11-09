@@ -7,7 +7,10 @@ import {
   type ReactNode,
   Suspense,
 } from "react";
+import { createSimpleLogger } from "../../lib/unified-logger";
 import { ErrorBoundary } from "../error-boundary";
+
+const logger = createSimpleLogger("ChartComponent");
 
 export interface ChartConfig {
   [key: string]: { label?: string; color?: string };
@@ -19,7 +22,7 @@ const _ResponsiveContainer = lazy(async () => {
     const module = await import("recharts");
     return { default: module.ResponsiveContainer };
   } catch (error) {
-    console.warn("Failed to load Recharts ResponsiveContainer in chart.tsx:", error);
+    logger.warn("Failed to load Recharts ResponsiveContainer", { error });
     // Return fallback component that renders safely with ResponsiveContainer-compatible interface
     const FallbackComponent = forwardRef<
       HTMLDivElement,

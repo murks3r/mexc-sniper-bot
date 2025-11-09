@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
     const user = await requireAuthFromRequest(request);
-    console.log(`[Snipe Targets] Request from user: ${user.email} (${user.id})`);
+    // Request from user
 
     // Manual creation is disabled: only system background processes create targets
     return NextResponse.json(
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Note: legacy manual creation code removed intentionally
   } catch (error) {
-    console.error("Error creating snipe target:", error);
+    // Error creating snipe target - error logging handled by error handler middleware
 
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   try {
     // Get authenticated user
     const user = await requireAuthFromRequest(request);
-    console.log(`[Snipe Targets] Fetching targets for user: ${user.email} (${user.id})`);
+    // Fetching targets for user
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       count: targets.length,
     });
   } catch (error) {
-    console.error("Error fetching snipe targets:", error);
+    // Error fetching snipe targets - error logging handled by error handler middleware
 
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 // Helper function to create snipe targets using real data (calendar sync/patterns)
 async function _createFromPatternDetection(userId: string) {
   try {
-    console.log(`[Pattern Detection] Creating targets for user: ${userId} using real data`);
+    // Creating targets for user using real data
 
     // Use calendar-to-database sync to create real targets from upcoming launches
     const syncResult = await calendarSyncService.syncCalendarToDatabase(userId, {
@@ -147,7 +147,7 @@ async function _createFromPatternDetection(userId: string) {
       },
     });
   } catch (error) {
-    console.error("Error creating snipe targets from patterns:", error);
+    // Error creating snipe targets from patterns - error logging handled by error handler middleware
 
     return NextResponse.json(
       {

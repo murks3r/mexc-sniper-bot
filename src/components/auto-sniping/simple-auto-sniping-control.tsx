@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2, Play, Square } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { createSimpleLogger } from "../../lib/unified-logger";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -18,6 +19,7 @@ interface AutoSnipingStatus {
 }
 
 export function SimpleAutoSnipingControl({ className }: SimpleAutoSnipingControlProps) {
+  const logger = createSimpleLogger("SimpleAutoSnipingControl");
   const [status, setStatus] = useState<AutoSnipingStatus>({
     isActive: false,
     autoSnipingEnabled: false,
@@ -129,7 +131,7 @@ export function SimpleAutoSnipingControl({ className }: SimpleAutoSnipingControl
         };
 
         setStatus(newStatus);
-        console.log("✅ Emergency stop successful:", newStatus);
+        logger.info("Emergency stop successful", { status: newStatus });
 
         // Don't refresh status immediately to avoid overriding our update
       } else {

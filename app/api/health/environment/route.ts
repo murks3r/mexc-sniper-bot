@@ -1,229 +1,74 @@
 /**
- * Environment Health Check API Route
+ * Environment Health Check API Route (Minimized)
  *
- * Comprehensive environment variable validation and health reporting.
- * Provides detailed analysis of missing variables, invalid values, and
- * recommendations for proper configuration.
+ * Simplified environment validation after services cleanup.
+ * Returns basic environment status.
  */
 
 import type { NextRequest } from "next/server";
 import { apiResponse } from "@/src/lib/api-response";
-import { environmentValidation } from "@/src/services/risk/enhanced-environment-validation";
 
 /**
  * GET /api/health/environment
- * Comprehensive environment variable health check
+ * Minimal environment variable health check
  */
 export async function GET(_request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Get comprehensive environment validation with error handling
-    let validation, healthSummary, missingByCategory;
+    // Minimal environment validation - check critical vars only
+    const requiredVars = ["MEXC_API_KEY", "MEXC_SECRET_KEY"];
+    const missing = requiredVars.filter((v) => !process.env[v]);
 
-    try {
-      validation = environmentValidation.validateEnvironment();
-      healthSummary = environmentValidation.getHealthSummary();
-      missingByCategory = environmentValidation.getMissingByCategory();
-    } catch (validationError) {
-      console.warn("[Environment Health] Validation service failed, using fallback:", {
-        error: validationError instanceof Error ? validationError.message : String(validationError),
-      });
-
-      // Fallback validation response
-      validation = {
-        isValid: false,
-        status: "warning",
-        summary: { total: 0, configured: 0, missing: 0, invalid: 0 },
-        results: [],
-        recommendations: ["Environment validation service temporarily unavailable"],
-        developmentDefaults: {},
-      };
-
-      healthSummary = {
-        status: "warning",
-        score: 50,
-        issues: ["Environment validation service error"],
-        recommendedActions: ["Check environment validation service configuration"],
-      };
-
-      missingByCategory = {};
-    }
-
-    const responseTime = Date.now() - startTime;
-
-    // Always return 200 for environment checks in production to prevent frontend errors
-    // Use response data to indicate actual health status
-    const statusCode = 200;
-
-    const responseData = {
-      status: healthSummary.status,
-      timestamp: new Date().toISOString(),
-      responseTime,
-      environment: process.env.NODE_ENV || "development",
-      validation: {
-        isValid: validation.isValid,
-        status: validation.status,
-        summary: validation.summary,
-        health: {
-          status: healthSummary.status,
-          configured: healthSummary.configured,
-          missing: healthSummary.missing,
-          invalid: healthSummary.invalid,
-          total: healthSummary.total,
-          criticalMissing: healthSummary.criticalMissing,
-          recommendations: healthSummary.recommendations,
-        },
+    const validation = {
+      isValid: missing.length === 0,
+      status: missing.length === 0 ? "valid" : "warning",
+      summary: {
+        total: requiredVars.length,
+        configured: requiredVars.length - missing.length,
+        missing: missing.length,
+        invalid: 0,
       },
-      categories: {
-        core: {
-          total: validation.results.filter((r) => r.category === "core").length,
-          configured: validation.results.filter(
-            (r) => r.category === "core" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter((r) => r.category === "core" && r.status === "missing")
-            .length,
-        },
-        api: {
-          total: validation.results.filter((r) => r.category === "api").length,
-          configured: validation.results.filter(
-            (r) => r.category === "api" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter((r) => r.category === "api" && r.status === "missing")
-            .length,
-        },
-        database: {
-          total: validation.results.filter((r) => r.category === "database").length,
-          configured: validation.results.filter(
-            (r) =>
-              r.category === "database" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "database" && r.status === "missing",
-          ).length,
-        },
-        cache: {
-          total: validation.results.filter((r) => r.category === "cache").length,
-          configured: validation.results.filter(
-            (r) => r.category === "cache" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "cache" && r.status === "missing",
-          ).length,
-        },
-        monitoring: {
-          total: validation.results.filter((r) => r.category === "monitoring").length,
-          configured: validation.results.filter(
-            (r) =>
-              r.category === "monitoring" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "monitoring" && r.status === "missing",
-          ).length,
-        },
-        security: {
-          total: validation.results.filter((r) => r.category === "security").length,
-          configured: validation.results.filter(
-            (r) =>
-              r.category === "security" && (r.status === "configured" || r.status === "default"),
-          ).length,
-          missing: validation.results.filter(
-            (r) => r.category === "security" && r.status === "missing",
-          ).length,
-        },
-      },
-      missingByCategory: missingByCategory,
-      recommendations: validation.recommendations,
+      results: requiredVars.map((varName) => ({
+        variable: varName,
+        configured: !!process.env[varName],
+        status: process.env[varName] ? "valid" : "missing",
+      })),
+      recommendations: missing.length > 0 ? [`Set missing variables: ${missing.join(", ")}`] : [],
     };
 
-    const message =
-      healthSummary.status === "healthy"
-        ? "Environment configuration is healthy"
-        : healthSummary.status === "warning"
-          ? "Environment configuration has minor issues"
-          : "Environment configuration has critical issues";
-
-    return statusCode === 200
-      ? apiResponse.success(responseData, { message })
-      : apiResponse.error(message, statusCode, responseData);
-  } catch (error) {
     const responseTime = Date.now() - startTime;
 
-    console.error("[Environment Health] Environment health check failed:", {
-      error,
-    });
-
-    return apiResponse.error("Environment health check failed", 500, {
-      status: "error",
-      responseTime,
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-}
-
-/**
- * POST /api/health/environment
- * Generate development environment template
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const { action } = body;
-
-    if (action === "generate_template") {
-      const template = environmentValidation.generateDevelopmentTemplate();
-      const validation = environmentValidation.validateEnvironment();
-
-      return apiResponse.success(
-        {
-          template,
-          filename: ".env.development.template",
-          missingCount: validation.summary.missing,
-          instructions: [
-            "1. Copy the template to .env.local",
-            "2. Fill in the required values marked as REQUIRED_VALUE",
-            "3. Customize optional values as needed",
-            "4. Never commit .env.local to version control",
-            "5. Run the health check again to verify configuration",
-          ],
+    return apiResponse(
+      {
+        success: true,
+        status: "healthy",
+        data: {
+          environment: process.env.NODE_ENV || "development",
+          validation: validation as Record<string, unknown>,
+          timestamp: new Date().toISOString(),
+          responseTime,
         },
-        {
-          message: "Development environment template generated successfully",
-        },
-      );
-    }
-
-    if (action === "validate_specific") {
-      const { variables } = body;
-      if (!Array.isArray(variables)) {
-        return apiResponse.error("Variables array required for specific validation", 400);
-      }
-
-      const validation = environmentValidation.validateEnvironment();
-      const specificResults = validation.results.filter((r) => variables.includes(r.key));
-
-      return apiResponse.success(
-        {
-          results: specificResults,
-          summary: {
-            total: specificResults.length,
-            configured: specificResults.filter((r) => r.status === "configured").length,
-            missing: specificResults.filter((r) => r.status === "missing").length,
-            invalid: specificResults.filter((r) => r.status === "invalid").length,
-          },
-        },
-        {
-          message: "Specific variable validation completed",
-        },
-      );
-    }
-
-    return apiResponse.error('Invalid action. Use "generate_template" or "validate_specific"', 400);
+      },
+      200,
+    );
   } catch (error) {
-    console.error("[Environment Health] POST request failed:", { error });
+    const responseTime = Date.now() - startTime;
+    // Error logging handled by error handler middleware
 
-    return apiResponse.error("Environment health action failed", 500, {
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
+    return apiResponse(
+      {
+        success: false,
+        status: "error",
+        error: "Environment check failed",
+        details: {
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        meta: {
+          responseTime,
+        },
+      },
+      500,
+    );
   }
 }

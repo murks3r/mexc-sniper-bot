@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 // Direct imports for Recharts - since TradingChart is already lazy-loaded by dynamic-component-loader
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useLivePrices } from "@/src/hooks/use-live-prices";
+import { createSimpleLogger } from "../../lib/unified-logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { ChartContainer } from "../ui/chart";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
@@ -58,8 +59,9 @@ const fetchMarketData = async (
   interval: string = "1d",
   limit: number = 90,
 ): Promise<ChartDataPoint[]> => {
+  const logger = createSimpleLogger("TradingChart");
   try {
-    console.log("[TradingChart] Fetching market data from API");
+    logger.debug("Fetching market data from API");
 
     const params = new URLSearchParams({
       symbol,
@@ -76,7 +78,7 @@ const fetchMarketData = async (
     const result = await response.json();
 
     if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-      console.log("[TradingChart] Successfully fetched market data", {
+      logger.debug("Successfully fetched market data", {
         dataPoints: result.data.length,
         isFallback: result.fallback || false,
         source: result.fallback ? "fallback" : "real",
@@ -102,6 +104,7 @@ const fetchMarketData = async (
 
 // Convert MEXC klines data to chart data format
 const _convertKlinesToChartData = (klinesData: MexcKlineData[]): ChartDataPoint[] => {
+  const logger = createSimpleLogger("TradingChart");
   const data: ChartDataPoint[] = [];
 
   // MEXC kline data format: [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, trades, buyBaseAssetVolume, buyQuoteAssetVolume]
@@ -129,12 +132,13 @@ const _convertKlinesToChartData = (klinesData: MexcKlineData[]): ChartDataPoint[
   // Sort by timestamp to ensure chronological order
   data.sort((a, b) => a.timestamp - b.timestamp);
 
-  console.log("[TradingChart] Converted", klinesData.length, "klines to chart data");
+  logger.debug("Converted klines to chart data", { klinesCount: klinesData.length });
   return data;
 };
 
 // Generate historical-looking data from current ticker
 const _generateHistoricalDataFromTicker = (ticker: any, days: number): ChartDataPoint[] => {
+  const logger = createSimpleLogger("TradingChart");
   const data: ChartDataPoint[] = [];
   const today = new Date();
 
@@ -144,7 +148,7 @@ const _generateHistoricalDataFromTicker = (ticker: any, days: number): ChartData
   const currentTrades =
     parseInt(String(ticker.count || ticker.t || "0"), 10) || Math.floor(currentVolume / 100);
 
-  console.log("[TradingChart] Ticker data:", {
+  logger.debug("Ticker data", {
     symbol: ticker.symbol,
     volume: currentVolume,
     price: currentPrice,

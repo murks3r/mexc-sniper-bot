@@ -15,6 +15,7 @@ import {
 import { memo, useCallback } from "react";
 import { useMexcCalendar } from "../../hooks/use-mexc-data";
 import { usePatternSniper } from "../../hooks/use-pattern-sniper";
+import type { TradingTargetDisplay } from "../../types/trading-display-types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -184,6 +185,7 @@ function filterUpcomingCoins(calendarData: CalendarEntry[]): CalendarEntry[] {
 }
 
 interface EnrichedCoin {
+  id: string;
   vcoinId: string;
   symbol: string;
   firstOpenTime: string | number;
@@ -217,6 +219,7 @@ function enrichCalendarData(
       else if (isPending) status = "monitoring";
 
       return {
+        id: vcoinId,
         vcoinId,
         symbol,
         firstOpenTime,
@@ -292,19 +295,24 @@ function useProcessedCoinData() {
 
   const calendarTargets = enrichedCalendarData.filter((c) => c.status === "calendar");
   const monitoringTargets = enrichedCalendarData.filter((c) => c.status === "monitoring");
-  const readyTargetsEnriched = readyTargets.map((target) => ({
-    vcoinId: target.vcoinId?.toString() || "",
-    symbol: (target as any).symbol || "",
-    projectName: (target as any).projectName || "",
-    launchTime: (target as any).launchTime || new Date(),
-    status: "ready" as const,
-    confidence: (target as any).confidence || 0,
-    hoursAdvanceNotice: (target as any).hoursAdvanceNotice || 0,
-    priceDecimalPlaces: (target as any).priceDecimalPlaces || 8,
-    quantityDecimalPlaces: (target as any).quantityDecimalPlaces || 8,
-    discoveredAt: (target as any).discoveredAt || new Date(),
-    targetTime: (target as any).launchTime?.toISOString() || new Date().toISOString(),
-  }));
+  const readyTargetsEnriched = readyTargets.map((target, _index) => {
+    const enriched: TradingTargetDisplay = {
+      id: (target as { id?: number }).id,
+      vcoinId: target.vcoinId?.toString() || "",
+      symbol: (target as { symbol?: string }).symbol || "",
+      projectName: (target as { projectName?: string }).projectName || "",
+      launchTime: (target as { launchTime?: Date }).launchTime || new Date(),
+      discoveredAt: (target as { discoveredAt?: Date }).discoveredAt || new Date(),
+      confidence: (target as { confidence?: number }).confidence || 0,
+      hoursAdvanceNotice: (target as { hoursAdvanceNotice?: number }).hoursAdvanceNotice || 0,
+      priceDecimalPlaces: (target as { priceDecimalPlaces?: number }).priceDecimalPlaces || 8,
+      quantityDecimalPlaces:
+        (target as { quantityDecimalPlaces?: number }).quantityDecimalPlaces || 8,
+      status: "ready" as const,
+      targetTime: (target as { targetTime?: string }).targetTime,
+    };
+    return enriched;
+  });
   const executedTargetsEnriched = processExecutedTargets(executedTargets, enrichedCalendarData);
 
   // Transform stats to match expected interface
@@ -612,10 +620,19 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
               ) : (
                 readyTargetsEnriched.map((target, index) => (
                   <CoinListingCard
-                    key={target.id || `${target.vcoinId}-ready-${index}`}
-                    coin={target}
+                    key={`${target.vcoinId}-ready-${index}`}
+                    coin={{
+                      ...target,
+                      vcoinId: String(target.vcoinId),
+                      status:
+                        target.status === "pending"
+                          ? "ready"
+                          : target.status === "completed"
+                            ? "executed"
+                            : (target.status as "calendar" | "monitoring" | "ready" | "executed"),
+                    }}
                     onExecute={() => executeSnipe(target)}
-                    onRemove={() => removeTarget(target.vcoinId)}
+                    onRemove={() => removeTarget(String(target.vcoinId))}
                   />
                 ))
               )}
@@ -657,7 +674,7 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
                 executedTargetsEnriched.map((target, index) => (
                   <CoinListingCard
                     key={target.id || `${target.vcoinId}-executed-${index}`}
-                    coin={target}
+                    coin={{ ...target, vcoinId: String(target.vcoinId) }}
                   />
                 ))
               )}

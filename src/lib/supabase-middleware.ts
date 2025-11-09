@@ -1,7 +1,9 @@
 import { type CookieOptions, createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { createSimpleLogger } from "./unified-logger";
 
 export async function updateSession(request: NextRequest) {
+  const logger = createSimpleLogger("supabase-middleware");
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -16,7 +18,7 @@ export async function updateSession(request: NextRequest) {
     request.headers.get("user-agent")?.includes("Playwright");
 
   if (isTestEnvironment) {
-    console.log("Test environment detected, bypassing auth middleware");
+    logger.info("Test environment detected, bypassing auth middleware");
     return response;
   }
 
@@ -25,7 +27,7 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase environment variables not configured, skipping auth middleware");
+    logger.warn("Supabase environment variables not configured, skipping auth middleware");
     return response;
   }
 

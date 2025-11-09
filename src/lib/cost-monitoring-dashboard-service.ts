@@ -8,6 +8,7 @@
 import { globalDatabaseCostProtector } from "./database-cost-protector";
 import { globalQueryBatchingService } from "./database-query-batching-service";
 import { globalQueryCacheMiddleware } from "./database-query-cache-middleware";
+import { createSimpleLogger } from "./unified-logger";
 
 export interface CostDashboardData {
   overview: {
@@ -123,6 +124,7 @@ export interface CostDashboardData {
 
 class CostMonitoringDashboardService {
   private static instance: CostMonitoringDashboardService;
+  private logger = createSimpleLogger("CostMonitoringDashboardService");
 
   private historicalData = new Map<
     string,
@@ -661,7 +663,7 @@ class CostMonitoringDashboardService {
       action,
     });
 
-    console.log(`[COST ALERT] ${severity.toUpperCase()}: ${title} - ${message}`);
+    this.logger.warn("Cost alert", { severity: severity.toUpperCase(), title, message });
   }
 
   /**

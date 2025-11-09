@@ -2,18 +2,21 @@
  * Generic utility functions for filtering calendar listings by date
  */
 
-import type { CalendarEntry } from "@/src/services/api/mexc-market-data";
+import { createSimpleLogger } from "../lib/unified-logger";
+import type { CalendarEntry } from "../services/data/modules/calendar-listings.service";
+
+const logger = createSimpleLogger("listings-utils");
 
 /**
  * Check if a listing matches a specific date
  */
 function isDateMatch(listing: CalendarEntry, targetDate: Date): boolean {
-  if (!listing.firstOpenTime) {
+  if (!listing.tradingStartTime) {
     return false;
   }
 
-  const listingDate = new Date(listing.firstOpenTime);
-  
+  const listingDate = new Date(listing.tradingStartTime);
+
   // Reset time to compare dates only
   listingDate.setHours(0, 0, 0, 0);
   targetDate.setHours(0, 0, 0, 0);
@@ -67,10 +70,10 @@ export async function getListingsByDate(
 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysOffset);
-    
+
     return response.data.filter((listing) => isDateMatch(listing, targetDate));
   } catch (error) {
-    console.error(`Error fetching listings for date offset ${daysOffset}:`, error);
+    logger.error(`Error fetching listings for date offset ${daysOffset}`, { error });
     return [];
   }
 }
@@ -79,16 +82,14 @@ export async function getListingsByDate(
  * Check if a listing is within the next N hours
  */
 export function isUpcomingListing(listing: CalendarEntry, hoursAhead: number = 48): boolean {
-  if (!listing.firstOpenTime) {
+  if (!listing.tradingStartTime) {
     return false;
   }
 
-  const listingTime = new Date(listing.firstOpenTime).getTime();
+  const listingTime = new Date(listing.tradingStartTime).getTime();
   const now = Date.now();
   const futureTime = now + hoursAhead * 60 * 60 * 1000;
 
   return listingTime > now && listingTime <= futureTime;
 }
-
-
 

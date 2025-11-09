@@ -8,7 +8,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { apiCredentials, db } from "@/src/db";
-import { UnifiedMexcClient } from "./mexc-client-factory";
+import { getUnifiedMexcClient, type UnifiedMexcClient } from "./mexc-client-factory";
 import type { UnifiedMexcConfig } from "./mexc-client-types";
 import { getEncryptionService } from "./secure-encryption-service";
 
@@ -499,7 +499,7 @@ export class UnifiedMexcServiceFactory {
       cacheTTL: 60000, // 1 minute
     };
 
-    return new UnifiedMexcClient(config);
+    return getUnifiedMexcClient(config);
   }
 
   // ============================================================================

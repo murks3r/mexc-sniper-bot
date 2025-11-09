@@ -13,7 +13,7 @@ export async function GET() {
       localTime: Date.now(),
     });
   } catch (error) {
-    console.error("MEXC server time fetch failed:", { error: error });
+    // MEXC server time fetch failed - error logging handled by error handler middleware
 
     return NextResponse.json(
       {

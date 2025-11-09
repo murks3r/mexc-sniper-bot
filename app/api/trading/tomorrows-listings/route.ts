@@ -28,17 +28,35 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Filter for tomorrow's listings
-    const tomorrowsListings = filterTomorrowsListings(calendarResponse.data);
+    // Filter for tomorrow's listings and map to expected format
+    const mappedListings = calendarResponse.data
+      .filter((listing: any) => {
+        // Simple filter for tomorrow's listings
+        const launchTime = new Date(listing.launchTime);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return launchTime.toDateString() === tomorrow.toDateString();
+      })
+      .map((listing: any) => ({
+        symbol: listing.symbol,
+        status: (listing.status as "PENDING" | "TRADING" | "BREAK" | "ENDED") || "PENDING",
+        baseAsset: listing.baseAsset,
+        quoteAsset: listing.quoteAsset,
+        tradingStartTime: new Date(listing.launchTime).getTime(),
+        priceScale: listing.priceScale,
+        quantityScale: listing.quantityScale,
+        minNotional: listing.minNotional,
+        maxNotional: listing.maxNotional,
+      }));
 
     return NextResponse.json({
       success: true,
-      data: tomorrowsListings,
-      count: tomorrowsListings.length,
-      message: `Found ${tomorrowsListings.length} listings for tomorrow`,
+      data: mappedListings,
+      count: mappedListings.length,
+      message: `Found ${mappedListings.length} listings for tomorrow`,
     });
   } catch (error) {
-    console.error("Error fetching tomorrow's listings:", error);
+    // Error fetching tomorrow's listings - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

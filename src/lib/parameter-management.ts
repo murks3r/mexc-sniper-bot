@@ -3,6 +3,8 @@
  * Minimal implementation for build optimization
  */
 
+import { createSimpleLogger } from "./unified-logger";
+
 export interface Parameter {
   name: string;
   value: any;
@@ -21,6 +23,7 @@ export interface ParameterGroup {
 class ParameterManager {
   private parameters: Map<string, Parameter> = new Map();
   private groups: Map<string, ParameterGroup> = new Map();
+  private logger = createSimpleLogger("ParameterManager");
 
   setParameter(name: string, value: any, type: Parameter["type"] = "string"): void {
     const existing = this.parameters.get(name);
@@ -166,13 +169,13 @@ class ParameterManager {
   async createSnapshot(name?: string, reason?: string): Promise<string> {
     // Implement snapshot creation later
     const snapshotId = `snapshot-${Date.now()}`;
-    console.log(`Creating snapshot: ${name || "Unnamed snapshot"}`, reason || "");
+    this.logger.info("Creating snapshot", { name: name || "Unnamed snapshot", reason });
     return snapshotId;
   }
 
   async restoreFromSnapshot(snapshotId: string): Promise<void> {
     // Implement snapshot restoration later
-    console.log(`Restoring from snapshot: ${snapshotId}`);
+    this.logger.info("Restoring from snapshot", { snapshotId });
   }
 
   exportParameters(): Record<string, any> {

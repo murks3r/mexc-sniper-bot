@@ -3,6 +3,7 @@
  */
 
 import type { IndexRecommendation } from "./database-index-optimizer";
+import { createSimpleLogger } from "./unified-logger";
 
 export interface OptimizationResult {
   type: "index" | "query" | "schema";
@@ -12,6 +13,8 @@ export interface OptimizationResult {
 }
 
 export class DatabaseOptimizationManager {
+  private logger = createSimpleLogger("DatabaseOptimizationManager");
+
   async runOptimizations(): Promise<OptimizationResult[]> {
     // Simple implementation - return empty results
     return [];
@@ -26,7 +29,7 @@ export class DatabaseOptimizationManager {
   }
 
   async applyOptimization(recommendation: IndexRecommendation): Promise<boolean> {
-    console.log(`[Optimization Manager] Would apply optimization: ${recommendation.reason}`);
+    this.logger.info("Would apply optimization", { reason: recommendation.reason });
     return true;
   }
 }

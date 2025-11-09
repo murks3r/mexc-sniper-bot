@@ -10,10 +10,8 @@ export async function GET() {
       success: true,
       data: status,
     });
-  } catch (error) {
-    console.error("❌ Error getting auto exit manager status:", {
-      error: error,
-    });
+  } catch (_error) {
+    // Error getting auto exit manager status - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,
@@ -56,8 +54,8 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
     }
-  } catch (error) {
-    console.error("❌ Error controlling auto exit manager:", { error: error });
+  } catch (_error) {
+    // Error controlling auto exit manager - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

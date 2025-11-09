@@ -15,6 +15,9 @@ import {
   CardHeader,
   CardTitle,
 } from "../src/components/ui/card";
+import { createSimpleLogger } from "../src/lib/unified-logger";
+
+const logger = createSimpleLogger("HomePage");
 
 function AuthenticatedRedirect() {
   const { user, isLoading } = useAuth();
@@ -69,7 +72,7 @@ function HomePage() {
 
   // If loading timed out, show the page anyway
   if (loadingTimeout && isLoading) {
-    console.warn("Auth loading timed out, showing page anyway");
+    logger.warn("Auth loading timed out, showing page anyway");
   }
 
   // If authenticated, show loading while redirecting

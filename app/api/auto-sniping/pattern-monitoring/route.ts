@@ -7,11 +7,37 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { apiAuthWrapper } from "@/src/lib/api-auth";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
-import { PatternMonitoringService } from "@/src/services/notification/pattern-monitoring-service";
 
-// Lazy service getter to avoid build-time initialization
+// Removed: PatternMonitoringService - pattern detection was removed per cleanup
+
+// Stub service for pattern monitoring (pattern detection removed)
 function getPatternMonitoringService() {
-  return PatternMonitoringService.getInstance();
+  return {
+    getMonitoringReport: async () => ({
+      isActive: false,
+      patternsDetected: 0,
+      lastDetection: null,
+      stats: {
+        engineStatus: "inactive",
+        lastHealthCheck: new Date().toISOString(),
+        consecutiveErrors: 0,
+      },
+      activeAlerts: [],
+      lastUpdated: new Date().toISOString(),
+      status: "inactive",
+      statistics: {
+        totalPatterns: 0,
+        activePatterns: 0,
+        patternsByType: {},
+      },
+    }),
+    getRecentPatterns: (_limit?: number) => [],
+    startMonitoring: async () => Promise.resolve(),
+    stopMonitoring: () => {},
+    detectPatternsManually: async (_symbols: string[], _calendarEntries?: unknown[]) => [],
+    acknowledgeAlert: (_alertId: string) => false,
+    clearAcknowledgedAlerts: () => 0,
+  };
 }
 
 /**
@@ -29,7 +55,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     const report = await getPatternMonitoringService().getMonitoringReport();
 
     // Optionally include recent patterns
-    let recentPatterns;
+    let recentPatterns: unknown[] | undefined;
     if (includePatterns) {
       recentPatterns = getPatternMonitoringService().getRecentPatterns(patternLimit);
     }
@@ -38,10 +64,10 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
       report,
       recentPatterns: includePatterns ? recentPatterns : undefined,
       monitoring: {
-        isActive: report.stats.engineStatus === "active",
+        isActive: report.stats?.engineStatus === "active",
         lastUpdate: report.lastUpdated,
-        totalAlerts: report.activeAlerts.length,
-        unacknowledgedAlerts: report.activeAlerts.filter((a) => !a.acknowledged).length,
+        totalAlerts: report.activeAlerts?.length ?? 0,
+        unacknowledgedAlerts: report.activeAlerts?.filter((a) => !a.acknowledged).length ?? 0,
       },
     };
 
@@ -51,7 +77,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
       }),
     );
   } catch (error) {
-    console.error("[API] Pattern monitoring GET failed:", { error });
+    // Error logging handled by error handler middleware
     return NextResponse.json(
       createErrorResponse("Failed to get pattern monitoring report", {
         details: error instanceof Error ? error.message : "Unknown error",
@@ -133,7 +159,8 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         return NextResponse.json(
           createErrorResponse("Pattern detection removed - use calendar sync instead", {
             code: "PATTERN_DETECTION_REMOVED",
-            message: "Targets are now created automatically from calendar sync. Use /api/sync/calendar-to-database to sync calendar listings.",
+            message:
+              "Targets are now created automatically from calendar sync. Use /api/sync/calendar-to-database to sync calendar listings.",
           }),
           { status: 410 }, // 410 Gone - feature removed
         );
@@ -180,12 +207,12 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         return NextResponse.json(
           createSuccessResponse(
             {
-              status: report.status,
-              engineStatus: report.stats.engineStatus,
-              isMonitoring: report.stats.engineStatus === "active",
-              activeAlerts: report.activeAlerts.length,
-              lastHealthCheck: report.stats.lastHealthCheck,
-              consecutiveErrors: report.stats.consecutiveErrors,
+              status: report.status ?? "inactive",
+              engineStatus: report.stats?.engineStatus ?? "inactive",
+              isMonitoring: report.stats?.engineStatus === "active",
+              activeAlerts: report.activeAlerts?.length ?? 0,
+              lastHealthCheck: report.stats?.lastHealthCheck ?? new Date().toISOString(),
+              consecutiveErrors: report.stats?.consecutiveErrors ?? 0,
             },
             {
               message: "Monitoring status retrieved successfully",
@@ -203,7 +230,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
         );
     }
   } catch (error) {
-    console.error("[API] Pattern monitoring POST failed:", { error });
+    // Error logging handled by error handler middleware
     return NextResponse.json(
       createErrorResponse("Pattern monitoring operation failed", {
         details: error instanceof Error ? error.message : "Unknown error",
@@ -235,7 +262,7 @@ export const PUT = apiAuthWrapper(async (request: NextRequest) => {
       ),
     );
   } catch (error) {
-    console.error("[API] Pattern monitoring PUT failed:", { error });
+    // Error logging handled by error handler middleware
     return NextResponse.json(
       createErrorResponse("Failed to update pattern monitoring configuration", {
         details: error instanceof Error ? error.message : "Unknown error",

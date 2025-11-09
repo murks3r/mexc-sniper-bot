@@ -52,11 +52,8 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
         patternParts = parts;
       }
     }
-  } catch (error) {
-    console.warn("[API] Failed to parse readyStatePattern, using defaults:", {
-      pattern: prefs.readyStatePattern,
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
+  } catch (_error) {
+    // Failed to parse readyStatePattern, using defaults
   }
 
   // Safe JSON parsing helper
@@ -64,11 +61,8 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
     if (!jsonString || typeof jsonString !== "string") return fallback;
     try {
       return JSON.parse(jsonString);
-    } catch (error) {
-      console.warn("[API] Failed to parse JSON field:", {
-        jsonString: jsonString.substring(0, 100),
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+    } catch (_error) {
+      // Failed to parse JSON field
       return fallback;
     }
   };
@@ -234,11 +228,8 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
     if (obj === undefined || obj === null) return null;
     try {
       return JSON.stringify(obj);
-    } catch (error) {
-      console.warn("[API] Failed to stringify JSON object:", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        objectType: typeof obj,
-      });
+    } catch (_error) {
+      // Failed to stringify JSON object
       return null;
     }
   };
@@ -299,7 +290,6 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
 
       if (isTestEnvironment) {
         // Auto-create test user
-        console.log(`[UserPreferences] Auto-creating test user: ${validatedUserId}`);
 
         const testUserData = {
           id: validatedUserId,
@@ -309,46 +299,18 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-
-        console.log(`[UserPreferences] User data to insert:`, testUserData);
-
-        try {
-          await withDatabaseErrorHandling(async () => {
-            const result = await db.insert(authUser).values(testUserData).returning();
-            console.log(`[UserPreferences] Successfully created test user:`, result[0]);
-            return result;
-          }, "create test user");
-        } catch (userCreationError) {
-          console.error(
-            `[UserPreferences] Failed to create test user ${validatedUserId}:`,
-            userCreationError,
-          );
-          // Log detailed error information
-          if (userCreationError instanceof Error) {
-            console.error(`[UserPreferences] Error message:`, userCreationError.message);
-            console.error(`[UserPreferences] Error stack:`, userCreationError.stack);
-          }
-          if ((userCreationError as any).code) {
-            console.error(`[UserPreferences] Error code:`, (userCreationError as any).code);
-          }
-          if ((userCreationError as any).detail) {
-            console.error(`[UserPreferences] Error detail:`, (userCreationError as any).detail);
-          }
-          // Re-throw the error so it's handled by the outer error handling
-          throw userCreationError;
-        }
+        await withDatabaseErrorHandling(async () => {
+          const result = await db.insert(authUser).values(testUserData).returning();
+          return result;
+        }, "create test user");
       } else {
         // Production environment - auto-create real authenticated user
-        console.log(`[UserPreferences] Auto-creating authenticated user: ${validatedUserId}`);
 
         const supabase = createSupabaseAdminClient();
         const { data: userData, error } = await supabase.auth.admin.getUserById(validatedUserId);
 
         if (error) {
-          console.error(
-            `[UserPreferences] Failed to fetch user data for ${validatedUserId}:`,
-            error,
-          );
+          // Failed to fetch user data - error logging handled by error handler middleware
           return apiResponse(
             createValidationErrorResponse(
               "userId",
@@ -359,9 +321,7 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
         }
 
         if (!userData?.user) {
-          console.error(
-            `[UserPreferences] User with ID ${validatedUserId} not found in Supabase auth.`,
-          );
+          // User not found - error logging handled by error handler middleware
           return apiResponse(
             createValidationErrorResponse(
               "userId",
@@ -386,14 +346,10 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
         try {
           await withDatabaseErrorHandling(async () => {
             const result = await db.insert(authUser).values(realUserData).returning();
-            console.log(`[UserPreferences] Successfully created authenticated user:`, result[0]);
             return result;
           }, "create authenticated user");
         } catch (userCreationError) {
-          console.error(
-            `[UserPreferences] Failed to create authenticated user ${validatedUserId}:`,
-            userCreationError,
-          );
+          // Failed to create authenticated user - error logging handled by error handler middleware
           // Return detailed error for debugging
           return apiResponse(
             createValidationErrorResponse(

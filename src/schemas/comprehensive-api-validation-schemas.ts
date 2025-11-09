@@ -355,7 +355,7 @@ export const QueryPerformanceRequestSchema = z.object({
 export function validateApiRequest<T extends z.ZodSchema>(
   schema: T,
   data: unknown,
-): { success?: boolean; data?: z.infer<T>; error?: string; details?: any } {
+): { success?: boolean; data?: z.infer<T>; error?: string; details?: unknown } {
   try {
     const result = schema.parse(data);
     return { success: true, data: result };

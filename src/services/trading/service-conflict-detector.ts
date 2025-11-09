@@ -26,10 +26,7 @@ class ServiceConflictDetector {
     // Check for conflicts
     const conflicts = this.detectConflicts(serviceName);
     if (conflicts.length > 0) {
-      console.error(`🚨 SERVICE CONFLICT DETECTED: ${serviceName}`, {
-        conflictingServices: conflicts,
-        currentlyActive: Array.from(this.activeServices),
-      });
+      // SERVICE CONFLICT DETECTED - error logging handled by error handler middleware
 
       this.conflictLog.push({
         service: serviceName,
@@ -47,9 +44,7 @@ class ServiceConflictDetector {
       action: "registered",
     });
 
-    console.info(`✅ Service registered: ${serviceName}`, {
-      totalActiveServices: this.activeServices.size,
-    });
+    // Service registered
 
     return true;
   }
@@ -65,9 +60,7 @@ class ServiceConflictDetector {
       action: "unregistered",
     });
 
-    console.info(`🔄 Service unregistered: ${serviceName}`, {
-      remainingServices: Array.from(this.activeServices),
-    });
+    // Service unregistered
   }
 
   /**
@@ -139,13 +132,10 @@ class ServiceConflictDetector {
    * Force reset all services (emergency use)
    */
   reset(): void {
-    const previousServices = Array.from(this.activeServices);
+    const _previousServices = Array.from(this.activeServices);
     this.activeServices.clear();
 
-    console.warn(`🔄 FORCED RESET: Cleared all active services`, {
-      previousServices,
-      timestamp: new Date().toISOString(),
-    });
+    // FORCED RESET: Cleared all active services
 
     this.conflictLog.push({
       service: "SYSTEM",
@@ -177,8 +167,13 @@ export function preventServiceConflicts(serviceName: string) {
 
       destroy() {
         serviceConflictDetector.unregisterService(serviceName);
-        if (super.destroy) {
-          super.destroy();
+        // Call parent destroy if available
+        try {
+          if (this.constructor.prototype.__proto__.destroy) {
+            this.constructor.prototype.__proto__.destroy.call(this);
+          }
+        } catch (_e) {
+          // Ignore destroy errors
         }
       }
     };

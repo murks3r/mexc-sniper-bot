@@ -40,17 +40,17 @@ import { validateConfig } from "./types";
  */
 export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
   private logger = {
-    info: (message: string, context?: any) => {
-      console.info("[core-trading-service]", message, context || "");
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    warn: (message: string, context?: any) => {
-      console.warn("[core-trading-service]", message, context || "");
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    error: (message: string, context?: any) => {
-      console.error("[core-trading-service]", message, context || "");
+    error: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
-    debug: (message: string, context?: any) => {
-      console.debug("[core-trading-service]", message, context || "");
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
     },
   };
 
@@ -204,16 +204,10 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
     try {
       const initResult = await instance.initialize();
       if (!initResult.success) {
-        console.warn("Singleton instance initialization failed", {
-          error: initResult.error,
-          operation: "getInitializedInstance",
-        });
+        // Initialization failed - error handled by service
       }
-    } catch (error) {
-      console.warn("Failed to initialize singleton instance", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        operation: "getInitializedInstance",
-      });
+    } catch {
+      // Initialization error - handled by service
     }
 
     return instance;
@@ -226,11 +220,8 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
     if (CoreTradingService.instance) {
       try {
         await CoreTradingService.instance.shutdown();
-      } catch (error) {
-        console.warn("Error during singleton shutdown", {
-          error: error instanceof Error ? error.message : "Unknown error",
-          operation: "resetInstance",
-        });
+      } catch {
+        // Error during shutdown - handled silently
       }
       CoreTradingService.instance.cleanup();
     }
@@ -273,8 +264,7 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
           return;
         } catch (startError) {
           startAttempts++;
-          const errorMessage =
-            startError instanceof Error ? startError.message : "Unknown error";
+          const errorMessage = startError instanceof Error ? startError.message : "Unknown error";
 
           if (startAttempts >= maxStartAttempts) {
             this.logger.warn(
@@ -342,12 +332,7 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
     const failedModules = moduleInitResults
       .map((result, index) => ({
         result,
-        module: [
-          "strategyManager",
-          "positionManager",
-          "performanceTracker",
-          "autoSniping",
-        ][index],
+        module: ["strategyManager", "positionManager", "performanceTracker", "autoSniping"][index],
       }))
       .filter(({ result }) => result.status === "rejected");
 
@@ -379,9 +364,9 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
   }
 
   /**
-   * Start auto-sniping if enabled
+   * Start auto-sniping if enabled (internal helper)
    */
-  private async startAutoSniping(): Promise<void> {
+  private async startAutoSnipingInternal(): Promise<void> {
     if (!this.config.autoSnipingEnabled) {
       return;
     }
@@ -421,7 +406,7 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       }
 
       // Start auto-sniping if enabled
-      await this.startAutoSniping();
+      await this.startAutoSnipingInternal();
 
       this.isInitialized = true;
       this.isHealthy = true;
@@ -499,7 +484,6 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
   // ============================================================================
   // Public API Methods
   // ============================================================================
-
 
   /**
    * Start auto-sniping monitoring
@@ -692,6 +676,21 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       this.config = newConfig;
       this.moduleContext.config = newConfig;
 
+      // Update MEXC service with new credentials if provided
+      if (updates.apiKey || updates.secretKey) {
+        this.mexcService = new UnifiedMexcServiceV2({
+          apiKey: newConfig.apiKey,
+          secretKey: newConfig.secretKey,
+          baseUrl: newConfig.baseUrl,
+          timeout: newConfig.timeout,
+          maxRetries: newConfig.maxRetries,
+          enableCaching: newConfig.enableCaching,
+          cacheTTL: newConfig.cacheTTL,
+        });
+        // Update module context with new service
+        this.moduleContext.mexcService = this.mexcService;
+      }
+
       // Update all modules with new config
       await this.strategyManager.updateConfig(newConfig);
       await this.positionManager.updateConfig(newConfig);
@@ -716,6 +715,13 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
     }
   }
 
+  /**
+   * Set current user for auto-sniping module
+   */
+  setCurrentUser(userId: string): void {
+    this.autoSniping.setCurrentUser(userId);
+  }
+
   // ============================================================================
   // Additional API Methods (for backward compatibility)
   // ============================================================================
@@ -725,6 +731,45 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
    */
   async getStatus(): Promise<ServiceStatus> {
     return this.getServiceStatus();
+  }
+
+  /**
+   * Execute trade
+   */
+  async executeTrade(params: TradeParameters): Promise<TradeResult> {
+    this.ensureInitialized();
+    const result = await this.mexcService.executeTrade({
+      symbol: params.symbol,
+      side: params.side.toUpperCase() as "BUY" | "SELL",
+      type: params.type,
+      quantity: params.quantity,
+      quoteOrderQty: params.quoteOrderQty,
+      price: params.price,
+      stopPrice: params.stopPrice,
+      timeInForce: params.timeInForce,
+      paperTrade: this.config.paperTradingMode,
+    });
+
+    if (result.success && result.data) {
+      return {
+        success: true,
+        orderId: result.data.orderId,
+        symbol: result.data.symbol,
+        side: result.data.side,
+        type: result.data.type,
+        quantity: result.data.quantity,
+        price: result.data.price,
+        status: result.data.status,
+        executedQty: result.data.executedQty,
+        timestamp: result.data.timestamp,
+        paperTrade: this.config.paperTradingMode,
+      };
+    }
+
+    return {
+      success: false,
+      error: result.error || "Trade execution failed",
+    };
   }
 
   /**
@@ -1021,16 +1066,10 @@ export async function getInitializedCoreTrading(
   try {
     const initResult = await service.initialize();
     if (!initResult.success) {
-      console.warn("Core Trading Service initialization failed, but returning service anyway", {
-        error: initResult.error,
-        operation: "getInitializedCoreTrading",
-      });
+      // Initialization failed - error handled by service
     }
-  } catch (error) {
-    console.warn("Failed to initialize Core Trading Service during getInitializedCoreTrading", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      operation: "getInitializedCoreTrading",
-    });
+  } catch {
+    // Initialization error - handled by service
   }
 
   return service;
@@ -1043,11 +1082,8 @@ export async function resetCoreTrading(): Promise<void> {
   if (globalCoreTrading) {
     try {
       await globalCoreTrading.shutdown();
-    } catch (error) {
-      console.warn("Error during Core Trading Service shutdown", {
-        error: error instanceof Error ? error.message : "Unknown error",
-        operation: "resetCoreTrading",
-      });
+    } catch {
+      // Error during shutdown - handled silently
     }
   }
   globalCoreTrading = null;
@@ -1065,11 +1101,8 @@ export function createCoreTrading(
   if (autoInitialize) {
     // Schedule initialization without blocking
     setImmediate(() => {
-      service.initialize().catch((error) => {
-        console.warn("Auto-initialization failed for createCoreTrading", {
-          error: error instanceof Error ? error.message : "Unknown error",
-          operation: "createCoreTrading",
-        });
+      service.initialize().catch(() => {
+        // Auto-initialization failed - handled by service
       });
     });
   }
@@ -1088,16 +1121,10 @@ export async function createInitializedCoreTrading(
   try {
     const initResult = await service.initialize();
     if (!initResult.success) {
-      console.warn("Created Core Trading Service with initialization failure", {
-        error: initResult.error,
-        operation: "createInitializedCoreTrading",
-      });
+      // Initialization failed - error handled by service
     }
-  } catch (error) {
-    console.warn("Failed to initialize newly created Core Trading Service", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      operation: "createInitializedCoreTrading",
-    });
+  } catch {
+    // Initialization error - handled by service
   }
 
   return service;

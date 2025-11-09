@@ -13,7 +13,7 @@
  * - Performance optimization
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type {
   ConnectionMetrics,
@@ -89,7 +89,7 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
   } = config;
 
   // State management
-  const [state, setState] = useState<WebSocketClientState>("disconnected");
+  const [state, setState] = useState<WebSocketClientState>(webSocketClient.getState());
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [metrics, setMetrics] = useState<ConnectionMetrics | null>(null);
@@ -106,14 +106,13 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
   const { isAuthenticated, getToken } = useAuth();
 
   // Get auth token
-  const authToken = useMemo(async () => {
+  const getAuthToken = useCallback(async () => {
     if (configAuthToken) return configAuthToken;
     if (isAuthenticated) {
       try {
         const token = await getToken();
         return token || "";
-      } catch (error) {
-        console.warn("[WebSocket Hook] Failed to get auth token:", error);
+      } catch (_error) {
         return "";
       }
     }
@@ -128,7 +127,7 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       setError(null);
       setIsConnecting(true);
 
-      const token = await authToken;
+      const token = await getAuthToken();
 
       // Configure client if URL is provided
       if (url) {
@@ -137,55 +136,30 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       }
 
       await clientRef.current.connect(token);
-
-      if (debug) {
-        console.info("[WebSocket Hook] Connected successfully");
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Connection failed";
       setError(errorMessage);
-
-      if (debug) {
-        console.error("[WebSocket Hook] Connection failed:", errorMessage);
-      }
     } finally {
       if (isMountedRef.current) {
         setIsConnecting(false);
       }
     }
-  }, [authToken, url, debug]);
+  }, [getAuthToken, url]);
 
   // Disconnect function
   const disconnect = useCallback(() => {
     clientRef.current.disconnect();
-
-    if (debug) {
-      console.info("[WebSocket Hook] Disconnected");
-    }
-  }, [debug]);
+  }, []);
 
   // Reconnect function
   const reconnect = useCallback(() => {
-    if (debug) {
-      console.info("[WebSocket Hook] Reconnecting...");
-    }
-
     clientRef.current.reconnect();
-  }, [debug]);
+  }, []);
 
   // Send message function
-  const send = useCallback(
-    <T>(message: Omit<WebSocketMessage<T>, "messageId" | "timestamp">) => {
-      const success = clientRef.current.send(message);
-
-      if (debug && !success) {
-        console.warn("[WebSocket Hook] Failed to send message:", message);
-      }
-
-      return success;
-    },
-    [debug],
-  );
+  const send = useCallback(<T>(message: Omit<WebSocketMessage<T>, "messageId" | "timestamp">) => {
+    return clientRef.current.send(message);
+  }, []);
 
   // Subscribe function
   const subscribe = useCallback(
@@ -199,22 +173,14 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       // Update subscriptions list
       setSubscriptions(clientRef.current.getSubscriptions());
 
-      if (debug) {
-        console.info(`[WebSocket Hook] Subscribed to ${channel}`);
-      }
-
       // Return enhanced unsubscribe function
       return () => {
         unsubscribe();
         handlersRef.current.delete(handlerId);
         setSubscriptions(clientRef.current.getSubscriptions());
-
-        if (debug) {
-          console.info(`[WebSocket Hook] Unsubscribed from ${channel}`);
-        }
       };
     },
-    [debug],
+    [],
   );
 
   // Set up event listeners
@@ -233,20 +199,12 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       if (isMountedRef.current) {
         setError(null);
         setConnectionId(client.getConnectionId());
-
-        if (debug) {
-          console.info("[WebSocket Hook] Connection established");
-        }
       }
     };
 
     const handleDisconnected = () => {
       if (isMountedRef.current) {
         setConnectionId(undefined);
-
-        if (debug) {
-          console.info("[WebSocket Hook] Connection lost");
-        }
       }
     };
 
@@ -254,17 +212,11 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       if (isMountedRef.current) {
         const errorMessage = error instanceof Error ? error.message : "WebSocket error";
         setError(errorMessage);
-
-        if (debug) {
-          console.error("[WebSocket Hook] WebSocket error:", errorMessage);
-        }
       }
     };
 
-    const handleMessage = (message: WebSocketMessage) => {
-      if (debug) {
-        console.info("[WebSocket Hook] Message received:", message);
-      }
+    const handleMessage = (_message: WebSocketMessage) => {
+      // Handle message
     };
 
     // Add event listeners
@@ -287,7 +239,7 @@ export function useWebSocket(config: UseWebSocketConfig = {}): UseWebSocketResul
       client.off("error", handleError);
       client.off("message", handleMessage);
     };
-  }, [debug]);
+  }, []);
 
   // Auto-connect effect
   useEffect(() => {

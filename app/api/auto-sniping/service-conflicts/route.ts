@@ -17,8 +17,8 @@ import { serviceConflictDetector } from "@/src/services/trading/service-conflict
 export async function GET(request: NextRequest) {
   try {
     // Require authentication
-    const user = await requireAuthFromRequest(request);
-    console.info(`[Service Conflicts] Status request from user: ${user.email} (${user.id})`);
+    const _user = await requireAuthFromRequest(request);
+    // Status request from user
 
     // Get service conflict status
     const status = serviceConflictDetector.getStatus();
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("[Service Conflicts] Error:", { error });
+    // Error - error logging handled by error handler middleware
 
     // Handle authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {
@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require authentication
-    const user = await requireAuthFromRequest(request);
-    console.warn(`[Service Conflicts] Force reset requested by user: ${user.email} (${user.id})`);
+    const _user = await requireAuthFromRequest(request);
+    // Force reset requested by user
 
     const body = await request.json().catch(() => ({}));
     const { action, reason } = body;
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   } catch (error) {
-    console.error("[Service Conflicts] Reset error:", { error });
+    // Reset error - error logging handled by error handler middleware
 
     // Handle authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {

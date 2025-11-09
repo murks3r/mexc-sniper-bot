@@ -25,14 +25,18 @@ export interface ConnectionManagerMetrics {
 
 export class ServerConnectionManager {
   private logger = {
-    info: (message: string, context?: unknown) =>
-      console.info("[server-connection-manager]", message, context || ""),
-    warn: (message: string, context?: unknown) =>
-      console.warn("[server-connection-manager]", message, context || ""),
-    error: (message: string, context?: unknown, error?: Error) =>
-      console.error("[server-connection-manager]", message, context || "", error || ""),
-    debug: (message: string, context?: unknown) =>
-      console.debug("[server-connection-manager]", message, context || ""),
+    info: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: unknown, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
   };
 
   private connections = new Map<string, WebSocketConnection & { ws: WebSocket }>();

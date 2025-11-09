@@ -22,7 +22,47 @@ export async function GET(request: NextRequest) {
     const oldSession = await getSession();
     const newSession = await getSessionFromRequest(request);
 
-    const result: any = {
+    type AuthTestResult = {
+      timestamp: string;
+      cookieDebug: ReturnType<typeof debugRequestCookies>;
+      oldSessionCheck: {
+        hasSession: boolean;
+        isAuthenticated: boolean;
+        hasUser: boolean;
+        userId?: string;
+        userEmail?: string;
+        method: string;
+      };
+      newSessionCheck: {
+        hasSession: boolean;
+        isAuthenticated: boolean;
+        hasUser: boolean;
+        userId?: string;
+        userEmail?: string;
+        method: string;
+      };
+      headers: {
+        cookie: string;
+        authorization: string;
+        userAgent: string | null;
+      };
+      environment: {
+        nodeEnv: string | undefined;
+        hasSupabaseUrl: boolean;
+        hasSupabaseKey: boolean;
+      };
+      authCheck?: {
+        success: boolean;
+        userId?: string;
+        email?: string;
+        method?: string;
+        message: string;
+        newMethodError?: string;
+        oldMethodError?: string;
+      };
+    };
+
+    const result: AuthTestResult = {
       timestamp: new Date().toISOString(),
       cookieDebug,
       oldSessionCheck: {
@@ -93,7 +133,6 @@ export async function GET(request: NextRequest) {
       result.authCheck = {
         success: false,
         message: "❌ No valid session found with either method",
-        recommendation: "User needs to sign in or session cookies are not being sent properly",
       };
     }
 

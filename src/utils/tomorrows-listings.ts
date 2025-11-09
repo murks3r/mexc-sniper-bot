@@ -2,7 +2,7 @@
  * Utility functions for filtering and working with tomorrow's listings
  */
 
-import type { CalendarEntry } from "@/src/services/api/mexc-market-data";
+import type { CalendarEntry } from "@/src/services/api/mexc-unified-exports";
 import {
   filterTomorrowsListings,
   getListingsByDate,

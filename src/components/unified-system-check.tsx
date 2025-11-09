@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useSaveApiCredentials, useTestApiCredentials } from "@/src/hooks/use-api-credentials";
+import { createSimpleLogger } from "../lib/unified-logger";
 import { useAuth } from "./auth/supabase-auth-provider";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
@@ -20,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useToast } from "./ui/use-toast";
+
+const logger = createSimpleLogger("UnifiedSystemCheck");
 
 // Debounce function
 function useDebounce<T extends (...args: any[]) => any>(callback: T, delay: number): T {
@@ -150,7 +153,7 @@ export function UnifiedSystemCheck() {
           },
         ]);
       } catch (error) {
-        console.error("System check error:", error);
+        logger.error("System check error", { error });
         setSystemStatus([
           { name: "Database Connection", status: "warning", message: "Check timed out" },
           { name: "API Credentials", status: "warning", message: "Check timed out" },
@@ -159,7 +162,7 @@ export function UnifiedSystemCheck() {
         ]);
       }
     } catch (error) {
-      console.error("System status check failed:", error);
+      logger.error("System status check failed", { error });
       setSystemStatus((prev) =>
         prev.map((item) => ({
           ...item,
@@ -239,7 +242,7 @@ export function UnifiedSystemCheck() {
       // Quick refresh after save
       setTimeout(() => debouncedCheckSystemStatus(), 500);
     } catch (error) {
-      console.error("Save credentials error:", error);
+      logger.error("Save credentials error", { error });
       toast({
         title: "Error",
         description: "Failed to save credentials. Please try again.",
@@ -283,7 +286,7 @@ export function UnifiedSystemCheck() {
       // Quick refresh after test
       setTimeout(() => debouncedCheckSystemStatus(), 500);
     } catch (error) {
-      console.error("Test credentials error:", error);
+      logger.error("Test credentials error", { error });
       toast({
         title: "Error",
         description: "Failed to test credentials. Please try again.",

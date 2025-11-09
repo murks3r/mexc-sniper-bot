@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!calendarResponse.ok) {
-      console.error("Failed to fetch calendar data:", calendarResponse.status);
+      // Failed to fetch calendar data - error logging handled by error handler middleware
       return NextResponse.json({
         success: false,
         error: "Failed to fetch calendar data",
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           const launchTime = new Date(entry.firstOpenTime).getTime();
           return launchTime >= fromTimestamp && launchTime <= toTimestamp;
         } catch (_error) {
-          console.warn("Invalid date in calendar entry:", entry.firstOpenTime);
+          // Invalid date in calendar entry - error logging handled by error handler middleware
           return false;
         }
       });
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
           launchTime.getTime() > now.getTime() && launchTime.getTime() < now.getTime() + hours4
         );
       } catch (_error) {
-        console.warn("Invalid date in calendar entry:", entry.firstOpenTime);
+        // Invalid date in calendar entry - error logging handled by error handler middleware
         return false;
       }
     });
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Ready launches API error:", error);
+    // Ready launches API error - error logging handled by error handler middleware
 
     return NextResponse.json({
       success: false,

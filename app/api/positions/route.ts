@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "open"; // "open", "closed", or "all"
 
     const conditions: any[] = [eq(positions.userId, user.id)];
-    
+
     if (status !== "all") {
       conditions.push(eq(positions.status, status));
     }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Failed to fetch positions:", error);
+    // Failed to fetch positions - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,
@@ -40,4 +40,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

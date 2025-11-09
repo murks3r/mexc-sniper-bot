@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
 
     // Handle single symbol ticker
     if (symbol) {
-      console.info(`[ticker-api] Fetching ticker for symbol: ${symbol}`);
+      // Fetching ticker for symbol
 
       const tickerResponse = await mexcService.getTicker(symbol);
 
       if (!tickerResponse.success || !tickerResponse.data) {
-        console.warn(`[ticker-api] Failed to fetch ticker for ${symbol}:`, tickerResponse.error);
+        // Failed to fetch ticker - error logging handled by error handler middleware
         return apiResponse(
           createErrorResponse(tickerResponse.error || `Failed to fetch ticker for ${symbol}`, {
             symbol,
@@ -32,10 +32,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      console.info(`[ticker-api] ✅ Successfully fetched ticker for ${symbol}:`, {
-        price: tickerResponse.data.price || tickerResponse.data.lastPrice,
-        lastPrice: tickerResponse.data.lastPrice || tickerResponse.data.price,
-      });
+      // Successfully fetched ticker
 
       return apiResponse(
         createSuccessResponse([tickerResponse.data], {
@@ -49,15 +46,12 @@ export async function GET(request: NextRequest) {
     // Handle multiple symbols ticker
     if (symbols) {
       const symbolList = symbols.split(",").filter((s) => s.trim().length > 0);
-      console.info(`[ticker-api] Fetching tickers for ${symbolList.length} symbols:`, symbolList);
+      // Fetching tickers for symbols
 
       const tickerResponse = await mexcService.getTicker24hr(symbolList);
 
       if (!tickerResponse.success || !tickerResponse.data) {
-        console.warn(`[ticker-api] Failed to fetch tickers for symbols:`, {
-          symbols: symbolList,
-          error: tickerResponse.error,
-        });
+        // Failed to fetch tickers - error logging handled by error handler middleware
         return apiResponse(
           createErrorResponse(tickerResponse.error || "Failed to fetch ticker data", {
             symbols: symbolList,
@@ -68,7 +62,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      console.info(`[ticker-api] ✅ Successfully fetched ${tickerResponse.data.length} tickers`);
+      // Successfully fetched tickers
 
       return apiResponse(
         createSuccessResponse(tickerResponse.data, {
@@ -81,12 +75,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Handle all tickers (24hr ticker for all symbols)
-    console.info("[ticker-api] Fetching all 24hr tickers");
+    // Fetching all 24hr tickers
 
     const allTickersResponse = await mexcService.getTicker24hr();
 
     if (!allTickersResponse.success || !allTickersResponse.data) {
-      console.warn("[ticker-api] Failed to fetch all tickers:", allTickersResponse.error);
+      // Failed to fetch all tickers - error logging handled by error handler middleware
       return apiResponse(
         createErrorResponse(allTickersResponse.error || "Failed to fetch all ticker data", {
           fallbackData: [],
@@ -96,7 +90,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.info(`[ticker-api] ✅ Successfully fetched ${allTickersResponse.data.length} tickers`);
+    // Successfully fetched all tickers
 
     return apiResponse(
       createSuccessResponse(allTickersResponse.data, {
@@ -106,7 +100,7 @@ export async function GET(request: NextRequest) {
       }),
     );
   } catch (error) {
-    console.error("[ticker-api] Ticker fetch failed:", { error });
+    // Ticker fetch failed - error logging handled by error handler middleware
 
     return apiResponse(
       createErrorResponse(error instanceof Error ? error.message : "Unknown error", {

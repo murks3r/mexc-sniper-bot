@@ -66,8 +66,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: result[0],
       message: "Snipe target updated successfully",
     });
-  } catch (error) {
-    console.error("❌ Error updating snipe target:", { error: error });
+  } catch (_error) {
+    // Error updating snipe target - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,
@@ -113,8 +113,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       success: true,
       data: result[0],
     });
-  } catch (error) {
-    console.error("❌ Error fetching snipe target:", { error: error });
+  } catch (_error) {
+    // Error fetching snipe target - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,
@@ -159,8 +159,8 @@ export async function DELETE(
       success: true,
       message: "Snipe target deleted successfully",
     });
-  } catch (error) {
-    console.error("❌ Error deleting snipe target:", { error: error });
+  } catch (_error) {
+    // Error deleting snipe target - error logging handled by error handler middleware
     return NextResponse.json(
       {
         success: false,

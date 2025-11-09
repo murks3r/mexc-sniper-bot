@@ -3,6 +3,8 @@
  * Minimal implementation for build optimization
  */
 
+import { createSimpleLogger } from "./unified-logger";
+
 export interface WebSocketInstrumentationConfig {
   enabled: boolean;
   traceConnections: boolean;
@@ -17,6 +19,7 @@ class WebSocketInstrumentation {
     traceMessages: false,
     includeMessageContent: false,
   };
+  private logger = createSimpleLogger("WebSocketInstrumentation");
 
   initialize(config?: Partial<WebSocketInstrumentationConfig>): void {
     if (config) {
@@ -24,7 +27,7 @@ class WebSocketInstrumentation {
     }
 
     if (this.config.enabled) {
-      console.log("WebSocket instrumentation initialized");
+      this.logger.info("WebSocket instrumentation initialized");
     }
   }
 

@@ -29,9 +29,9 @@ type TestAuthContextType = {
   session: any;
   isLoading: boolean;
   signOut: () => Promise<any>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithProvider: (provider: "google" | "github") => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithProvider: (provider: "google" | "github") => Promise<{ error: Error | null }>;
 };
 
 const TestAuthContext = createContext<TestAuthContextType | undefined>(undefined);

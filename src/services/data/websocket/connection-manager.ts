@@ -79,14 +79,18 @@ export class MexcConnectionManager extends EventEmitter {
   private readonly onError: (error: Error) => void;
 
   private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[connection-manager]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[connection-manager]", message, context || ""),
-    error: (message: string, context?: any, error?: Error) =>
-      console.error("[connection-manager]", message, context || "", error || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[connection-manager]", message, context || ""),
+    info: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: any, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: any) => {
+      // Logging handled by structured logger
+    },
   };
 
   constructor(

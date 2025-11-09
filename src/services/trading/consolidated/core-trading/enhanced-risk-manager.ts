@@ -65,6 +65,7 @@ export class EnhancedRiskManager {
   private activeAlerts: RiskAlert[] = [];
   private riskMetricsHistory: RiskMetrics[] = [];
   private marketConditions: MarketConditions | null = null;
+  public lastRiskCheck: Date | null = null;
 
   constructor(context: ModuleContext, riskLimits: RiskLimits) {
     this.context = context;

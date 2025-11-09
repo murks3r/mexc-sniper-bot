@@ -23,7 +23,7 @@ export async function GET() {
       }),
     );
   } catch (error) {
-    console.error("MEXC calendar fetch failed:", { error: error });
+    // MEXC calendar fetch failed - error logging handled by error handler middleware
 
     // Always return empty array with success status to prevent 404/500 errors
     return apiResponse(

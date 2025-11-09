@@ -1,10 +1,10 @@
 "use client";
 
-import type { AuthError, Session, User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
-import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 import { isAnonymousUser } from "@/src/lib/auth-utils";
+import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 
 type SupabaseAuthContextType = {
   user: User | null;
@@ -13,11 +13,11 @@ type SupabaseAuthContextType = {
   isAuthenticated: boolean;
   isAnonymous: boolean;
   getToken: () => Promise<string | null>;
-  signOut: () => Promise<AuthError | null>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithProvider: (provider: "google" | "github") => Promise<{ error: any }>;
-  signInAnonymously: () => Promise<{ error: any }>;
+  signOut: () => Promise<Error | null>;
+  signIn: (email: string, password: string) => Promise<{ error: Error }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error }>;
+  signInWithProvider: (provider: "google" | "github") => Promise<{ error: Error }>;
+  signInAnonymously: () => Promise<{ error: Error }>;
 };
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
@@ -359,8 +359,8 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         data: { session },
       } = await supabase.auth.getSession();
       return session?.access_token || null;
-    } catch (error) {
-      console.debug("[Auth] Error getting token:", error);
+    } catch {
+      // Error getting token - return null silently
       return null;
     }
   };

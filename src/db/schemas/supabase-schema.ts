@@ -2,14 +2,14 @@
 // SUPABASE SCHEMA EXPORTS
 // ===========================================
 
-export * from "./alerts";
+// Removed: alerts export - alerts schema exists but may not be used
+// export * from "./alerts";
 // Re-export other schemas that are compatible as-is
 // Note: workflows excluded to avoid conflicts with supabase-auth
 export * from "./patterns";
 export * from "./performance";
 export * from "./safety";
 export * from "./strategies";
-export * from "./trading";
 // Export Supabase auth schemas with selective exports to avoid conflicts
 export {
   type NewSnipeTarget,
@@ -34,13 +34,16 @@ export {
   workflowSystemStatus,
   // Exclude CoinActivity and NewCoinActivity types as patterns.ts has the comprehensive version
 } from "./supabase-auth";
+export * from "./trading";
 
-import * as alerts from "./alerts";
+// Removed: alerts import - using stub instead
+// import * as alerts from "./alerts";
+const alerts = {}; // Stub
+
 import * as patterns from "./patterns";
 import * as performance from "./performance";
 import * as safety from "./safety";
 import * as strategies from "./strategies";
-import * as trading from "./trading";
 import {
   snipeTargets,
   userPreferences,
@@ -49,6 +52,7 @@ import {
   workflowActivity,
   workflowSystemStatus,
 } from "./supabase-auth";
+import * as trading from "./trading";
 // Schema aggregation for Drizzle ORM
 
 export const supabaseSchema = {

@@ -74,289 +74,229 @@ export interface ComprehensiveRiskAssessment {
 
 export class RiskAssessment {
   constructor(private config: RiskAssessmentConfig) {
-    console.info("Risk assessment module initialized", {
-      operation: "initialization",
-      hasExecutionService: !!config.executionService,
-      hasPatternMonitoring: !!config.patternMonitoring,
-      hasEmergencySystem: !!config.emergencySystem,
-      hasMexcService: !!config.mexcService,
-    });
+    // Risk assessment module initialized
   }
 
   /**
    * Perform comprehensive risk assessment across all categories
    */
   public async performComprehensiveAssessment(): Promise<ComprehensiveRiskAssessment> {
-    try {
-      // Run all assessments in parallel for better performance
-      const [portfolio, performance, pattern, system] = await Promise.all([
-        this.assessPortfolioRisk(),
-        this.assessPerformanceRisk(),
-        this.assessPatternRisk(),
-        this.assessSystemRisk(),
-      ]);
+    // Run all assessments in parallel for better performance
+    const [portfolio, performance, pattern, system] = await Promise.all([
+      this.assessPortfolioRisk(),
+      this.assessPerformanceRisk(),
+      this.assessPatternRisk(),
+      this.assessSystemRisk(),
+    ]);
 
-      // Calculate overall risk score
-      const overallRiskScore = this.calculateOverallRiskScore(
-        portfolio,
-        performance,
-        pattern,
-        system,
-      );
-      const riskStatus = this.determineRiskStatus(overallRiskScore);
+    // Calculate overall risk score
+    const overallRiskScore = this.calculateOverallRiskScore(
+      portfolio,
+      performance,
+      pattern,
+      system,
+    );
+    const riskStatus = this.determineRiskStatus(overallRiskScore);
 
-      // Generate priority recommendations
-      const priorityRecommendations = this.generatePriorityRecommendations(
-        portfolio,
-        performance,
-        pattern,
-        system,
-        overallRiskScore,
-      );
+    // Generate priority recommendations
+    const priorityRecommendations = this.generatePriorityRecommendations(
+      portfolio,
+      performance,
+      pattern,
+      system,
+      overallRiskScore,
+    );
 
-      const assessment: ComprehensiveRiskAssessment = {
-        portfolio,
-        performance,
-        pattern,
-        system,
-        overallRiskScore,
-        riskStatus,
-        priorityRecommendations,
-        timestamp: new Date().toISOString(),
-      };
+    const assessment: ComprehensiveRiskAssessment = {
+      portfolio,
+      performance,
+      pattern,
+      system,
+      overallRiskScore,
+      riskStatus,
+      priorityRecommendations,
+      timestamp: new Date().toISOString(),
+    };
 
-      console.info("Comprehensive risk assessment completed", {
-        operation: "comprehensive_assessment",
-        overallRiskScore,
-        riskStatus,
-        recommendationsCount: priorityRecommendations.length,
-      });
+    // Comprehensive risk assessment completed
 
-      return assessment;
-    } catch (error) {
-      console.error(
-        "Comprehensive risk assessment failed",
-        { operation: "comprehensive_assessment" },
-        error,
-      );
-
-      throw error;
-    }
+    return assessment;
   }
 
   /**
    * Assess portfolio-specific risks
    */
   public async assessPortfolioRisk(): Promise<PortfolioRiskAssessment> {
-    try {
-      const positions =
-        this.config.executionService.getActivePositions() as any as ExecutionPosition[];
-      const _config = (this.config.executionService as any).getConfig?.() || {};
+    const positions =
+      this.config.executionService.getActivePositions() as any as ExecutionPosition[];
+    const _config = (this.config.executionService as any).getConfig?.() || {};
 
-      const totalValue = this.calculatePortfolioValue(positions);
-      const totalExposure = positions.reduce(
-        (sum, pos) => sum + Number.parseFloat((pos.quantity || 0).toString()),
-        0,
-      );
-      const concentrationRisk = this.calculateConcentrationRisk(positions);
-      const positionCount = positions.length;
+    const totalValue = this.calculatePortfolioValue(positions);
+    const totalExposure = positions.reduce(
+      (sum, pos) => sum + Number.parseFloat((pos.quantity || 0).toString()),
+      0,
+    );
+    const concentrationRisk = this.calculateConcentrationRisk(positions);
+    const positionCount = positions.length;
 
-      const { largestPositionRatio, diversificationScore } =
-        this.calculateDiversificationMetrics(positions);
+    const { largestPositionRatio, diversificationScore } =
+      this.calculateDiversificationMetrics(positions);
 
-      // Calculate portfolio risk score (0-100)
-      let riskScore = 0;
-      riskScore += concentrationRisk * 0.4; // 40% weight on concentration
-      riskScore += (100 - diversificationScore) * 0.3; // 30% weight on diversification
-      riskScore +=
-        Math.min(
-          (positionCount / this.config.configuration.thresholds.maxPortfolioConcentration) * 100,
-          100,
-        ) * 0.2; // 20% weight on position count
-      riskScore += largestPositionRatio * 0.1; // 10% weight on largest position
+    // Calculate portfolio risk score (0-100)
+    let riskScore = 0;
+    riskScore += concentrationRisk * 0.4; // 40% weight on concentration
+    riskScore += (100 - diversificationScore) * 0.3; // 30% weight on diversification
+    riskScore +=
+      Math.min(
+        (positionCount / this.config.configuration.thresholds.maxPortfolioConcentration) * 100,
+        100,
+      ) * 0.2; // 20% weight on position count
+    riskScore += largestPositionRatio * 0.1; // 10% weight on largest position
 
-      const recommendations = this.generatePortfolioRecommendations(
-        concentrationRisk,
-        diversificationScore,
-        positionCount,
-        largestPositionRatio,
-      );
+    const recommendations = this.generatePortfolioRecommendations(
+      concentrationRisk,
+      diversificationScore,
+      positionCount,
+      largestPositionRatio,
+    );
 
-      return {
-        totalValue,
-        totalExposure,
-        concentrationRisk,
-        positionCount,
-        largestPositionRatio,
-        diversificationScore,
-        riskScore: Math.min(riskScore, 100),
-        recommendations,
-      };
-    } catch (error) {
-      console.error(
-        "Portfolio risk assessment failed",
-        { operation: "assess_portfolio_risk" },
-        error,
-      );
-      throw error;
-    }
+    return {
+      totalValue,
+      totalExposure,
+      concentrationRisk,
+      positionCount,
+      largestPositionRatio,
+      diversificationScore,
+      riskScore: Math.min(riskScore, 100),
+      recommendations,
+    };
   }
 
   /**
    * Assess performance-specific risks
    */
   public async assessPerformanceRisk(): Promise<PerformanceRiskAssessment> {
-    try {
-      const _positions = this.config.executionService.getActivePositions();
-      const _config = (this.config.executionService as any).getConfig?.() || {};
+    const _positions = this.config.executionService.getActivePositions();
+    const _config = (this.config.executionService as any).getConfig?.() || {};
 
-      // Mock execution stats since getExecutionReport doesn't exist
-      const mockStats = {
-        successRate: 0.85,
-        currentDrawdown: 5.2,
-        averageSlippage: 0.1,
-        consecutiveLosses: 1,
-      };
+    // Mock execution stats since getExecutionReport doesn't exist
+    const mockStats = {
+      successRate: 0.85,
+      currentDrawdown: 5.2,
+      averageSlippage: 0.1,
+      consecutiveLosses: 1,
+    };
 
-      const successRate = mockStats.successRate;
-      const consecutiveLosses = mockStats.consecutiveLosses;
-      const averageSlippage = mockStats.averageSlippage;
-      const drawdownRisk = mockStats.currentDrawdown;
+    const successRate = mockStats.successRate;
+    const consecutiveLosses = mockStats.consecutiveLosses;
+    const averageSlippage = mockStats.averageSlippage;
+    const drawdownRisk = mockStats.currentDrawdown;
 
-      const performanceRating = this.calculatePerformanceRating(
-        successRate,
-        consecutiveLosses,
-        averageSlippage,
-        drawdownRisk,
-      );
+    const performanceRating = this.calculatePerformanceRating(
+      successRate,
+      consecutiveLosses,
+      averageSlippage,
+      drawdownRisk,
+    );
 
-      const recommendations = this.generatePerformanceRecommendations(
-        successRate,
-        consecutiveLosses,
-        averageSlippage,
-        drawdownRisk,
-      );
+    const recommendations = this.generatePerformanceRecommendations(
+      successRate,
+      consecutiveLosses,
+      averageSlippage,
+      drawdownRisk,
+    );
 
-      return {
-        successRate,
-        consecutiveLosses,
-        averageSlippage,
-        drawdownRisk,
-        performanceRating,
-        recommendations,
-      };
-    } catch (error) {
-      console.error(
-        "Performance risk assessment failed",
-        { operation: "assess_performance_risk" },
-        error,
-      );
-      throw error;
-    }
+    return {
+      successRate,
+      consecutiveLosses,
+      averageSlippage,
+      drawdownRisk,
+      performanceRating,
+      recommendations,
+    };
   }
 
   /**
    * Assess pattern detection risks
    */
   public async assessPatternRisk(): Promise<PatternRiskAssessment> {
-    try {
-      const patternReport = await this.config.patternMonitoring.getMonitoringReport();
+    const patternReport = await this.config.patternMonitoring.getMonitoringReport();
 
-      const patternAccuracy = patternReport.stats.averageConfidence;
-      const detectionFailures = patternReport.stats.consecutiveErrors;
-      const falsePositiveRate = this.calculateFalsePositiveRate(patternReport);
-      const confidenceLevel = patternAccuracy;
+    const patternAccuracy = patternReport.stats.averageConfidence;
+    const detectionFailures = patternReport.stats.consecutiveErrors;
+    const falsePositiveRate = this.calculateFalsePositiveRate(patternReport);
+    const confidenceLevel = patternAccuracy;
 
-      const patternReliability = this.calculatePatternReliability(
-        patternAccuracy,
-        detectionFailures,
-        falsePositiveRate,
-      );
+    const patternReliability = this.calculatePatternReliability(
+      patternAccuracy,
+      detectionFailures,
+      falsePositiveRate,
+    );
 
-      const recommendations = this.generatePatternRecommendations(
-        patternAccuracy,
-        detectionFailures,
-        falsePositiveRate,
-      );
+    const recommendations = this.generatePatternRecommendations(
+      patternAccuracy,
+      detectionFailures,
+      falsePositiveRate,
+    );
 
-      return {
-        patternAccuracy,
-        detectionFailures,
-        falsePositiveRate,
-        confidenceLevel,
-        patternReliability,
-        recommendations,
-      };
-    } catch (error) {
-      console.error("Pattern risk assessment failed", { operation: "assess_pattern_risk" }, error);
-      throw error;
-    }
+    return {
+      patternAccuracy,
+      detectionFailures,
+      falsePositiveRate,
+      confidenceLevel,
+      patternReliability,
+      recommendations,
+    };
   }
 
   /**
    * Assess system health and connectivity risks
    */
   public async assessSystemRisk(): Promise<SystemRiskAssessment> {
+    // Get reports with error handling for missing methods
+    let executionReport: any;
+    let patternReport: any;
+    let emergencyHealth: any;
+
+    // Handle execution service with fallback
     try {
-      // Get reports with error handling for missing methods
-      let executionReport: any;
-      let patternReport: any;
-      let emergencyHealth: any;
+      // Use fallback execution report since getExecutionReport doesn't exist
+      const activePositions = this.config.executionService.getActivePositions?.() || [];
+      executionReport = {
+        stats: {
+          currentDrawdown: 0,
+          maxDrawdown: 0,
+          successRate: 75,
+          averageSlippage: 0.1,
+          totalPnl: "0",
+        },
+        activePositions,
+        recentExecutions: [],
+        systemHealth: {
+          apiConnection: true,
+        },
+      };
+    } catch (_error) {
+      // Failed to get execution report for system risk assessment - error logging handled by error handler middleware
+      executionReport = {
+        stats: {
+          currentDrawdown: 0,
+          maxDrawdown: 0,
+          successRate: 75,
+          averageSlippage: 0.1,
+          totalPnl: "0",
+        },
+        activePositions: [],
+        recentExecutions: [],
+        systemHealth: { apiConnection: true },
+      };
+    }
 
-      // Handle execution service with fallback
-      try {
-        // Use fallback execution report since getExecutionReport doesn't exist
-        const activePositions = this.config.executionService.getActivePositions?.() || [];
-        executionReport = {
-          stats: {
-            currentDrawdown: 0,
-            maxDrawdown: 0,
-            successRate: 75,
-            averageSlippage: 0.1,
-            totalPnl: "0",
-          },
-          activePositions,
-          recentExecutions: [],
-          systemHealth: {
-            apiConnection: true,
-          },
-        };
-      } catch (error) {
-        console.warn("Failed to get execution report for system risk assessment", {
-          error: (error as Error)?.message,
-        });
-        executionReport = {
-          stats: {
-            currentDrawdown: 0,
-            maxDrawdown: 0,
-            successRate: 75,
-            averageSlippage: 0.1,
-            totalPnl: "0",
-          },
-          activePositions: [],
-          recentExecutions: [],
-          systemHealth: { apiConnection: true },
-        };
-      }
-
-      // Handle pattern monitoring with fallback
-      try {
-        if (typeof this.config.patternMonitoring.getMonitoringReport === "function") {
-          patternReport = await this.config.patternMonitoring.getMonitoringReport();
-        } else {
-          patternReport = {
-            status: "healthy",
-            stats: {
-              averageConfidence: 80,
-              consecutiveErrors: 0,
-              totalPatternsDetected: 100,
-            },
-          };
-        }
-      } catch (error) {
-        console.warn("Failed to get pattern monitoring report for system risk assessment", {
-          error: (error as Error)?.message,
-        });
+    // Handle pattern monitoring with fallback
+    try {
+      if (typeof this.config.patternMonitoring.getMonitoringReport === "function") {
+        patternReport = await this.config.patternMonitoring.getMonitoringReport();
+      } else {
         patternReport = {
           status: "healthy",
           stats: {
@@ -366,24 +306,23 @@ export class RiskAssessment {
           },
         };
       }
+    } catch (_error) {
+      // Failed to get pattern monitoring report for system risk assessment - error logging handled by error handler middleware
+      patternReport = {
+        status: "healthy",
+        stats: {
+          averageConfidence: 80,
+          consecutiveErrors: 0,
+          totalPatternsDetected: 100,
+        },
+      };
+    }
 
-      // Handle emergency system with fallback
-      try {
-        if (typeof this.config.emergencySystem.performSystemHealthCheck === "function") {
-          emergencyHealth = await this.config.emergencySystem.performSystemHealthCheck();
-        } else {
-          emergencyHealth = {
-            overall: "healthy",
-            alerts: [],
-            metrics: {},
-            lastCheck: Date.now(),
-            emergencyProceduresActive: false,
-          };
-        }
-      } catch (error) {
-        console.warn("Failed to get emergency system health check", {
-          error: (error as Error)?.message,
-        });
+    // Handle emergency system with fallback
+    try {
+      if (typeof this.config.emergencySystem.performSystemHealthCheck === "function") {
+        emergencyHealth = await this.config.emergencySystem.performSystemHealthCheck();
+      } else {
         emergencyHealth = {
           overall: "healthy",
           alerts: [],
@@ -392,52 +331,58 @@ export class RiskAssessment {
           emergencyProceduresActive: false,
         };
       }
-
-      const systemHealth: SystemHealth = {
-        executionService: executionReport.systemHealth.apiConnection,
-        patternMonitoring: patternReport.status === "healthy",
-        emergencySystem: emergencyHealth.overall === "healthy",
-        mexcConnectivity: true, // Would check actual connectivity
-        overallHealth: this.calculateOverallSystemHealth(
-          executionReport.systemHealth.apiConnection,
-          patternReport.status === "healthy",
-          emergencyHealth.overall === "healthy",
-          true,
-        ),
+    } catch (_error) {
+      // Failed to get emergency system health check - error logging handled by error handler middleware
+      emergencyHealth = {
+        overall: "healthy",
+        alerts: [],
+        metrics: {},
+        lastCheck: Date.now(),
+        emergencyProceduresActive: false,
       };
-
-      // Validate system health structure
-      validateSystemHealth(systemHealth);
-
-      const apiLatency = 100; // Would measure actual API latency
-      const apiSuccessRate = 98; // Would track actual API success rate
-      const memoryUsage = 45; // Would measure actual memory usage
-
-      const connectivityStatus = this.calculateConnectivityStatus(
-        systemHealth.overallHealth,
-        apiLatency,
-        apiSuccessRate,
-      );
-
-      const recommendations = this.generateSystemRecommendations(
-        systemHealth,
-        apiLatency,
-        apiSuccessRate,
-        memoryUsage,
-      );
-
-      return {
-        systemHealth,
-        apiLatency,
-        apiSuccessRate,
-        memoryUsage,
-        connectivityStatus,
-        recommendations,
-      };
-    } catch (error) {
-      console.error("System risk assessment failed", { operation: "assess_system_risk" }, error);
-      throw error;
     }
+
+    const systemHealth: SystemHealth = {
+      executionService: executionReport.systemHealth.apiConnection,
+      patternMonitoring: patternReport.status === "healthy",
+      emergencySystem: emergencyHealth.overall === "healthy",
+      mexcConnectivity: true, // Would check actual connectivity
+      overallHealth: this.calculateOverallSystemHealth(
+        executionReport.systemHealth.apiConnection,
+        patternReport.status === "healthy",
+        emergencyHealth.overall === "healthy",
+        true,
+      ),
+    };
+
+    // Validate system health structure
+    validateSystemHealth(systemHealth);
+
+    const apiLatency = 100; // Would measure actual API latency
+    const apiSuccessRate = 98; // Would track actual API success rate
+    const memoryUsage = 45; // Would measure actual memory usage
+
+    const connectivityStatus = this.calculateConnectivityStatus(
+      systemHealth.overallHealth,
+      apiLatency,
+      apiSuccessRate,
+    );
+
+    const recommendations = this.generateSystemRecommendations(
+      systemHealth,
+      apiLatency,
+      apiSuccessRate,
+      memoryUsage,
+    );
+
+    return {
+      systemHealth,
+      apiLatency,
+      apiSuccessRate,
+      memoryUsage,
+      connectivityStatus,
+      recommendations,
+    };
   }
 
   // Private helper methods

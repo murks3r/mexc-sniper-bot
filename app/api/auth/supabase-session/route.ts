@@ -24,8 +24,8 @@ export async function GET(_request: NextRequest) {
         accessToken: session.accessToken,
       },
     });
-  } catch (error) {
-    console.error("Supabase session API error:", { error });
+  } catch (_error) {
+    // Supabase session API error - error logging handled by error handler middleware
     return NextResponse.json({ user: null }, { status: 401 });
   }
 }

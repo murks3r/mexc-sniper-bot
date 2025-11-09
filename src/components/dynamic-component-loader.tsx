@@ -13,8 +13,11 @@ import {
   type ReactNode,
   Suspense,
 } from "react";
+import { createSimpleLogger } from "../lib/unified-logger";
 import { ErrorBoundary } from "./error-boundary";
 import { Skeleton } from "./ui/optimized-exports";
+
+const logger = createSimpleLogger("DynamicComponentLoader");
 
 // Loading fallback components
 const ComponentSkeleton = ({ className = "" }: { className?: string }) => (
@@ -155,7 +158,7 @@ function safeLazy<T extends ComponentType<any>>(
 ): LazyExoticComponent<T> {
   return lazy(() =>
     factory().catch((error) => {
-      console.warn(`Failed to load component ${fallbackName}:`, error);
+      logger.warn(`Failed to load component ${fallbackName}`, { error });
       return {
         default:
           fallback ||
@@ -197,10 +200,11 @@ export const OptimizedWebSocketMonitor = safeLazy(
   () => <CardSkeleton />,
 );
 
+// SafetyMonitoringDashboard - using real-time-safety-dashboard instead
 export const SafetyMonitoringDashboard = safeLazy(
   () =>
-    import("./safety-monitoring-dashboard").then((module: any) => ({
-      default: module.SafetyMonitoringDashboard || module.default,
+    import("./auto-sniping/real-time-safety-dashboard").then((module: any) => ({
+      default: module.RealTimeSafetyDashboard || module.default,
     })),
   "SafetyMonitoringDashboard",
   () => <CardSkeleton />,
@@ -215,20 +219,21 @@ export const PatternSniper = safeLazy(
   () => <CardSkeleton />,
 );
 
-
+// StrategyManager - removed, using trading-configuration instead
 export const StrategyManager = safeLazy(
   () =>
-    import("./strategy-manager").then((module: any) => ({
-      default: module.StrategyManager || module.default,
+    import("./trading-configuration").then((module: any) => ({
+      default: module.TradingConfiguration || module.default,
     })),
   "StrategyManager",
   () => <CardSkeleton />,
 );
 
+// WorkflowManager - removed, using system-validation-card instead
 export const WorkflowManager = safeLazy(
   () =>
-    import("./workflow-manager").then((module: any) => ({
-      default: module.WorkflowManager || module.default,
+    import("./dashboard/system-validation-card").then((module: any) => ({
+      default: module.SystemValidationCard || module.default,
     })),
   "WorkflowManager",
   () => <CardSkeleton />,
@@ -330,20 +335,22 @@ export const UpcomingCoinsSection = safeLazy(
   () => <CardSkeleton />,
 );
 
+// WorkflowStatusCard - using system-validation-card instead
 export const WorkflowStatusCard = safeLazy(
   () =>
-    import("./dashboard/workflow-status-card").then((module: any) => ({
-      default: module.WorkflowStatusCard || module.default,
+    import("./dashboard/system-validation-card").then((module: any) => ({
+      default: module.SystemValidationCard || module.default,
     })),
   "WorkflowStatusCard",
   () => <CardSkeleton />,
 );
 
 // TIER 1 HEAVY COMPONENTS: Critical for 70% faster load performance with safe loading
+// TradingAnalyticsDashboard - removed, using trading-chart instead
 export const TradingAnalyticsDashboard = safeLazy(
   () =>
-    import("./monitoring/trading-analytics-dashboard").then((module: any) => ({
-      default: module.TradingAnalyticsDashboard || module.default,
+    import("./dashboard/trading-chart").then((module: any) => ({
+      default: module.TradingChart || module.default,
     })),
   "TradingAnalyticsDashboard",
   () => <TradingSkeleton />,
@@ -358,10 +365,11 @@ export const AutoSnipingExecutionDashboard = safeLazy(
   () => <ExecutionSkeleton />,
 );
 
+// AlertCenter - removed, using alerts-list instead
 export const AlertCenter = safeLazy(
   () =>
-    import("./monitoring/alert-center").then((module: any) => ({
-      default: module.AlertCenter || module.default,
+    import("./auto-sniping/components/alerts-list").then((module: any) => ({
+      default: module.AlertsList || module.default,
     })),
   "AlertCenter",
   () => <AlertSkeleton />,
@@ -376,19 +384,21 @@ export const RealTimeSafetyDashboard = safeLazy(
   () => <SafetySkeleton />,
 );
 
+// ComprehensiveSafetyDashboard - removed, using real-time-safety-dashboard instead
 export const ComprehensiveSafetyDashboard = safeLazy(
   () =>
-    import("./safety/comprehensive-safety-dashboard").then((module: any) => ({
-      default: module.ComprehensiveSafetyDashboard || module.default,
+    import("./auto-sniping/real-time-safety-dashboard").then((module: any) => ({
+      default: module.RealTimeSafetyDashboard || module.default,
     })),
   "ComprehensiveSafetyDashboard",
   () => <SafetySkeleton />,
 );
 
+// RealTimePerformance - removed, using auto-sniping-execution-dashboard instead
 export const RealTimePerformance = safeLazy(
   () =>
-    import("./monitoring/real-time-performance").then((module: any) => ({
-      default: module.RealTimePerformance || module.default,
+    import("./auto-sniping/auto-sniping-execution-dashboard").then((module: any) => ({
+      default: module.AutoSnipingExecutionDashboard || module.default,
     })),
   "RealTimePerformance",
   () => <DashboardSkeleton />,
@@ -396,10 +406,11 @@ export const RealTimePerformance = safeLazy(
 
 // TIER 2 HEAVY COMPONENTS: Quick wins for performance with safe loading
 
+// AlertsDashboard - using auto-sniping alerts components instead
 export const AlertsDashboard = safeLazy(
   () =>
-    import("./alerts/alerts-dashboard").then((module: any) => ({
-      default: module.AlertsDashboard || module.default,
+    import("./auto-sniping/components/alerts-list").then((module: any) => ({
+      default: module.AlertsList || module.default,
     })),
   "AlertsDashboard",
   () => <AlertSkeleton />,
@@ -414,10 +425,11 @@ export const UnifiedTakeProfitSettings = safeLazy(
   () => <CardSkeleton />,
 );
 
+// SystemArchitectureOverview - removed, using system-validation-card instead
 export const SystemArchitectureOverview = safeLazy(
   () =>
-    import("./monitoring/system-architecture-overview").then((module: any) => ({
-      default: module.SystemArchitectureOverview || module.default,
+    import("./dashboard/system-validation-card").then((module: any) => ({
+      default: module.SystemValidationCard || module.default,
     })),
   "SystemArchitectureOverview",
   () => <DashboardSkeleton />,
@@ -432,19 +444,21 @@ export const EditableTakeProfitTable = safeLazy(
   () => <TableSkeleton />,
 );
 
+// ParameterMonitor - removed, using trading-configuration instead
 export const ParameterMonitor = safeLazy(
   () =>
-    import("./tuning/parameter-monitor").then((module: any) => ({
-      default: module.ParameterMonitor || module.default,
+    import("./trading-configuration").then((module: any) => ({
+      default: module.TradingConfiguration || module.default,
     })),
   "ParameterMonitor",
   () => <CardSkeleton />,
 );
 
+// OptimizationControlPanel - removed, using auto-sniping-control-panel instead
 export const OptimizationControlPanel = safeLazy(
   () =>
-    import("./tuning/optimization-control-panel").then((module: any) => ({
-      default: module.OptimizationControlPanel || module.default,
+    import("./auto-sniping-control-panel").then((module: any) => ({
+      default: module.default || module.AutoSnipingControlPanel,
     })),
   "OptimizationControlPanel",
   () => <CardSkeleton />,
@@ -693,7 +707,7 @@ export function preloadAgentComponents() {
   // Removed: agent-dashboard - agents removed
   const preloadPromises = [
     import("./pattern-sniper").catch(() => null),
-    import("./safety-monitoring-dashboard").catch(() => null),
+    import("./auto-sniping/real-time-safety-dashboard").catch(() => null),
     import("./auto-sniping/auto-sniping-execution-dashboard").catch(() => null),
   ];
 
@@ -704,10 +718,10 @@ export function preloadTradingComponents() {
   // Preload trading-related components with safe error handling
   const preloadPromises = [
     import("./trading-configuration").catch(() => null),
-    import("./strategy-manager").catch(() => null),
+    import("./trading-configuration").catch(() => null),
     import("./dashboard/trading-chart").catch(() => null),
     import("./dashboard/recent-trades-table").catch(() => null),
-    import("./monitoring/trading-analytics-dashboard").catch(() => null),
+    import("./dashboard/trading-chart").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -717,12 +731,12 @@ export function preloadTradingComponents() {
 export function preloadHeavyDashboardComponents() {
   // Preload the heaviest dashboard components for maximum impact
   const preloadPromises = [
-    import("./monitoring/trading-analytics-dashboard").catch(() => null),
+    import("./dashboard/trading-chart").catch(() => null),
     import("./auto-sniping/auto-sniping-execution-dashboard").catch(() => null),
-    import("./monitoring/alert-center").catch(() => null),
+    import("./auto-sniping/components/alerts-list").catch(() => null),
     import("./auto-sniping/real-time-safety-dashboard").catch(() => null),
-    import("./safety/comprehensive-safety-dashboard").catch(() => null),
-    import("./monitoring/real-time-performance").catch(() => null),
+    import("./auto-sniping/real-time-safety-dashboard").catch(() => null),
+    import("./auto-sniping/auto-sniping-execution-dashboard").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -731,10 +745,10 @@ export function preloadHeavyDashboardComponents() {
 export function preloadMonitoringComponents() {
   // Preload monitoring page components with safe error handling
   const preloadPromises = [
-    import("./monitoring/trading-analytics-dashboard").catch(() => null),
-    import("./monitoring/real-time-performance").catch(() => null),
-    import("./monitoring/system-architecture-overview").catch(() => null),
-    import("./tuning/parameter-monitor").catch(() => null),
+    import("./dashboard/trading-chart").catch(() => null),
+    import("./auto-sniping/auto-sniping-execution-dashboard").catch(() => null),
+    import("./dashboard/system-validation-card").catch(() => null),
+    import("./trading-configuration").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -744,8 +758,8 @@ export function preloadSafetyComponents() {
   // Preload safety-related components with safe error handling
   const preloadPromises = [
     import("./auto-sniping/real-time-safety-dashboard").catch(() => null),
-    import("./safety/comprehensive-safety-dashboard").catch(() => null),
-    import("./monitoring/alert-center").catch(() => null),
+    import("./auto-sniping/real-time-safety-dashboard").catch(() => null),
+    import("./auto-sniping/components/alerts-list").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -756,7 +770,7 @@ export function preloadSettingsComponents() {
   const preloadPromises = [
     import("./unified-take-profit-settings").catch(() => null),
     import("./editable-take-profit-table").catch(() => null),
-    import("./tuning/optimization-control-panel").catch(() => null),
+    import("./auto-sniping-control-panel").catch(() => null),
   ];
 
   return Promise.allSettled(preloadPromises);
@@ -792,21 +806,21 @@ export async function preloadByRoute(currentRoute: string) {
     const failed = results.filter((r) => r.status === "rejected").length;
 
     if (failed > 0) {
-      console.warn(
+      logger.warn(
         `Preloaded ${successful}/${successful + failed} components for route ${currentRoute}. ${failed} failed.`,
       );
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          console.warn(`Component ${index} failed to preload:`, result.reason);
+          logger.warn(`Component ${index} failed to preload`, { reason: result.reason });
         }
       });
     } else {
-      console.info(`Successfully preloaded ${successful} components for route ${currentRoute}`);
+      logger.info(`Successfully preloaded ${successful} components for route ${currentRoute}`);
     }
 
     return results;
   } catch (error) {
-    console.error(`Failed to preload components for route ${currentRoute}:`, error);
+    logger.error(`Failed to preload components for route ${currentRoute}`, { error });
     return [];
   }
 }

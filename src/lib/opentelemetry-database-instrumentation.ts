@@ -3,6 +3,8 @@
  * Minimal implementation for build optimization
  */
 
+import { createSimpleLogger } from "./unified-logger";
+
 export interface DatabaseInstrumentationConfig {
   enabled: boolean;
   traceSqlQueries: boolean;
@@ -15,6 +17,7 @@ class DatabaseInstrumentation {
     traceSqlQueries: false,
     includeQueryParameters: false,
   };
+  private logger = createSimpleLogger("DatabaseInstrumentation");
 
   initialize(config?: Partial<DatabaseInstrumentationConfig>): void {
     if (config) {
@@ -22,7 +25,7 @@ class DatabaseInstrumentation {
     }
 
     if (this.config.enabled) {
-      console.log("Database instrumentation initialized");
+      this.logger.info("Database instrumentation initialized");
     }
   }
 

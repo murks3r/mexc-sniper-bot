@@ -6,8 +6,9 @@ import { useState } from "react";
 import { z } from "zod";
 import { useStatusRefresh } from "../hooks/use-status-refresh";
 import { queryKeys } from "../lib/query-client";
+import { createSimpleLogger } from "../lib/unified-logger";
 import { StreamlinedCredentialStatus } from "./streamlined-credential-status";
-import { StreamlinedWorkflowStatus } from "./streamlined-workflow-status";
+// Removed: StreamlinedWorkflowStatus - component doesn't exist, using status display instead
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -55,6 +56,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
   const { toast } = useToast();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [intendedEnabled, setIntendedEnabled] = useState<boolean | null>(null);
+  const logger = createSimpleLogger("AutoSnipingControlPanel");
 
   // Fetch sniping status with responsive updates
   const {
@@ -64,7 +66,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
   } = useQuery({
     queryKey: queryKeys.autoSniping.status(),
     queryFn: async (): Promise<SnipingStatus> => {
-      console.log("🔄 Fetching auto-sniping status...");
+      logger.debug("Fetching auto-sniping status...");
       const response = await fetch("/api/auto-sniping/status", {
         credentials: "include", // Include authentication cookies
         cache: "no-store", // Disable browser cache
@@ -76,7 +78,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
       }
 
       const parsedStatus = SnipingStatusSchema.parse(result.data);
-      console.log("✅ Status fetched:", { isActive: parsedStatus.isActive });
+      logger.debug("Status fetched", { isActive: parsedStatus.isActive });
       return parsedStatus;
     },
     staleTime: 0, // Always consider data stale to ensure fresh fetch on mount
@@ -155,7 +157,10 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
       return { previousStatus: prev } as { previousStatus?: SnipingStatus };
     },
     onSuccess: async (data, enabled) => {
-      console.log(`✅ Auto-sniping ${enabled ? "started" : "stopped"} successfully`, data);
+      logger.info(`Auto-sniping ${enabled ? "started" : "stopped"} successfully`, {
+        enabled,
+        data,
+      });
 
       // Immediately update the status query with the returned status from the control endpoint
       const serverIsActive = data?.status?.isActive;
@@ -245,7 +250,10 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
       return result.data;
     },
     onSuccess: async (data) => {
-      console.log(`✅ Created ${data.targetsCreated} snipe targets from pattern detection`, data);
+      logger.info("Created snipe targets from pattern detection", {
+        targetsCreated: data.targetsCreated,
+        data,
+      });
 
       // Refresh all status and invalidate snipe targets queries
       await refreshAllStatus();
@@ -494,8 +502,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
         </CardContent>
       </Card>
 
-      {/* Workflow Status */}
-      <StreamlinedWorkflowStatus autoRefresh={true} />
+      {/* Workflow Status - removed component, status shown in credential status above */}
     </div>
   );
 }

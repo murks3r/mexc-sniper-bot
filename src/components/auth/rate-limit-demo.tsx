@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SupabaseRateLimitHandler } from "@/src/lib/supabase-rate-limit-handler";
+import { createSimpleLogger } from "../../lib/unified-logger";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -13,6 +14,7 @@ import { RateLimitNotice } from "./rate-limit-notice";
  * This shows how the RateLimitNotice component works with different scenarios
  */
 export function RateLimitDemo() {
+  const logger = createSimpleLogger("RateLimitDemo");
   const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
   const [testEmail, setTestEmail] = useState("test@example.com");
 
@@ -60,12 +62,12 @@ export function RateLimitDemo() {
   };
 
   const handleRetry = () => {
-    console.log("Retry button clicked");
+    logger.debug("Retry button clicked");
     clearRateLimit();
   };
 
   const handleBypassEmail = async (email: string) => {
-    console.log(`Bypass email clicked for: ${email}`);
+    logger.debug("Bypass email clicked", { email });
     // In a real scenario, this would call the actual bypass function
     setTimeout(() => {
       setRateLimitInfo(null);

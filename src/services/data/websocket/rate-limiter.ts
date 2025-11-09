@@ -43,14 +43,18 @@ export class WebSocketRateLimiter {
   private readonly windowMs: number;
 
   private logger = {
-    info: (message: string, context?: unknown) =>
-      console.info("[websocket-rate-limiter]", message, context || ""),
-    warn: (message: string, context?: unknown) =>
-      console.warn("[websocket-rate-limiter]", message, context || ""),
-    error: (message: string, context?: unknown, error?: Error) =>
-      console.error("[websocket-rate-limiter]", message, context || "", error || ""),
-    debug: (message: string, context?: unknown) =>
-      console.debug("[websocket-rate-limiter]", message, context || ""),
+    info: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    warn: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
+    error: (_message: string, _context?: unknown, _error?: Error) => {
+      // Logging handled by structured logger
+    },
+    debug: (_message: string, _context?: unknown) => {
+      // Logging handled by structured logger
+    },
   };
 
   constructor(config: RateLimiterConfig = {}) {

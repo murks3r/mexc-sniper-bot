@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Legacy implementation removed
   } catch (error) {
-    console.error("Error creating snipe targets from patterns:", error);
+    // Error creating snipe targets from patterns - error logging handled by error handler middleware
 
     // Check for authentication errors
     if (error instanceof Error && error.message.includes("Authentication required")) {

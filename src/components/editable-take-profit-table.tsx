@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createSimpleLogger } from "../lib/unified-logger";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -18,6 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+
+const logger = createSimpleLogger("EditableTakeProfitTable");
 
 interface TakeProfitLevel {
   id: string;
@@ -286,7 +289,7 @@ export function EditableTakeProfitTable({
       setIsEditing(false);
       setValidationErrors([]);
     } catch (error) {
-      console.error("Failed to save take-profit levels:", {
+      logger.error("Failed to save take-profit levels", {
         error: error instanceof Error ? error.message : String(error),
       });
       setSaveError(
