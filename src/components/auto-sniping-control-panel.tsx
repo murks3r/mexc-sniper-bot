@@ -91,7 +91,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
   });
 
   // Fetch configuration
-  const { data: config, isLoading: configLoading } = useQuery({
+  const { data: config } = useQuery({
     queryKey: queryKeys.autoSniping.config(),
     queryFn: async (): Promise<AutoSnipingConfig> => {
       const response = await fetch("/api/auto-sniping/config", {
@@ -287,7 +287,10 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
     createTargetsFromPatternsMutation.mutate();
   };
 
-  const handleConfigUpdate = (key: keyof AutoSnipingConfig, value: any) => {
+  const handleConfigUpdate = (
+    key: keyof AutoSnipingConfig,
+    value: AutoSnipingConfig[keyof AutoSnipingConfig],
+  ) => {
     updateConfigMutation.mutate({ [key]: value });
   };
 

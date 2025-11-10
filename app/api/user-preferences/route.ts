@@ -2,16 +2,13 @@ import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db, type NewUserPreferences, userPreferences } from "@/src/db";
 import { user as authUser } from "@/src/db/schemas/auth";
+import { withApiErrorHandling, withDatabaseErrorHandling } from "@/src/lib/api-middleware";
 import {
   apiResponse,
   createSuccessResponse,
   createValidationErrorResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
-import {
-  withApiErrorHandling,
-  withDatabaseErrorHandling,
-} from "@/src/lib/central-api-error-handler";
 import { createSupabaseAdminClient, requireAuth } from "@/src/lib/supabase-auth";
 
 // GET /api/user-preferences?userId=xxx

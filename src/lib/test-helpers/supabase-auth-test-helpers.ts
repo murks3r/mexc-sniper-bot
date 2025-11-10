@@ -156,7 +156,15 @@ export async function signInTestUser(email: string, password: string): Promise<T
   });
 
   if (signInError || !authData.session || !authData.user) {
-    throw new Error(`Failed to sign in test user: ${signInError?.message || "Unknown error"}`);
+    const errorMessage = signInError?.message || "Unknown error";
+    // Check for rate limiting
+    if (errorMessage.includes("rate limit") || errorMessage.includes("Rate limit")) {
+      // Create a special error that tests can catch and skip
+      const rateLimitError = new Error(`Rate limit reached: ${errorMessage}`);
+      (rateLimitError as any).isRateLimit = true;
+      throw rateLimitError;
+    }
+    throw new Error(`Failed to sign in test user: ${errorMessage}`);
   }
 
   const supabaseUser: SupabaseUser = {
@@ -272,7 +280,12 @@ export function createTestSession(overrides: Partial<TestSession> = {}): TestSes
  * Clean up test user and related data
  * Deletes user from Supabase Auth and related records from database
  */
-export async function cleanupTestUser(userId: string): Promise<void> {
+export async function cleanupTestUser(userId: string | undefined | null): Promise<void> {
+  if (!userId || typeof userId !== "string") {
+    // Skip cleanup if userId is invalid
+    return;
+  }
+
   const supabaseAdmin = getTestSupabaseAdminClient();
 
   try {
@@ -280,10 +293,16 @@ export async function cleanupTestUser(userId: string): Promise<void> {
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      console.warn(`[TestHelper] Failed to delete Supabase user ${userId}:`, deleteError.message);
+      // Don't log UUID validation errors - they're expected for invalid IDs
+      if (!deleteError.message.includes("Expected parameter to be UUID")) {
+        console.warn(`[TestHelper] Failed to delete Supabase user ${userId}:`, deleteError.message);
+      }
     }
-  } catch (error) {
-    console.warn(`[TestHelper] Error deleting Supabase user ${userId}:`, error);
+  } catch (error: any) {
+    // Don't log UUID validation errors - they're expected for invalid IDs
+    if (!error?.message?.includes("Expected parameter to be UUID")) {
+      console.warn(`[TestHelper] Error deleting Supabase user ${userId}:`, error);
+    }
   }
 
   try {
@@ -301,10 +320,19 @@ export async function cleanupTestUser(userId: string): Promise<void> {
 
     for (const query of cleanupQueries) {
       try {
-        await query;
-      } catch (error) {
+        // Add timeout to prevent hanging on connection issues
+        await Promise.race([
+          query,
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Cleanup timeout")), 5000)),
+        ]);
+      } catch (error: any) {
         // Log but continue - some tables might not exist or have constraints
-        console.debug(`[TestHelper] Cleanup query failed (non-fatal):`, error);
+        // Connection timeouts are acceptable in test cleanup
+        if (error?.message?.includes("timeout") || error?.code === "CONNECT_TIMEOUT") {
+          console.debug(`[TestHelper] Cleanup query timed out (non-fatal):`, error.message);
+        } else {
+          console.debug(`[TestHelper] Cleanup query failed (non-fatal):`, error);
+        }
       }
     }
   } catch (error) {
@@ -342,6 +370,10 @@ export async function withAuthenticatedUser<T>(
  * Syncs Supabase Auth user with local database schema
  */
 export async function ensureTestUserInDatabase(supabaseUser: SupabaseUser): Promise<void> {
+  if (!supabaseUser || !supabaseUser.id) {
+    throw new Error("ensureTestUserInDatabase: supabaseUser or supabaseUser.id is undefined");
+  }
+
   try {
     const existing = await db
       .select()
@@ -407,6 +439,10 @@ export async function createMultipleTestUsers(
 /**
  * Clean up multiple test users
  */
-export async function cleanupMultipleTestUsers(userIds: string[]): Promise<void> {
-  await Promise.all(userIds.map((userId) => cleanupTestUser(userId)));
+export async function cleanupMultipleTestUsers(
+  userIds: (string | undefined | null)[],
+): Promise<void> {
+  // Filter out invalid IDs and clean up in parallel
+  const validUserIds = userIds.filter((id): id is string => !!id && typeof id === "string");
+  await Promise.all(validUserIds.map((userId) => cleanupTestUser(userId)));
 }

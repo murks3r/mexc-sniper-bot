@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     environment: "jsdom", // Changed from "node" to "jsdom" for React testing
     setupFiles: ["./vitest.setup.ts"], // Setup file for jsdom initialization
+    testTimeout: 30000, // 30 seconds for integration tests
+    hookTimeout: 30000, // 30 seconds for hooks (beforeAll/afterAll)
     env: {
       // Load test environment variables
       USE_REAL_SUPABASE: "true",

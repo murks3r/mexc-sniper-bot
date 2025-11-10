@@ -1,10 +1,10 @@
 "use client";
 
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error boundary requires 'error' prop name
 export default function Error({
   error: errorProp,
   reset,
 }: {
-  // biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error boundary prop name
   error: Error & { digest?: string };
   reset: () => void;
 }) {

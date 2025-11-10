@@ -4,6 +4,8 @@
  * Stub implementation for build purposes.
  */
 
+import type { Position } from "./consolidated/core-trading/types";
+
 export class OptimizedAutoSnipingExecutionEngine {
   async execute() {
     return { success: true };
@@ -18,7 +20,7 @@ export class OptimizedAutoSnipingExecutionEngine {
     return 0;
   }
 
-  async getActivePositions(): Promise<any[]> {
+  async getActivePositions(): Promise<Position[]> {
     // Stub implementation
     return [];
   }

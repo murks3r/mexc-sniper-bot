@@ -102,6 +102,7 @@
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.1.17",
+    "lightningcss-darwin-arm64": "^1.30.2",
     "lightningcss-linux-x64-gnu": "^1.30.2"
   },
   "overrides": {

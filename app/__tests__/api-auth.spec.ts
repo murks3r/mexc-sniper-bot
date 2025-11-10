@@ -46,14 +46,14 @@ describe("API Route Authentication", () => {
     it.skipIf(skipIntegrationTests)(
       "should authenticate request with valid JWT token",
       async () => {
-        const { session, user } = await createAndSignInTestUser({
+        const { session, user, accessToken } = await createAndSignInTestUser({
           email: `test_api_auth_${Date.now()}@example.com`,
         });
 
         // Verify session and token are valid
         expect(session).toBeDefined();
-        expect(session.accessToken).toBeTruthy();
-        expect(typeof session.accessToken).toBe("string");
+        expect(accessToken).toBeTruthy();
+        expect(typeof accessToken).toBe("string");
         expect(user).toBeDefined();
         expect(user.id).toBeTruthy();
 
@@ -79,14 +79,14 @@ describe("API Route Authentication", () => {
     it.skipIf(skipIntegrationTests)(
       "should extract session from authenticated request",
       async () => {
-        const { session, user } = await createAndSignInTestUser({
+        const { session, user, accessToken } = await createAndSignInTestUser({
           email: `test_session_extract_${Date.now()}@example.com`,
         });
 
         // Verify session structure is correct
         expect(session).toBeDefined();
-        expect(session.accessToken).toBeTruthy();
-        expect(typeof session.accessToken).toBe("string");
+        expect(accessToken).toBeTruthy();
+        expect(typeof accessToken).toBe("string");
         expect(user).toBeDefined();
         expect(user.id).toBeTruthy();
 
