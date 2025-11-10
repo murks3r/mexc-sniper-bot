@@ -17,6 +17,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { user as userSchema } from "@/src/db/schemas/auth";
 import type { SupabaseUser } from "@/src/lib/supabase-auth";
+import { withRateLimitHandling } from "@/src/lib/supabase-rate-limit-handler";
 
 // Helper to create Request-compatible object for tests
 // In test environment, NextRequest may not be available, so we use Request
@@ -102,7 +103,48 @@ export function getTestSupabaseAnonClient() {
 }
 
 /**
- * Create a test user via Admin API
+ * Sleep utility for delays between operations
+ */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Check if an error is a rate limit error
+ */
+export function isRateLimitError(error: any): boolean {
+  if (!error) return false;
+  const message = error.message || String(error);
+  return (
+    message.includes("rate limit") ||
+    message.includes("Rate limit") ||
+    message.includes("RATE_LIMIT") ||
+    error.code === "rate_limit_exceeded" ||
+    error.status === 429 ||
+    (error as any).isRateLimit === true
+  );
+}
+
+/**
+ * Handle rate limit errors gracefully in tests
+ * Returns true if error was handled (rate limit), false otherwise
+ */
+export function handleRateLimitError(error: any): boolean {
+  if (isRateLimitError(error)) {
+    console.warn(
+      `[TestHelper] Rate limit detected - this is expected with Supabase free tier. Error: ${error.message}`,
+    );
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Track last user creation time to add delays between operations
+ */
+let lastUserCreationTime = 0;
+const MIN_DELAY_BETWEEN_USERS = 500; // 500ms minimum delay between user creations
+
+/**
+ * Create a test user via Admin API with retry logic and rate limit handling
  * Uses service_role key - ONLY for test environments
  */
 export async function createTestUser(
@@ -117,26 +159,60 @@ export async function createTestUser(
     customClaims = {},
   } = options;
 
+  // Add delay between user creation operations to avoid rate limiting
+  const now = Date.now();
+  const timeSinceLastCreation = now - lastUserCreationTime;
+  if (timeSinceLastCreation < MIN_DELAY_BETWEEN_USERS) {
+    await sleep(MIN_DELAY_BETWEEN_USERS - timeSinceLastCreation);
+  }
+
   const supabaseAdmin = getTestSupabaseAdminClient();
 
-  // Create user via Admin API
-  const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: emailVerified,
-    user_metadata: {
-      name,
-      full_name: name,
-      ...userMetadata,
-    },
-    app_metadata: {
-      ...customClaims,
-    },
-  });
+  // Use rate limit handling with retry logic
+  const userData = await withRateLimitHandling(
+    async () => {
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: emailVerified,
+        user_metadata: {
+          name,
+          full_name: name,
+          ...userMetadata,
+        },
+        app_metadata: {
+          ...customClaims,
+        },
+      });
 
-  if (createError || !userData.user) {
-    throw new Error(`Failed to create test user: ${createError?.message || "Unknown error"}`);
-  }
+      if (error) {
+        throw new Error(`Failed to create test user: ${error.message}`);
+      }
+
+      if (!data.user) {
+        throw new Error("Failed to create test user: No user data returned");
+      }
+
+      return data;
+    },
+    {
+      maxRetries: 3,
+      config: {
+        baseDelay: 1000,
+        maxDelay: 10000,
+        backoffMultiplier: 2,
+        enableJitter: true,
+      },
+      onRateLimit: (rateLimitInfo) => {
+        console.warn(`[TestHelper] Rate limit detected during user creation:`, rateLimitInfo);
+      },
+      onRetry: (attempt, delay) => {
+        console.info(`[TestHelper] Retrying user creation (attempt ${attempt}) after ${delay}ms`);
+      },
+    },
+  );
+
+  lastUserCreationTime = Date.now();
 
   return {
     user: userData.user,
@@ -146,26 +222,45 @@ export async function createTestUser(
 
 /**
  * Sign in a test user and return session with JWT
+ * Includes retry logic with exponential backoff for rate limiting
  */
 export async function signInTestUser(email: string, password: string): Promise<TestSession> {
   const supabase = getTestSupabaseAnonClient();
 
-  const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // Use rate limit handling with retry logic
+  const authData = await withRateLimitHandling(
+    async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-  if (signInError || !authData.session || !authData.user) {
-    const errorMessage = signInError?.message || "Unknown error";
-    // Check for rate limiting
-    if (errorMessage.includes("rate limit") || errorMessage.includes("Rate limit")) {
-      // Create a special error that tests can catch and skip
-      const rateLimitError = new Error(`Rate limit reached: ${errorMessage}`);
-      (rateLimitError as any).isRateLimit = true;
-      throw rateLimitError;
-    }
-    throw new Error(`Failed to sign in test user: ${errorMessage}`);
-  }
+      if (error) {
+        throw new Error(`Failed to sign in test user: ${error.message}`);
+      }
+
+      if (!data.session || !data.user) {
+        throw new Error("Failed to sign in test user: No session or user data returned");
+      }
+
+      return data;
+    },
+    {
+      maxRetries: 3,
+      config: {
+        baseDelay: 1000,
+        maxDelay: 10000,
+        backoffMultiplier: 2,
+        enableJitter: true,
+      },
+      onRateLimit: (rateLimitInfo) => {
+        console.warn(`[TestHelper] Rate limit detected during sign in:`, rateLimitInfo);
+      },
+      onRetry: (attempt, delay) => {
+        console.info(`[TestHelper] Retrying sign in (attempt ${attempt}) after ${delay}ms`);
+      },
+    },
+  );
 
   const supabaseUser: SupabaseUser = {
     id: authData.user.id,
@@ -190,11 +285,16 @@ export async function signInTestUser(email: string, password: string): Promise<T
 /**
  * Create a test user and sign them in
  * Convenience function that combines createTestUser and signInTestUser
+ * Includes delay between creation and sign-in to avoid rate limiting
  */
 export async function createAndSignInTestUser(
   options: TestUserOptions = {},
 ): Promise<TestSession & { password: string }> {
   const { user, password } = await createTestUser(options);
+
+  // Add small delay between user creation and sign-in to avoid rate limiting
+  await sleep(300);
+
   const session = await signInTestUser(user.email!, password);
 
   return {
@@ -415,6 +515,7 @@ export async function ensureTestUserInDatabase(supabaseUser: SupabaseUser): Prom
 
 /**
  * Create multiple test users for testing multi-user scenarios
+ * Includes delays between user creations to avoid rate limiting
  */
 export async function createMultipleTestUsers(
   count: number,
@@ -431,6 +532,11 @@ export async function createMultipleTestUsers(
 
     const user = await createTestUser(userOptions);
     users.push(user);
+
+    // Add delay between user creations (except for the last one)
+    if (i < count - 1) {
+      await sleep(1000); // 1 second delay between user creations
+    }
   }
 
   return users;
