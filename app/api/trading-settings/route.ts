@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getPaperTradingDefault } from "@/src/lib/trading-config-helpers";
 
+type TradingSettings = ReturnType<typeof getDefaultTradingSettings>;
+
 // Cache trading settings for 2 minutes
 let tradingSettingsCache: {
-  data: any;
+  data: TradingSettings;
   timestamp: number;
 } | null = null;
 

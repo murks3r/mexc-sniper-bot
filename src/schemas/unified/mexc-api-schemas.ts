@@ -680,25 +680,14 @@ export type Kline = z.infer<typeof KlineSchema>;
 // Validation Utilities
 // ============================================================================
 
+// Use shared validation utility for MEXC API data
+import { validateData } from "@/src/lib/validation-utils";
+
 export const validateMexcData = <T>(
   schema: z.ZodSchema<T>,
   data: unknown,
 ): { success: boolean; data?: T; error?: string } => {
-  try {
-    const result = schema.parse(data);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: `Validation failed: ${error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
-      };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown validation error",
-    };
-  }
+  return validateData(schema, data, { errorPrefix: "MEXC API data validation failed" });
 };
 
 // ============================================================================

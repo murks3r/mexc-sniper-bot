@@ -27,7 +27,7 @@ export interface TradingOrderData {
   symbol: string;
   side: "BUY" | "SELL";
   type: "MARKET" | "LIMIT";
-  quantity: string;
+  quantity?: string;
   price?: string;
   stopPrice?: string;
   timeInForce?: "GTC" | "IOC" | "FOK";
@@ -42,15 +42,29 @@ export class UnifiedMexcTradingModule {
   ) {}
 
   private normalizeOrder(data: TradingOrderData): OrderData {
-    return {
+    // quantity is required by OrderData type, but can be empty if quoteOrderQty is provided
+    // For MARKET BUY orders, quoteOrderQty is used instead of quantity
+    const quantity =
+      typeof data.quantity === "string" && data.quantity.trim().length > 0
+        ? data.quantity
+        : data.quoteOrderQty && data.type === "MARKET" && data.side === "BUY"
+          ? "" // Empty quantity when using quoteOrderQty for MARKET BUY
+          : ""; // Default empty string (will be validated by API)
+
+    const normalized: OrderData = {
       symbol: data.symbol,
       side: data.side,
       type: data.type,
-      quantity: data.quantity,
+      quantity,
       price: data.price,
       timeInForce: data.timeInForce,
-      quoteOrderQty: data.quoteOrderQty,
     };
+
+    if (typeof data.quoteOrderQty === "string" && data.quoteOrderQty.trim().length > 0) {
+      normalized.quoteOrderQty = data.quoteOrderQty;
+    }
+
+    return normalized;
   }
 
   async getTicker(symbol: string): Promise<MexcServiceResponse<any>> {

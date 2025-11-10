@@ -14,6 +14,7 @@ import { validateExternalApiResponse } from "@/src/lib/enhanced-validation-middl
 
 // Removed: cost-monitor middleware - not found, using direct implementation
 const recordCostMetrics = () => {}; // Stub
+// biome-ignore lint/suspicious/noExplicitAny: Stub function for removed middleware
 const withCostMonitoring = <T extends (...args: any[]) => any>(fn: T): T => fn; // Stub
 
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";

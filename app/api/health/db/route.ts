@@ -8,7 +8,14 @@ const RATE_LIMIT_WINDOW = 30 * 1000; // 30 seconds
 
 // Health check result caching
 interface HealthCheckResult {
-  result: any;
+  result: {
+    status: "healthy" | "unhealthy" | "error" | "warning";
+    message: string;
+    timestamp: string;
+    details?: Record<string, unknown>;
+    error?: string;
+    diagnostics?: Record<string, unknown>;
+  };
   timestamp: number;
   ttl: number;
 }
@@ -26,7 +33,7 @@ function isRateLimited(key: string): boolean {
   return true;
 }
 
-function getCachedHealthResult(key: string): any | null {
+function getCachedHealthResult(key: string): HealthCheckResult["result"] | null {
   const cached = healthResultCache.get(key);
   if (!cached) return null;
 
@@ -39,7 +46,11 @@ function getCachedHealthResult(key: string): any | null {
   return cached.result;
 }
 
-function setCachedHealthResult(key: string, result: any, isHealthy: boolean): void {
+function setCachedHealthResult(
+  key: string,
+  result: HealthCheckResult["result"],
+  isHealthy: boolean,
+): void {
   const ttl = isHealthy ? 10 * 60 * 1000 : 30 * 1000; // 10 min success, 30 sec failure
   healthResultCache.set(key, {
     result,
@@ -60,7 +71,7 @@ async function healthHandler(request: Request) {
       // Return cached result if available during rate limit
       const cached = getCachedHealthResult(cacheKey);
       if (cached) {
-        return apiResponse(cached, cached.status === "healthy" ? 200 : 503);
+        return apiResponse(createHealthResponse(cached), cached.status === "healthy" ? 200 : 503);
       }
 
       // Return rate limited response
@@ -80,7 +91,10 @@ async function healthHandler(request: Request) {
     const cachedResult = getCachedHealthResult(cacheKey);
     if (cachedResult) {
       // Returning cached result
-      return apiResponse(cachedResult, cachedResult.status === "healthy" ? 200 : 503);
+      return apiResponse(
+        createHealthResponse(cachedResult),
+        cachedResult.status === "healthy" ? 200 : 503,
+      );
     }
 
     let dbHealth: { healthy: boolean; message: string; error: string | null } = {
@@ -92,7 +106,7 @@ async function healthHandler(request: Request) {
       healthy: boolean;
       message: string;
       error: string | null;
-      tables?: Record<string, any>;
+      tables?: Record<string, unknown>;
     } = {
       healthy: false,
       message: "Auth tables check not performed",
@@ -169,7 +183,9 @@ async function healthHandler(request: Request) {
           tableChecksReduced: true,
           criticalTablesOnly: !dbHealth.healthy ? "skipped" : "checked",
           circuitBreakerActive:
-            (dbHealth as any).fromCircuitBreaker || (authTables as any).fromCircuitBreaker || false,
+            (dbHealth as { fromCircuitBreaker?: boolean }).fromCircuitBreaker ||
+            (authTables as { fromCircuitBreaker?: boolean }).fromCircuitBreaker ||
+            false,
         },
       },
       diagnostics: {

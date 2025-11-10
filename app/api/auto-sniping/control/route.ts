@@ -97,6 +97,7 @@ export const POST = async (request: NextRequest) => {
 
         // Always set session user on orchestrator immediately (new API)
         try {
+          // biome-ignore lint/suspicious/noExplicitAny: Dynamic method call on orchestrator
           (orchestrator as any).setCurrentUser?.(user.id);
           // Session user applied to orchestrator
         } catch {}
@@ -121,7 +122,10 @@ export const POST = async (request: NextRequest) => {
           const coreTrading = getCoreTrading();
           const autoSnipingModule = (
             coreTrading as unknown as {
-              autoSniping?: { setCurrentUser?: (userId: string) => void; getStatus?: () => { currentUserId?: string | null } };
+              autoSniping?: {
+                setCurrentUser?: (userId: string) => void;
+                getStatus?: () => { currentUserId?: string | null };
+              };
             }
           ).autoSniping;
           if (autoSnipingModule && typeof autoSnipingModule.setCurrentUser === "function") {
@@ -157,7 +161,47 @@ export const POST = async (request: NextRequest) => {
           );
         }
 
+        // CRITICAL: Verify orchestrator state after start
         const status = await orchestrator.getStatus();
+
+        // Validation: Ensure autoSnipingEnabled is true
+        if (!status.autoSnipingEnabled) {
+          return Response.json(
+            createErrorResponse("Auto-sniping failed to enable - status check failed", {
+              action: "start",
+              status: {
+                autoSnipingEnabled: status.autoSnipingEnabled,
+                isActive: status.isActive,
+                isHealthy: status.isHealthy,
+              },
+              timestamp: new Date().toISOString(),
+            }),
+            { status: 500 },
+          );
+        }
+
+        // Validation: Verify user ID is set on auto-sniping module
+        const coreTradingAfterStart = getCoreTrading();
+        const autoSnipingModuleAfterStart = (
+          coreTradingAfterStart as unknown as {
+            autoSniping?: {
+              getStatus?: () => { currentUserId?: string | null; isActive?: boolean };
+            };
+          }
+        ).autoSniping;
+        const moduleStatusAfterStart = autoSnipingModuleAfterStart?.getStatus?.();
+
+        if (moduleStatusAfterStart?.currentUserId !== user.id) {
+          return Response.json(
+            createErrorResponse("User ID verification failed after start", {
+              action: "start",
+              expectedUserId: user.id,
+              actualUserId: moduleStatusAfterStart?.currentUserId || null,
+              timestamp: new Date().toISOString(),
+            }),
+            { status: 500 },
+          );
+        }
 
         // Best-effort: sync upcoming calendar listings into snipe targets for the system user only
         let syncSummary: { created?: number; updated?: number } | undefined;

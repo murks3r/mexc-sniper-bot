@@ -17,15 +17,8 @@ export async function GET() {
       // Ensure full config parses; if not, use defaults for trading.autoSniping
       ConfigurationSchema.parse(configManager.getConfig());
     } catch (_e) {
-      const defaults = ConfigurationSchema.parse({
-        app: {},
-        mexc: {},
-        trading: {},
-        database: {},
-        cache: {},
-        monitoring: {},
-        security: {},
-      } as any);
+      // Use schema defaults by parsing an empty object - Zod will apply defaults
+      const defaults = ConfigurationSchema.parse({});
       config = defaults.trading.autoSniping;
     }
 
@@ -38,15 +31,8 @@ export async function GET() {
   } catch (error) {
     // Never fail this endpoint: return schema defaults on any error
     try {
-      const defaults = ConfigurationSchema.parse({
-        app: {},
-        mexc: {},
-        trading: {},
-        database: {},
-        cache: {},
-        monitoring: {},
-        security: {},
-      } as any);
+      // Use schema defaults by parsing an empty object - Zod will apply defaults
+      const defaults = ConfigurationSchema.parse({});
 
       return NextResponse.json(
         createSuccessResponse({

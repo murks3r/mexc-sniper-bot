@@ -181,24 +181,24 @@ export class UnifiedMexcValidationService {
       const connectivityTime = Date.now() - connectivityStart;
 
       if (!connectivityResult.success) {
-        return UnifiedMexcValidationService.createFailedResult(
-          credentials !== null,
-          false,
+        return UnifiedMexcValidationService.createFailedResult({
+          hasCredentials: credentials !== null,
+          credentialsValid: false,
           source,
-          false,
-          connectivityResult.error || "Network connectivity failed",
-          {
+          connected: false,
+          error: connectivityResult.error || "Network connectivity failed",
+          testResults: {
             networkConnectivity: false,
             credentialLoading: credentials !== null,
             accountAccess: false,
             balanceRetrieval: false,
           },
-          {
+          performance: {
             connectivityTestMs: connectivityTime,
             accountTestMs: 0,
             totalTestMs: Date.now() - startTime,
           },
-        );
+        });
       }
 
       // Step 4: Test credential authentication
@@ -264,44 +264,44 @@ export class UnifiedMexcValidationService {
       const totalTime = Date.now() - startTime;
 
       if (error instanceof ValidationError) {
-        return UnifiedMexcValidationService.createFailedResult(
-          false,
-          false,
-          "none",
-          false,
-          error.message,
-          {
+        return UnifiedMexcValidationService.createFailedResult({
+          hasCredentials: false,
+          credentialsValid: false,
+          source: "none",
+          connected: false,
+          error: error.message,
+          testResults: {
             networkConnectivity: false,
             credentialLoading: false,
             accountAccess: false,
             balanceRetrieval: false,
           },
-          {
+          performance: {
             connectivityTestMs: 0,
             accountTestMs: 0,
             totalTestMs: totalTime,
           },
-        );
+        });
       }
 
-      return UnifiedMexcValidationService.createFailedResult(
-        false,
-        false,
-        "none",
-        false,
-        `Validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        {
+      return UnifiedMexcValidationService.createFailedResult({
+        hasCredentials: false,
+        credentialsValid: false,
+        source: "none",
+        connected: false,
+        error: `Validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        testResults: {
           networkConnectivity: false,
           credentialLoading: false,
           accountAccess: false,
           balanceRetrieval: false,
         },
-        {
+        performance: {
           connectivityTestMs: 0,
           accountTestMs: 0,
           totalTestMs: totalTime,
         },
-      );
+      });
     }
   }
 
@@ -560,23 +560,23 @@ export class UnifiedMexcValidationService {
       }));
   }
 
-  private static createFailedResult(
-    hasCredentials: boolean,
-    credentialsValid: boolean,
-    source: "database" | "environment" | "provided" | "none",
-    connected: boolean,
-    error: string,
-    testResults: ComprehensiveValidationResult["testResults"],
-    performance: ComprehensiveValidationResult["performance"],
-  ): ComprehensiveValidationResult {
+  private static createFailedResult(config: {
+    hasCredentials: boolean;
+    credentialsValid: boolean;
+    source: "database" | "environment" | "provided" | "none";
+    connected: boolean;
+    error: string;
+    testResults: ComprehensiveValidationResult["testResults"];
+    performance: ComprehensiveValidationResult["performance"];
+  }): ComprehensiveValidationResult {
     return {
-      hasCredentials,
-      credentialsValid,
-      credentialSource: source,
-      connected,
-      error,
-      testResults,
-      performance,
+      hasCredentials: config.hasCredentials,
+      credentialsValid: config.credentialsValid,
+      credentialSource: config.source,
+      connected: config.connected,
+      error: config.error,
+      testResults: config.testResults,
+      performance: config.performance,
       diagnostics: {
         ipAllowlisted: false,
         permissionsValid: false,

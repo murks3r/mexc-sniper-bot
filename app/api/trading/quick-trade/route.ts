@@ -61,7 +61,14 @@ export async function POST(request: NextRequest) {
     const mexcService = getRecommendedMexcService();
 
     // Prepare order parameters for MARKET order
-    const orderParams: any = {
+    const orderParams: {
+      symbol: string;
+      side: "BUY" | "SELL";
+      type: "MARKET";
+      timeInForce: "IOC";
+      quoteOrderQty?: string;
+      quantity?: string;
+    } = {
       symbol: symbol.toUpperCase(),
       side: side.toUpperCase() as "BUY" | "SELL",
       type: "MARKET",
@@ -71,6 +78,8 @@ export async function POST(request: NextRequest) {
     // Use amount (quote currency) for BUY, quantity (base currency) for SELL
     if (side === "BUY" && amount) {
       orderParams.quoteOrderQty = amount.toString();
+      // Ensure quantity is set for TradingOrderData requirement
+      orderParams.quantity = "0"; // Will be ignored when quoteOrderQty is set
     } else if (side === "SELL" && quantity) {
       orderParams.quantity = quantity.toString();
     } else if (side === "BUY" && quantity) {
@@ -82,8 +91,36 @@ export async function POST(request: NextRequest) {
       orderParams.quantity = amount.toString(); // This is approximate
     }
 
+    // Ensure quantity is set (required by TradingOrderData)
+    if (!orderParams.quantity && !orderParams.quoteOrderQty) {
+      return apiResponse(
+        createErrorResponse("Either quantity or amount must be provided", {
+          symbol,
+          side,
+        }),
+        HTTP_STATUS.BAD_REQUEST,
+      );
+    }
+    if (!orderParams.quantity) {
+      orderParams.quantity = "0"; // Placeholder when using quoteOrderQty
+    }
+
     // Execute trade
-    let result;
+    let result: {
+      success: boolean;
+      data?: {
+        orderId: string;
+        symbol: string;
+        side: string;
+        type: string;
+        quantity: string;
+        price: string;
+        status: string;
+        executedQty: string;
+        timestamp: string;
+      };
+      error?: string;
+    };
     if (paperTrade) {
       // Paper trading simulation
       result = {
@@ -118,7 +155,14 @@ export async function POST(request: NextRequest) {
     // Save execution history for real trades
     if (!paperTrade && result.data) {
       try {
-        const orderData = result.data as any;
+        const orderData = result.data as {
+          executedQty?: string;
+          quantity?: string;
+          price?: string;
+          cummulativeQuoteQty?: string;
+          orderId?: string;
+          status?: string;
+        };
         const executedQty = parseFloat(orderData.executedQty || orderData.quantity || "0");
         const executedPrice = parseFloat(orderData.price || "0");
         const totalCost =

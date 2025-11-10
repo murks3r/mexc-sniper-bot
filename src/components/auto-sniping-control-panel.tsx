@@ -150,10 +150,13 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
       await queryClient.cancelQueries({ queryKey: queryKeys.autoSniping.status() });
       const prev = queryClient.getQueryData<SnipingStatus>(queryKeys.autoSniping.status());
       // Optimistically update status
-      queryClient.setQueryData(queryKeys.autoSniping.status(), (old: any) => ({
-        ...(old || {}),
-        isActive: enabled,
-      }));
+      queryClient.setQueryData(
+        queryKeys.autoSniping.status(),
+        (old: SnipingStatus | undefined) => ({
+          ...(old || {}),
+          isActive: enabled,
+        }),
+      );
       return { previousStatus: prev } as { previousStatus?: SnipingStatus };
     },
     onSuccess: async (data, enabled) => {
@@ -164,16 +167,19 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
 
       // Immediately update the status query with the returned status from the control endpoint
       const serverIsActive = data?.status?.isActive;
-      queryClient.setQueryData(queryKeys.autoSniping.status(), (old: any) => ({
-        ...(old || {}),
-        isActive: typeof serverIsActive === "boolean" ? serverIsActive : enabled,
-        ...(data.status
-          ? {
-              activeTargets: data.status.activeTargets || old?.activeTargets || 0,
-              readyTargets: data.status.readyTargets || old?.readyTargets || 0,
-            }
-          : {}),
-      }));
+      queryClient.setQueryData(
+        queryKeys.autoSniping.status(),
+        (old: SnipingStatus | undefined) => ({
+          ...(old || {}),
+          isActive: typeof serverIsActive === "boolean" ? serverIsActive : enabled,
+          ...(data.status
+            ? {
+                activeTargets: data.status.activeTargets || old?.activeTargets || 0,
+                readyTargets: data.status.readyTargets || old?.readyTargets || 0,
+              }
+            : {}),
+        }),
+      );
 
       // Invalidate to fetch fresh data in the background
       await queryClient.invalidateQueries({ queryKey: queryKeys.autoSniping.status() });

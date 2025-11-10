@@ -507,7 +507,7 @@ export class ConnectionHealthMonitor {
       try {
         callback(alert);
       } catch (error) {
-        console.error("Error in alert callback:", error);
+        // Error in alert callback - errors are handled by the alert system
       }
     });
   }

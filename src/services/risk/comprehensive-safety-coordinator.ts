@@ -106,9 +106,7 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
 
     // Create a mock emergency system for the emergency manager
     const mockEmergencySystem = {
-      forceEmergencyHalt: async (_reason: string) => {
-        /* console.info(`Emergency halt triggered: ${reason}`); */
-      },
+      forceEmergencyHalt: async (_reason: string) => {},
     };
 
     // Create a mock safety monitor agent
@@ -233,7 +231,6 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
    */
   async start(): Promise<void> {
     if (this.isActive) {
-      /* console.warn("Safety coordinator already active"); */
       return;
     }
 
@@ -243,7 +240,6 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
     // Emergency manager doesn't have start/stop methods - just initialize state
     this.logger.info("Emergency manager initialized - no start method required");
 
-    /* console.info("Safety monitoring started"); */
     this.emit("started");
   }
 
@@ -261,7 +257,6 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
     // Emergency manager doesn't have start/stop methods - just note shutdown
     this.logger.info("Emergency manager shutdown - no stop method required");
 
-    /* console.info("Safety monitoring stopped"); */
     this.emit("stopped");
   }
 
@@ -365,8 +360,6 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
   updateConfig(updates: Partial<SafetyCoordinatorConfig>): void {
     this.config = { ...this.config, ...updates };
     this.alertsManager.updateConfig(this.config);
-
-    /* console.info("Safety coordinator configuration updated", { updates }); */
   }
 
   /**
@@ -390,7 +383,6 @@ export class ComprehensiveSafetyCoordinator extends EventEmitter {
       return isHealthy;
     } catch (error) {
       const _safeError = toSafeError(error);
-      /* console.error("Health check failed", { error: safeError.message }); */
       this.status.overall = {
         safetyLevel: "critical",
         safetyScore: 0,

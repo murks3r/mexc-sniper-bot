@@ -7,7 +7,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom", // Changed from "node" to "jsdom" for React testing
-    include: ["**/*.spec.ts", "**/*.test.ts"],
+    setupFiles: ["./vitest.setup.ts"], // Setup file for jsdom initialization
+    env: {
+      // Load test environment variables
+      USE_REAL_SUPABASE: "true",
+    },
+    poolOptions: {
+      threads: {
+        singleThread: false,
+      },
+    },
+    include: ["**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules", ".next", "dist", ".opencode", ".opencode/**", "**/node_modules/**"],
     coverage: {
       provider: "v8",

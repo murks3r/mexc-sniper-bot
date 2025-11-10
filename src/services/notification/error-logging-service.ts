@@ -5,12 +5,8 @@
  */
 
 export const errorLoggingService = {
-  logError: (_error: Error, _context?: any) => {
-    /* console.error("Error logged:", error.message, context); */
-  },
-  logWarning: (_message: string, _context?: any) => {
-    /* console.warn("Warning:", message, context); */
-  },
+  logError: (_error: Error, _context?: any) => {},
+  logWarning: (_message: string, _context?: any) => {},
 };
 
 export class ErrorLoggingService {

@@ -384,3 +384,164 @@ export const isOperationalError = (error: unknown): boolean => {
   }
   return false;
 };
+
+/**
+ * External service error (alias for ApiError for consistency)
+ */
+export class ExternalServiceError extends ApplicationError {
+  public readonly serviceName: string;
+
+  constructor(serviceName: string, message: string, context?: Record<string, unknown>) {
+    super(
+      `External service error: ${serviceName} - ${message}`,
+      "EXTERNAL_SERVICE_ERROR",
+      502,
+      true,
+      {
+        ...context,
+        serviceName,
+      },
+    );
+    this.serviceName = serviceName;
+  }
+
+  getUserMessage(): string {
+    return `External service ${this.serviceName} is temporarily unavailable`;
+  }
+}
+
+export const isExternalServiceError = (error: unknown): error is ExternalServiceError => {
+  return error instanceof ExternalServiceError;
+};
+
+export const isConflictError = (error: unknown): error is ConflictError => {
+  return error instanceof ConflictError;
+};
+
+export const isConfigurationError = (error: unknown): error is ConfigurationError => {
+  return error instanceof ConfigurationError;
+};
+
+/**
+ * Utility functions for error handling
+ */
+
+/**
+ * Extract error message from unknown error type
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return "An unknown error occurred";
+}
+
+/**
+ * Extract error code from error
+ */
+export function getErrorCode(error: unknown): string {
+  if (isApplicationError(error)) {
+    return error.code;
+  }
+  return "UNKNOWN_ERROR";
+}
+
+/**
+ * Extract HTTP status code from error
+ */
+export function getErrorStatusCode(error: unknown): number {
+  if (isApplicationError(error)) {
+    return error.statusCode;
+  }
+  return 500;
+}
+
+/**
+ * Additional utility functions from error-type-utils
+ */
+
+export interface SafeError {
+  name: string;
+  message: string;
+  stack?: string;
+  cause?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * Converts unknown error to SafeError object for logging
+ */
+export function toSafeError(error: unknown): SafeError {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+    };
+  }
+
+  if (typeof error === "string") {
+    return {
+      name: "Error",
+      message: error,
+    };
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const obj = error as Record<string, unknown>;
+    return {
+      name: typeof obj.name === "string" ? obj.name : "Error",
+      message: typeof obj.message === "string" ? obj.message : String(error),
+      stack: typeof obj.stack === "string" ? obj.stack : undefined,
+      cause: obj.cause,
+    };
+  }
+
+  return {
+    name: "Error",
+    message: String(error),
+  };
+}
+
+/**
+ * Extracts error stack from unknown error
+ */
+export function getErrorStack(error: unknown): string | undefined {
+  if (error instanceof Error) {
+    return error.stack;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const obj = error as Record<string, unknown>;
+    if (typeof obj.stack === "string") {
+      return obj.stack;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Creates a proper Error object from unknown error
+ */
+export function ensureError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  const safeError = toSafeError(error);
+  const newError = new Error(safeError.message);
+  newError.name = safeError.name;
+  if (safeError.stack) {
+    newError.stack = safeError.stack;
+  }
+  if (safeError.cause !== undefined) {
+    newError.cause = safeError.cause;
+  }
+
+  return newError;
+}

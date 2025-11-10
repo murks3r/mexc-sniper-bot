@@ -4,7 +4,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
-import { filterTomorrowsListings } from "@/src/utils/tomorrows-listings";
+import type { CalendarEntry } from "@/src/services/data/modules/calendar-listings.service";
 
 /**
  * GET /api/trading/tomorrows-listings
@@ -29,20 +29,20 @@ export async function GET(_request: NextRequest) {
     }
 
     // Filter for tomorrow's listings and map to expected format
-    const mappedListings = calendarResponse.data
-      .filter((listing: any) => {
+    const mappedListings = (calendarResponse.data as CalendarEntry[])
+      .filter((listing) => {
         // Simple filter for tomorrow's listings
-        const launchTime = new Date(listing.launchTime);
+        const launchTime = new Date(listing.tradingStartTime);
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         return launchTime.toDateString() === tomorrow.toDateString();
       })
-      .map((listing: any) => ({
+      .map((listing) => ({
         symbol: listing.symbol,
-        status: (listing.status as "PENDING" | "TRADING" | "BREAK" | "ENDED") || "PENDING",
+        status: listing.status,
         baseAsset: listing.baseAsset,
         quoteAsset: listing.quoteAsset,
-        tradingStartTime: new Date(listing.launchTime).getTime(),
+        tradingStartTime: listing.tradingStartTime,
         priceScale: listing.priceScale,
         quantityScale: listing.quantityScale,
         minNotional: listing.minNotional,

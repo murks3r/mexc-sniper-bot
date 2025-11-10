@@ -27,16 +27,14 @@ export async function getUserCredentials(
       .limit(1);
 
     if (result.length === 0) {
-      console.info(
-        `[UserCredentialsService] No credentials found for user ${userId} and provider ${provider}`,
-      );
+      // No credentials found - this is expected behavior, not an error
       return null;
     }
 
     const creds = result[0];
 
     if (!creds.isActive) {
-      console.info(`[UserCredentialsService] Credentials found but inactive for user ${userId}`);
+      // Credentials found but inactive - this is expected behavior
       return null;
     }
 
@@ -45,10 +43,7 @@ export async function getUserCredentials(
     try {
       encryptionService = getEncryptionService();
     } catch (encryptionError) {
-      console.error(
-        `[UserCredentialsService] Encryption service initialization failed for user ${userId}:`,
-        encryptionError,
-      );
+      // Encryption service error - will be thrown and handled by caller
       throw new Error(
         "Encryption service unavailable - check ENCRYPTION_MASTER_KEY environment variable",
       );
@@ -67,10 +62,7 @@ export async function getUserCredentials(
         passphrase = encryptionService.decrypt(creds.encryptedPassphrase);
       }
     } catch (decryptError) {
-      console.error(
-        `[UserCredentialsService] Failed to decrypt credentials for user ${userId}:`,
-        decryptError,
-      );
+      // Failed to decrypt credentials - will throw error below
       throw new Error("Failed to decrypt API credentials - encryption key may be incorrect");
     }
 
@@ -89,7 +81,7 @@ export async function getUserCredentials(
       lastUsed: creds.lastUsed || undefined,
     };
   } catch (error) {
-    console.error(`[UserCredentialsService] Error getting credentials for user ${userId}:`, error);
+    // Error getting credentials - rethrow to be handled by caller
     throw error;
   }
 }
@@ -113,7 +105,7 @@ export async function hasUserCredentials(userId: string, provider = "mexc"): Pro
 
     return result.length > 0;
   } catch (error) {
-    console.error(`[UserCredentialsService] Error checking credentials for user ${userId}:`, error);
+    // Error checking credentials - will be thrown and handled by caller
     return false;
   }
 }

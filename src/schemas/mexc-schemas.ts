@@ -334,26 +334,15 @@ export const validateTickerData = (data: unknown): Ticker => {
   return TickerSchema.parse(data);
 };
 
+// Use shared validation utility for MEXC data
+import { validateData } from "@/src/lib/validation-utils";
+
 // General MEXC response validation for service integration
 export const validateMexcData = <T>(
   schema: z.ZodSchema<T>,
   data: unknown,
 ): { success: boolean; data?: T; error?: string } => {
-  try {
-    const result = schema.parse(data);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: `Validation failed: ${error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
-      };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown validation error",
-    };
-  }
+  return validateData(schema, data, { errorPrefix: "MEXC data validation failed" });
 };
 
 // Pattern matching utilities

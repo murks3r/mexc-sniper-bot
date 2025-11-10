@@ -170,7 +170,8 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     }
 
     // Pass through specific error messages for test compatibility
-    const errorMessage = error instanceof Error ? error.message : "Safety monitoring GET action failed";
+    const errorMessage =
+      error instanceof Error ? error.message : "Safety monitoring GET action failed";
     return NextResponse.json(
       createErrorResponse(errorMessage, {
         code: "GET_ACTION_FAILED",
@@ -186,11 +187,11 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
  * Handle safety monitoring actions
  */
 export const POST = apiAuthWrapper(async (request: NextRequest) => {
-  let body: any;
-
   try {
     // Use centralized JSON parsing with consistent error handling
-    const parseResult = await parseJsonRequest(request);
+    const parseResult = await parseJsonRequest<{ action?: string; [key: string]: unknown }>(
+      request,
+    );
 
     if (!parseResult.success) {
       // POST JSON parsing failed - error logging handled by error handler middleware
@@ -199,12 +200,12 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
       });
     }
 
-    body = parseResult.data;
-    const action = body?.action;
+    const body = parseResult.data;
+    const action = typeof body?.action === "string" ? body.action : undefined;
     const configuration = body?.configuration;
     const thresholds = body?.thresholds;
-    const alertId = body?.alertId;
-    const reason = body?.reason;
+    const alertId = typeof body?.alertId === "string" ? body.alertId : undefined;
+    const reason = typeof body?.reason === "string" ? body.reason : undefined;
 
     // Validate required action field
     const fieldValidation = validateRequiredFields(body, ["action"]);

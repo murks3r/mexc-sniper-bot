@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { SupabaseRateLimitHandler } from "@/src/lib/supabase-rate-limit-handler";
+import {
+  type RateLimitInfo,
+  SupabaseRateLimitHandler,
+} from "@/src/lib/supabase-rate-limit-handler";
 import { createSimpleLogger } from "../../lib/unified-logger";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -15,7 +18,7 @@ import { RateLimitNotice } from "./rate-limit-notice";
  */
 export function RateLimitDemo() {
   const logger = createSimpleLogger("RateLimitDemo");
-  const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null);
   const [testEmail, setTestEmail] = useState("test@example.com");
 
   const simulateEmailRateLimit = () => {

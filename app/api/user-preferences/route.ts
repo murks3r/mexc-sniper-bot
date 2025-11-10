@@ -25,13 +25,13 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
       ? paramUserId.trim()
       : user.id;
 
-  const result = (await withDatabaseErrorHandling(async () => {
+  const result = await withDatabaseErrorHandling(async () => {
     return await db
       .select()
       .from(userPreferences)
       .where(eq(userPreferences.userId, userId))
       .limit(1);
-  }, "fetch user preferences")) as any[];
+  }, "fetch user preferences");
 
   if (result.length === 0) {
     return apiResponse(
@@ -57,7 +57,7 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
   }
 
   // Safe JSON parsing helper
-  const safeJsonParse = (jsonString: string | null | undefined, fallback: any = undefined) => {
+  const safeJsonParse = <T>(jsonString: string | null | undefined, fallback: T): T => {
     if (!jsonString || typeof jsonString !== "string") return fallback;
     try {
       return JSON.parse(jsonString);
@@ -99,10 +99,10 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
     symbolsPollIntervalSeconds: prefs.symbolsPollIntervalSeconds,
     // Enhanced Take Profit Strategy Settings
     takeProfitStrategy: prefs.takeProfitStrategy || "balanced",
-    takeProfitLevelsConfig: safeJsonParse(prefs.takeProfitLevelsConfig),
+    takeProfitLevelsConfig: safeJsonParse(prefs.takeProfitLevelsConfig, null),
     // Legacy Exit Strategy Settings (for backward compatibility)
     selectedExitStrategy: prefs.selectedExitStrategy || "balanced",
-    customExitStrategy: safeJsonParse(prefs.customExitStrategy),
+    customExitStrategy: safeJsonParse(prefs.customExitStrategy, null),
     autoBuyEnabled: prefs.autoBuyEnabled ?? true,
     autoSellEnabled: prefs.autoSellEnabled ?? true,
     autoSnipeEnabled: prefs.autoSnipeEnabled ?? true,
@@ -224,7 +224,7 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
   }
 
   // Safe JSON stringification helper
-  const safeJsonStringify = (obj: any): string | null => {
+  const safeJsonStringify = (obj: unknown): string | null => {
     if (obj === undefined || obj === null) return null;
     try {
       return JSON.stringify(obj);
@@ -266,13 +266,13 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
   }
 
   // Try to update first
-  const result = (await withDatabaseErrorHandling(async () => {
+  const result = await withDatabaseErrorHandling(async () => {
     return await db
       .update(userPreferences)
       .set(updateData)
       .where(eq(userPreferences.userId, validatedUserId))
       .returning();
-  }, "update user preferences")) as any[];
+  }, "update user preferences");
 
   if (result.length === 0) {
     // Check if user exists before creating preferences

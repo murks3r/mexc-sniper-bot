@@ -2,8 +2,13 @@ import type { BalanceEntry, MexcServiceResponse } from "../data/modules/mexc-api
 import type { MexcCacheLayer } from "../data/modules/mexc-cache-layer";
 import type { MexcCoreClient } from "../data/modules/mexc-core-client";
 
+interface PortfolioBalanceEntry extends BalanceEntry {
+  usdtValue: number;
+  total: number;
+}
+
 interface PortfolioSummary {
-  balances: BalanceEntry[];
+  balances: PortfolioBalanceEntry[];
   totalUsdtValue: number;
   totalValue: number;
   totalValueBTC: number;
@@ -44,9 +49,10 @@ export class UnifiedMexcPortfolioModule {
     // Build price lookup map from batch ticker data
     const priceMap = new Map<string, number>();
     if (tickersResponse.success && Array.isArray(tickersResponse.data)) {
-      tickersResponse.data.forEach((ticker: any) => {
+      type TickerRecord = { symbol: string; price?: string | number; lastPrice?: string | number };
+      (tickersResponse.data as TickerRecord[]).forEach((ticker) => {
         if (ticker.symbol && (ticker.price || ticker.lastPrice)) {
-          const price = parseFloat(String(ticker.price || ticker.lastPrice || "0"));
+          const price = parseFloat(String(ticker.price ?? ticker.lastPrice ?? "0"));
           if (price > 0) {
             priceMap.set(ticker.symbol.toUpperCase(), price);
           }
@@ -54,17 +60,15 @@ export class UnifiedMexcPortfolioModule {
       });
     }
 
-    // Enrich balances with prices
+    // Enrich balances with prices - include ALL assets, even with zero balances
     const enrichedBalances = await Promise.all(
       balances.map(async (balance) => {
         const free = parseFloat(balance.free || "0");
         const locked = parseFloat(balance.locked || "0");
         const totalAmount = free + locked;
 
-        if (totalAmount <= 0) {
-          return { balance, usdtValue: 0 };
-        }
-
+        // Always calculate USDT value, even for zero balances
+        // This ensures all assets are shown in the UI with their values
         if (balance.asset.toUpperCase() === "USDT") {
           return { balance, usdtValue: totalAmount };
         }
@@ -81,7 +85,12 @@ export class UnifiedMexcPortfolioModule {
           );
           if (ticker?.success && ticker.data) {
             const fallbackPrice = parseFloat(
-              String(ticker.data.price || ticker.data.lastPrice || "0"),
+              String(
+                (ticker.data as { price?: string | number; lastPrice?: string | number }).price ??
+                  (ticker.data as { price?: string | number; lastPrice?: string | number })
+                    .lastPrice ??
+                  "0",
+              ),
             );
             price = Number.isFinite(fallbackPrice) && fallbackPrice > 0 ? fallbackPrice : 0;
           }
@@ -103,10 +112,26 @@ export class UnifiedMexcPortfolioModule {
       });
     }
 
+    // Add USDT value to each balance for frontend display
+    // Include ALL balances, sorted by USDT value (descending), then by asset name
+    const balancesWithValues = enrichedBalances
+      .map(({ balance, usdtValue }) => ({
+        ...balance,
+        usdtValue: Number(usdtValue.toFixed(2)),
+        total: parseFloat(balance.free || "0") + parseFloat(balance.locked || "0"),
+      }))
+      .sort((a, b) => {
+        // Sort by USDT value descending, then by asset name ascending
+        if (b.usdtValue !== a.usdtValue) {
+          return b.usdtValue - a.usdtValue;
+        }
+        return a.asset.localeCompare(b.asset);
+      });
+
     return {
       success: true,
       data: {
-        balances,
+        balances: balancesWithValues, // Include usdtValue per asset
         totalUsdtValue: Number(totalUsdtValue.toFixed(2)),
         totalValue: Number(totalUsdtValue.toFixed(2)),
         totalValueBTC: 0,

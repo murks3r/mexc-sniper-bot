@@ -11,6 +11,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
+import { estimateCorrelation } from "./modules/correlation-calculator";
 import type { ModuleContext, Position, ServiceResponse, TradeParameters } from "./types";
 
 // ============================================================================
@@ -801,93 +802,9 @@ export class EnhancedRiskManager {
   }
 
   private async estimateCorrelation(symbol1: string, symbol2: string): Promise<number> {
-    // Return 1 for identical symbols
-    if (symbol1 === symbol2) return 1;
-
     try {
-      // Enhanced correlation estimation based on asset categories
-      const asset1 = this.extractBaseAsset(symbol1);
-      const asset2 = this.extractBaseAsset(symbol2);
-
-      // Major crypto correlations based on market data patterns
-      const correlationMatrix: Record<string, Record<string, number>> = {
-        BTC: { ETH: 0.72, BNB: 0.65, ADA: 0.58, SOL: 0.61, DOT: 0.55 },
-        ETH: { BTC: 0.72, BNB: 0.68, ADA: 0.62, SOL: 0.71, DOT: 0.59 },
-        BNB: { BTC: 0.65, ETH: 0.68, ADA: 0.52, SOL: 0.58, DOT: 0.51 },
-        ADA: { BTC: 0.58, ETH: 0.62, BNB: 0.52, SOL: 0.56, DOT: 0.61 },
-        SOL: { BTC: 0.61, ETH: 0.71, BNB: 0.58, ADA: 0.56, DOT: 0.54 },
-        DOT: { BTC: 0.55, ETH: 0.59, BNB: 0.51, ADA: 0.61, SOL: 0.54 },
-      };
-
-      // Check for direct correlation
-      if (correlationMatrix[asset1]?.[asset2]) {
-        return correlationMatrix[asset1][asset2];
-      }
-
-      // Category-based correlations
-      const categories = {
-        major: ["BTC", "ETH", "BNB"],
-        defi: ["UNI", "SUSHI", "COMP", "AAVE", "CRV"],
-        layer1: ["ETH", "SOL", "ADA", "DOT", "AVAX", "NEAR"],
-        meme: ["DOGE", "SHIB", "PEPE", "FLOKI"],
-        gaming: ["AXS", "SAND", "MANA", "ENJ", "GALA"],
-        metaverse: ["SAND", "MANA", "ENJ", "CHR"],
-        stablecoin: ["USDT", "USDC", "BUSD", "DAI"],
-      };
-
-      const getCategory = (asset: string) => {
-        for (const [category, assets] of Object.entries(categories)) {
-          if (assets.includes(asset)) return category;
-        }
-        return "other";
-      };
-
-      const category1 = getCategory(asset1);
-      const category2 = getCategory(asset2);
-
-      // Same category correlations
-      if (category1 === category2) {
-        switch (category1) {
-          case "major":
-            return 0.75;
-          case "defi":
-            return 0.68;
-          case "layer1":
-            return 0.62;
-          case "meme":
-            return 0.71;
-          case "gaming":
-            return 0.65;
-          case "metaverse":
-            return 0.74;
-          case "stablecoin":
-            return 0.95;
-          default:
-            return 0.45;
-        }
-      }
-
-      // Cross-category correlations
-      if (
-        (category1 === "major" && category2 === "layer1") ||
-        (category1 === "layer1" && category2 === "major")
-      ) {
-        return 0.58;
-      }
-
-      if (
-        (category1 === "defi" && category2 === "layer1") ||
-        (category1 === "layer1" && category2 === "defi")
-      ) {
-        return 0.55;
-      }
-
-      if (category1 === "stablecoin" || category2 === "stablecoin") {
-        return 0.15; // Stablecoins have low correlation with other assets
-      }
-
-      // Default correlation for unrelated assets
-      return 0.35;
+      const correlation = estimateCorrelation(symbol1, symbol2);
+      return correlation;
     } catch (error) {
       this.context.logger.warn("Correlation estimation failed, using default", {
         symbol1,

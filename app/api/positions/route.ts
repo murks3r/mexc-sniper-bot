@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { positions } from "@/src/db/schemas/trading";
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "open"; // "open", "closed", or "all"
 
-    const conditions: any[] = [eq(positions.userId, user.id)];
+    const conditions: SQL[] = [eq(positions.userId, user.id)];
 
     if (status !== "all") {
       conditions.push(eq(positions.status, status));

@@ -282,10 +282,29 @@ export class SupabaseRateLimitHandler {
   }
 
   /**
+   * Retry-after estimates by limit type (in seconds)
+   */
+  private static readonly RETRY_AFTER_ESTIMATES: Record<
+    RateLimitInfo["limitType"] | "default",
+    number
+  > = {
+    email: 1800, // 30 minutes (conservative for 2/hour limit)
+    mfa: 60, // 1 minute (15/minute limit)
+    anonymous: 120, // 2 minutes (30/hour limit)
+    otp: 300, // 5 minutes (conservative for OTP)
+    verification: 300, // 5 minutes for verification attempts
+    token_refresh: 30, // 30 seconds for token refresh
+    api: 60, // 1 minute for general API limits
+    database: 120, // 2 minutes for database connections
+    realtime: 90, // 1.5 minutes for realtime connections
+    default: 300, // 5 minutes default
+  };
+
+  /**
    * Enhanced retry-after extraction with intelligent estimation
    */
   private static extractRetryAfter(error: any): number | undefined {
-    // Check headers if available
+    // Check headers if available (highest priority)
     if (error.headers?.["retry-after"]) {
       return parseInt(error.headers["retry-after"], 10);
     }
@@ -297,41 +316,36 @@ export class SupabaseRateLimitHandler {
 
     // Parse from message if included
     const message = error.message || "";
-    const retryMatch =
-      message.match(/retry.*?(\d+)/i) ||
-      message.match(/wait.*?(\d+)/i) ||
-      message.match(/(\d+).*?(?:second|minute|hour)/i);
-    if (retryMatch) {
-      let duration = parseInt(retryMatch[1], 10);
-      if (message.includes("minute")) duration *= 60;
-      if (message.includes("hour")) duration *= 3600;
-      return duration;
+    const parsedFromMessage = SupabaseRateLimitHandler.parseRetryAfterFromMessage(message);
+    if (parsedFromMessage !== undefined) {
+      return parsedFromMessage;
     }
 
     // Advanced estimates based on Supabase docs and observed behavior
     const limitType = SupabaseRateLimitHandler.detectLimitType(message);
-    switch (limitType) {
-      case "email":
-        return 1800; // 30 minutes (conservative for 2/hour limit)
-      case "mfa":
-        return 60; // 1 minute (15/minute limit)
-      case "anonymous":
-        return 120; // 2 minutes (30/hour limit)
-      case "otp":
-        return 300; // 5 minutes (conservative for OTP)
-      case "verification":
-        return 300; // 5 minutes for verification attempts
-      case "token_refresh":
-        return 30; // 30 seconds for token refresh
-      case "api":
-        return 60; // 1 minute for general API limits
-      case "database":
-        return 120; // 2 minutes for database connections
-      case "realtime":
-        return 90; // 1.5 minutes for realtime connections
-      default:
-        return 300; // 5 minutes default
+    return (
+      SupabaseRateLimitHandler.RETRY_AFTER_ESTIMATES[limitType] ||
+      SupabaseRateLimitHandler.RETRY_AFTER_ESTIMATES.default
+    );
+  }
+
+  /**
+   * Parse retry-after duration from error message
+   */
+  private static parseRetryAfterFromMessage(message: string): number | undefined {
+    const retryMatch =
+      message.match(/retry.*?(\d+)/i) ||
+      message.match(/wait.*?(\d+)/i) ||
+      message.match(/(\d+).*?(?:second|minute|hour)/i);
+
+    if (!retryMatch) {
+      return undefined;
     }
+
+    let duration = parseInt(retryMatch[1], 10);
+    if (message.includes("minute")) duration *= 60;
+    if (message.includes("hour")) duration *= 3600;
+    return duration;
   }
 
   /**
@@ -357,29 +371,44 @@ export class SupabaseRateLimitHandler {
   }
 
   /**
+   * Message pattern to error code mapping
+   */
+  private static readonly MESSAGE_PATTERN_TO_ERROR_CODE: Array<{
+    patterns: string[];
+    code: string;
+  }> = [
+    { patterns: ["email", "rate"], code: SupabaseRateLimitHandler.ERROR_CODES.EMAIL_RATE_LIMIT },
+    { patterns: ["too many"], code: SupabaseRateLimitHandler.ERROR_CODES.TOO_MANY_REQUESTS },
+    { patterns: ["weak password"], code: SupabaseRateLimitHandler.ERROR_CODES.WEAK_PASSWORD },
+    {
+      patterns: ["invalid credentials"],
+      code: SupabaseRateLimitHandler.ERROR_CODES.INVALID_CREDENTIALS,
+    },
+    {
+      patterns: ["session not found"],
+      code: SupabaseRateLimitHandler.ERROR_CODES.SESSION_NOT_FOUND,
+    },
+  ];
+
+  /**
    * Map error to standardized error code
    */
   private static mapErrorCode(error: any): string {
+    const code = error.code?.toLowerCase();
+    if (code) {
+      return code;
+    }
+
     const message = error.message?.toLowerCase() || "";
-    const code = error.code?.toLowerCase() || "";
 
-    if (code) return code;
-
-    // Map common patterns to error codes
-    if (message.includes("email") && message.includes("rate")) {
-      return SupabaseRateLimitHandler.ERROR_CODES.EMAIL_RATE_LIMIT;
-    }
-    if (message.includes("too many")) {
-      return SupabaseRateLimitHandler.ERROR_CODES.TOO_MANY_REQUESTS;
-    }
-    if (message.includes("weak password")) {
-      return SupabaseRateLimitHandler.ERROR_CODES.WEAK_PASSWORD;
-    }
-    if (message.includes("invalid credentials")) {
-      return SupabaseRateLimitHandler.ERROR_CODES.INVALID_CREDENTIALS;
-    }
-    if (message.includes("session not found")) {
-      return SupabaseRateLimitHandler.ERROR_CODES.SESSION_NOT_FOUND;
+    // Check message patterns
+    for (const {
+      patterns,
+      code: errorCode,
+    } of SupabaseRateLimitHandler.MESSAGE_PATTERN_TO_ERROR_CODE) {
+      if (patterns.every((pattern) => message.includes(pattern))) {
+        return errorCode;
+      }
     }
 
     return SupabaseRateLimitHandler.ERROR_CODES.RATE_LIMIT_EXCEEDED;
@@ -398,48 +427,64 @@ export class SupabaseRateLimitHandler {
   }
 
   /**
+   * User-friendly messages by limit type
+   */
+  private static readonly FRIENDLY_MESSAGES: Record<
+    RateLimitInfo["limitType"] | "default",
+    string
+  > = {
+    email: "Email rate limit exceeded. Supabase allows only 2 emails per hour.",
+    otp: "OTP rate limit exceeded. Too many verification codes requested.",
+    verification: "Verification rate limit exceeded. Too many verification attempts.",
+    mfa: "MFA rate limit exceeded. Too many authentication attempts.",
+    anonymous: "Anonymous sign-in rate limit exceeded.",
+    token_refresh: "Token refresh rate limit exceeded.",
+    api: "API rate limit exceeded.",
+    database: "Database connection rate limit exceeded.",
+    realtime: "Realtime connection rate limit exceeded.",
+    default: "Rate limit exceeded. Too many requests.",
+  };
+
+  /**
    * Get user-friendly error message
    */
   private static getFriendlyMessage(
     limitType?: RateLimitInfo["limitType"],
     retryAfter?: number,
   ): string {
-    const timeStr = retryAfter ? ` Please try again in ${Math.ceil(retryAfter / 60)} minutes.` : "";
+    const baseMessage = limitType
+      ? SupabaseRateLimitHandler.FRIENDLY_MESSAGES[limitType] ||
+        SupabaseRateLimitHandler.FRIENDLY_MESSAGES.default
+      : SupabaseRateLimitHandler.FRIENDLY_MESSAGES.default;
 
-    switch (limitType) {
-      case "email":
-        return `Email rate limit exceeded. Supabase allows only 2 emails per hour.${timeStr}`;
-      case "otp":
-        return `OTP rate limit exceeded. Too many verification codes requested.${timeStr}`;
-      case "verification":
-        return `Verification rate limit exceeded. Too many verification attempts.${timeStr}`;
-      case "mfa":
-        return `MFA rate limit exceeded. Too many authentication attempts.${timeStr}`;
-      case "anonymous":
-        return `Anonymous sign-in rate limit exceeded.${timeStr}`;
-      default:
-        return `Rate limit exceeded. Too many requests.${timeStr}`;
-    }
+    const timeStr = retryAfter ? ` Please try again in ${Math.ceil(retryAfter / 60)} minutes.` : "";
+    return `${baseMessage}${timeStr}`;
   }
+
+  /**
+   * User suggestions by limit type
+   */
+  private static readonly SUGGESTIONS: Record<RateLimitInfo["limitType"] | "default", string> = {
+    email: "Try using magic link sign-in or contact support if you need immediate access.",
+    otp: "Wait before requesting another verification code, or try alternative verification methods.",
+    verification: "Please wait before attempting verification again.",
+    mfa: "Wait before attempting multi-factor authentication again.",
+    anonymous: "Wait before attempting anonymous sign-in, or create a permanent account.",
+    token_refresh: "Wait before refreshing your token again.",
+    api: "Wait before making another API request.",
+    database: "Wait before establishing another database connection.",
+    realtime: "Wait before establishing another realtime connection.",
+    default: "Please wait before making another request.",
+  };
 
   /**
    * Get suggestion for user based on rate limit type
    */
   private static getSuggestion(limitType?: RateLimitInfo["limitType"]): string {
-    switch (limitType) {
-      case "email":
-        return "Try using magic link sign-in or contact support if you need immediate access.";
-      case "otp":
-        return "Wait before requesting another verification code, or try alternative verification methods.";
-      case "verification":
-        return "Please wait before attempting verification again.";
-      case "mfa":
-        return "Wait before attempting multi-factor authentication again.";
-      case "anonymous":
-        return "Wait before attempting anonymous sign-in, or create a permanent account.";
-      default:
-        return "Please wait before making another request.";
-    }
+    return limitType
+      ? SupabaseRateLimitHandler.SUGGESTIONS[limitType] ||
+          SupabaseRateLimitHandler.SUGGESTIONS.default
+      : SupabaseRateLimitHandler.SUGGESTIONS.default;
   }
 
   /**
@@ -676,6 +721,76 @@ export class SupabaseRateLimitHandler {
 }
 
 /**
+ * Handle successful operation execution
+ */
+function handleOperationSuccess<T>(result: T, attempt: number, onSuccess?: (result: T) => void): T {
+  SupabaseRateLimitHandler.recordCircuitBreakerSuccess();
+  if (attempt > 0) {
+    SupabaseRateLimitHandler.metrics.successfulRetries++;
+  }
+  if (onSuccess) {
+    onSuccess(result);
+  }
+  return result;
+}
+
+/**
+ * Calculate retry delay from rate limit info or backoff
+ */
+function calculateRetryDelay(
+  rateLimitInfo: RateLimitInfo,
+  attempt: number,
+  config: RetryConfig,
+): number {
+  return rateLimitInfo.retryAfter
+    ? rateLimitInfo.retryAfter * 1000
+    : SupabaseRateLimitHandler.calculateBackoffDelay(attempt, config);
+}
+
+/**
+ * Update retry metrics
+ */
+function updateRetryMetrics(delay: number): void {
+  SupabaseRateLimitHandler.metrics.failedRetries++;
+  SupabaseRateLimitHandler.metrics.averageRetryDelay =
+    (SupabaseRateLimitHandler.metrics.averageRetryDelay + delay) / 2;
+}
+
+/**
+ * Handle operation failure and determine if retry is needed
+ */
+function handleOperationFailure(
+  error: any,
+  rateLimitInfo: RateLimitInfo,
+  attempt: number,
+  config: RetryConfig,
+  onRateLimit?: (rateLimitInfo: RateLimitInfo) => void,
+  onFailure?: (error: any) => void,
+): { shouldRetry: boolean; delay: number } | null {
+  // Record failure for circuit breaker
+  if (rateLimitInfo.isRateLimited) {
+    SupabaseRateLimitHandler.recordCircuitBreakerFailure();
+  }
+
+  // Call rate limit callback
+  if (rateLimitInfo.isRateLimited && onRateLimit) {
+    onRateLimit(rateLimitInfo);
+  }
+
+  // Check if we should retry
+  if (!SupabaseRateLimitHandler.shouldRetry(rateLimitInfo, attempt, config)) {
+    if (onFailure) {
+      onFailure(error);
+    }
+    return null; // Don't retry
+  }
+
+  const delay = calculateRetryDelay(rateLimitInfo, attempt, config);
+  updateRetryMetrics(delay);
+  return { shouldRetry: true, delay };
+}
+
+/**
  * Enhanced wrapper function for Supabase auth operations with comprehensive rate limit handling
  */
 export async function withRateLimitHandling<T>(
@@ -706,68 +821,40 @@ export async function withRateLimitHandling<T>(
       }
 
       const result = await operation();
-
-      // Record success
-      SupabaseRateLimitHandler.recordCircuitBreakerSuccess();
-      if (attempt > 0) {
-        SupabaseRateLimitHandler.metrics.successfulRetries++;
-      }
-
-      // Call success callback
-      if (options.onSuccess) {
-        options.onSuccess(result);
-      }
-
-      return result;
+      return handleOperationSuccess(result, attempt, options.onSuccess);
     } catch (error) {
       lastError = error;
-
       const rateLimitInfo = SupabaseRateLimitHandler.analyzeRateLimitError(error);
 
-      // Record failure for circuit breaker
-      if (rateLimitInfo.isRateLimited) {
-        SupabaseRateLimitHandler.recordCircuitBreakerFailure();
-      }
+      const retryInfo = handleOperationFailure(
+        error,
+        rateLimitInfo,
+        attempt,
+        config,
+        options.onRateLimit,
+        options.onFailure,
+      );
 
-      // Call rate limit callback
-      if (rateLimitInfo.isRateLimited && options.onRateLimit) {
-        options.onRateLimit(rateLimitInfo);
-      }
-
-      // Check if we should retry
-      if (!SupabaseRateLimitHandler.shouldRetry(rateLimitInfo, attempt, config)) {
-        if (options.onFailure) {
-          options.onFailure(error);
-        }
+      if (!retryInfo) {
         throw error;
       }
 
-      // Calculate delay and wait
-      const delay = rateLimitInfo.retryAfter
-        ? rateLimitInfo.retryAfter * 1000
-        : SupabaseRateLimitHandler.calculateBackoffDelay(attempt, config);
-
-      // Update metrics
-      SupabaseRateLimitHandler.metrics.failedRetries++;
-      SupabaseRateLimitHandler.metrics.averageRetryDelay =
-        (SupabaseRateLimitHandler.metrics.averageRetryDelay + delay) / 2;
-
       // Call retry callback
       if (options.onRetry) {
-        options.onRetry(attempt + 1, delay);
+        options.onRetry(attempt + 1, retryInfo.delay);
       }
 
       SupabaseRateLimitHandler.logger.info(
-        `Retrying operation (attempt ${attempt + 1}/${config.maxRetries}) after ${delay}ms delay`,
+        `Retrying operation (attempt ${attempt + 1}/${config.maxRetries}) after ${retryInfo.delay}ms delay`,
         {
           rateLimitInfo,
           attempt,
-          delay,
+          delay: retryInfo.delay,
           totalTime: Date.now() - startTime,
         },
       );
 
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, retryInfo.delay));
     }
   }
 

@@ -77,7 +77,15 @@ describe("UnifiedMexcPortfolioModule", () => {
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.totalUsdtValue).toBe(1000 + 0.5 * 50000 + 2 * 3000); // 1000 + 25000 + 6000 = 32000
-      expect(result.data?.balances).toEqual(balances);
+      // Balances are sorted by USDT value descending, then by asset name
+      // Expected order: BTC (25000), ETH (6000), USDT (1000)
+      expect(result.data?.balances).toHaveLength(3);
+      expect(result.data?.balances[0].asset).toBe("BTC");
+      expect(result.data?.balances[0].usdtValue).toBe(25000);
+      expect(result.data?.balances[1].asset).toBe("ETH");
+      expect(result.data?.balances[1].usdtValue).toBe(6000);
+      expect(result.data?.balances[2].asset).toBe("USDT");
+      expect(result.data?.balances[2].usdtValue).toBe(1000);
       expect(result.data?.allocation).toBeDefined();
       expect(mockCache.getOrSet).toHaveBeenCalledWith(
         "mexc:tickers:all",

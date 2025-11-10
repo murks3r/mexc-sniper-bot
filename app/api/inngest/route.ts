@@ -28,6 +28,7 @@ async function getInngestSetup() {
 }
 
 // Build-safe inngest handler
+// biome-ignore lint/suspicious/noExplicitAny: Lazy-loaded handler for build safety
 let inngestHandler: any = null;
 
 // Only initialize during runtime, not build time

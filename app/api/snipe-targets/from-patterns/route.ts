@@ -15,48 +15,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 403 },
     );
-
-    // Pattern detection results we found earlier
-    const _patternResults = [
-      {
-        vcoinId: "9cce3b0fa9764bc1b2b9d4d80ff913fc",
-        symbolName: "GXAI",
-        confidenceScore: 97.0,
-        riskLevel: "low",
-        targetExecutionTime: "2025-07-27T10:00:38.328Z",
-        priority: 1,
-        status: "ready", // High confidence, ready for execution
-      },
-      {
-        vcoinId: "830962d322be407f8024b34e555cc490",
-        symbolName: "SPON",
-        confidenceScore: 93.0,
-        riskLevel: "medium",
-        targetExecutionTime: "2025-07-29T09:00:38.328Z",
-        priority: 2,
-        status: "pending", // Longer lead time
-      },
-      {
-        vcoinId: "6eaaadc5b7b34416810eefc0fa6cbbf3",
-        symbolName: "DREYAI",
-        confidenceScore: 92.0,
-        riskLevel: "low",
-        targetExecutionTime: "2025-07-27T08:00:38.328Z",
-        priority: 1,
-        status: "ready", // Short lead time, high confidence
-      },
-      {
-        vcoinId: "f202be49743a4b10afd3b58452608d7d",
-        symbolName: "CKY",
-        confidenceScore: 78.0,
-        riskLevel: "low",
-        targetExecutionTime: "2025-07-27T07:00:38.328Z",
-        priority: 3,
-        status: "pending", // Lower confidence
-      },
-    ];
-
-    // Legacy implementation removed
   } catch (error) {
     // Error creating snipe targets from patterns - error logging handled by error handler middleware
 

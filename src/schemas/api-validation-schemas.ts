@@ -248,42 +248,8 @@ export const SortQuerySchema = z.object({
 // Validation Helper Functions
 // ============================================================================
 
-export function validateApiQuery<T extends z.ZodSchema>(
-  schema: T,
-  searchParams: URLSearchParams,
-): { success?: boolean; data?: z.infer<T>; error?: string } {
-  try {
-    const params = Object.fromEntries(searchParams.entries());
-    const result = schema.parse(params);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errorMessage = error.errors
-        .map((err) => `${err.path.join(".")}: ${err.message}`)
-        .join(", ");
-      return { success: false, error: `Validation failed: ${errorMessage}` };
-    }
-    return { success: false, error: "Unknown validation error" };
-  }
-}
-
-export function validateApiBody<T extends z.ZodSchema>(
-  schema: T,
-  body: unknown,
-): { success?: boolean; data?: z.infer<T>; error?: string } {
-  try {
-    const result = schema.parse(body);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errorMessage = error.errors
-        .map((err) => `${err.path.join(".")}: ${err.message}`)
-        .join(", ");
-      return { success: false, error: `Validation failed: ${errorMessage}` };
-    }
-    return { success: false, error: "Unknown validation error" };
-  }
-}
+// Re-export from shared validation utilities to maintain backward compatibility
+export { validateApiBody, validateApiQuery } from "@/src/lib/validation-utils";
 
 export function createValidatedApiResponse<T>(
   data: T,

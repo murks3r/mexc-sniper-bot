@@ -8,7 +8,7 @@
 "use client";
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { CheckCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -53,19 +53,20 @@ interface TestCredentialsResponse {
 
 export function TestCredentialsWithSync() {
   const supabase = createClientComponentClient();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string; [key: string]: unknown } | null>(
+    null,
+  );
 
   useEffect(() => {
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUser(user);
+      setUser(user ? { id: user.id, email: user.email } : null);
     };
     getUser();
   }, [supabase]);
-  const _queryClient = useQueryClient();
-  const { handleStatusSync, invalidateStatusQueries, getCacheStatus } = useStatusSync();
+  const { handleStatusSync, invalidateStatusQueries } = useStatusSync();
   const [showSyncDetails, setShowSyncDetails] = useState(false);
 
   // Test credentials mutation with status sync handling

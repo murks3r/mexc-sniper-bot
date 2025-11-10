@@ -23,6 +23,7 @@ import {
   requireApiAuth,
   validateUserAccess,
 } from "./api-auth";
+import { handleApiRouteError } from "./api-error-handler";
 import {
   type ApiResponse,
   apiResponse,
@@ -34,7 +35,6 @@ import {
 } from "./api-response";
 import { globalAPIResponseCache } from "./api-response-cache";
 import { generateCacheKey } from "./cache-manager";
-import { handleApiError } from "./error-handler";
 import {
   checkRateLimit,
   createRateLimitResponse,
@@ -668,7 +668,7 @@ function handleMiddlewareError(
     stack: error instanceof Error ? error.stack : undefined,
   });
 
-  return handleApiError(error);
+  return handleApiRouteError(error, "Internal server error");
 }
 
 // =======================

@@ -320,7 +320,7 @@ export class MexcCacheLayer {
 
     if (cleaned > 0) {
       this.metrics.evictions += cleaned;
-      console.info(`[MexcCacheLayer] Cleaned up ${cleaned} expired entries`);
+      // Cache cleanup metrics tracked in this.metrics.evictions
     }
   }
 

@@ -59,11 +59,11 @@ export async function GET() {
 
   try {
     // Get user credentials
-    let user;
-    let userId;
+    let user: Awaited<ReturnType<typeof requireAuth>> | null = null;
+    let userId: string | null = null;
     try {
       user = await requireAuth();
-      userId = user?.id;
+      userId = user?.id ?? null;
     } catch (_error) {
       // Continue without user for anonymous health check
       user = null;

@@ -540,25 +540,14 @@ export const TRADING_SCHEMAS = {
 /**
  * Validate trading data against a schema
  */
+// Use shared validation utility with trading-specific prefix
+import { validateData } from "@/src/lib/validation-utils";
+
 export function validateTradingData<T>(
   schema: z.ZodSchema<T>,
   data: unknown,
 ): { success: boolean; data?: T; error?: string } {
-  try {
-    const result = schema.parse(data);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: `Validation failed: ${error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
-      };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown validation error",
-    };
-  }
+  return validateData(schema, data, { errorPrefix: "Trading data validation failed" });
 }
 
 /**

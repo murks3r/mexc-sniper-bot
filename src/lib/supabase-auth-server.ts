@@ -1,10 +1,11 @@
 import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { user as authUser } from "@/src/db/schemas/auth";
 import { createSupabaseAdminClient } from "@/src/lib/supabase-auth";
+import { authUserExists, upsertAuthUser } from "@/src/lib/supabase-auth-helpers";
 
 interface SupabaseUser {
   id: string;
@@ -123,19 +124,14 @@ export async function requireAuthFromRequest(request: NextRequest): Promise<Supa
 
   // Ensure the authenticated user exists in auth.user (same approach as user-preferences)
   try {
-    const existing = await db
-      .select()
-      .from(authUser)
-      .where(eq(authUser.id, session.user.id))
-      .limit(1);
-
-    if (existing.length === 0) {
+    if (!(await authUserExists(session.user.id))) {
       try {
         const supabase = createSupabaseAdminClient();
         const { data: userData, error } = await supabase.auth.admin.getUserById(session.user.id);
 
         if (!error && userData?.user) {
-          const realUserData = {
+          // Use admin user data if available
+          await upsertAuthUser({
             id: userData.user.id,
             email: userData.user.email || session.user.email,
             name:
@@ -146,97 +142,24 @@ export async function requireAuthFromRequest(request: NextRequest): Promise<Supa
             emailVerified: !!userData.user.email_confirmed_at,
             createdAt: new Date(userData.user.created_at),
             updatedAt: new Date(userData.user.updated_at),
-          };
-          // Simple upsert logic
-          try {
-            await db.insert(authUser).values(realUserData);
-          } catch (error: any) {
-            if (error.code === "23505") {
-              // Unique violation
-              await db
-                .update(authUser)
-                .set({
-                  email: realUserData.email,
-                  name: realUserData.name,
-                  emailVerified: realUserData.emailVerified,
-                  updatedAt: new Date(),
-                })
-                .where(eq(authUser.id, realUserData.id));
-            } else {
-              throw error;
-            }
-          }
+          });
         } else {
-          await db.insert(authUser).values({
+          // Fallback to session user data
+          await upsertAuthUser({
             id: session.user.id,
             email: session.user.email,
             name: session.user.name || session.user.email,
             emailVerified: !!session.user.emailVerified,
-            createdAt: new Date(),
-            updatedAt: new Date(),
           });
-          // Simple upsert logic
-          try {
-            await db.insert(authUser).values({
-              id: session.user.id,
-              email: session.user.email,
-              name: session.user.name || session.user.email,
-              emailVerified: !!session.user.emailVerified,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            });
-          } catch (error: any) {
-            if (error.code === "23505") {
-              // Unique violation
-              await db
-                .update(authUser)
-                .set({
-                  email: session.user.email,
-                  name: session.user.name || session.user.email,
-                  emailVerified: !!session.user.emailVerified,
-                  updatedAt: new Date(),
-                })
-                .where(eq(authUser.id, session.user.id));
-            } else {
-              throw error;
-            }
-          }
         }
       } catch (_adminErr) {
-        await db.insert(authUser).values({
+        // Final fallback - use session data
+        await upsertAuthUser({
           id: session.user.id,
           email: session.user.email,
           name: session.user.name || session.user.email,
           emailVerified: !!session.user.emailVerified,
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
-        // Simple upsert logic
-        try {
-          await db.insert(authUser).values({
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.name || session.user.email,
-            emailVerified: !!session.user.emailVerified,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-        } catch (error: any) {
-          if (error.code === "23505") {
-            // Unique violation
-            await db
-              .update(authUser)
-              .set({
-                email: session.user.email,
-                name: session.user.name || session.user.email,
-                emailVerified: !!session.user.emailVerified,
-                updatedAt: new Date(),
-              })
-              .where(eq(authUser.id, session.user.id));
-          } else {
-            throw error;
-          }
-        }
       }
     }
   } catch (_syncErr) {

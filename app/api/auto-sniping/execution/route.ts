@@ -114,7 +114,7 @@ export const POST = instrumentedTradingRoute(
 
     try {
       const body = await request.json();
-      const { action, positionId, reason, config } = body;
+      const { action, positionId, config } = body;
 
       switch (action) {
         case "start_execution":

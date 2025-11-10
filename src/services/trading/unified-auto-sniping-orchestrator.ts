@@ -86,15 +86,15 @@ class UnifiedAutoSnipingOrchestrator {
   async startAutoSniping(): Promise<ServiceResponse> {
     try {
       const coreTrading = getCoreTrading();
-      
+
       // CRITICAL: Ensure auto-sniping is enabled before starting
       const currentConfig = await coreTrading.getServiceStatus();
       if (!currentConfig.autoSnipingEnabled) {
         await coreTrading.updateConfig({ autoSnipingEnabled: true });
       }
-      
+
       const result = await coreTrading.startAutoSniping();
-      
+
       // Verify it actually started
       const statusAfterStart = await coreTrading.getServiceStatus();
       if (!statusAfterStart.autoSnipingEnabled) {
@@ -104,7 +104,7 @@ class UnifiedAutoSnipingOrchestrator {
           timestamp: new Date().toISOString(),
         };
       }
-      
+
       return result;
     } catch (error) {
       return {
@@ -137,31 +137,31 @@ class UnifiedAutoSnipingOrchestrator {
    */
   async updateConfig(config: Partial<{ enabled: boolean; mexcConfig?: unknown }>): Promise<void> {
     const coreTrading = getCoreTrading();
-    
+
     // Convert config to CoreTradingConfig format
     const updates: Partial<CoreTradingConfig> = {};
-    
+
     if (config.enabled !== undefined) {
       updates.autoSnipingEnabled = config.enabled;
     }
-    
+
     // Handle MEXC config updates
     if (config.mexcConfig && typeof config.mexcConfig === "object") {
       const mexcConfig = config.mexcConfig as {
         credentials?: { apiKey?: string; secretKey?: string };
         paperTradingMode?: boolean;
       };
-      
+
       if (mexcConfig.credentials) {
         updates.apiKey = mexcConfig.credentials.apiKey || updates.apiKey;
         updates.secretKey = mexcConfig.credentials.secretKey || updates.secretKey;
       }
-      
+
       if (mexcConfig.paperTradingMode !== undefined) {
         updates.paperTradingMode = mexcConfig.paperTradingMode;
       }
     }
-    
+
     // Update CoreTradingService config
     await coreTrading.updateConfig(updates);
   }

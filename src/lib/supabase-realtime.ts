@@ -161,11 +161,16 @@ export class SupabaseRealtimeManager {
   }
 
   /**
-   * Subscribe to trading transactions in real-time
+   * Generic helper to create postgres_changes subscription
    */
-  subscribeToTransactions(userId: string, callback: TradingDataCallback): () => void {
-    const channelName = `transactions:${userId}`;
-
+  private createPostgresSubscription<T>(
+    channelName: string,
+    table: string,
+    userId: string,
+    logLabel: string,
+    transformPayload: (payload: RealtimePostgresChangesPayload<any>) => T,
+    callback: (update: T) => void,
+  ): () => void {
     const channel = supabase
       .channel(channelName)
       .on(
@@ -173,22 +178,16 @@ export class SupabaseRealtimeManager {
         {
           event: "*",
           schema: "public",
-          table: "transactions",
+          table,
           filter: `user_id=eq.${userId}`,
         },
         (payload: RealtimePostgresChangesPayload<any>) => {
-          const update: TradingDataUpdate = {
-            table: "transactions",
-            eventType: payload.eventType,
-            new: payload.new,
-            old: payload.old,
-            timestamp: new Date().toISOString(),
-          };
+          const update = transformPayload(payload);
           callback(update);
         },
       )
       .subscribe((status) => {
-        this.logger.debug("Transactions subscription status", { status });
+        this.logger.debug(`${logLabel} subscription status`, { status });
       });
 
     this.channels.set(channelName, channel);
@@ -197,6 +196,26 @@ export class SupabaseRealtimeManager {
       channel.unsubscribe();
       this.channels.delete(channelName);
     };
+  }
+
+  /**
+   * Subscribe to trading transactions in real-time
+   */
+  subscribeToTransactions(userId: string, callback: TradingDataCallback): () => void {
+    return this.createPostgresSubscription(
+      `transactions:${userId}`,
+      "transactions",
+      userId,
+      "Transactions",
+      (payload) => ({
+        table: "transactions",
+        eventType: payload.eventType,
+        new: payload.new,
+        old: payload.old,
+        timestamp: new Date().toISOString(),
+      }),
+      callback,
+    );
   }
 
   /**
@@ -287,39 +306,20 @@ export class SupabaseRealtimeManager {
    * Subscribe to execution history updates
    */
   subscribeToExecutionHistory(userId: string, callback: TradingDataCallback): () => void {
-    const channelName = `execution_history:${userId}`;
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "execution_history",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload: RealtimePostgresChangesPayload<any>) => {
-          const update: TradingDataUpdate = {
-            table: "execution_history",
-            eventType: payload.eventType,
-            new: payload.new,
-            old: payload.old,
-            timestamp: new Date().toISOString(),
-          };
-          callback(update);
-        },
-      )
-      .subscribe((status) => {
-        this.logger.debug("Execution history subscription status", { status });
-      });
-
-    this.channels.set(channelName, channel);
-
-    return () => {
-      channel.unsubscribe();
-      this.channels.delete(channelName);
-    };
+    return this.createPostgresSubscription(
+      `execution_history:${userId}`,
+      "execution_history",
+      userId,
+      "Execution history",
+      (payload) => ({
+        table: "execution_history",
+        eventType: payload.eventType,
+        new: payload.new,
+        old: payload.old,
+        timestamp: new Date().toISOString(),
+      }),
+      callback,
+    );
   }
 
   /**

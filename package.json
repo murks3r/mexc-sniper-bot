@@ -6,6 +6,7 @@
     "postinstall": "echo 'Dependencies installed'",
     "dev": "next dev -p 3008",
     "build": "next build",
+    "test:integration": "USE_REAL_SUPABASE=true vitest --run",
     "start": "next start",
     "lint": "npx biome check --write",
     "lint:fix": "npx biome check --fix --unsafe",
@@ -52,12 +53,11 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.80.0",
+    "@supabase/supabase-js": "^2.81.0",
     "@tanstack/react-query": "^5.90.7",
     "@tanstack/react-query-devtools": "^5.90.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "critters": "^0.0.25",
     "date-fns": "^4.1.0",
     "dotenv": "^16.6.1",
     "drizzle-kit": "^0.31.6",
@@ -65,14 +65,14 @@
     "inngest": "^3.45.0",
     "ioredis": "^5.8.2",
     "lucide-react": "^0.522.0",
-    "next": "15.3.4",
+    "next": "16.0.1",
     "postgres": "^3.4.7",
     "react": "^19.2.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.0",
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.4.0",
     "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
@@ -82,56 +82,47 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.4",
-    "@biomejs/cli-linux-x64": "^2.3.4",
-    "@next/bundle-analyzer": "^15.3.4",
-    "@rollup/rollup-linux-x64-gnu": "^4.52.5",
-    "@tailwindcss/postcss": "^4.1.11",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@next/bundle-analyzer": "^15.5.6",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
-    "@types/node": "^24.0.10",
-    "@types/pg": "^8.15.4",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@vitest/coverage-v8": "3.2.4",
     "@vitest/ui": "^3.2.4",
-    "istanbul-lib-coverage": "^3.2.1",
     "jsdom": "^26.1.0",
     "pg": "^8.16.3",
-    "testcontainers": "^11.1.0",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
-    "ultracite": "^6.3.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
     "undici": "^7.16.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.11",
-    "lightningcss-linux-x64-gnu": "^1.30.1"
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.17",
+    "lightningcss-linux-x64-gnu": "^1.30.2"
   },
   "overrides": {
-    "esbuild": "^0.25.5",
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.5"
-    },
-    "drizzle-kit": {
-      "@esbuild-kit/esm-loader": {
-        "@esbuild-kit/core-utils": {
-          "esbuild": "^0.25.5"
-        }
-      }
-    },
-    "@opentelemetry/auto-instrumentations-node": "^0.56.1",
-    "@opentelemetry/core": "^1.25.1",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/resources": "^1.30.1",
-    "@opentelemetry/sdk-trace-base": "^1.30.1",
-    "@opentelemetry/sdk-trace-node": "^1.30.1",
-    "@opentelemetry/sdk-metrics": "^1.30.1",
-    "@opentelemetry/sdk-node": "^0.56.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.56.1",
+    "@opentelemetry/core": "^1.30.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.52.1",
     "@opentelemetry/exporter-prometheus": "^0.52.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.52.1",
-    "@opentelemetry/semantic-conventions": "^1.38.0"
+    "@opentelemetry/resources": "^1.30.1",
+    "@opentelemetry/sdk-metrics": "^1.30.1",
+    "@opentelemetry/sdk-node": "^0.56.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.1",
+    "@opentelemetry/sdk-trace-node": "^1.30.1",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "drizzle-kit": {
+      "@esbuild-kit/esm-loader": {
+        "@esbuild-kit/core-utils": {
+          "esbuild": "^0.25.12"
+        }
+      }
+    }
   }
 }

@@ -16,7 +16,7 @@ interface TradingTarget {
   priceDecimalPlaces: number;
   quantityDecimalPlaces: number;
   confidence?: number;
-  status?: "ready" | "monitoring" | "pending";
+  status?: "ready" | "monitoring" | "pending" | "active";
 }
 
 interface CalendarTarget {
@@ -175,15 +175,16 @@ const EmptyState = memo(() => (
           <TrendingUp className="h-12 w-12 text-gray-400" />
         </div>
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Trading Targets</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Ready Targets</h3>
           <p className="text-gray-500 max-w-md mx-auto">
-            Start pattern discovery to identify potential trading opportunities. The system will
-            automatically detect tokens matching the ready state pattern.
+            Active targets are scheduled and will appear here when they become ready for execution.
+            Targets automatically transition from "active" to "ready" when their execution time
+            arrives.
           </p>
         </div>
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
           <Clock className="h-4 w-4" />
-          <span>Waiting for pattern detection...</span>
+          <span>Targets are created automatically from calendar sync</span>
         </div>
       </div>
     </CardContent>
@@ -269,6 +270,13 @@ export const OptimizedTradingTargets = memo(
       [onRemoveTarget],
     );
 
+    // Separate targets by status
+    const readyTargetsList = readyTargets.filter((t) => t.status === "ready");
+    const activeTargetsList = readyTargets.filter((t) => t.status === "active");
+    const monitoringTargetsList = readyTargets.filter(
+      (t) => t.status === "monitoring" || t.status === "pending",
+    );
+
     const totalTargets = readyTargets.length + pendingDetection.length;
 
     if (isLoading) {
@@ -278,20 +286,21 @@ export const OptimizedTradingTargets = memo(
     return (
       <div className={`space-y-6 ${className}`}>
         {/* Ready to Execute Targets */}
-        {readyTargets.length > 0 && (
+        {readyTargetsList.length > 0 && (
           <Card className="border-green-200 bg-green-50/50">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-green-700">
                 <Target className="h-5 w-5" />
-                <span>Ready to Execute ({readyTargets.length})</span>
+                <span>Ready to Execute ({readyTargetsList.length})</span>
               </CardTitle>
               <CardDescription>
-                Tokens with confirmed ready state pattern (sts:2, st:2, tt:4)
+                Tokens with confirmed ready state pattern (sts:2, st:2, tt:4) - execution time has
+                arrived
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {readyTargets.map((target, index) => (
+                {readyTargetsList.map((target, index) => (
                   <ReadyTargetItem
                     key={`${target.vcoinId}-${index}`}
                     target={target}
@@ -305,18 +314,93 @@ export const OptimizedTradingTargets = memo(
           </Card>
         )}
 
+        {/* Active Targets - Scheduled for execution */}
+        {activeTargetsList.length > 0 && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 text-blue-700">
+                <Clock className="h-5 w-5" />
+                <span>Active Targets ({activeTargetsList.length})</span>
+              </CardTitle>
+              <CardDescription>
+                Scheduled targets waiting for execution time. They will automatically execute when
+                ready.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {activeTargetsList.map((target, index) => (
+                  <div
+                    key={`${target.vcoinId}-active-${index}`}
+                    className="bg-white border border-blue-200 p-4 rounded-lg hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-bold text-blue-700 text-lg truncate">
+                            {target.symbol}
+                          </h3>
+                          <Badge className="bg-blue-500 hover:bg-blue-600 text-white">ACTIVE</Badge>
+                          <Badge variant="outline" className="border-blue-500 text-blue-600">
+                            {formatTimeRemaining(target.launchTime)}
+                          </Badge>
+                          {target.confidence && (
+                            <Badge variant="outline" className="border-gray-500 text-gray-600">
+                              {Math.round(target.confidence * 100)}% confidence
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mb-3 truncate">{target.projectName}</p>
+                        <TargetDetails
+                          launchTime={target.launchTime}
+                          hoursAdvanceNotice={target.hoursAdvanceNotice}
+                          priceDecimalPlaces={target.priceDecimalPlaces}
+                          quantityDecimalPlaces={target.quantityDecimalPlaces}
+                        />
+                      </div>
+                      <div className="flex flex-col space-y-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRemoveTarget(target.vcoinId)}
+                          className="border-red-500 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Monitoring Targets */}
-        {pendingTargetsWithData.length > 0 && (
+        {(monitoringTargetsList.length > 0 || pendingTargetsWithData.length > 0) && (
           <Card className="border-yellow-200 bg-yellow-50/50">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-yellow-700">
                 <Eye className="h-5 w-5" />
-                <span>Monitoring ({pendingTargetsWithData.length})</span>
+                <span>
+                  Monitoring ({monitoringTargetsList.length + pendingTargetsWithData.length})
+                </span>
               </CardTitle>
               <CardDescription>Waiting for ready state pattern detection</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
+                {monitoringTargetsList.map((target, index) => {
+                  const calendarTarget = calendarTargets.find((t) => t.vcoinId === target.vcoinId);
+                  if (!calendarTarget) return null;
+                  return (
+                    <MonitoringTargetItem
+                      key={`${target.vcoinId}-monitoring-${index}`}
+                      target={calendarTarget}
+                      formatTimeRemaining={formatTimeRemaining}
+                    />
+                  );
+                })}
                 {pendingTargetsWithData.map((target, index) => (
                   <MonitoringTargetItem
                     key={`${target.vcoinId}-pending-${index}`}
@@ -329,7 +413,7 @@ export const OptimizedTradingTargets = memo(
           </Card>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - Only show if there are truly no targets */}
         {totalTargets === 0 && <EmptyState />}
 
         {/* Warning for high target count */}

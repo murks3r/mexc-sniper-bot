@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       // For other errors, userCredentials remains null and we'll fall back to environment
     }
 
-    let mexcService;
+    let mexcService: Awaited<ReturnType<typeof getRecommendedMexcService>>;
     if (userCredentials) {
       // Create service with user's credentials
       mexcService = getRecommendedMexcService({
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
           error: balancesResponse.error,
           message: "API credentials configured but account access failed",
           serviceLayer: true,
-          executionTimeMs: (balancesResponse as any).executionTimeMs || 0,
+          executionTimeMs: (balancesResponse as { executionTimeMs?: number }).executionTimeMs || 0,
           timestamp: balancesResponse.timestamp,
         },
         { status: statusCode },
@@ -128,7 +128,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { balances, totalUsdtValue } = balancesResponse.data;
-    const lastUpdated = (balancesResponse.data as any).lastUpdated || new Date().toISOString();
+    const lastUpdated =
+      (balancesResponse.data as { lastUpdated?: string }).lastUpdated || new Date().toISOString();
     // MEXC Account Service Success
 
     const message = userCredentials
@@ -144,8 +145,8 @@ export async function GET(request: NextRequest) {
       lastUpdated,
       message,
       serviceLayer: true,
-      cached: (balancesResponse as any).cached || false,
-      executionTimeMs: (balancesResponse as any).executionTimeMs || 0,
+      cached: (balancesResponse as { cached?: boolean }).cached || false,
+      executionTimeMs: (balancesResponse as { executionTimeMs?: number }).executionTimeMs || 0,
       timestamp: balancesResponse.timestamp,
     });
   } catch (error) {

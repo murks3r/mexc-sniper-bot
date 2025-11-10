@@ -12,7 +12,17 @@
  * - Standardized response format
  */
 
-import OpenAI from "openai";
+// Optional OpenAI import - only used if package is installed
+// biome-ignore lint/suspicious/noExplicitAny: OpenAI is optional dependency
+let OpenAI: any = null;
+try {
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic require for optional dependency
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  OpenAI = require("openai")?.default;
+} catch {
+  // OpenAI package not installed - health check will handle gracefully
+}
+
 import { getRecommendedMexcService } from "../services/api/mexc-unified-exports";
 import { getUserCredentials } from "../services/api/user-credentials-service";
 import type {
@@ -245,6 +255,17 @@ export class HealthCheckComponents {
    * OpenAI API health check
    */
   static async checkOpenAI(): Promise<HealthCheckResult> {
+    if (!OpenAI) {
+      return {
+        status: "warning",
+        message: "OpenAI package not installed - AI features will be limited",
+        details: {
+          component: "openai",
+          timestamp: new Date().toISOString(),
+        },
+      };
+    }
+
     const cacheKey = "openai-health";
     const cached = healthCache.get(cacheKey);
     if (cached) return cached;
@@ -263,6 +284,9 @@ export class HealthCheckComponents {
         return result;
       }
 
+      if (!OpenAI) {
+        throw new Error("OpenAI package not installed");
+      }
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       // Simple test to verify API key works

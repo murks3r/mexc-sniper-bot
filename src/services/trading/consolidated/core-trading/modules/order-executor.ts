@@ -287,6 +287,7 @@ export class OrderExecutor {
           quantity: params.quantity?.toString() || "0",
           price: params.price?.toString(),
           timeInForce: params.timeInForce,
+          quoteOrderQty: params.quoteOrderQty?.toString(),
         };
 
         const orderResult = await this.context.mexcService.placeOrder(orderData);
@@ -383,6 +384,64 @@ export class OrderExecutor {
         this.context.logger.warn("Orderbook fetch failed", {
           symbol: normalized,
           error: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      // Fallback 3: Try calendar API for new listings
+      try {
+        if (typeof this.context.mexcService.getCalendarListings === "function") {
+          const calendarResponse = await this.context.mexcService.getCalendarListings();
+          if (calendarResponse.success && calendarResponse.data) {
+            const baseSymbol = normalized.replace(/USDT$|USDC$|BTC$|ETH$/i, "").toUpperCase();
+            const listing = (calendarResponse.data as any[]).find(
+              (entry: any) =>
+                entry.symbol?.toUpperCase() === baseSymbol ||
+                entry.vcoinName?.toUpperCase() === baseSymbol ||
+                entry.vcoinId?.toUpperCase() === baseSymbol,
+            );
+            if (listing) {
+              this.context.logger.debug("Found symbol in calendar but no price available", {
+                symbol: normalized,
+                listingSymbol: listing.symbol,
+              });
+              // Calendar doesn't provide price, continue to next fallback
+            }
+          }
+        }
+      } catch (calendarError) {
+        this.context.logger.debug("Calendar check failed", {
+          symbol: normalized,
+          error: calendarError instanceof Error ? calendarError.message : String(calendarError),
+        });
+      }
+
+      // Fallback 4: Try initial klines/candles for new symbols
+      try {
+        if (typeof (this.context.mexcService as any).getKlines === "function") {
+          const klinesResponse = await (this.context.mexcService as any).getKlines(
+            normalized,
+            "1m",
+            1,
+          );
+          if (klinesResponse?.success && klinesResponse.data?.length > 0) {
+            const kline = klinesResponse.data[0];
+            // Kline format: [openTime, open, high, low, close, volume, closeTime, ...]
+            if (Array.isArray(kline) && kline.length >= 5) {
+              const closePrice = parseFloat(kline[4]); // close price
+              if (closePrice > 0) {
+                this.context.logger.info("Price from initial kline", {
+                  symbol: normalized,
+                  price: closePrice,
+                });
+                return closePrice;
+              }
+            }
+          }
+        }
+      } catch (klinesError) {
+        this.context.logger.debug("Klines fetch failed", {
+          symbol: normalized,
+          error: klinesError instanceof Error ? klinesError.message : String(klinesError),
         });
       }
 

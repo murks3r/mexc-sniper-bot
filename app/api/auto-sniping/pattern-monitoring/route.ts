@@ -246,8 +246,7 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
  */
 export const PUT = apiAuthWrapper(async (request: NextRequest) => {
   try {
-    const body = await request.json();
-    const { config } = body;
+    await request.json();
 
     // For now, we'll just return success as the configuration is handled internally
     // In the future, this could be expanded to allow runtime configuration changes

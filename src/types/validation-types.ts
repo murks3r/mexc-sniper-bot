@@ -30,7 +30,7 @@ export interface ApiResponse<T = unknown> {
   statusCode?: number;
 }
 
-export interface SimpleResponse<T = any> {
+export interface SimpleResponse<T = unknown> {
   success?: boolean;
   data?: T;
   error?: string;
@@ -112,10 +112,10 @@ export interface AutoSnipeConfig {
 }
 
 export interface Phase3Configuration {
-  performance?: any;
-  aiIntelligence?: any;
-  patternDetection?: any;
-  cacheWarming?: any;
+  performance?: Record<string, unknown>;
+  aiIntelligence?: Record<string, unknown>;
+  patternDetection?: Record<string, unknown>;
+  cacheWarming?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -123,7 +123,7 @@ export interface Phase3Configuration {
 // ============================================================================
 
 // These provide compatibility with existing code that expects specific types
-export type ApiSuccessResponse<T = any> = ApiResponse<T>;
+export type ApiSuccessResponse<T = unknown> = ApiResponse<T>;
 export type ApiErrorResponse = ApiResponse;
-export type ValidationSuccess<T = any> = ValidationResult<T>;
+export type ValidationSuccess<T = unknown> = ValidationResult<T>;
 export type ValidationError = ValidationResult;

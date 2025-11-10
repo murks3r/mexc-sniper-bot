@@ -93,26 +93,8 @@ export function getMexcClient(config?: { apiKey?: string; secretKey?: string }):
   return getUnifiedMexcClientFactory(config);
 }
 
-/**
- * Legacy compatibility - Enhanced MEXC Service
- * @deprecated Use getUnifiedMexcServiceV2 instead
- */
-export function getEnhancedMexcService(config?: {
-  apiKey?: string;
-  secretKey?: string;
-}): UnifiedMexcServiceV2 {
-  console.warn("getEnhancedMexcService is deprecated. Use getUnifiedMexcServiceV2 instead.");
-  return getUnifiedMexcServiceV2(config);
-}
-
-/**
- * Legacy compatibility - Reset Enhanced MEXC Service
- * @deprecated Use resetUnifiedMexcServiceV2 instead
- */
-export function resetEnhancedMexcService(): void {
-  console.warn("resetEnhancedMexcService is deprecated. Use resetUnifiedMexcServiceV2 instead.");
-  resetUnifiedMexcServiceV2();
-}
+// Removed deprecated getEnhancedMexcService - use getUnifiedMexcServiceV2 instead
+// Removed deprecated resetEnhancedMexcService - use resetUnifiedMexcServiceV2 instead
 
 /**
  * Legacy compatibility - Unified MEXC Client

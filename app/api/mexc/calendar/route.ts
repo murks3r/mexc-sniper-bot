@@ -9,6 +9,7 @@ export async function GET() {
     const calendarResponse = (await Promise.race([
       mexcService.getCalendarListings(),
       new Promise((_, reject) => setTimeout(() => reject(new Error("Service timeout")), 8000)),
+      // biome-ignore lint/suspicious/noExplicitAny: Promise.race result type
     ])) as any;
 
     // Ensure data is always an array

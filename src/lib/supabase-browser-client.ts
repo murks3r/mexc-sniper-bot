@@ -1,30 +1,46 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  checkSupabaseConfiguration,
+  createCookieHandlers,
+  createFetchWithTimeout,
+  isBrowserEnvironment,
+} from "./supabase-browser-client-utils";
 
 // Singleton pattern for browser Supabase client
 let supabaseBrowserClient: ReturnType<typeof createBrowserClient> | null = null;
 let isSupabaseConfigured = false;
 
 /**
- * Check if Supabase is properly configured
+ * Initialize Supabase configuration check
  */
-function checkSupabaseConfiguration(): boolean {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // Check for placeholder or missing values
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return false;
+function ensureConfigurationChecked(): boolean {
+  if (!isSupabaseConfigured && supabaseBrowserClient === null) {
+    isSupabaseConfigured = checkSupabaseConfiguration();
   }
+  return isSupabaseConfigured;
+}
 
-  // Check for placeholder values that indicate unconfigured environment
-  const isPlaceholderUrl =
-    supabaseUrl.includes("placeholder") || supabaseUrl === "https://placeholder.supabase.co";
-  const isPlaceholderKey =
-    supabaseAnonKey.includes("placeholder") || supabaseAnonKey === "placeholder_key";
+/**
+ * Create Supabase client with configuration
+ */
+function createClientInstance() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return !isPlaceholderUrl && !isPlaceholderKey;
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookies: createCookieHandlers(),
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: "pkce",
+    },
+    global: {
+      fetch: createFetchWithTimeout(15000),
+    },
+  });
 }
 
 /**
@@ -34,93 +50,19 @@ function checkSupabaseConfiguration(): boolean {
  */
 export function createSupabaseBrowserClient() {
   // Only create client in browser environment
-  if (typeof window === "undefined") {
-    return null; // Return null in SSR instead of throwing
+  if (!isBrowserEnvironment()) {
+    return null;
   }
 
-  // Check if already determined configuration status
-  if (!isSupabaseConfigured && supabaseBrowserClient === null) {
-    isSupabaseConfigured = checkSupabaseConfiguration();
-
-    if (!isSupabaseConfigured) {
-      // Supabase environment not configured - auth features disabled
-      return null;
-    }
+  // Check configuration if not already checked
+  if (!ensureConfigurationChecked()) {
+    return null;
   }
 
-  if (!supabaseBrowserClient && isSupabaseConfigured) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
+  // Create client if not already created
+  if (!supabaseBrowserClient) {
     try {
-      supabaseBrowserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-        cookies: {
-          get(name: string) {
-            if (typeof document === "undefined") return undefined;
-            try {
-              return document.cookie
-                .split("; ")
-                .find((row) => row.startsWith(`${name}=`))
-                ?.split("=")[1];
-            } catch {
-              // Cookie get error - return undefined
-              return undefined;
-            }
-          },
-          set(name: string, value: string, options: any) {
-            if (typeof document === "undefined") return;
-            try {
-              let cookieString = `${name}=${value}`;
-              if (options?.maxAge) cookieString += `; max-age=${options.maxAge}`;
-              if (options?.path) cookieString += `; path=${options.path}`;
-              if (options?.domain) cookieString += `; domain=${options.domain}`;
-              if (options?.secure) cookieString += "; secure";
-              if (options?.httpOnly) cookieString += "; httponly";
-              if (options?.sameSite) cookieString += `; samesite=${options.sameSite}`;
-              document.cookie = cookieString;
-            } catch {
-              // Cookie set error - handled silently
-            }
-          },
-          remove(name: string, options: any) {
-            if (typeof document === "undefined") return;
-            try {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${options?.path || "/"}`;
-            } catch {
-              // Cookie remove error - handled silently
-            }
-          },
-        },
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
-          flowType: "pkce",
-        },
-        global: {
-          fetch: (url, options = {}) => {
-            // Add timeout and better error handling to prevent hanging requests
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout (increased for slow networks)
-
-            return fetch(url, {
-              ...options,
-              signal: controller.signal,
-            })
-              .finally(() => {
-                clearTimeout(timeoutId);
-              })
-              .catch((error) => {
-                if (error.name === "AbortError") {
-                  const _urlStr = typeof url === "string" ? url : url.toString();
-                  // Request timeout - handled by error handling
-                  throw new Error("Request timeout after 15 seconds");
-                }
-                throw error;
-              });
-          },
-        },
-      });
+      supabaseBrowserClient = createClientInstance();
 
       // Only log in development to reduce console noise in production
       if (process.env.NODE_ENV === "development") {
@@ -153,7 +95,7 @@ export function getSupabaseBrowserClient() {
  * Check if Supabase is available and configured
  */
 export function isSupabaseAvailable(): boolean {
-  return isSupabaseConfigured && typeof window !== "undefined";
+  return isSupabaseConfigured && isBrowserEnvironment();
 }
 
 /**

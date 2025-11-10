@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
@@ -9,7 +9,7 @@ import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const user = await requireAuthFromRequest(request);
+    const _user = await requireAuthFromRequest(request);
     // Request from user
 
     // Manual creation is disabled: only system background processes create targets
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const includeSystem = searchParams.get("includeSystem") !== "false";
 
     // Build where clause
-    let whereCond: any | undefined;
+    let whereCond: SQL | undefined;
     if (includeAll) {
       // When includeAll=true, filter by status if provided, otherwise get all
       whereCond = status ? eq(snipeTargets.status, status) : undefined;

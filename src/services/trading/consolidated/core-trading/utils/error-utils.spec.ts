@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isNonRetryableError, calculateRetryDelay } from "./error-utils";
+import { describe, expect, it } from "vitest";
+import { calculateRetryDelay, isNonRetryableError } from "./error-utils";
 
 describe("isNonRetryableError", () => {
   it("should return true for insufficient balance errors", () => {

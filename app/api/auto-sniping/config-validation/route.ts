@@ -266,7 +266,12 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
           );
         }
 
-        let validationResult;
+        let validationResult: {
+          component: string;
+          status: "pass" | "fail";
+          message?: string;
+          details?: unknown;
+        };
         switch (component) {
           case "mexc_credentials":
             validationResult = await validator.validateMexcCredentials();

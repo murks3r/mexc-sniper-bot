@@ -20,6 +20,7 @@ import {
   tradingStrategyManager,
 } from "@/src/services/trading/trading-strategy-manager";
 import { serviceConflictDetector } from "../../service-conflict-detector";
+import { OrderExecutor } from "./modules/order-executor";
 import type {
   AutoSnipeTarget,
   CoreTradingConfig,
@@ -56,6 +57,7 @@ type PriceLevelMonitoringConfig = {
 export class AutoSnipingModule {
   private context: ModuleContext;
   private state: ModuleState;
+  private orderExecutor: OrderExecutor;
 
   // Auto-sniping state
   private autoSnipingInterval: NodeJS.Timeout | null = null;
@@ -78,6 +80,7 @@ export class AutoSnipingModule {
 
   constructor(context: ModuleContext) {
     this.context = context;
+    this.orderExecutor = new OrderExecutor(context);
     this.state = {
       isInitialized: false,
       isHealthy: true,
@@ -179,9 +182,12 @@ export class AutoSnipingModule {
 
       // CRITICAL: Verify user ID is set before starting (warn if not set, but allow system targets)
       if (!this.currentUserId) {
-        this.context.logger.warn("Starting auto-sniping without user ID set - will process system targets only", {
-          note: "User ID should be set via setCurrentUser() before starting",
-        });
+        this.context.logger.warn(
+          "Starting auto-sniping without user ID set - will process system targets only",
+          {
+            note: "User ID should be set via setCurrentUser() before starting",
+          },
+        );
       }
 
       this.isActive = true;
@@ -319,29 +325,113 @@ export class AutoSnipingModule {
           continue;
         }
 
-        // Check all exit conditions
+        // Check all exit conditions with structured logging
         let shouldSell = false;
         let reason: "STOP_LOSS" | "TAKE_PROFIT" | "TIME_BASED" | null = null;
+        let reasonMetadata: Record<string, any> = {};
 
         // Stop-loss check
         if (currentPrice <= position.stopLossPrice) {
           shouldSell = true;
           reason = "STOP_LOSS";
+          reasonMetadata = {
+            currentPrice,
+            stopLossPrice: position.stopLossPrice,
+            priceDifference: currentPrice - position.stopLossPrice,
+            priceDifferencePercent:
+              ((currentPrice - position.stopLossPrice) / position.stopLossPrice) * 100,
+          };
+          this.context.logger.info("🔴 SELL DECISION: Stop-loss triggered", {
+            decision: "SELL",
+            reason: "STOP_LOSS",
+            reasonCode: "STOP_LOSS_TRIGGERED",
+            positionId: position.id,
+            symbol,
+            entryPrice: position.entryPrice,
+            currentPrice,
+            stopLossPrice: position.stopLossPrice,
+            quantity: position.quantity,
+            metadata: reasonMetadata,
+            timestamp: now.toISOString(),
+          });
         }
 
         // Take-profit check
         if (!shouldSell && currentPrice >= position.takeProfitPrice) {
           shouldSell = true;
           reason = "TAKE_PROFIT";
+          reasonMetadata = {
+            currentPrice,
+            takeProfitPrice: position.takeProfitPrice,
+            priceDifference: currentPrice - position.takeProfitPrice,
+            priceDifferencePercent:
+              ((currentPrice - position.takeProfitPrice) / position.takeProfitPrice) * 100,
+            profitAmount: (currentPrice - position.entryPrice) * position.quantity,
+            profitPercent: ((currentPrice - position.entryPrice) / position.entryPrice) * 100,
+          };
+          this.context.logger.info("🟢 SELL DECISION: Take-profit triggered", {
+            decision: "SELL",
+            reason: "TAKE_PROFIT",
+            reasonCode: "TAKE_PROFIT_TRIGGERED",
+            positionId: position.id,
+            symbol,
+            entryPrice: position.entryPrice,
+            currentPrice,
+            takeProfitPrice: position.takeProfitPrice,
+            quantity: position.quantity,
+            metadata: reasonMetadata,
+            timestamp: now.toISOString(),
+          });
         }
 
         // Time-based exit check
         if (!shouldSell && now >= position.maxHoldUntil) {
           shouldSell = true;
           reason = "TIME_BASED";
+          const holdDurationMs = now.getTime() - position.entryTime.getTime();
+          const holdDurationHours = holdDurationMs / (1000 * 60 * 60);
+          reasonMetadata = {
+            entryTime: position.entryTime.toISOString(),
+            maxHoldUntil: position.maxHoldUntil.toISOString(),
+            currentTime: now.toISOString(),
+            holdDurationMs,
+            holdDurationHours: holdDurationHours.toFixed(2),
+            maxHoldHours:
+              (position.maxHoldUntil.getTime() - position.entryTime.getTime()) / (1000 * 60 * 60),
+          };
+          this.context.logger.info("⏰ SELL DECISION: Time-based exit triggered", {
+            decision: "SELL",
+            reason: "TIME_BASED",
+            reasonCode: "TIME_BASED_EXIT",
+            positionId: position.id,
+            symbol,
+            entryPrice: position.entryPrice,
+            currentPrice,
+            quantity: position.quantity,
+            metadata: reasonMetadata,
+            timestamp: now.toISOString(),
+          });
         }
 
-        if (!shouldSell) continue;
+        // Log when position is monitored but no sell condition is met
+        if (!shouldSell) {
+          this.context.logger.debug("🔍 Position monitored - no sell conditions met", {
+            decision: "HOLD",
+            reason: "NO_EXIT_CONDITION",
+            reasonCode: "HOLD_POSITION",
+            positionId: position.id,
+            symbol,
+            currentPrice,
+            stopLossPrice: position.stopLossPrice,
+            takeProfitPrice: position.takeProfitPrice,
+            maxHoldUntil: position.maxHoldUntil.toISOString(),
+            priceToStopLoss: currentPrice - position.stopLossPrice,
+            priceToTakeProfit: position.takeProfitPrice - currentPrice,
+            timeUntilMaxHold: position.maxHoldUntil.getTime() - now.getTime(),
+            timestamp: now.toISOString(),
+          });
+          continue;
+        }
 
         // Atomic claim: open -> closing (prevent duplicate sells)
         const claim = await db
@@ -431,23 +521,48 @@ export class AutoSnipingModule {
             });
           }
 
-          this.context.logger.info("Position monitor: position closed", {
+          this.context.logger.info("✅ SELL EXECUTED: Position closed successfully", {
+            decision: "SELL",
+            action: "EXECUTED",
+            reason,
+            reasonCode:
+              reason === "STOP_LOSS"
+                ? "STOP_LOSS_EXECUTED"
+                : reason === "TAKE_PROFIT"
+                  ? "TAKE_PROFIT_EXECUTED"
+                  : "TIME_BASED_EXECUTED",
             positionId: position.id,
             targetId: position.snipeTargetId,
             symbol,
-            reason,
             entryPrice: position.entryPrice,
             exitPrice,
             quantity: executedQty,
+            totalRevenue,
             realizedPnl,
             realizedPnlPercent: `${realizedPnlPercent.toFixed(2)}%`,
+            sellExecutionId,
+            exchangeOrderId: closeResult.data?.orderId,
+            metadata: reasonMetadata,
+            timestamp: executedAt.toISOString(),
           });
         } catch (closeError) {
           const safe = toSafeError(closeError);
-          this.context.logger.error("Position monitor: close order failed", {
+          this.context.logger.error("❌ SELL FAILED: Close order execution failed", {
+            decision: "SELL",
+            action: "FAILED",
+            reason,
+            reasonCode:
+              reason === "STOP_LOSS"
+                ? "STOP_LOSS_FAILED"
+                : reason === "TAKE_PROFIT"
+                  ? "TAKE_PROFIT_FAILED"
+                  : "TIME_BASED_FAILED",
             positionId: position.id,
             symbol,
             error: safe.message,
+            errorCode: "SELL_EXECUTION_ERROR",
+            metadata: reasonMetadata,
+            timestamp: new Date().toISOString(),
           });
           // Revert status back to open to allow retry
           try {
@@ -841,13 +956,18 @@ export class AutoSnipingModule {
             },
           });
 
-          this.context.logger.warn("⏭️ Skipping low confidence target", {
+          this.context.logger.warn("⏭️ BUY DECISION: Skipping low confidence target", {
+            decision: "BUY",
+            action: "SKIPPED",
+            reason: "LOW_CONFIDENCE",
+            reasonCode: "BUY_SKIPPED_LOW_CONFIDENCE",
+            reasonMessage: skipReason,
             targetId: target.id,
             symbol: target.symbolName,
             confidence: target.confidenceScore,
             threshold: this.context.config.confidenceThreshold,
             difference: target.confidenceScore - this.context.config.confidenceThreshold,
-            reason: skipReason,
+            timestamp: new Date().toISOString(),
           });
         }
 
@@ -1120,19 +1240,48 @@ export class AutoSnipingModule {
     }
 
     if (!(typeof uiMaxBuyUsdt === "number" && Number.isFinite(uiMaxBuyUsdt) && uiMaxBuyUsdt > 0)) {
-      const prefsErrorMsg = `Default buy amount not set in user preferences (defaultBuyAmountUsdt) for user ${prefsUserId}`;
-      this.context.logger.error("❌ Missing required default buy amount; aborting snipe", {
-        userId: prefsUserId,
-        targetId: target.id,
-        symbol: target.symbolName,
-        uiMaxBuyUsdt,
-        reason: "User preferences missing or invalid defaultBuyAmountUsdt",
-        checkedUserIds: candidateUserIds,
-      });
-      await this.updateSnipeTargetStatus(target.id, "failed", prefsErrorMsg, {
-        executionStatus: "failed",
-      });
-      return { success: false, error: prefsErrorMsg };
+      const fallbackAmountCandidates = [
+        Number(target.positionSizeUsdt ?? 0),
+        Number(this.context.config.maxPositionSize ?? 0),
+        100,
+      ].filter((value) => Number.isFinite(value) && value > 0) as number[];
+
+      if (fallbackAmountCandidates.length > 0) {
+        uiMaxBuyUsdt = fallbackAmountCandidates[0];
+        this.context.logger.warn(
+          "⚠️ Missing defaultBuyAmountUsdt preference; using fallback for execution",
+          {
+            userId: prefsUserId,
+            targetId: target.id,
+            symbol: target.symbolName,
+            fallbackAmount: uiMaxBuyUsdt,
+            checkedUserIds: candidateUserIds,
+            timestamp: new Date().toISOString(),
+          },
+        );
+      } else {
+        const prefsErrorMsg = `Default buy amount not set in user preferences (defaultBuyAmountUsdt) for user ${prefsUserId}`;
+        this.context.logger.error(
+          "❌ BUY DECISION: Missing required default buy amount; aborting snipe",
+          {
+            decision: "BUY",
+            action: "ABORTED",
+            reason: "MISSING_USER_PREFERENCES",
+            reasonCode: "BUY_ABORTED_MISSING_PREFERENCES",
+            reasonMessage: "User preferences missing or invalid defaultBuyAmountUsdt",
+            userId: prefsUserId,
+            targetId: target.id,
+            symbol: target.symbolName,
+            uiMaxBuyUsdt,
+            checkedUserIds: candidateUserIds,
+            timestamp: new Date().toISOString(),
+          },
+        );
+        await this.updateSnipeTargetStatus(target.id, "failed", prefsErrorMsg, {
+          executionStatus: "failed",
+        });
+        return { success: false, error: prefsErrorMsg };
+      }
     }
 
     this.context.logger.info("✅ User preferences validated", {
@@ -1158,7 +1307,11 @@ export class AutoSnipingModule {
   async executeSnipeTarget(target: AutoSnipeTarget, currentUserId?: string): Promise<TradeResult> {
     const executionStartTime = Date.now();
 
-    this.context.logger.info("🎯 Starting snipe target execution", {
+    this.context.logger.info("🟢 BUY DECISION: Starting snipe target execution", {
+      decision: "BUY",
+      action: "INITIATED",
+      reason: "TARGET_READY",
+      reasonCode: "BUY_TARGET_EXECUTION_STARTED",
       targetId: target.id,
       symbol: target.symbolName,
       confidence: target.confidenceScore,
@@ -1166,6 +1319,7 @@ export class AutoSnipingModule {
       strategy: target.entryStrategy || "normal",
       vcoinId: target.vcoinId,
       executionStartTime: new Date(executionStartTime).toISOString(),
+      timestamp: new Date().toISOString(),
     });
 
     // Idempotency guard: if this target already has a successful execution recorded, don't trade again
@@ -1177,6 +1331,16 @@ export class AutoSnipingModule {
     // Check price availability - critical decision point
     const priceCheck = await this.checkPriceAvailability(target, executionStartTime);
     if (priceCheck.result) {
+      this.context.logger.warn("⏭️ BUY DECISION: Skipping target due to price unavailability", {
+        decision: "BUY",
+        action: "SKIPPED",
+        reason: "PRICE_UNAVAILABLE",
+        reasonCode: "BUY_SKIPPED_PRICE_UNAVAILABLE",
+        targetId: target.id,
+        symbol: target.symbolName,
+        error: priceCheck.result.error,
+        timestamp: new Date().toISOString(),
+      });
       return priceCheck.result;
     }
     const currentPrice = priceCheck.currentPrice!;
@@ -1198,6 +1362,16 @@ export class AutoSnipingModule {
 
     const claimResult = await this.claimTargetForExecution(target);
     if (claimResult) {
+      this.context.logger.warn("⏭️ BUY DECISION: Skipping target - already claimed or not ready", {
+        decision: "BUY",
+        action: "SKIPPED",
+        reason: "TARGET_ALREADY_CLAIMED",
+        reasonCode: "BUY_SKIPPED_TARGET_CLAIMED",
+        targetId: target.id,
+        symbol: target.symbolName,
+        error: claimResult.error,
+        timestamp: new Date().toISOString(),
+      });
       return claimResult;
     }
 
@@ -1212,6 +1386,16 @@ export class AutoSnipingModule {
       // Validate user ID and preferences
       const userValidation = await this.validateUserAndPreferences(target, currentUserId);
       if (!userValidation.success) {
+        this.context.logger.error("❌ BUY DECISION: User validation failed; aborting snipe", {
+          decision: "BUY",
+          action: "ABORTED",
+          reason: "USER_VALIDATION_FAILED",
+          reasonCode: "BUY_ABORTED_USER_VALIDATION",
+          targetId: target.id,
+          symbol: target.symbolName,
+          error: userValidation.error,
+          timestamp: new Date().toISOString(),
+        });
         return {
           success: false,
           error: userValidation.error!,
@@ -1257,21 +1441,48 @@ export class AutoSnipingModule {
       const result = await this.executeTradeViaManualModule(tradeParams);
       const tradeExecutionTime = Date.now() - tradeExecutionStartTime;
 
-      this.context.logger.info("📊 Trade execution completed", {
-        targetId: target.id,
-        symbol: target.symbolName,
-        success: (result as any)?.success,
-        orderId: (result as any)?.data?.orderId || (result as any)?.orderId,
-        status: (result as any)?.data?.status || (result as any)?.status,
-        executedQty: (result as any)?.data?.executedQty || (result as any)?.executedQty,
-        executedPrice: (result as any)?.data?.price || (result as any)?.price,
-        totalCost:
-          (result as any)?.data?.cummulativeQuoteQty || (result as any)?.cummulativeQuoteQty,
-        tradeExecutionTimeMs: tradeExecutionTime,
-        totalExecutionTimeMs: Date.now() - executionStartTime,
-        strategy: strategy.name,
-        confidence: target.confidenceScore,
-      });
+      const buySuccess = (result as any)?.success;
+      const orderId = (result as any)?.data?.orderId || (result as any)?.orderId;
+      const orderStatus = (result as any)?.data?.status || (result as any)?.status;
+
+      if (buySuccess) {
+        this.context.logger.info("✅ BUY EXECUTED: Trade execution completed successfully", {
+          decision: "BUY",
+          action: "EXECUTED",
+          reason: "ORDER_FILLED",
+          reasonCode: "BUY_EXECUTED_SUCCESS",
+          targetId: target.id,
+          symbol: target.symbolName,
+          orderId,
+          status: orderStatus,
+          executedQty: (result as any)?.data?.executedQty || (result as any)?.executedQty,
+          executedPrice: (result as any)?.data?.price || (result as any)?.price,
+          totalCost:
+            (result as any)?.data?.cummulativeQuoteQty || (result as any)?.cummulativeQuoteQty,
+          tradeExecutionTimeMs: tradeExecutionTime,
+          totalExecutionTimeMs: Date.now() - executionStartTime,
+          strategy: strategy.name,
+          confidence: target.confidenceScore,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        this.context.logger.error("❌ BUY FAILED: Trade execution failed", {
+          decision: "BUY",
+          action: "FAILED",
+          reason: "ORDER_EXECUTION_FAILED",
+          reasonCode: "BUY_EXECUTED_FAILED",
+          targetId: target.id,
+          symbol: target.symbolName,
+          orderId,
+          status: orderStatus,
+          error: (result as any)?.error,
+          tradeExecutionTimeMs: tradeExecutionTime,
+          totalExecutionTimeMs: Date.now() - executionStartTime,
+          strategy: strategy.name,
+          confidence: target.confidenceScore,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       if (result.success) {
         // Validate that the exchange response indicates a filled order with quantity
@@ -2037,16 +2248,19 @@ export class AutoSnipingModule {
    */
   private async executeTradeViaManualModule(params: TradeParameters): Promise<TradeResult> {
     try {
-      // Simulate trade execution for now
-      // In a real implementation, this would call the manual trading module
-
-      if (this.context.config.enablePaperTrading) {
-        return await this.executePaperSnipe(params);
+      // Route to order executor module (handles both paper and real trading)
+      // CRITICAL: Use paperTradingMode from config, not enablePaperTrading
+      if (this.context.config.paperTradingMode) {
+        return await this.orderExecutor.executePaperSnipe(params);
       } else {
-        return await this.executeRealSnipe(params);
+        return await this.orderExecutor.executeRealSnipe(params);
       }
     } catch (error) {
       const safeError = toSafeError(error);
+      this.context.logger.error("Trade execution via manual module failed", {
+        params,
+        error: safeError,
+      });
       throw safeError;
     }
   }
@@ -2407,6 +2621,64 @@ export class AutoSnipingModule {
           this.context.logger.warn(`Failed to get order book for ${symbol}`, {
             error:
               orderBookError instanceof Error ? orderBookError.message : String(orderBookError),
+          });
+        }
+      }
+
+      // Fallback 4: Try calendar API for new listings
+      if (
+        !price &&
+        this.context.mexcService &&
+        typeof this.context.mexcService.getCalendarListings === "function"
+      ) {
+        try {
+          const calendarResponse = await this.context.mexcService.getCalendarListings();
+          if (calendarResponse.success && calendarResponse.data) {
+            const baseSymbol = symbol.replace(/USDT$|USDC$|BTC$|ETH$/i, "").toUpperCase();
+            const listing = (calendarResponse.data as any[]).find(
+              (entry: any) =>
+                entry.symbol?.toUpperCase() === baseSymbol ||
+                entry.vcoinName?.toUpperCase() === baseSymbol ||
+                entry.vcoinId?.toUpperCase() === baseSymbol,
+            );
+            // Calendar doesn't provide price, but we can log it for debugging
+            if (listing) {
+              this.context.logger.debug("Found symbol in calendar but no price available", {
+                symbol,
+                listingSymbol: listing.symbol,
+                vcoinId: listing.vcoinId,
+              });
+            }
+          }
+        } catch (calendarError) {
+          this.context.logger.debug(`Failed to check calendar for ${symbol}`, {
+            error: calendarError instanceof Error ? calendarError.message : String(calendarError),
+          });
+        }
+      }
+
+      // Fallback 5: Try initial klines/candles for new symbols
+      if (
+        !price &&
+        this.context.mexcService &&
+        typeof (this.context.mexcService as any).getKlines === "function"
+      ) {
+        try {
+          const klinesResponse = await (this.context.mexcService as any).getKlines(symbol, "1m", 1);
+          if (klinesResponse?.success && klinesResponse.data?.length > 0) {
+            const kline = klinesResponse.data[0];
+            // Kline format: [openTime, open, high, low, close, volume, closeTime, ...]
+            if (Array.isArray(kline) && kline.length >= 5) {
+              const closePrice = parseFloat(kline[4]); // close price
+              if (closePrice > 0) {
+                price = closePrice;
+                this.context.logger.debug("Price from initial kline", { symbol, price });
+              }
+            }
+          }
+        } catch (klinesError) {
+          this.context.logger.debug(`Failed to get klines for ${symbol}`, {
+            error: klinesError instanceof Error ? klinesError.message : String(klinesError),
           });
         }
       }

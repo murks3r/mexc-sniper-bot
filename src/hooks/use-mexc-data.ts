@@ -205,7 +205,7 @@ export function useMexcConnectivity() {
         return result;
       } catch (error) {
         const finalError = error instanceof Error ? error : new Error("Unknown error");
-        console.warn(`Connectivity check failed:`, finalError.message);
+        // Error is thrown, no need to log here as it will be caught by caller
         throw finalError;
       }
     },
@@ -319,7 +319,7 @@ export function useUpcomingLaunches() {
             launchTime.getTime() > now.getTime() && launchTime.getTime() < now.getTime() + hours24
           );
         } catch (_error) {
-          console.warn("Invalid date in calendar entry:", entry.firstOpenTime);
+          // Invalid date, skip this entry silently
           return false;
         }
       })
@@ -348,7 +348,7 @@ export function useReadyLaunches(options?: { enabled?: boolean }) {
             launchTime.getTime() > now.getTime() && launchTime.getTime() < now.getTime() + hours4
           );
         } catch (_error) {
-          console.warn("Invalid date in calendar entry:", entry.firstOpenTime);
+          // Invalid date, skip this entry silently
           return false;
         }
       })
@@ -361,13 +361,7 @@ export function useReadyLaunches(options?: { enabled?: boolean }) {
   };
 }
 
-// Legacy hook for backward compatibility - DEPRECATED: Use useReadyLaunches instead
-export function useReadyTargets() {
-  console.warn(
-    "useReadyTargets is deprecated. Use useReadyLaunches instead for calendar launches or useSnipeTargets for actual trading targets.",
-  );
-  return useReadyLaunches();
-}
+// Removed deprecated useReadyTargets - use useReadyLaunches or useSnipeTargets instead
 
 // Hook for actual snipe targets (trading targets from database)
 export function useSnipeTargets(userId?: string) {

@@ -20,14 +20,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/ta
 import { useToast } from "@/src/components/ui/use-toast";
 import { useAccountBalance } from "@/src/hooks/use-account-balance";
 // Removed: useEnhancedPatterns - pattern detection simplified
-import { useMexcCalendar, useReadyLaunches } from "@/src/hooks/use-mexc-data";
+import { useMexcCalendar } from "@/src/hooks/use-mexc-data";
 import { useDeleteSnipeTarget } from "@/src/hooks/use-portfolio";
 import { queryKeys } from "@/src/lib/query-client";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
 
 export default function DashboardPage() {
   const logger = createSimpleLogger("DashboardPage");
-  const { user, isLoading: userLoading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,7 +44,6 @@ export default function DashboardPage() {
   });
   // Only fetch data when on overview tab to improve performance
   const { data: calendarData } = useMexcCalendar({ enabled: activeTab === "overview" });
-  const { data: readyLaunches } = useReadyLaunches({ enabled: activeTab === "overview" });
 
   // Fetch active snipe targets specifically (include system targets)
   const { data: activeSnipeTargets, isLoading: activeSnipeLoading } = useQuery({
@@ -84,7 +83,11 @@ export default function DashboardPage() {
   // Removed: enhancedPatterns - pattern detection simplified
 
   // Handler functions for trading targets
-  const handleExecuteSnipe = async (target: any) => {
+  const handleExecuteSnipe = async (target: {
+    id?: number;
+    symbolName?: string;
+    [key: string]: unknown;
+  }) => {
     logger.info("Executing snipe for target", { target });
 
     try {
@@ -251,10 +254,12 @@ export default function DashboardPage() {
         // Filter targets created in the last 7 days
         const allTargets = data.data || [];
         const cutoffTime = sevenDaysAgo.getTime();
-        return allTargets.filter((target: any) => {
-          const createdAt = new Date(target.createdAt).getTime();
-          return createdAt >= cutoffTime;
-        });
+        return allTargets.filter(
+          (target: { createdAt?: string | Date; [key: string]: unknown }) => {
+            const createdAt = new Date(target.createdAt).getTime();
+            return createdAt >= cutoffTime;
+          },
+        );
       } catch (error) {
         logger.error("Failed to fetch historical active targets", { error });
         return [];
@@ -267,17 +272,29 @@ export default function DashboardPage() {
 
   // Transform snipe targets for display
   const transformedReadyTargets = useMemo(() => {
-    const combined = Array.isArray(allSnipeTargets) ? allSnipeTargets : [];
+    // Combine all snipe targets (from allSnipeTargets) and active targets
+    const allTargets = Array.isArray(allSnipeTargets) ? allSnipeTargets : [];
+    const activeTargets = Array.isArray(activeSnipeTargets) ? activeSnipeTargets : [];
+
+    // Merge and deduplicate by id
+    const targetMap = new Map();
+    [...allTargets, ...activeTargets].forEach((target: { id?: number; [key: string]: unknown }) => {
+      if (target?.id) {
+        targetMap.set(target.id, target);
+      }
+    });
+    const combined = Array.from(targetMap.values());
 
     if (combined.length === 0) return [];
 
-    // Filter to pending/ready and sort logically:
+    // Filter to pending/ready/active targets and sort logically:
     // 1) ready first, 2) earlier execution time first, 3) higher confidence, 4) higher priority (lower number) first
     const filtered = combined.filter(
-      (target: any) => target.status === "pending" || target.status === "ready",
+      (target: { status?: string; [key: string]: unknown }) =>
+        target.status === "pending" || target.status === "ready" || target.status === "active",
     );
 
-    const getExecMs = (te: any): number => {
+    const getExecMs = (te: string | number | Date | null | undefined): number => {
       if (typeof te === "number") return te < 1e12 ? te * 1000 : te;
       if (typeof te === "string") {
         const parsed = Date.parse(te);
@@ -286,60 +303,103 @@ export default function DashboardPage() {
       return Number.POSITIVE_INFINITY;
     };
 
-    filtered.sort((a: any, b: any) => {
-      const aReady = a.status === "ready" ? 0 : 1;
-      const bReady = b.status === "ready" ? 0 : 1;
-      if (aReady !== bReady) return aReady - bReady; // ready first
+    filtered.sort(
+      (
+        a: {
+          status?: string;
+          targetExecutionTime?: string | number | Date;
+          confidenceScore?: number;
+          priority?: number;
+          [key: string]: unknown;
+        },
+        b: {
+          status?: string;
+          targetExecutionTime?: string | number | Date;
+          confidenceScore?: number;
+          priority?: number;
+          [key: string]: unknown;
+        },
+      ) => {
+        const aReady = a.status === "ready" ? 0 : 1;
+        const bReady = b.status === "ready" ? 0 : 1;
+        if (aReady !== bReady) return aReady - bReady; // ready first
 
-      const aMs = getExecMs(a.targetExecutionTime);
-      const bMs = getExecMs(b.targetExecutionTime);
-      if (aMs !== bMs) return aMs - bMs; // earlier first
+        const aMs = getExecMs(a.targetExecutionTime);
+        const bMs = getExecMs(b.targetExecutionTime);
+        if (aMs !== bMs) return aMs - bMs; // earlier first
 
-      const aConf = typeof a.confidenceScore === "number" ? a.confidenceScore : -1;
-      const bConf = typeof b.confidenceScore === "number" ? b.confidenceScore : -1;
-      if (aConf !== bConf) return bConf - aConf; // higher first
+        const aConf = typeof a.confidenceScore === "number" ? a.confidenceScore : -1;
+        const bConf = typeof b.confidenceScore === "number" ? b.confidenceScore : -1;
+        if (aConf !== bConf) return bConf - aConf; // higher first
 
-      const aPri = typeof a.priority === "number" ? a.priority : 999;
-      const bPri = typeof b.priority === "number" ? b.priority : 999;
-      return aPri - bPri; // lower number first
-    });
+        const aPri = typeof a.priority === "number" ? a.priority : 999;
+        const bPri = typeof b.priority === "number" ? b.priority : 999;
+        return aPri - bPri; // lower number first
+      },
+    );
 
-    return filtered.map((target: any) => ({
-      vcoinId: target.vcoinId || target.id?.toString(),
-      symbol: target.symbolName || target.symbol,
-      projectName: target.projectName || target.symbolName || "Unknown Project",
-      launchTime: (() => {
-        const ms = getExecMs(target.targetExecutionTime);
-        return Number.isFinite(ms) ? new Date(ms) : new Date();
-      })(),
-      hoursAdvanceNotice: (() => {
-        const ms = getExecMs(target.targetExecutionTime);
-        const diffH = Number.isFinite(ms) ? (ms - Date.now()) / (1000 * 60 * 60) : NaN;
-        return Number.isFinite(diffH) ? diffH : 1;
-      })(),
-      priceDecimalPlaces: target.priceDecimalPlaces || 8,
-      quantityDecimalPlaces: target.quantityDecimalPlaces || 8,
-      confidence: target.confidenceScore ? target.confidenceScore / 100 : 0.5,
-      status: target.status === "ready" ? "ready" : "monitoring",
-      // Include additional fields for execution
-      id: target.id,
-      positionSizeUsdt: target.positionSizeUsdt,
-      entryStrategy: target.entryStrategy,
-      stopLossPercent: target.stopLossPercent,
-      takeProfitCustom: target.takeProfitCustom,
-    }));
-  }, [allSnipeTargets]);
+    return filtered.map(
+      (target: {
+        vcoinId?: string | number;
+        id?: number;
+        symbolName?: string;
+        symbol?: string;
+        projectName?: string;
+        targetExecutionTime?: string | number | Date;
+        confidenceScore?: number;
+        priority?: number;
+        status?: string;
+        [key: string]: unknown;
+      }) => ({
+        vcoinId: target.vcoinId || target.id?.toString(),
+        symbol: target.symbolName || target.symbol,
+        projectName: target.projectName || target.symbolName || "Unknown Project",
+        launchTime: (() => {
+          const ms = getExecMs(target.targetExecutionTime);
+          return Number.isFinite(ms) ? new Date(ms) : new Date();
+        })(),
+        hoursAdvanceNotice: (() => {
+          const ms = getExecMs(target.targetExecutionTime);
+          const diffH = Number.isFinite(ms) ? (ms - Date.now()) / (1000 * 60 * 60) : NaN;
+          return Number.isFinite(diffH) ? diffH : 1;
+        })(),
+        priceDecimalPlaces: target.priceDecimalPlaces || 8,
+        quantityDecimalPlaces: target.quantityDecimalPlaces || 8,
+        confidence: target.confidenceScore ? target.confidenceScore / 100 : 0.5,
+        status:
+          target.status === "ready"
+            ? "ready"
+            : target.status === "active"
+              ? "active"
+              : "monitoring",
+        // Include additional fields for execution
+        id: target.id,
+        positionSizeUsdt: target.positionSizeUsdt,
+        entryStrategy: target.entryStrategy,
+        stopLossPercent: target.stopLossPercent,
+        takeProfitCustom: target.takeProfitCustom,
+      }),
+    );
+  }, [allSnipeTargets, activeSnipeTargets]);
 
   // Transform calendar data for pending targets
   const transformedCalendarTargets = useMemo(() => {
     if (!Array.isArray(calendarData)) return [];
 
-    return calendarData.map((entry: any) => ({
-      vcoinId: entry.vcoinId,
-      symbol: entry.symbol,
-      projectName: entry.projectName || "Unknown Project",
-      firstOpenTime: new Date(entry.firstOpenTime).getTime(),
-    }));
+    return calendarData.map(
+      (entry: {
+        vcoinId?: string | number;
+        symbol?: string;
+        projectName?: string;
+        firstOpenTime?: string | number | Date;
+        [key: string]: unknown;
+      }) => ({
+        vcoinId: entry.vcoinId,
+        symbol: entry.symbol,
+        projectName: entry.projectName || "Unknown Project",
+        firstOpenTime: entry.firstOpenTime ? new Date(entry.firstOpenTime).getTime() : 0,
+      }),
+    );
   }, [calendarData]);
 
   // Calculate metrics
@@ -374,7 +434,8 @@ export default function DashboardPage() {
     const currentActiveTargets = activeTargets;
     // Count how many of the historical targets are still active
     const _historicalStillActive = historicalActiveTargets.filter(
-      (target: any) => target.status === "active" || target.status === "executing",
+      (target: { status?: string; [key: string]: unknown }) =>
+        target.status === "active" || target.status === "executing",
     ).length;
 
     // Use the count of historical targets created as baseline

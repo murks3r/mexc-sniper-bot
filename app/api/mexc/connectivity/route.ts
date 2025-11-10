@@ -77,9 +77,7 @@ async function checkMexcConnectivityFast(): Promise<ConnectivityCheckResult> {
 
     const payload: ConnectivityCheckResult = {
       connected: response.ok,
-      message: response.ok
-        ? "MEXC API is reachable"
-        : "MEXC API returned an unexpected response",
+      message: response.ok ? "MEXC API is reachable" : "MEXC API returned an unexpected response",
       latency: Date.now() - startTime,
       timestamp: new Date().toISOString(),
     };
@@ -108,7 +106,11 @@ async function checkMexcConnectivityFast(): Promise<ConnectivityCheckResult> {
   }
 }
 
-function deriveStatus(connected: boolean, credentialsValid: boolean, hasCredentials: boolean): ConnectivityResponse["status"] {
+function deriveStatus(
+  connected: boolean,
+  credentialsValid: boolean,
+  hasCredentials: boolean,
+): ConnectivityResponse["status"] {
   if (!hasCredentials) {
     return "no_credentials";
   }

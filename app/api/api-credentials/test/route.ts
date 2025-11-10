@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user credentials from database
-    let userCredentials;
+    let userCredentials: Awaited<ReturnType<typeof getUserCredentials>>;
     try {
       userCredentials = await getUserCredentials(userId, provider);
     } catch (error) {
@@ -76,7 +76,12 @@ export async function POST(request: NextRequest) {
 
       // Test basic API connectivity (ping endpoint - no auth required)
       const startTime = Date.now();
-      let connectivityTest;
+      let connectivityTest: {
+        success: boolean;
+        responseTime: number;
+        connected?: boolean;
+        error?: string;
+      };
 
       try {
         // Try basic ping first

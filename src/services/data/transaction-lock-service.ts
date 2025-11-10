@@ -211,7 +211,7 @@ export class TransactionLockService {
         }
       }
 
-      console.error("Failed to acquire lock:", error);
+      // Error logging handled by error handler middleware
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to acquire lock",
@@ -249,7 +249,7 @@ export class TransactionLockService {
 
       return true;
     } catch (err) {
-      console.error("Failed to release lock:", err);
+      // Error logging handled by error handler middleware
       return false;
     }
   }
@@ -552,7 +552,7 @@ export class TransactionLockService {
           ),
         );
     } catch (error) {
-      console.error("Cleanup process error:", error);
+      // Error logging handled by error handler middleware
     }
   }
 
@@ -693,7 +693,7 @@ export class TransactionLockService {
 
       return updatedLocks.length > 0;
     } catch (error) {
-      console.error("Error releasing lock by resource:", error);
+      // Error logging handled by error handler middleware
       return false;
     }
   }

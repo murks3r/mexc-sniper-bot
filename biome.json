@@ -33,16 +33,19 @@
     }
   },
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx", "app/**/*.ts", "app/**/*.tsx"],
-    "experimentalScannerIgnores": [
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/dist/**",
-      "**/test-results/**",
-      "**/playwright-report/**",
-      "**/coverage/**",
-      "**/*.test.ts",
-      "**/*.spec.ts"
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "app/**/*.ts",
+      "app/**/*.tsx",
+      "!!**/node_modules",
+      "!!**/.next",
+      "!!**/dist",
+      "!!**/test-results",
+      "!!**/playwright-report",
+      "!!**/coverage",
+      "!!**/*.test.ts",
+      "!!**/*.spec.ts"
     ]
   }
 }

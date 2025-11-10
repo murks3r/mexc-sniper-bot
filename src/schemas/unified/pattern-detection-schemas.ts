@@ -388,25 +388,14 @@ export const PATTERN_DETECTION_SCHEMAS = {
 /**
  * Validate pattern detection data against a schema
  */
+// Use shared validation utility with pattern-specific prefix
+import { validateData } from "@/src/lib/validation-utils";
+
 export function validatePatternData<T>(
   schema: z.ZodSchema<T>,
   data: unknown,
 ): { success: boolean; data?: T; error?: string } {
-  try {
-    const result = schema.parse(data);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: `Pattern validation failed: ${error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`,
-      };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown pattern validation error",
-    };
-  }
+  return validateData(schema, data, { errorPrefix: "Pattern validation failed" });
 }
 
 /**

@@ -15,10 +15,12 @@ export async function GET(request: NextRequest) {
     const mexcService = await getUnifiedMexcService();
 
     // Use the getKlines method to get actual historical candlestick data
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic method access on service
     const klinesResponse = await (mexcService as any).getKlines?.(symbol, interval, limit);
 
     if (klinesResponse?.success && klinesResponse.data?.length > 0) {
       // Transform MEXC kline data to chart format
+      // biome-ignore lint/suspicious/noExplicitAny: Kline data structure from external API
       const chartData = klinesResponse.data.map((kline: any) => {
         const [openTime, _open, _high, _low, close, volume, _closeTime, _quoteAssetVolume, trades] =
           kline;

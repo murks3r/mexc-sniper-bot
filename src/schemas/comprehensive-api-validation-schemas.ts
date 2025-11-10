@@ -374,27 +374,8 @@ export function validateApiRequest<T extends z.ZodSchema>(
   }
 }
 
-export function validateApiQuery<T extends z.ZodSchema>(
-  schema: T,
-  searchParams: URLSearchParams,
-): { success?: boolean; data?: z.infer<T>; error?: string } {
-  try {
-    const params = Object.fromEntries(searchParams.entries());
-    const result = schema.parse(params);
-    return { success: true, data: result };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errorMessage = error.errors
-        .map((err) => `${err.path.join(".")}: ${err.message}`)
-        .join(", ");
-      return {
-        success: false,
-        error: `Query validation failed: ${errorMessage}`,
-      };
-    }
-    return { success: false, error: "Unknown query validation error" };
-  }
-}
+// Re-export from shared validation utilities to maintain backward compatibility
+export { validateApiQuery } from "@/src/lib/validation-utils";
 
 export function createValidationErrorResponse(field: string, message: string) {
   return {

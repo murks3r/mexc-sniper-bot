@@ -9,7 +9,7 @@ interface ApiCredentialsFormProps {
   userId: string;
 }
 
-export function ApiCredentialsForm({ userId }: ApiCredentialsFormProps) {
+export function ApiCredentialsForm({ userId: _userId }: ApiCredentialsFormProps) {
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
 

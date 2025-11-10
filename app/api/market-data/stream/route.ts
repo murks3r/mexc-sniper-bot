@@ -1,7 +1,4 @@
 import type { NextRequest } from "next/server";
-
-export const runtime = "nodejs";
-
 import { mexcWebSocketStream } from "@/src/services/data/mexc-websocket-stream";
 
 // Server-Sent Events endpoint that streams live price updates for requested symbols
@@ -45,6 +42,7 @@ export async function GET(request: NextRequest) {
         }, 20000);
 
         // Forward price updates for requested symbols
+        // biome-ignore lint/suspicious/noExplicitAny: WebSocket message structure varies
         const onPriceUpdate = (msg: any) => {
           try {
             const sym = (msg.symbol || msg.s || "").toUpperCase();
@@ -72,6 +70,7 @@ export async function GET(request: NextRequest) {
         };
 
         // If the client disconnects
+        // biome-ignore lint/suspicious/noExplicitAny: Request signal property access
         const signal: AbortSignal | undefined = (request as any).signal;
         if (signal) {
           const onAbort = () => close();

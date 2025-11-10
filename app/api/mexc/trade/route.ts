@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
 
       // Risk assessment disabled in minimization
       logger.warn("Risk assessment disabled in minimized version");
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment
       (orderParams as any).riskMetadata = {
         riskLevel: "unknown",
         riskScore: 0,
@@ -170,6 +171,7 @@ export async function POST(request: NextRequest) {
       logger.warn("Risk assessment skipped", { symbol, skipLock: true });
 
       // Add minimal risk metadata for emergency trades
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment
       (orderParams as any).riskMetadata = {
         riskLevel: "unknown",
         riskScore: 0,
@@ -220,7 +222,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Execute with or without lock
-    let result;
+    let result: Awaited<ReturnType<typeof executeTrade>>;
     if (skipLock) {
       result = await executeTrade();
     } else {
@@ -255,84 +257,78 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      result = lockResult.result;
+      // lockResult.result is Record<string, unknown>, but we know it's the return type of executeTrade
+      result = lockResult.result as Awaited<ReturnType<typeof executeTrade>>;
     }
 
-    const orderResult = result as {
-      success: boolean;
-      error?: string;
-      [key: string]: unknown;
-    };
-
-    if (orderResult.success) {
-      logger.info("Trading order executed successfully", { orderResult });
-
-      // Save execution history
-      try {
-        const orderData = orderResult as any; // Type assertion for MEXC order response
-        const executionRecord: NewExecutionHistory = {
-          userId,
-          snipeTargetId: snipeTargetId || null,
-          vcoinId: body.vcoinId || symbol,
-          symbolName: symbol,
-          action: side.toLowerCase() as "buy" | "sell",
-          orderType: type.toLowerCase(),
-          orderSide: side.toLowerCase(),
-          requestedQuantity: parseFloat(quantity),
-          requestedPrice: price ? parseFloat(price) : null,
-          executedQuantity: orderData.executedQty
-            ? parseFloat(orderData.executedQty)
-            : parseFloat(quantity),
-          executedPrice: orderData.price ? parseFloat(orderData.price) : null,
-          totalCost: orderData.cummulativeQuoteQty
-            ? parseFloat(orderData.cummulativeQuoteQty)
-            : null,
-          fees: orderData.fee ? parseFloat(orderData.fee) : null,
-          exchangeOrderId: orderData.orderId?.toString() || null,
-          exchangeStatus: orderData.status || "filled",
-          exchangeResponse: JSON.stringify(orderResult),
-          executionLatencyMs: orderData.transactTime
-            ? Date.now() - Number(orderData.transactTime)
-            : null,
-          slippagePercent:
-            price && orderData.price
-              ? ((parseFloat(orderData.price) - parseFloat(price)) / parseFloat(price)) * 100
-              : null,
-          status: "success",
-          requestedAt: new Date(),
-          executedAt: orderData.transactTime
-            ? new Date(Number(orderData.transactTime))
-            : new Date(),
-        };
-
-        await db.insert(executionHistory).values(executionRecord);
-        logger.info("Execution history saved", { orderId: orderResult.orderId });
-      } catch (error) {
-        logger.error(
-          "Failed to save execution history",
-          {},
-          error instanceof Error ? error : new Error(String(error)),
-        );
-        // Don't fail the trade response if history save fails
-      }
-
+    // Type guard: result should have the correct structure from executeTrade
+    if (!result || typeof result !== "object" || !("success" in result) || !result.success) {
       return apiResponse(
-        createSuccessResponse(orderResult, {
-          message: "Order placed successfully",
+        createErrorResponse("Invalid trade execution result", {
+          message: "Trade execution returned invalid result format",
+          details: result,
         }),
-        HTTP_STATUS.CREATED,
-      );
-    } else {
-      logger.error("Trading order failed", { orderResult });
-
-      return apiResponse(
-        createErrorResponse(orderResult.error || "Order placement failed", {
-          message: "Order placement failed",
-          details: orderResult,
-        }),
-        HTTP_STATUS.BAD_REQUEST,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
       );
     }
+
+    // At this point, TypeScript knows result.success is true and has the correct structure
+    const orderResult = result;
+
+    logger.info("Trading order executed successfully", { orderResult });
+
+    // Save execution history
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: MEXC order response structure
+      const orderData = orderResult as any; // Type assertion for MEXC order response
+      const executionRecord: NewExecutionHistory = {
+        userId,
+        snipeTargetId: snipeTargetId || null,
+        vcoinId: body.vcoinId || symbol,
+        symbolName: symbol,
+        action: side.toLowerCase() as "buy" | "sell",
+        orderType: type.toLowerCase(),
+        orderSide: side.toLowerCase(),
+        requestedQuantity: parseFloat(quantity),
+        requestedPrice: price ? parseFloat(price) : null,
+        executedQuantity: orderData.executedQty
+          ? parseFloat(orderData.executedQty)
+          : parseFloat(quantity),
+        executedPrice: orderData.price ? parseFloat(orderData.price) : null,
+        totalCost: orderData.cummulativeQuoteQty ? parseFloat(orderData.cummulativeQuoteQty) : null,
+        fees: orderData.fee ? parseFloat(orderData.fee) : null,
+        exchangeOrderId: orderData.orderId?.toString() || null,
+        exchangeStatus: orderData.status || "filled",
+        exchangeResponse: JSON.stringify(orderResult),
+        executionLatencyMs: orderData.transactTime
+          ? Date.now() - Number(orderData.transactTime)
+          : null,
+        slippagePercent:
+          price && orderData.price
+            ? ((parseFloat(orderData.price) - parseFloat(price)) / parseFloat(price)) * 100
+            : null,
+        status: "success",
+        requestedAt: new Date(),
+        executedAt: orderData.transactTime ? new Date(Number(orderData.transactTime)) : new Date(),
+      };
+
+      await db.insert(executionHistory).values(executionRecord);
+      logger.info("Execution history saved", { orderId: orderResult.orderId });
+    } catch (error) {
+      logger.error(
+        "Failed to save execution history",
+        {},
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      // Don't fail the trade response if history save fails
+    }
+
+    return apiResponse(
+      createSuccessResponse(orderResult, {
+        message: "Order placed successfully",
+      }),
+      HTTP_STATUS.CREATED,
+    );
   } catch (error) {
     logger.error(
       "Trading API error",

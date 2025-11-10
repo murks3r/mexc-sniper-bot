@@ -52,16 +52,12 @@ export class MexcCoreAccountClient {
 
       // Check if account data has balances array
       if (accountData?.balances && Array.isArray(accountData.balances)) {
-        const balances = accountData.balances
-          .filter(
-            (balance: any) =>
-              Number.parseFloat(balance.free) > 0 || Number.parseFloat(balance.locked) > 0,
-          )
-          .map((balance: any) => ({
-            asset: balance.asset,
-            free: balance.free,
-            locked: balance.locked,
-          }));
+        // Include ALL balances, even those with zero amounts, so users can see all their assets
+        const balances = accountData.balances.map((balance: any) => ({
+          asset: balance.asset,
+          free: balance.free || "0",
+          locked: balance.locked || "0",
+        }));
 
         return {
           success: true,

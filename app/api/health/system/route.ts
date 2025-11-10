@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 
 // Cache system health data for 30 seconds
+interface SystemHealthData {
+  status?: string;
+  message?: string;
+  timestamp?: string;
+  services?: {
+    database: { status: string; message: string };
+    environment: { status: string; message: string };
+    connectivity: { status: string; message: string };
+    workflows: { status: string; message: string };
+  };
+  [key: string]: unknown;
+}
 let systemHealthCache: {
-  data: any;
+  data: SystemHealthData;
   timestamp: number;
 } | null = null;
 

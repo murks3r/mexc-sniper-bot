@@ -26,9 +26,9 @@ const mockTestUser: User = {
 
 type TestAuthContextType = {
   user: User | null;
-  session: any;
+  session: { access_token?: string; [key: string]: unknown } | null;
   isLoading: boolean;
-  signOut: () => Promise<any>;
+  signOut: () => Promise<{ error?: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithProvider: (provider: "google" | "github") => Promise<{ error: Error | null }>;

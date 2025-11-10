@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/src/db";
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       parsed.data;
 
     // Build query conditions
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (userId) {
       conditions.push(eq(transactions.userId, userId));
     }
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           );
         }
         conditions.push(gte(transactions.transactionTime, fromTimestamp));
-      } catch (dateError) {
+      } catch {
         // Error parsing fromDate - error logging handled by error handler middleware
         return apiResponse(
           createValidationErrorResponse("fromDate", "Invalid fromDate format"),
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
           );
         }
         conditions.push(lte(transactions.transactionTime, toTimestamp));
-      } catch (dateError) {
+      } catch {
         // Error parsing toDate - error logging handled by error handler middleware
         return apiResponse(
           createValidationErrorResponse("toDate", "Invalid toDate format"),
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query with database error handling
-    let userTransactions;
+    let userTransactions: Array<typeof transactions.$inferSelect>;
     try {
       const base = db.select().from(transactions);
       const filtered = conditions.length ? base.where(and(...conditions)) : base;
@@ -277,12 +277,14 @@ export async function POST(request: NextRequest) {
       buyTimestamp: transactionData.buyTimestamp
         ? (() => {
             try {
-              const date = new Date(transactionData.buyTimestamp!);
+              const timestamp = transactionData.buyTimestamp;
+              if (!timestamp) return undefined;
+              const date = new Date(timestamp);
               if (Number.isNaN(date.getTime())) {
-                throw new Error(`Invalid buyTimestamp: ${transactionData.buyTimestamp}`);
+                throw new Error(`Invalid buyTimestamp: ${timestamp}`);
               }
               return date;
-            } catch (error) {
+            } catch {
               // Error converting buyTimestamp - error logging handled by error handler middleware
               return new Date(); // Fallback to current time
             }
@@ -295,12 +297,14 @@ export async function POST(request: NextRequest) {
       sellTimestamp: transactionData.sellTimestamp
         ? (() => {
             try {
-              const date = new Date(transactionData.sellTimestamp!);
+              const timestamp = transactionData.sellTimestamp;
+              if (!timestamp) return undefined;
+              const date = new Date(timestamp);
               if (Number.isNaN(date.getTime())) {
-                throw new Error(`Invalid sellTimestamp: ${transactionData.sellTimestamp}`);
+                throw new Error(`Invalid sellTimestamp: ${timestamp}`);
               }
               return date;
-            } catch (error) {
+            } catch {
               // Error converting sellTimestamp - error logging handled by error handler middleware
               return new Date(); // Fallback to current time
             }
@@ -317,7 +321,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Execute database insertion with error handling
-    let created;
+    let created: Array<typeof transactions.$inferSelect> | undefined;
     try {
       [created] = await Promise.race([
         db.insert(transactions).values(insertData).returning(),
@@ -383,7 +387,7 @@ export async function PUT(request: NextRequest) {
     updateData.updatedAt = Math.floor(Date.now() / 1000);
 
     // Execute database update with error handling
-    let updated;
+    let updated: Array<typeof transactions.$inferSelect> | undefined;
     try {
       [updated] = await Promise.race([
         db.update(transactions).set(updateData).where(eq(transactions.id, id)).returning(),

@@ -2,12 +2,14 @@
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
+import type { User } from "@supabase/supabase-js";
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/src/lib/supabase-browser-client";
 import {
   bypassRateLimitInDev,
+  type RateLimitInfo,
   SupabaseRateLimitHandler,
 } from "@/src/lib/supabase-rate-limit-handler";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -27,10 +29,10 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
     signInAnonymously,
     isAnonymous,
   } = useAuth();
-  const [user, setUser] = useState<any>(contextUser);
+  const [user, setUser] = useState<User | null>(contextUser);
   const [isLoading, setIsLoading] = useState(contextLoading);
   const [mounted, setMounted] = useState(false);
-  const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null);
   const [lastEmail, _setLastEmail] = useState<string>("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
@@ -91,7 +93,7 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
     });
 
     // Listen for auth errors globally
-    const handleAuthError = (error: any) => {
+    const handleAuthError = (error: unknown) => {
       const rateLimitAnalysis = SupabaseRateLimitHandler.analyzeRateLimitError(error);
       if (rateLimitAnalysis.isRateLimited) {
         setRateLimitInfo(rateLimitAnalysis);
@@ -101,19 +103,18 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
 
     // Add global error listener for auth-related errors
     if (typeof window !== "undefined") {
-      const handleGlobalError = (event: any) => {
-        const error = event.reason || event.error;
+      const handleGlobalError = (event: ErrorEvent | PromiseRejectionEvent) => {
+        const error = (event as PromiseRejectionEvent).reason || (event as ErrorEvent).error;
         if (
-          error &&
-          (error.message?.includes("rate") ||
-            error.message?.includes("limit") ||
-            error.message?.includes("too many"))
+          (error && (error instanceof Error ? error.message : String(error)).includes("rate")) ||
+          (error instanceof Error ? error.message : String(error)).includes("limit") ||
+          (error instanceof Error ? error.message : String(error)).includes("too many")
         ) {
           handleAuthError(error);
         }
       };
 
-      window.addEventListener("unhandledrejection", handleGlobalError);
+      window.addEventListener("unhandledrejection", handleGlobalError as EventListener);
       window.addEventListener("error", handleGlobalError);
 
       // Also listen for fetch errors that might be rate limits
@@ -185,7 +186,8 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
 
     // Try to get email from form inputs or global tracking
     const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
-    return emailInput?.value || (window as any).lastAuthEmail || "";
+    const windowWithEmail = window as typeof window & { lastAuthEmail?: string };
+    return emailInput?.value || windowWithEmail.lastAuthEmail || "";
   };
 
   // Don't render anything until mounted to prevent hydration mismatch
@@ -295,7 +297,7 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
         )}
 
         <Auth
-          supabaseClient={supabase as any}
+          supabaseClient={supabase as unknown as Parameters<typeof Auth>[0]["supabaseClient"]}
           appearance={{
             theme: ThemeSupa,
             variables: {
