@@ -123,16 +123,16 @@ describe.skipIf(skipIntegrationTests)("Supabase Auth Integration Tests", () => {
   describe("Session Management", () => {
     it("should create authenticated request with JWT token", async () => {
       try {
-        const { session, user } = await createAndSignInTestUser({
+        const { session, user, accessToken } = await createAndSignInTestUser({
           email: `test_session_${Date.now()}@example.com`,
         });
 
         const request = createAuthenticatedRequest(
           "http://localhost:3000/api/test",
-          session.accessToken,
+          accessToken,
         );
 
-        expect(request.headers.get("Authorization")).toBe(`Bearer ${session.accessToken}`);
+        expect(request.headers.get("Authorization")).toBe(`Bearer ${accessToken}`);
 
         await cleanupTestUser(user.id);
       } catch (error: any) {
