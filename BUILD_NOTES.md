@@ -17,10 +17,11 @@ Error: could not resolve "../lightningcss.darwin-arm64.node" into a module
 Module not found: Can't resolve '../pkg'
 ```
 
-**Workarounds**:
-1. **Production builds on Vercel**: Builds work fine on Vercel as they use webpack or handle native modules differently
-2. **Local development**: Use `npm run dev` which works fine (Turbopack handles dev mode better)
-3. **Future fix**: This is a known Turbopack limitation that should be resolved in future Next.js/Turbopack updates
+**Solution**: 
+- **Using Webpack instead of Turbopack**: Configured `npm run dev` to use webpack by setting `NEXT_PRIVATE_SKIP_TURBOPACK=1`
+- **Dev mode**: `npm run dev` now uses webpack (works with native modules)
+- **Turbopack option**: `npm run dev:turbo` available if you want to test Turbopack (may have native module issues)
+- **Production builds**: Work fine on Vercel and locally with webpack
 
 **What We've Done**:
 - ✅ Added retry logic with exponential backoff for rate-limited operations

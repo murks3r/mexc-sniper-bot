@@ -4,7 +4,8 @@
   "description": "MEXC cryptocurrency trading bot with pattern detection and automated sniping execution",
   "scripts": {
     "postinstall": "echo 'Dependencies installed'",
-    "dev": "next dev -p 3008",
+    "dev": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next dev -p 3008",
+    "dev:turbo": "next dev -p 3008",
     "prebuild": "node scripts/ensure-lightningcss.js",
     "build": "next build",
     "build:webpack": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next build",

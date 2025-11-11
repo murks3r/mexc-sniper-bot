@@ -98,57 +98,11 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-  // Turbopack configuration (for dev mode only)
-  // Production builds use webpack to avoid native module issues
-  turbopack: {
-    // Resolve aliases to exclude problematic modules from client bundles
-    // Using conditional exports to only apply to browser builds
-    resolveAlias: {
-      // Node.js built-in modules - exclude from browser bundles
-      // These are automatically handled by Turbopack, but explicit for clarity
-      fs: { browser: './empty-module.js' },
-      path: { browser: './empty-module.js' },
-      os: { browser: './empty-module.js' },
-      crypto: { browser: './empty-module.js' },
-      buffer: { browser: './empty-module.js' },
-      stream: { browser: './empty-module.js' },
-      util: { browser: './empty-module.js' },
-      url: { browser: './empty-module.js' },
-      querystring: { browser: './empty-module.js' },
-      
-      // React Native and Expo dependencies - exclude from browser bundles
-      // These are mobile-only and should never be in web bundles
-      'expo-secure-store': { browser: './empty-module.js' },
-      'expo-modules-core': { browser: './empty-module.js' },
-      'react-native': { browser: './empty-module.js' },
-      '@react-native-async-storage/async-storage': { browser: './empty-module.js' },
-      
-      // OpenTelemetry packages - server-only, exclude from browser bundles
-      // These use Node.js APIs and gRPC which don't work in browsers
-      '@opentelemetry/auto-instrumentations-node': { browser: './empty-module.js' },
-      '@opentelemetry/instrumentation': { browser: './empty-module.js' },
-      '@opentelemetry/sdk-node': { browser: './empty-module.js' },
-      '@opentelemetry/resources': { browser: './empty-module.js' },
-      '@opentelemetry/exporter-jaeger': { browser: './empty-module.js' },
-      '@opentelemetry/exporter-prometheus': { browser: './empty-module.js' },
-      '@opentelemetry/sdk-trace-node': { browser: './empty-module.js' },
-      '@opentelemetry/sdk-metrics': { browser: './empty-module.js' },
-      '@opentelemetry/core': { browser: './empty-module.js' },
-      
-      // gRPC and Node.js specific modules - exclude from browser bundles
-      // gRPC is a server-side protocol and doesn't work in browsers
-      '@grpc/grpc-js': { browser: './empty-module.js' },
-      '@opentelemetry/otlp-grpc-exporter-base': { browser: './empty-module.js' },
-      '@opentelemetry/exporter-logs-otlp-grpc': { browser: './empty-module.js' },
-      
-      // CSS processing native modules - exclude from browser bundles
-      // These are PostCSS plugins that only run server-side during build
-      'lightningcss': { browser: './empty-module.js' },
-      'lightningcss/node': { browser: './empty-module.js' },
-      '@tailwindcss/oxide': { browser: './empty-module.js' },
-      '@tailwindcss/postcss': { browser: './empty-module.js' },
-    },
-  },
+  // Turbopack configuration disabled - using webpack for both dev and production
+  // due to Turbopack's native module resolution limitations with lightningcss
+  // turbopack: {
+  //   resolveAlias: { ... }
+  // },
 
   // Note: serverComponentsExternalPackages has been moved to serverExternalPackages
 };

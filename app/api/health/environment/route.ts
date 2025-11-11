@@ -86,7 +86,9 @@ export async function GET(_request: NextRequest) {
     }
 
     if (databaseCredentialResult.status === "error" && databaseCredentialResult.error) {
-      recommendations.push(`Database credential retrieval failed: ${databaseCredentialResult.error}`);
+      recommendations.push(
+        `Database credential retrieval failed: ${databaseCredentialResult.error}`,
+      );
     }
 
     const validation = {
@@ -99,7 +101,11 @@ export async function GET(_request: NextRequest) {
         invalid: 0,
         credentialSources: {
           database: databaseCredentialResult.status,
-          environment: hasEnvironmentCredentials ? "valid" : missing.length > 0 ? "missing" : "unknown",
+          environment: hasEnvironmentCredentials
+            ? "valid"
+            : missing.length > 0
+              ? "missing"
+              : "unknown",
         },
       },
       results: validationResults,
