@@ -5,7 +5,9 @@
   "scripts": {
     "postinstall": "echo 'Dependencies installed'",
     "dev": "next dev -p 3008",
+    "prebuild": "node scripts/ensure-lightningcss.js",
     "build": "next build",
+    "build:webpack": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next build",
     "test:integration": "USE_REAL_SUPABASE=true vitest --run",
     "start": "next start",
     "lint": "npx biome check --write",
@@ -58,6 +60,7 @@
     "@tanstack/react-query-devtools": "^5.90.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "critters": "^0.0.25",
     "date-fns": "^4.1.0",
     "dotenv": "^16.6.1",
     "drizzle-kit": "^0.31.6",

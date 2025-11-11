@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     "expo-modules-core",
     "react-native",
     "@react-native-async-storage/async-storage",
+    "lightningcss",
+    "lightningcss-darwin-arm64",
     // OpenTelemetry packages for server-side only
     "@opentelemetry/auto-instrumentations-node",
     "@opentelemetry/instrumentation",
@@ -62,15 +64,42 @@ const nextConfig: NextConfig = {
       'clsx',
       'tailwind-merge'
     ],
-    // Enable advanced optimization features
-    optimizeCss: true,
+    // Disable optimizeCss to avoid Turbopack native module issues
+    // CSS optimization is still handled by PostCSS/Tailwind
+    optimizeCss: false,
     gzipSize: true,
     // Enable Turbopack filesystem caching for faster dev restarts
     turbopackFileSystemCacheForDev: true,
   },
+  
+  // Use webpack for production builds to avoid Turbopack native module issues
+  // Turbopack is still used for dev mode (faster), but webpack handles production builds
+  webpack: (config, { isServer, dev }) => {
+    // For production builds, ensure native CSS modules are excluded from client bundle
+    if (!isServer && !dev) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'lightningcss': false,
+        'lightningcss/node': false,
+        '@tailwindcss/oxide': false,
+        '@tailwindcss/postcss': false,
+      };
+    }
+    
+    // Exclude native modules from being processed
+    config.externals = config.externals || [];
+    if (Array.isArray(config.externals)) {
+      config.externals.push({
+        'lightningcss': 'commonjs lightningcss',
+        '@tailwindcss/oxide': 'commonjs @tailwindcss/oxide',
+      });
+    }
+    
+    return config;
+  },
 
-  // Turbopack configuration (replaces webpack)
-  // Optimized for performance with proper module exclusion
+  // Turbopack configuration (for dev mode only)
+  // Production builds use webpack to avoid native module issues
   turbopack: {
     // Resolve aliases to exclude problematic modules from client bundles
     // Using conditional exports to only apply to browser builds
@@ -111,6 +140,13 @@ const nextConfig: NextConfig = {
       '@grpc/grpc-js': { browser: './empty-module.js' },
       '@opentelemetry/otlp-grpc-exporter-base': { browser: './empty-module.js' },
       '@opentelemetry/exporter-logs-otlp-grpc': { browser: './empty-module.js' },
+      
+      // CSS processing native modules - exclude from browser bundles
+      // These are PostCSS plugins that only run server-side during build
+      'lightningcss': { browser: './empty-module.js' },
+      'lightningcss/node': { browser: './empty-module.js' },
+      '@tailwindcss/oxide': { browser: './empty-module.js' },
+      '@tailwindcss/postcss': { browser: './empty-module.js' },
     },
   },
 

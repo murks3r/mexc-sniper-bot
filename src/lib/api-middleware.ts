@@ -41,6 +41,7 @@ import {
   getClientIP,
   logSecurityEvent,
 } from "./rate-limiter";
+import { DatabaseError } from "./errors";
 
 // =======================
 // Types and Interfaces
@@ -687,124 +688,51 @@ export const publicHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
 export const authenticatedHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
   createApiHandler({ ...config, auth: "required" });
 
-/**
- * Creates a user-specific API handler (validates user access)
- */
-export const userHandler = (
-  userAccess: "query" | "body" = "query",
-  config: Omit<MiddlewareConfig, "auth" | "userAccess"> = {},
-) => createApiHandler({ ...config, auth: "user-access", userAccess });
+type RouteHandler<Args extends unknown[]> = (
+  request: NextRequest,
+  ...args: Args
+) => Promise<Response>;
 
 /**
- * Creates an admin-only API handler
+ * Wrap a route handler with consistent API error handling.
  */
-export const adminHandler = (config: Omit<MiddlewareConfig, "auth"> = {}) =>
-  createApiHandler({ ...config, auth: "admin" });
+export function withApiErrorHandling<Args extends unknown[]>(
+  handler: RouteHandler<Args>,
+  defaultMessage = "Internal server error",
+): RouteHandler<Args> {
+  return async (request: NextRequest, ...args: Args): Promise<Response> => {
+    try {
+      return await handler(request, ...args);
+    } catch (error) {
+      console.error("[API Middleware] Route error", {
+        url: request.url,
+        error,
+      });
+      return handleApiRouteError(error, defaultMessage);
+    }
+  };
+}
 
 /**
- * Creates a handler for sensitive data operations
+ * Execute a database operation with standardized error handling.
  */
-export const sensitiveDataHandler = (config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}) =>
-  createApiHandler({
-    ...config,
-    auth: "required",
-    rateLimit: "authStrict",
-    logging: true,
-  });
+export async function withDatabaseErrorHandling<T>(
+  operation: () => Promise<T>,
+  actionDescription = "database operation",
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof DatabaseError) {
+      throw error;
+    }
 
-/**
- * Creates a trading API handler with enhanced security
- */
-export const tradingHandler = (config: Omit<MiddlewareConfig, "auth" | "rateLimit"> = {}) =>
-  createApiHandler({
-    ...config,
-    auth: "required",
-    rateLimit: "auth",
-    parseBody: true,
-    logging: true,
-  });
+    console.error("[API Middleware] Database operation failed", {
+      action: actionDescription,
+      error,
+    });
 
-/**
- * Creates a cached API handler for GET requests
- */
-export const cachedHandler = (
-  cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "cache"> = {},
-) =>
-  createApiHandler({
-    ...config,
-    cache: cacheConfig,
-  });
-
-/**
- * Creates a cached public API handler
- */
-export const cachedPublicHandler = (
-  cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "auth" | "cache"> = {},
-) =>
-  createApiHandler({
-    ...config,
-    auth: "none",
-    cache: cacheConfig,
-  });
-
-/**
- * Creates a cached authenticated API handler
- */
-export const cachedAuthenticatedHandler = (
-  cacheConfig: CacheConfig | boolean = true,
-  config: Omit<MiddlewareConfig, "auth" | "cache"> = {},
-) =>
-  createApiHandler({
-    ...config,
-    auth: "required",
-    cache: cacheConfig,
-  });
-
-/**
- * Creates a high-performance cached handler for frequently accessed data
- */
-export const highPerformanceHandler = (
-  config: Omit<MiddlewareConfig, "cache" | "rateLimit"> = {},
-) =>
-  createApiHandler({
-    ...config,
-    cache: {
-      enabled: true,
-      ttl: 5 * 60 * 1000, // 5 minutes
-      freshnessRequirement: "moderate",
-      bypassCondition: (request) => request.headers.get("cache-control") === "no-cache",
-    },
-    rateLimit: "general",
-  });
-
-/**
- * Creates a real-time data handler with minimal caching
- */
-export const realTimeHandler = (config: Omit<MiddlewareConfig, "cache"> = {}) =>
-  createApiHandler({
-    ...config,
-    cache: {
-      enabled: true,
-      ttl: 30 * 1000, // 30 seconds
-      freshnessRequirement: "strict",
-      bypassCondition: (request) =>
-        request.headers.get("x-real-time") === "true" ||
-        request.headers.get("cache-control") === "no-cache",
-    },
-  });
-
-/**
- * Creates a data-heavy handler with aggressive caching
- */
-export const dataHeavyHandler = (config: Omit<MiddlewareConfig, "cache"> = {}) =>
-  createApiHandler({
-    ...config,
-    cache: {
-      enabled: true,
-      ttl: 15 * 60 * 1000, // 15 minutes
-      freshnessRequirement: "relaxed",
-      dependencies: ["data/heavy"],
-    },
-  });
+    const dbError = error instanceof Error ? error : new Error(String(error));
+    throw new DatabaseError(`Failed to ${actionDescription}`, undefined, dbError);
+  }
+}
