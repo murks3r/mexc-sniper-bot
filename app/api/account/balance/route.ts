@@ -12,10 +12,6 @@ import { withDatabaseQueryCache } from "@/src/lib/database-query-cache-middlewar
 import { executeWithRateLimit } from "@/src/lib/database-rate-limiter";
 import { validateExternalApiResponse } from "@/src/lib/enhanced-validation-middleware";
 
-// Removed: cost-monitor middleware - not found, using direct implementation
-const recordCostMetrics = () => {}; // Stub
-// biome-ignore lint/suspicious/noExplicitAny: Stub function for removed middleware
-const withCostMonitoring = <T extends (...args: any[]) => any>(fn: T): T => fn; // Stub
 
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
 import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
@@ -204,9 +200,9 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
       setTimeout(() => reject(new Error("Request timeout: MEXC API call took too long")), 15000);
     });
 
+    const startTime = Date.now();
     let balanceResponse: Awaited<ReturnType<typeof mexcClient.getAccountBalances>>;
     try {
-      const startTime = Date.now();
 
       // Enhanced MEXC API call with proper error handling and monitoring
       const rawResponse = await executeWithRateLimit(async () => {
@@ -245,14 +241,10 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
       );
 
       if (!validationResult.success) {
-        // Response validation failed
+        throw new Error(`MEXC API response validation failed: ${JSON.stringify(validationResult.error)}`);
       }
 
       balanceResponse = rawResponse;
-
-      // Record cost metrics for monitoring
-      const _operationDuration = Date.now() - startTime;
-      recordCostMetrics();
     } catch (mexcError) {
       // MEXC API call failed
       const errorMessage =
@@ -335,7 +327,7 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
         credentialsType,
       },
       metadata: {
-        requestDuration: `${Date.now() - Date.now()}ms`,
+        requestDuration: `${Date.now() - startTime}ms`,
         balanceCount: balanceData.balances.length,
         credentialSource: hasUserCredentials ? "user-database" : "environment",
         apiVersion: "v1",
@@ -357,12 +349,10 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Export the handler wrapped with cost monitoring and database query caching
-export const GET = withCostMonitoring(
-  withDatabaseQueryCache(balanceHandler, {
-    endpoint: "/api/account/balance",
-    cacheTtlSeconds: 60, // 1 minute cache
-    enableCompression: true,
-    enableStaleWhileRevalidate: false, // Financial data needs to be fresh
-  }),
-);
+// Export the handler wrapped with database query caching
+export const GET = withDatabaseQueryCache(balanceHandler, {
+  endpoint: "/api/account/balance",
+  cacheTtlSeconds: 60, // 1 minute cache
+  enableCompression: true,
+  enableStaleWhileRevalidate: false, // Financial data needs to be fresh
+});

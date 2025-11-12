@@ -214,5 +214,44 @@ describe("Account Balance API Completeness", () => {
     expect(typeof data.data.totalUsdtValue).toBe("number");
     expect(data.data.totalUsdtValue).toBeGreaterThanOrEqual(0);
   });
+
+  it("should report request duration using captured start time", async () => {
+    const mockBalances = {
+      success: true,
+      data: {
+        balances: [
+          {
+            asset: "USDT",
+            free: "100",
+            locked: "0",
+            usdtValue: 100,
+            total: 100,
+          },
+        ],
+        totalUsdtValue: 100,
+        lastUpdated: new Date().toISOString(),
+      },
+      timestamp: 1700000000000,
+    };
+
+    mockGetAccountBalances.mockResolvedValue(mockBalances);
+
+    const nowSpy = vi.spyOn(Date, "now");
+    nowSpy.mockImplementationOnce(() => 1_000);
+    nowSpy.mockImplementation(() => 1_450);
+
+    const request = new Request("http://localhost:3000/api/account/balance?userId=test-user-id", {
+      method: "GET",
+    });
+
+    const response = await GET(request as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.metadata).toBeDefined();
+    expect(data.metadata.requestDuration).toBe("450ms");
+
+    nowSpy.mockRestore();
+  });
 });
 

@@ -4,11 +4,13 @@
   "description": "MEXC cryptocurrency trading bot with pattern detection and automated sniping execution",
   "scripts": {
     "postinstall": "echo 'Dependencies installed'",
-    "dev": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next dev -p 3008",
+    "dev": "next dev --webpack -p 3008",
+    "dev:full": "npm run dev & npx inngest-cli dev",
+    "dev:inngest": "npx inngest-cli dev",
     "dev:turbo": "next dev -p 3008",
     "prebuild": "node scripts/ensure-lightningcss.js",
-    "build": "next build",
-    "build:webpack": "NEXT_PRIVATE_SKIP_TURBOPACK=1 next build",
+    "build": "next build --webpack",
+    "build:webpack": "next build --webpack",
     "test:integration": "USE_REAL_SUPABASE=true vitest --run",
     "start": "next start",
     "lint": "npx biome check --write",
@@ -122,12 +124,6 @@
     "@opentelemetry/sdk-trace-base": "^1.30.1",
     "@opentelemetry/sdk-trace-node": "^1.30.1",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "drizzle-kit": {
-      "@esbuild-kit/esm-loader": {
-        "@esbuild-kit/core-utils": {
-          "esbuild": "^0.25.12"
-        }
-      }
-    }
+    "esbuild": "^0.25.12"
   }
 }

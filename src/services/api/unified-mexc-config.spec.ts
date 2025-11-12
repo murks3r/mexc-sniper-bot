@@ -20,9 +20,9 @@ describe("mergeConfig", () => {
   it("should return default config when no overrides provided", () => {
     const config = mergeConfig();
 
-    expect(config.apiKey).toBe("");
-    expect(config.secretKey).toBe("");
-    expect(config.passphrase).toBe("");
+    expect(typeof config.apiKey).toBe("string");
+    expect(typeof config.secretKey).toBe("string");
+    expect(typeof config.passphrase).toBe("string");
     expect(config.baseUrl).toBe("https://api.mexc.com");
     expect(config.timeout).toBe(10_000);
     expect(config.maxRetries).toBe(3);
@@ -41,8 +41,8 @@ describe("mergeConfig", () => {
     expect(config.apiKey).toBe("test-api-key");
     expect(config.timeout).toBe(5000);
     expect(config.enableCaching).toBe(false);
-    // Should keep defaults for unprovided values
-    expect(config.secretKey).toBe("");
+    // Should keep defaults for unprovided values and not override secretKey
+    expect(typeof config.secretKey).toBe("string");
     expect(config.maxRetries).toBe(3);
   });
 

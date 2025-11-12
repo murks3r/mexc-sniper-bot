@@ -5,7 +5,7 @@
  * This creates a single source of truth and solves rate limiting issues.
  */
 
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { snipeTargets, user } from "@/src/db/schema";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
@@ -46,7 +46,11 @@ export class CalendarToDatabaseSyncService {
    */
   private async ensureSystemUser(): Promise<void> {
     try {
-      const existingUser = await db.select().from(user).where(eq(user.id, "system")).limit(1);
+      const existingUser = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, "system"))
+        .limit(1);
 
       if (existingUser.length === 0) {
         await db.insert(user).values({
@@ -162,6 +166,25 @@ export class CalendarToDatabaseSyncService {
     } finally {
       this.isRunning = false;
     }
+
+      try {
+        const [{ count }] = (await db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(snipeTargets)
+          .where(eq(snipeTargets.userId, userId))) as { count: number }[];
+        this.logger.info("Snipe targets summary after sync", {
+          userId,
+          totalTargetsForUser: Number(count) || 0,
+        });
+      } catch (summaryError) {
+        this.logger.warn("Failed to fetch snipe targets summary after sync", {
+          userId,
+          error:
+            summaryError instanceof Error
+              ? summaryError.message
+              : "Unknown summary error",
+        });
+      }
 
     return result;
   }

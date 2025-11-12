@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { memo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useMexcCalendar } from "../../hooks/use-mexc-data";
 import { usePatternSniper } from "../../hooks/use-pattern-sniper";
 import type { TradingTargetDisplay } from "../../types/trading-display-types";
@@ -279,6 +280,18 @@ function useProcessedCoinData() {
 
   const { data: calendarData } = useMexcCalendar();
 
+  // Fetch active targets count from database
+  const { data: activeTargetsData } = useQuery({
+    queryKey: ["snipe-targets", "active-count"],
+    queryFn: async () => {
+      const response = await fetch("/api/snipe-targets?status=active&includeSystem=true");
+      if (!response.ok) throw new Error("Failed to fetch active targets");
+      return response.json() as Promise<{ success: boolean; data: unknown[]; count: number }>;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 25000,
+  });
+
   // Process calendar data with filtering and limiting
   const upcomingCoins = Array.isArray(calendarData)
     ? limitDisplayedListings(filterUpcomingCoins(calendarData), 50)
@@ -319,7 +332,7 @@ function useProcessedCoinData() {
   const transformedStats = {
     totalListings: stats?.totalListings || enrichedCalendarData.length,
     pendingDetection: stats?.pendingDetection || monitoringTargets.length,
-    readyToSnipe: stats?.readyToSnipe || readyTargetsEnriched.length,
+    readyToSnipe: activeTargetsData?.count || 0, // Use database active targets count
     successRate: stats?.successRate,
   };
 

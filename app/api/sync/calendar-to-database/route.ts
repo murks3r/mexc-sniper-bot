@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
         createSuccessResponse(result, {
           message: `Sync completed: ${result.created} created, ${result.updated} updated`,
           syncStatus: calendarSyncService.getSyncStatus(),
+          targetsSummary: {
+            created: result.created,
+            updated: result.updated,
+            processed: result.processed,
+            errors: result.errors,
+          },
         }),
         HTTP_STATUS.OK,
       );

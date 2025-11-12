@@ -14,6 +14,7 @@ interface PortfolioSummary {
   totalValueBTC: number;
   allocation: Record<string, number>;
   performance24h: { change: number; changePercent: number };
+  lastUpdated: string;
 }
 
 export class UnifiedMexcPortfolioModule {
@@ -137,6 +138,7 @@ export class UnifiedMexcPortfolioModule {
         totalValueBTC: 0,
         allocation,
         performance24h: { change: 0, changePercent: 0 },
+        lastUpdated: new Date().toISOString(),
       },
       timestamp: Date.now(),
       source: "unified-mexc-portfolio",
