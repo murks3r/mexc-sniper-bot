@@ -161,188 +161,233 @@ function createErrorResponse(
   };
 }
 
+async function initializeBalanceRequest(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
+
+  // Validate userId format if provided
+  const userIdValidation = await validateUserId(userId);
+  if (userIdValidation) {
+    return { error: userIdValidation };
+  }
+
+  const hasUserCredentials = !!userId;
+  const credentialsType = hasUserCredentials ? "user-specific" : "environment-fallback";
+
+  return { userId, hasUserCredentials, credentialsType };
+}
+
+async function setupMexcClient(
+  userId: string | null,
+  hasUserCredentials: boolean,
+  credentialsType: string,
+) {
+  // Check if credentials are available before proceeding
+  const credentialsValidation = await validateCredentials(hasUserCredentials, credentialsType);
+  if (credentialsValidation) {
+    return { error: credentialsValidation };
+  }
+
+  // Get MEXC account balances using appropriate credentials
+  const clientResult = await createMexcClient(userId, hasUserCredentials, credentialsType);
+  if (!("client" in clientResult)) {
+    return { error: clientResult };
+  }
+
+  return { client: clientResult.client };
+}
+
+async function fetchBalanceData(mexcClient: any) {
+  // Add timeout to prevent hanging requests
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Request timeout: MEXC API call took too long")), 15000);
+  });
+
+  // Enhanced MEXC API call with proper error handling and monitoring
+  const rawResponse = await executeWithRateLimit(async () => {
+    return executeWithCircuitBreaker(async () => {
+      const balanceResponse = (await Promise.race([
+        mexcClient.getAccountBalances(),
+        timeoutPromise,
+      ])) as Awaited<ReturnType<typeof mexcClient.getAccountBalances>>;
+
+      return balanceResponse;
+    }, "mexc-account-balance");
+  }, "balance-api-mexc-call");
+
+  // Enhanced validation with proper error handling
+  const responseSchema = z.object({
+    success: z.boolean(),
+    data: z
+      .object({
+        balances: z.array(AccountBalanceSchema),
+        totalUsdtValue: z.number().nonnegative(),
+        lastUpdated: z.string(),
+      })
+      .optional(),
+    error: z.string().optional(),
+    timestamp: z.union([z.string(), z.number()]),
+    executionTimeMs: z.number().optional(),
+    source: z.string().optional(),
+  });
+
+  const validationResult = validateExternalApiResponse(
+    responseSchema,
+    rawResponse,
+    "MEXC Account Balance API",
+  );
+
+  if (!validationResult.success) {
+    throw new Error(
+      `MEXC API response validation failed: ${JSON.stringify(validationResult.error)}`,
+    );
+  }
+
+  return rawResponse;
+}
+
+function handleMexcError(mexcError: unknown, hasUserCredentials: boolean, credentialsType: string) {
+  const errorMessage = mexcError instanceof Error ? mexcError.message : "Unknown MEXC API error";
+
+  // Handle specific MEXC errors with appropriate status codes
+  let statusCode = 500;
+  let errorCode = "MEXC_API_ERROR";
+
+  const errorMappings = [
+    {
+      patterns: ["Signature for this request is not valid", "signature", "700002"],
+      status: 401,
+      code: "MEXC_SIGNATURE_ERROR",
+    },
+    {
+      patterns: ["Api key info invalid", "10072", "unauthorized"],
+      status: 401,
+      code: "MEXC_AUTH_ERROR",
+    },
+    {
+      patterns: ["rate limit", "too many requests"],
+      status: 429,
+      code: "MEXC_RATE_LIMIT",
+    },
+    {
+      patterns: ["timeout"],
+      status: 504,
+      code: "REQUEST_TIMEOUT",
+    },
+  ];
+
+  for (const mapping of errorMappings) {
+    if (mapping.patterns.some((pattern) => errorMessage.includes(pattern))) {
+      statusCode = mapping.status;
+      errorCode = mapping.code;
+      break;
+    }
+  }
+
+  const fallbackData = createFallbackData(hasUserCredentials, credentialsType);
+  return NextResponse.json(
+    {
+      success: false,
+      error: errorMessage,
+      meta: {
+        fallbackData,
+        code: errorCode,
+        details: "MEXC API authentication failed - check credentials and IP allowlist",
+      },
+    },
+    { status: statusCode },
+  );
+}
+
+function createSuccessResponse(
+  balanceData: any,
+  hasUserCredentials: boolean,
+  credentialsType: string,
+  startTime: number,
+) {
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...balanceData,
+      hasUserCredentials,
+      credentialsType,
+    },
+    metadata: {
+      requestDuration: `${Date.now() - startTime}ms`,
+      balanceCount: balanceData.balances.length,
+      credentialSource: hasUserCredentials ? "user-database" : "environment",
+      apiVersion: "v1",
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
+
+function createBalanceErrorResponse(
+  balanceResponse: any,
+  hasUserCredentials: boolean,
+  credentialsType: string,
+) {
+  const fallbackData = createFallbackData(hasUserCredentials, credentialsType);
+  const errorMessage = balanceResponse.error || "Failed to fetch account balance data";
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: errorMessage,
+      meta: {
+        fallbackData,
+        code: "MEXC_RESPONSE_ERROR",
+        details: "MEXC API returned an error response",
+      },
+    },
+    { status: 400 },
+  );
+}
+
 async function balanceHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    // Extract userId from query parameters (optional)
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    // Validate userId format if provided
-    const userIdValidation = await validateUserId(userId);
-    if (userIdValidation) {
-      return NextResponse.json(userIdValidation.data, { status: userIdValidation.status });
+    // Initialize request parameters
+    const initResult = await initializeBalanceRequest(request);
+    if ("error" in initResult) {
+      return NextResponse.json(initResult.error.data, { status: initResult.error.status });
     }
 
-    // Determine if we have user credentials or should use environment fallback
-    const hasUserCredentials = !!userId;
-    const credentialsType = hasUserCredentials ? "user-specific" : "environment-fallback";
+    const { userId, hasUserCredentials, credentialsType } = initResult;
 
-    // Starting balance request
-
-    // Check if credentials are available before proceeding
-    const credentialsValidation = await validateCredentials(hasUserCredentials, credentialsType);
-    if (credentialsValidation) {
-      return NextResponse.json(credentialsValidation.data, {
-        status: credentialsValidation.status,
-      });
+    // Setup MEXC client
+    const clientResult = await setupMexcClient(userId, hasUserCredentials, credentialsType);
+    if ("error" in clientResult) {
+      return NextResponse.json(clientResult.error.data, { status: clientResult.error.status });
     }
 
-    // Get MEXC account balances using appropriate credentials
-    const clientResult = await createMexcClient(userId, hasUserCredentials, credentialsType);
-    if (!("client" in clientResult)) {
-      return NextResponse.json(clientResult.data, { status: clientResult.status });
-    }
     const mexcClient = clientResult.client;
-
-    // Add timeout to prevent hanging requests
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Request timeout: MEXC API call took too long")), 15000);
-    });
-
     const startTime = Date.now();
-    let balanceResponse: Awaited<ReturnType<typeof mexcClient.getAccountBalances>>;
+
+    // Fetch balance data
+    let balanceResponse;
     try {
-      // Enhanced MEXC API call with proper error handling and monitoring
-      const rawResponse = await executeWithRateLimit(async () => {
-        return executeWithCircuitBreaker(async () => {
-          const balanceResponse = (await Promise.race([
-            mexcClient.getAccountBalances(),
-            timeoutPromise,
-          ])) as Awaited<ReturnType<typeof mexcClient.getAccountBalances>>;
-
-          // MEXC service response received
-
-          return balanceResponse;
-        }, "mexc-account-balance");
-      }, "balance-api-mexc-call");
-
-      // Enhanced validation with proper error handling
-      const responseSchema = z.object({
-        success: z.boolean(),
-        data: z
-          .object({
-            balances: z.array(AccountBalanceSchema),
-            totalUsdtValue: z.number().nonnegative(),
-            lastUpdated: z.string(),
-          })
-          .optional(),
-        error: z.string().optional(),
-        timestamp: z.union([z.string(), z.number()]),
-        executionTimeMs: z.number().optional(),
-        source: z.string().optional(),
-      });
-
-      const validationResult = validateExternalApiResponse(
-        responseSchema,
-        rawResponse,
-        "MEXC Account Balance API",
-      );
-
-      if (!validationResult.success) {
-        throw new Error(
-          `MEXC API response validation failed: ${JSON.stringify(validationResult.error)}`,
-        );
-      }
-
-      balanceResponse = rawResponse;
+      balanceResponse = await fetchBalanceData(mexcClient);
     } catch (mexcError) {
-      // MEXC API call failed
-      const errorMessage =
-        mexcError instanceof Error ? mexcError.message : "Unknown MEXC API error";
-
-      // Handle specific MEXC errors with appropriate status codes
-      let statusCode = 500;
-      let errorCode = "MEXC_API_ERROR";
-
-      if (
-        errorMessage.includes("Signature for this request is not valid") ||
-        errorMessage.includes("signature") ||
-        errorMessage.includes("700002")
-      ) {
-        statusCode = 401;
-        errorCode = "MEXC_SIGNATURE_ERROR";
-      } else if (
-        errorMessage.includes("Api key info invalid") ||
-        errorMessage.includes("10072") ||
-        errorMessage.includes("unauthorized")
-      ) {
-        statusCode = 401;
-        errorCode = "MEXC_AUTH_ERROR";
-      } else if (
-        errorMessage.includes("rate limit") ||
-        errorMessage.includes("too many requests")
-      ) {
-        statusCode = 429;
-        errorCode = "MEXC_RATE_LIMIT";
-      } else if (errorMessage.includes("timeout")) {
-        statusCode = 504;
-        errorCode = "REQUEST_TIMEOUT";
-      }
-
-      const fallbackData = createFallbackData(hasUserCredentials, credentialsType);
-      return NextResponse.json(
-        {
-          success: false,
-          error: errorMessage,
-          meta: {
-            fallbackData,
-            code: errorCode,
-            details: "MEXC API authentication failed - check credentials and IP allowlist",
-          },
-        },
-        { status: statusCode },
-      );
+      return handleMexcError(mexcError, hasUserCredentials, credentialsType);
     }
 
+    // Handle balance response
     if (!balanceResponse.success) {
-      // Balance response indicates failure
-
-      const fallbackData = createFallbackData(hasUserCredentials, credentialsType);
-      const errorMessage = balanceResponse.error || "Failed to fetch account balance data";
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: errorMessage,
-          meta: {
-            fallbackData,
-            code: "MEXC_RESPONSE_ERROR",
-            details: "MEXC API returned an error response",
-          },
-        },
-        { status: 400 },
-      );
+      return createBalanceErrorResponse(balanceResponse, hasUserCredentials, credentialsType);
     }
 
-    const balanceData = balanceResponse.data;
-
-    // Real balance data returned successfully
-
-    // Enhanced response with proper metadata
-    const responseData = {
-      success: true,
-      data: {
-        ...balanceData,
-        hasUserCredentials,
-        credentialsType,
-      },
-      metadata: {
-        requestDuration: `${Date.now() - startTime}ms`,
-        balanceCount: balanceData.balances.length,
-        credentialSource: hasUserCredentials ? "user-database" : "environment",
-        apiVersion: "v1",
-        timestamp: new Date().toISOString(),
-      },
-    };
-
-    return NextResponse.json(responseData);
+    // Success case
+    return createSuccessResponse(
+      balanceResponse.data,
+      hasUserCredentials,
+      credentialsType,
+      startTime,
+    );
   } catch (error) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const hasUserCredentials = !!userId;
     const credentialsType = hasUserCredentials ? "user-specific" : "environment-fallback";
-
-    // Unexpected top-level error
 
     const errorResponse = createErrorResponse(error, hasUserCredentials, credentialsType);
     return NextResponse.json(errorResponse.data, { status: errorResponse.status });

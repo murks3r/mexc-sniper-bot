@@ -4,7 +4,11 @@
  * Handles performance alerts and threshold monitoring
  */
 
-import { PerformanceAlert, PerformanceThreshold, PerformanceMetrics } from "./monitoring-types";
+import type {
+  PerformanceAlert,
+  PerformanceMetrics,
+  PerformanceThreshold,
+} from "./monitoring-types";
 
 export class AlertManager {
   private alerts: PerformanceAlert[] = [];

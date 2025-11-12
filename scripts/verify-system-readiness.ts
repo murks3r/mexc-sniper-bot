@@ -1,14 +1,14 @@
 /**
  * System Readiness Verification
- * 
+ *
  * Comprehensive check to ensure everything is ready for active targets.
  */
 
+import { and, eq, gte, lte, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
-import { eq, or, and, gte, lte } from "drizzle-orm";
-import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
 import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
+import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
 
 interface ReadinessCheck {
   category: string;
@@ -159,7 +159,7 @@ class SystemReadinessVerifier {
 
       // Check each target's readiness
       let readyCount = 0;
-      let issues: string[] = [];
+      const issues: string[] = [];
 
       for (const target of activeTargets) {
         const targetIssues: string[] = [];
@@ -190,7 +190,11 @@ class SystemReadinessVerifier {
       this.addCheck(
         "Active Targets",
         "Ready for Execution",
-        readyCount === totalActive && totalActive > 0 ? "pass" : readyCount > 0 ? "warning" : "fail",
+        readyCount === totalActive && totalActive > 0
+          ? "pass"
+          : readyCount > 0
+            ? "warning"
+            : "fail",
         `${readyCount}/${totalActive} targets are ready for execution`,
         {
           ready: readyCount,
@@ -258,13 +262,9 @@ class SystemReadinessVerifier {
     try {
       // Simple query to test connection
       const result = await db.execute(`SELECT 1 as test`);
-      this.addCheck(
-        "Database",
-        "Connection",
-        "pass",
-        "Database connection is working",
-        { test: result },
-      );
+      this.addCheck("Database", "Connection", "pass", "Database connection is working", {
+        test: result,
+      });
     } catch (error) {
       this.addCheck(
         "Database",
@@ -435,9 +435,7 @@ async function main() {
   verifier.printReport();
 
   // Exit with appropriate code
-  const hasFailures = verifier.getResults().some((r) =>
-    r.checks.some((c) => c.status === "fail"),
-  );
+  const hasFailures = verifier.getResults().some((r) => r.checks.some((c) => c.status === "fail"));
   process.exit(hasFailures ? 1 : 0);
 }
 
@@ -450,4 +448,3 @@ if (require.main === module) {
 }
 
 export { SystemReadinessVerifier };
-

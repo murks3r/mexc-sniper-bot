@@ -14,8 +14,8 @@
 import { and, eq, gt, lte, sql } from "drizzle-orm";
 import { db, jobs } from "../src/db";
 import { handleCalendarSyncJob } from "../src/services/jobs/handlers/calendar-sync.handler";
-import { handleRiskCheckJob } from "../src/services/jobs/handlers/risk-check.handler";
 import { handleHousekeepingJob } from "../src/services/jobs/handlers/housekeeping.handler";
+import { handleRiskCheckJob } from "../src/services/jobs/handlers/risk-check.handler";
 import {
   archiveSupabaseQueueJob,
   deleteFromSupabaseQueue,

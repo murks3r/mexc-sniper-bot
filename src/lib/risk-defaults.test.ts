@@ -4,11 +4,8 @@
  * Unit tests for risk parameter resolution logic
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import {
-  resolveRiskParamsSync,
-  type ResolveRiskParamsInput,
-} from "./risk-defaults";
+import { beforeEach, describe, expect, it } from "vitest";
+import { type ResolveRiskParamsInput, resolveRiskParamsSync } from "./risk-defaults";
 import { defaultRiskConfig } from "./risk-defaults-config";
 
 describe("Risk Defaults Resolution", () => {
@@ -82,13 +79,15 @@ describe("Risk Defaults Resolution", () => {
       expect(result.stopLossPercent).toBe(defaultRiskConfig.defaultStopLossPercent);
       expect(result.takeProfitLevel).toBe(defaultRiskConfig.defaultTakeProfitLevel);
       expect(result.takeProfitPercent).toBe(
-        defaultRiskConfig.defaultTakeProfitLadder[defaultRiskConfig.defaultTakeProfitLevel === 1
-          ? "L1"
-          : defaultRiskConfig.defaultTakeProfitLevel === 2
-            ? "L2"
-            : defaultRiskConfig.defaultTakeProfitLevel === 3
-              ? "L3"
-              : "L4"],
+        defaultRiskConfig.defaultTakeProfitLadder[
+          defaultRiskConfig.defaultTakeProfitLevel === 1
+            ? "L1"
+            : defaultRiskConfig.defaultTakeProfitLevel === 2
+              ? "L2"
+              : defaultRiskConfig.defaultTakeProfitLevel === 3
+                ? "L3"
+                : "L4"
+        ],
       );
     });
 
@@ -237,4 +236,3 @@ describe("Risk Defaults Resolution", () => {
     });
   });
 });
-

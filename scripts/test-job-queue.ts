@@ -60,7 +60,6 @@ async function testJobQueue() {
     console.log("   1. Run: bun run scripts/process-jobs.ts");
     console.log("   2. Check job status: SELECT * FROM jobs WHERE id = '" + job.id + "';");
     console.log("   3. Verify sync results in snipe_targets table");
-
   } catch (error) {
     console.error("❌ Test failed:", error);
     process.exit(1);

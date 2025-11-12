@@ -68,8 +68,7 @@ export async function GET(request: NextRequest) {
           or(eq(snipeTargets.userId, user.id), eq(snipeTargets.userId, "system")),
         ),
       )
-      .orderBy(snipeTargets.priority)
-      .orderBy(snipeTargets.targetExecutionTime)
+      .orderBy(snipeTargets.priority, snipeTargets.targetExecutionTime)
       .limit(50);
 
     const upcomingTargets = await queryResult;

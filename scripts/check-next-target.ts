@@ -37,19 +37,19 @@ interface TargetInfo {
 
 function formatTimeUntil(targetTime: Date | null): string {
   if (!targetTime) return "No execution time set";
-  
+
   const now = new Date();
   const diff = targetTime.getTime() - now.getTime();
-  
+
   if (diff < 0) {
     const minutesAgo = Math.floor(Math.abs(diff) / 60000);
     return `${minutesAgo} minutes ago (overdue)`;
   }
-  
+
   const hours = Math.floor(diff / 3600000);
   const minutes = Math.floor((diff % 3600000) / 60000);
   const seconds = Math.floor((diff % 60000) / 1000);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m ${seconds}s`;
   } else if (minutes > 0) {
@@ -76,11 +76,11 @@ function formatDate(date: Date | null): string {
 async function getNextTarget(): Promise<TargetInfo | null> {
   try {
     const now = new Date();
-    
+
     // Query for targets that are ready to execute
     // Priority order: ready > active > pending
     // Within each status, order by priority (1=highest) and execution time
-    
+
     const readyTargets = await db
       .select()
       .from(snipeTargets)
@@ -95,11 +95,11 @@ async function getNextTarget(): Promise<TargetInfo | null> {
       )
       .orderBy(asc(snipeTargets.priority), asc(snipeTargets.targetExecutionTime))
       .limit(1);
-    
+
     if (readyTargets.length > 0) {
       return readyTargets[0] as TargetInfo;
     }
-    
+
     // If no ready targets, check active targets (including future ones)
     const activeTargets = await db
       .select()
@@ -107,11 +107,11 @@ async function getNextTarget(): Promise<TargetInfo | null> {
       .where(eq(snipeTargets.status, "active"))
       .orderBy(asc(snipeTargets.priority), asc(snipeTargets.targetExecutionTime))
       .limit(1);
-    
+
     if (activeTargets.length > 0) {
       return activeTargets[0] as TargetInfo;
     }
-    
+
     // If no ready/active targets, check pending targets
     const pendingTargets = await db
       .select()
@@ -119,11 +119,11 @@ async function getNextTarget(): Promise<TargetInfo | null> {
       .where(eq(snipeTargets.status, "pending"))
       .orderBy(asc(snipeTargets.priority), asc(snipeTargets.targetExecutionTime))
       .limit(1);
-    
+
     if (pendingTargets.length > 0) {
       return pendingTargets[0] as TargetInfo;
     }
-    
+
     return null;
   } catch (error) {
     console.error("❌ Error querying database:", error);
@@ -140,24 +140,19 @@ async function getTargetStats() {
       })
       .from(snipeTargets)
       .groupBy(snipeTargets.status);
-    
+
     return stats;
   } catch (error) {
     console.error("❌ Error getting stats:", error);
     // Fallback: get all targets and count manually
     try {
-      const allTargets = await db
-        .select({ status: snipeTargets.status })
-        .from(snipeTargets);
-      
+      const allTargets = await db.select({ status: snipeTargets.status }).from(snipeTargets);
+
       const statusCounts = new Map<string, number>();
       allTargets.forEach((target) => {
-        statusCounts.set(
-          target.status,
-          (statusCounts.get(target.status) || 0) + 1,
-        );
+        statusCounts.set(target.status, (statusCounts.get(target.status) || 0) + 1);
       });
-      
+
       return Array.from(statusCounts.entries()).map(([status, count]) => ({
         status,
         count,
@@ -172,10 +167,10 @@ async function getTargetStats() {
 async function main() {
   const args = process.argv.slice(2);
   const shouldSync = args.includes("--sync") || args.includes("-s");
-  
+
   console.log("🎯 Checking for next snipe target...\n");
   console.log(`⏰ Current time: ${new Date().toISOString()}\n`);
-  
+
   // Sync calendar if requested
   if (shouldSync) {
     console.log("🔄 Syncing calendar to create targets...");
@@ -185,14 +180,14 @@ async function main() {
         forceSync: true,
         dryRun: false,
       });
-      
+
       console.log("\n📊 Sync Results:");
       console.log(`   ✅ Success: ${syncResult.success}`);
       console.log(`   📝 Processed: ${syncResult.processed} launches`);
       console.log(`   ➕ Created: ${syncResult.created} targets`);
       console.log(`   🔄 Updated: ${syncResult.updated} targets`);
       console.log(`   ⏭️  Skipped: ${syncResult.skipped} targets`);
-      
+
       if (syncResult.errors.length > 0) {
         console.log(`   ❌ Errors: ${syncResult.errors.length}`);
         syncResult.errors.forEach((error, index) => {
@@ -205,7 +200,7 @@ async function main() {
       console.log("⚠️  Continuing to check existing targets...\n");
     }
   }
-  
+
   // Get target statistics
   const stats = await getTargetStats();
   if (stats.length > 0) {
@@ -215,10 +210,10 @@ async function main() {
     });
     console.log();
   }
-  
+
   // Get next target
   const target = await getNextTarget();
-  
+
   if (!target) {
     console.log("⚠️  No snipe targets found in database.");
     console.log("\n💡 To create targets:");
@@ -227,7 +222,7 @@ async function main() {
     console.log("   3. Or wait for scheduled sync (every 30 minutes)");
     process.exit(0);
   }
-  
+
   // Display target information
   console.log("🎯 NEXT TARGET TO SNIPE:");
   console.log("═".repeat(60));
@@ -251,7 +246,7 @@ async function main() {
   console.log(`   Created:         ${formatDate(target.createdAt)}`);
   console.log(`   Updated:         ${formatDate(target.updatedAt)}`);
   console.log("═".repeat(60));
-  
+
   // Additional context
   if (target.status === "ready") {
     console.log("\n✅ Target is READY and can be executed immediately");
@@ -260,7 +255,7 @@ async function main() {
   } else if (target.status === "pending") {
     console.log("\n⏳ Target is PENDING - waiting for execution time");
   }
-  
+
   // Check if target is overdue
   if (target.targetExecutionTime && target.targetExecutionTime < new Date()) {
     const minutesOverdue = Math.floor(
@@ -274,4 +269,3 @@ main().catch((error) => {
   console.error("\n❌ Script failed:", error);
   process.exit(1);
 });
-

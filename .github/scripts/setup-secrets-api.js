@@ -185,7 +185,7 @@ async function loadSecretsFromFile(filename) {
   }
 }
 
-async function main() {
+async function initializeSecretsManager() {
   console.log('🔐 GitHub Secrets Setup using REST API\n');
   
   // Validate configuration
@@ -197,86 +197,106 @@ async function main() {
   
   console.log(`📍 Repository: ${CONFIG.owner}/${CONFIG.repo}\n`);
   
-  try {
-    // Get repository public key for encryption
-    console.log('🔑 Getting repository public key...');
-    const publicKey = await secretsManager.getPublicKey();
-    console.log('✅ Public key retrieved\n');
+  // Get repository public key for encryption
+  console.log('🔑 Getting repository public key...');
+  const publicKey = await secretsManager.getPublicKey();
+  console.log('✅ Public key retrieved\n');
+  
+  return { secretsManager, publicKey };
+}
+
+async function loadSecretsInteractively() {
+  const rl = createReadlineInterface();
+  const useFile = await askQuestion(rl, 'Load secrets from file? (y/N): ');
+  
+  let secretsToSet = {};
+  
+  if (useFile.toLowerCase() === 'y') {
+    const filename = await askQuestion(rl, 'Enter filename (.env.secrets): ') || '.env.secrets';
+    try {
+      secretsToSet = await loadSecretsFromFile(filename);
+      console.log(`📄 Loaded ${Object.keys(secretsToSet).length} secrets from ${filename}\n`);
+    } catch (error) {
+      console.error(`❌ ${error.message}`);
+      process.exit(1);
+    }
+  } else {
+    secretsToSet = await inputSecretsManually(rl);
+  }
+  
+  rl.close();
+  return secretsToSet;
+}
+
+async function inputSecretsManually(rl) {
+  console.log('📝 Enter secrets manually (values are hidden):\n');
+  const secretsToSet = {};
+  
+  for (const [secretName, config] of Object.entries(SECRETS)) {
+    console.log(`🔑 ${secretName}`);
+    console.log(`   Description: ${config.description}`);
+    console.log(`   Required: ${config.required ? 'Yes' : 'No'}`);
     
-    // Check if user wants to load from file or input manually
-    const rl = createReadlineInterface();
-    const useFile = await askQuestion(rl, 'Load secrets from file? (y/N): ');
+    const value = await askQuestion(rl, `   Enter value: `, true);
     
-    let secretsToSet = {};
-    
-    if (useFile.toLowerCase() === 'y') {
-      const filename = await askQuestion(rl, 'Enter filename (.env.secrets): ') || '.env.secrets';
-      try {
-        secretsToSet = await loadSecretsFromFile(filename);
-        console.log(`📄 Loaded ${Object.keys(secretsToSet).length} secrets from ${filename}\n`);
-      } catch (error) {
-        console.error(`❌ ${error.message}`);
-        process.exit(1);
+    if (value) {
+      secretsToSet[secretName] = value;
+    } else if (config.required) {
+      console.log('❌ Required secret cannot be empty');
+      process.exit(1);
+    }
+    console.log('');
+  }
+  
+  return secretsToSet;
+}
+
+async function setSecrets(secretsManager, publicKey, secretsToSet) {
+  console.log('🚀 Setting secrets in GitHub...\n');
+  
+  let successCount = 0;
+  let failureCount = 0;
+  
+  for (const [secretName, secretValue] of Object.entries(secretsToSet)) {
+    if (SECRETS[secretName] || secretName.startsWith('CUSTOM_')) {
+      process.stdout.write(`Setting ${secretName}... `);
+      
+      const success = await secretsManager.setSecret(secretName, secretValue, publicKey);
+      
+      if (success) {
+        console.log('✅');
+        successCount++;
+      } else {
+        console.log('❌');
+        failureCount++;
       }
     } else {
-      // Input secrets manually
-      console.log('📝 Enter secrets manually (values are hidden):\n');
-      
-      for (const [secretName, config] of Object.entries(SECRETS)) {
-        console.log(`🔑 ${secretName}`);
-        console.log(`   Description: ${config.description}`);
-        console.log(`   Required: ${config.required ? 'Yes' : 'No'}`);
-        
-        const value = await askQuestion(rl, `   Enter value: `, true);
-        
-        if (value) {
-          secretsToSet[secretName] = value;
-        } else if (config.required) {
-          console.log('❌ Required secret cannot be empty');
-          process.exit(1);
-        }
-        console.log('');
-      }
+      console.log(`⏭️  Skipping unknown secret: ${secretName}`);
     }
-    
-    rl.close();
-    
-    // Set secrets
-    console.log('🚀 Setting secrets in GitHub...\n');
-    
-    let successCount = 0;
-    let failureCount = 0;
-    
-    for (const [secretName, secretValue] of Object.entries(secretsToSet)) {
-      if (SECRETS[secretName] || secretName.startsWith('CUSTOM_')) {
-        process.stdout.write(`Setting ${secretName}... `);
-        
-        const success = await secretsManager.setSecret(secretName, secretValue, publicKey);
-        
-        if (success) {
-          console.log('✅');
-          successCount++;
-        } else {
-          console.log('❌');
-          failureCount++;
-        }
-      } else {
-        console.log(`⏭️  Skipping unknown secret: ${secretName}`);
-      }
-    }
-    
-    // Summary
-    console.log('\n📊 Summary:');
-    console.log(`✅ Secrets set successfully: ${successCount}`);
-    console.log(`❌ Secrets failed: ${failureCount}`);
-    
-    if (failureCount === 0) {
-      console.log('\n🎉 All secrets configured successfully!');
-      console.log('\nNext steps:');
-      console.log('1. Verify secrets: gh secret list');
-      console.log('2. Test CI/CD pipeline: git push origin main');
-    }
-    
+  }
+  
+  return { successCount, failureCount };
+}
+
+function displaySummary(successCount, failureCount) {
+  console.log('\n📊 Summary:');
+  console.log(`✅ Secrets set successfully: ${successCount}`);
+  console.log(`❌ Secrets failed: ${failureCount}`);
+  
+  if (failureCount === 0) {
+    console.log('\n🎉 All secrets configured successfully!');
+    console.log('\nNext steps:');
+    console.log('1. Verify secrets: gh secret list');
+    console.log('2. Test CI/CD pipeline: git push origin main');
+  }
+}
+
+async function main() {
+  try {
+    const { secretsManager, publicKey } = await initializeSecretsManager();
+    const secretsToSet = await loadSecretsInteractively();
+    const { successCount, failureCount } = await setSecrets(secretsManager, publicKey, secretsToSet);
+    displaySummary(successCount, failureCount);
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
     process.exit(1);

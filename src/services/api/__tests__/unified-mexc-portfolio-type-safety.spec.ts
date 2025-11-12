@@ -5,13 +5,13 @@
  * and match Zod validation schemas in route handlers.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { UnifiedMexcPortfolioModule } from "../unified-mexc-portfolio";
-import type { MexcCacheLayer } from "../../data/modules/mexc-cache-layer";
-import type { MexcCoreClient } from "../../data/modules/mexc-core-client";
-import type { MexcServiceResponse } from "../../data/modules/mexc-api-types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
+import type { MexcServiceResponse } from "../../data/modules/mexc-api-types";
+import type { MexcCacheLayer } from "../../data/modules/mexc-cache-layer";
+import type { MexcCoreClient } from "../../data/modules/mexc-core-client";
+import { UnifiedMexcPortfolioModule } from "../unified-mexc-portfolio";
 
 describe("UnifiedMexcPortfolioModule - Type Safety", () => {
   let portfolioModule: UnifiedMexcPortfolioModule;
@@ -47,9 +47,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
       // Mock ticker responses
       (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
-        data: [
-          { symbol: "BTCUSDT", price: "50000.00", lastPrice: "50000.00" },
-        ],
+        data: [{ symbol: "BTCUSDT", price: "50000.00", lastPrice: "50000.00" }],
         timestamp: Date.now(),
       });
 
@@ -87,9 +85,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
       // Mock responses
       (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
-        data: [
-          { asset: "USDT", free: "100.00", locked: "0.00" },
-        ],
+        data: [{ asset: "USDT", free: "100.00", locked: "0.00" }],
         timestamp: Date.now(),
       });
 
@@ -173,9 +169,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
     it("should validate balance entries with AccountBalanceSchema", async () => {
       (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
-        data: [
-          { asset: "USDT", free: "1000.00", locked: "50.00" },
-        ],
+        data: [{ asset: "USDT", free: "1000.00", locked: "50.00" }],
         timestamp: Date.now(),
       });
 

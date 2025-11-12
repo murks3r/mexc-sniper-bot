@@ -4,47 +4,41 @@
  * Comprehensive tests for all error classes, type guards, and utilities
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   ApplicationError,
-  ValidationError,
   AuthenticationError,
   AuthorizationError,
-  NotFoundError,
-  ConflictError,
-  RateLimitError,
-  ExternalServiceError,
-  DatabaseError,
   BusinessLogicError,
-  TradingError,
   ConfigurationError,
+  ConflictError,
+  DatabaseError,
+  ExternalServiceError,
+  getErrorCode,
+  getErrorMessage,
+  getErrorStatusCode,
   isApplicationError,
-  isValidationError,
   isAuthenticationError,
   isAuthorizationError,
-  isNotFoundError,
-  isConflictError,
-  isRateLimitError,
-  isExternalServiceError,
-  isDatabaseError,
   isBusinessLogicError,
-  isTradingError,
   isConfigurationError,
-  getErrorMessage,
-  getErrorCode,
-  getErrorStatusCode,
+  isConflictError,
+  isDatabaseError,
+  isExternalServiceError,
+  isNotFoundError,
   isOperationalError,
+  isRateLimitError,
+  isTradingError,
+  isValidationError,
+  NotFoundError,
+  RateLimitError,
+  TradingError,
+  ValidationError,
 } from "../errors";
 
 describe("ApplicationError", () => {
   it("should create error with all properties", () => {
-    const error = new ApplicationError(
-      "Test error",
-      "TEST_ERROR",
-      500,
-      true,
-      { userId: "123" }
-    );
+    const error = new ApplicationError("Test error", "TEST_ERROR", 500, true, { userId: "123" });
 
     expect(error.message).toBe("Test error");
     expect(error.code).toBe("TEST_ERROR");
@@ -161,7 +155,9 @@ describe("RateLimitError", () => {
 
   it("should provide user-friendly message with retry time", () => {
     const error = new RateLimitError(30, 100);
-    expect(error.getUserMessage()).toBe("Too many requests. Please wait 30 seconds before trying again.");
+    expect(error.getUserMessage()).toBe(
+      "Too many requests. Please wait 30 seconds before trying again.",
+    );
   });
 });
 
@@ -200,12 +196,7 @@ describe("BusinessLogicError", () => {
 
 describe("TradingError", () => {
   it("should create trading error with trade details", () => {
-    const error = new TradingError(
-      "Order execution failed",
-      "BTCUSDT",
-      "buy",
-      100
-    );
+    const error = new TradingError("Order execution failed", "BTCUSDT", "buy", 100);
 
     expect(error.message).toBe("Order execution failed");
     expect(error.code).toBe("BUSINESS_LOGIC_ERROR");

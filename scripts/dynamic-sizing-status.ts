@@ -2,7 +2,7 @@
 
 /**
  * Dynamic Position Sizing Status Report
- * 
+ *
  * Quick status check for the dynamic position sizing implementation
  */
 

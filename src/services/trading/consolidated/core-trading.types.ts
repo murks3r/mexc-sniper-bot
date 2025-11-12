@@ -68,66 +68,9 @@ export type CoreTradingConfig = z.infer<typeof CoreTradingConfigSchema>;
 // Trade Parameter Types
 // ============================================================================
 
-export const TradeParametersSchema = z
-  .object({
-    // Required Parameters
-    symbol: z.string().min(1, "Symbol is required"),
-    side: z.enum(["BUY", "SELL"], {
-      required_error: "Side must be BUY or SELL",
-    }),
-    type: z.enum(["MARKET", "LIMIT", "STOP", "STOP_LIMIT"], {
-      required_error: "Type is required",
-    }),
+import { TradeParametersSchema } from "@/src/schemas/unified/trading-schemas";
 
-    // Quantity Parameters (mutually exclusive)
-    quantity: z.number().positive("Quantity must be positive").optional(),
-    quoteOrderQty: z.number().positive("Quote order quantity must be positive").optional(),
-
-    // Price Parameters
-    price: z.number().positive("Price must be positive").optional(),
-    stopPrice: z.number().positive("Stop price must be positive").optional(),
-
-    // Order Parameters
-    timeInForce: z.enum(["GTC", "IOC", "FOK"]).default("GTC"),
-    newClientOrderId: z.string().optional(),
-
-    // Risk Management Parameters
-    stopLossPercent: z.number().min(0).max(100).optional(),
-    takeProfitPercent: z.number().min(0).max(100).optional(),
-
-    // Strategy Parameters
-    strategy: z.enum(["conservative", "balanced", "aggressive"]).optional(),
-    isAutoSnipe: z.boolean().default(false),
-    confidenceScore: z.number().min(0).max(100).optional(),
-  })
-  .refine((data) => data.quantity !== undefined || data.quoteOrderQty !== undefined, {
-    message: "Either quantity or quoteOrderQty must be provided",
-    path: ["quantity"],
-  })
-  .refine(
-    (data) => {
-      if (data.type === "LIMIT" || data.type === "STOP_LIMIT") {
-        return data.price !== undefined;
-      }
-      return true;
-    },
-    {
-      message: "Price is required for LIMIT and STOP_LIMIT orders",
-      path: ["price"],
-    },
-  )
-  .refine(
-    (data) => {
-      if (data.type === "STOP" || data.type === "STOP_LIMIT") {
-        return data.stopPrice !== undefined;
-      }
-      return true;
-    },
-    {
-      message: "Stop price is required for STOP and STOP_LIMIT orders",
-      path: ["stopPrice"],
-    },
-  );
+export { TradeParametersSchema };
 
 export type TradeParameters = z.infer<typeof TradeParametersSchema>;
 
@@ -208,41 +151,9 @@ export type AutoSnipeTarget = z.infer<typeof AutoSnipeTargetSchema>;
 // Trading Strategy Types
 // ============================================================================
 
-export const TradingStrategySchema = z.object({
-  name: z.string().min(1, "Strategy name is required"),
-  description: z.string().optional(),
+import { TradingStrategySchema } from "@/src/schemas/unified/trading-schemas";
 
-  // Position Sizing
-  maxPositionSize: z.number().min(0).max(1, "Max position size must be 0-1"),
-  positionSizingMethod: z.enum(["fixed", "kelly", "risk_parity"]).default("fixed"),
-
-  // Risk Management
-  stopLossPercent: z.number().min(0).max(100),
-  takeProfitPercent: z.number().min(0).max(100),
-  maxDrawdownPercent: z.number().min(0).max(100).default(20),
-
-  // Execution Parameters
-  orderType: z.enum(["MARKET", "LIMIT"]).default("MARKET"),
-  timeInForce: z.enum(["GTC", "IOC", "FOK"]).default("IOC"),
-  slippageTolerance: z.number().min(0).max(100).default(1),
-
-  // Multi-Phase Parameters
-  enableMultiPhase: z.boolean().default(false),
-  phaseCount: z.number().min(1).max(10).default(1),
-  phaseDelayMs: z.number().min(0).default(1000),
-  phaseAllocation: z.array(z.number().min(0).max(1)).optional(),
-
-  // Auto-Sniping Parameters
-  confidenceThreshold: z.number().min(0).max(100).default(75),
-  enableAutoSnipe: z.boolean().default(false),
-  snipeDelayMs: z.number().min(0).default(0),
-
-  // Advanced Settings
-  enableTrailingStop: z.boolean().default(false),
-  trailingStopPercent: z.number().min(0).max(100).optional(),
-  enablePartialTakeProfit: z.boolean().default(false),
-  partialTakeProfitPercent: z.number().min(0).max(100).optional(),
-});
+export { TradingStrategySchema };
 
 export type TradingStrategy = z.infer<typeof TradingStrategySchema>;
 
@@ -302,54 +213,9 @@ export type Position = z.infer<typeof PositionSchema>;
 // Analytics and Performance Types
 // ============================================================================
 
-export const PerformanceMetricsSchema = z.object({
-  // Trading Statistics
-  totalTrades: z.number(),
-  successfulTrades: z.number(),
-  failedTrades: z.number(),
-  successRate: z.number().min(0).max(100),
+import { PerformanceMetricsSchema } from "@/src/schemas/unified/trading-schemas";
 
-  // Financial Performance
-  totalPnL: z.number(),
-  realizedPnL: z.number(),
-  unrealizedPnL: z.number(),
-  totalVolume: z.number(),
-  averageTradeSize: z.number(),
-
-  // Risk Metrics
-  maxDrawdown: z.number(),
-  sharpeRatio: z.number().optional(),
-  sortinoRatio: z.number().optional(),
-  calmarRatio: z.number().optional(),
-  maxConsecutiveLosses: z.number(),
-  maxConsecutiveWins: z.number(),
-
-  // Execution Metrics
-  averageExecutionTime: z.number(),
-  slippageAverage: z.number(),
-  fillRate: z.number().min(0).max(100),
-
-  // Auto-Sniping Metrics
-  autoSnipeCount: z.number(),
-  autoSnipeSuccessRate: z.number().min(0).max(100),
-  averageConfidenceScore: z.number().min(0).max(100),
-
-  // Time-based Metrics
-  timeframe: z.string(),
-  startDate: z.date(),
-  endDate: z.date(),
-  tradingDays: z.number(),
-
-  // Strategy Performance
-  strategyPerformance: z.record(
-    z.string(),
-    z.object({
-      trades: z.number(),
-      pnl: z.number(),
-      successRate: z.number(),
-    }),
-  ),
-});
+export { PerformanceMetricsSchema };
 
 export type PerformanceMetrics = z.infer<typeof PerformanceMetricsSchema>;
 
@@ -418,7 +284,7 @@ export interface CoreTradingEvents {
 // API Response Types
 // ============================================================================
 
-export interface ServiceResponse<T = any> {
+export interface ServiceResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;

@@ -1,6 +1,6 @@
 /**
  * Autosniping End-to-End Test Suite
- * 
+ *
  * Comprehensive tests for autosniping functionality with real Supabase auth:
  * - System initialization
  * - Target processing flow
@@ -9,10 +9,10 @@
  * - Orchestrator state verification
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
 import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
-import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 
 // Test configuration
 const TEST_SYMBOL = "TESTUSDT";
@@ -41,10 +41,10 @@ vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => (
       normalizeSymbol: {
         binance: (symbol: string) => {
           const upper = symbol.toUpperCase();
-          return upper.endsWith('USDT') ? upper : `${upper}USDT`;
-        }
+          return upper.endsWith("USDT") ? upper : `${upper}USDT`;
+        },
       },
-      getCurrentMarketPrice: vi.fn().mockRejectedValue(new Error('Test symbol not found'))
+      getCurrentMarketPrice: vi.fn().mockRejectedValue(new Error("Test symbol not found")),
     },
     paperTrade: vi.fn().mockResolvedValue({
       success: true,
@@ -53,8 +53,8 @@ vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => (
         orderId: "test-order-123",
         executedPrice: 1.234,
         executedQuantity: 50.0,
-        status: "FILLED"
-      }
+        status: "FILLED",
+      },
     }),
     getStatus: vi.fn().mockResolvedValue({
       isInitialized: true,
@@ -62,8 +62,8 @@ vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => (
       isHealthy: true,
       activePositions: 0,
     }),
-    updateConfig: vi.fn().mockResolvedValue(undefined)
-  }))
+    updateConfig: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 // Mock orchestrator
@@ -93,11 +93,11 @@ vi.mock("@/src/services/trading/unified-auto-sniping-orchestrator", () => ({
 // Mock user credentials service
 vi.mock("@/src/services/api/user-credentials-service", () => ({
   getUserCredentials: vi.fn().mockResolvedValue({
-    exchange: 'mexc',
-    apiKey: 'test-api-key',
-    secretKey: 'test-secret-key',
+    exchange: "mexc",
+    apiKey: "test-api-key",
+    secretKey: "test-secret-key",
     isActive: true,
-    permissions: ['read', 'trade']
+    permissions: ["read", "trade"],
   }),
 }));
 
@@ -109,12 +109,12 @@ describe("Autosniping E2E Tests", () => {
   describe("Test 1: System Initialization", () => {
     it("should initialize orchestrator and set user ID", async () => {
       const orchestrator = getUnifiedAutoSnipingOrchestrator();
-      
+
       // Initialize with authenticated user
       await orchestrator.setCurrentUser(TEST_USER_ID);
-      
+
       const status = await orchestrator.getStatus();
-      
+
       expect(status).toBeDefined();
       expect(status.isInitialized).toBe(true);
       expect(status.autoSnipingEnabled).toBe(true);
@@ -123,9 +123,9 @@ describe("Autosniping E2E Tests", () => {
     it("should verify credentials are configured", async () => {
       // Test that user credentials can be retrieved
       const credentials = await getUserCredentials(TEST_USER_ID);
-      
+
       expect(credentials).toBeDefined();
-      expect(credentials?.exchange).toBe('mexc');
+      expect(credentials?.exchange).toBe("mexc");
       expect(credentials?.isActive).toBe(true);
     });
 
@@ -135,9 +135,9 @@ describe("Autosniping E2E Tests", () => {
         userId: TEST_USER_ID,
         defaultPositionSizeUsdt: TEST_POSITION_SIZE,
         autoSnipingEnabled: true,
-        riskLevel: 'medium'
+        riskLevel: "medium",
       };
-      
+
       expect(mockPreferences).toBeDefined();
       expect(mockPreferences.autoSnipingEnabled).toBe(true);
       expect(mockPreferences.defaultPositionSizeUsdt).toBe(TEST_POSITION_SIZE);
@@ -148,16 +148,16 @@ describe("Autosniping E2E Tests", () => {
     it("should create and process a ready target", async () => {
       // Mock target creation
       const mockTarget = {
-        id: 'test-target-id',
+        id: "test-target-id",
         symbolName: TEST_SYMBOL,
-        status: 'ready',
+        status: "ready",
         userId: TEST_USER_ID,
-        targetExecutionTime: new Date()
+        targetExecutionTime: new Date(),
       };
 
       expect(mockTarget).toBeDefined();
       expect(mockTarget.symbolName).toBe(TEST_SYMBOL);
-      expect(mockTarget.status).toBe('ready');
+      expect(mockTarget.status).toBe("ready");
       expect(mockTarget.userId).toBe(TEST_USER_ID);
 
       // Initialize orchestrator
@@ -172,21 +172,21 @@ describe("Autosniping E2E Tests", () => {
     it("should transition target from active to ready", async () => {
       // Mock target state transition
       const mockTarget = {
-        id: 'test-target-id-2',
+        id: "test-target-id-2",
         symbolName: `${TEST_SYMBOL}_2`,
-        status: 'active',
+        status: "active",
         userId: TEST_USER_ID,
-        targetExecutionTime: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+        targetExecutionTime: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
       };
 
       // Simulate transition to ready
       const updatedTarget = {
         ...mockTarget,
-        status: 'ready',
-        updatedAt: new Date()
+        status: "ready",
+        updatedAt: new Date(),
       };
 
-      expect(updatedTarget.status).toBe('ready');
+      expect(updatedTarget.status).toBe("ready");
     });
   });
 
@@ -197,21 +197,21 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID
+        userId: TEST_USER_ID,
       });
 
       // Execute a paper trade
       const result = await coreTrading.paperTrade({
         symbol: TEST_SYMBOL,
-        side: 'buy',
-        type: 'market',
-        quoteOrderQty: TEST_POSITION_SIZE
+        side: "buy",
+        type: "market",
+        quoteOrderQty: TEST_POSITION_SIZE,
       });
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.symbol).toBe(TEST_SYMBOL);
-      expect(result.data?.status).toBe('FILLED');
+      expect(result.data?.status).toBe("FILLED");
     });
   });
 
@@ -222,7 +222,7 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID
+        userId: TEST_USER_ID,
       });
 
       const autoSniping = (coreTrading as any).autoSniping;
@@ -233,10 +233,10 @@ describe("Autosniping E2E Tests", () => {
 
       // Test price fetching (will likely fail for test symbol, but should try all sources)
       const testSymbol = "NEWTOKENUSDT";
-      
+
       try {
         const price = await (autoSniping as any).getCurrentMarketPrice(testSymbol);
-        expect(typeof price).toBe('number');
+        expect(typeof price).toBe("number");
         expect(price).toBeGreaterThan(0);
       } catch (error) {
         // It's okay if price fetching fails for a non-existent token
@@ -250,7 +250,7 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID
+        userId: TEST_USER_ID,
       });
 
       const autoSniping = (coreTrading as any).autoSniping;
@@ -260,7 +260,7 @@ describe("Autosniping E2E Tests", () => {
       }
 
       const normalizeSymbol = autoSniping.normalizeSymbol.binance;
-      
+
       expect(normalizeSymbol("BTC")).toBe("BTCUSDT");
       expect(normalizeSymbol("ETHUSDT")).toBe("ETHUSDT");
       expect(normalizeSymbol("test")).toBe("TESTUSDT");
@@ -270,17 +270,17 @@ describe("Autosniping E2E Tests", () => {
   describe("Test 5: Orchestrator State Verification", () => {
     it("should verify autoSnipingEnabled flag after configuration", async () => {
       const orchestrator = getUnifiedAutoSnipingOrchestrator();
-      
+
       // Set current user
       await orchestrator.setCurrentUser(TEST_USER_ID);
-      
+
       // Update config to enable
       await orchestrator.updateConfig({
         enabled: true,
       });
 
       const status = await orchestrator.getStatus();
-      
+
       // Verify status is returned correctly
       expect(status).toBeDefined();
       expect(typeof status.autoSnipingEnabled).toBe("boolean");
@@ -288,10 +288,10 @@ describe("Autosniping E2E Tests", () => {
 
     it("should verify status endpoint returns correct structure", async () => {
       const orchestrator = getUnifiedAutoSnipingOrchestrator();
-      
+
       // Set current user
       await orchestrator.setCurrentUser(TEST_USER_ID);
-      
+
       const status = await orchestrator.getStatus();
 
       expect(status).toBeDefined();

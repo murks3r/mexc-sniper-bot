@@ -34,11 +34,11 @@ describe("Upcoming Hour Targets API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Ensure authentication mock is always properly set up
-    mockRequireAuth.mockResolvedValue({ 
+    mockRequireAuth.mockResolvedValue({
       id: "test-user-id",
-      email: "test@example.com", 
+      email: "test@example.com",
       name: "Test User",
-      emailVerified: true
+      emailVerified: true,
     });
   });
 
@@ -47,7 +47,7 @@ describe("Upcoming Hour Targets API", () => {
     const limitThenable = Promise.resolve(mockTargets);
     const mockLimit = vi.fn(() => limitThenable);
     const mockOrderBy2 = vi.fn().mockReturnValue({ limit: mockLimit });
-    const mockOrderBy1 = vi.fn().mockReturnValue({ 
+    const mockOrderBy1 = vi.fn().mockReturnValue({
       orderBy: mockOrderBy2,
       limit: mockLimit,
     });
@@ -95,7 +95,12 @@ describe("Upcoming Hour Targets API", () => {
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error("Test failed with status", response.status, "data:", JSON.stringify(data, null, 2));
+      console.error(
+        "Test failed with status",
+        response.status,
+        "data:",
+        JSON.stringify(data, null, 2),
+      );
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -135,7 +140,12 @@ describe("Upcoming Hour Targets API", () => {
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error("Test failed with status", response.status, "data:", JSON.stringify(data, null, 2));
+      console.error(
+        "Test failed with status",
+        response.status,
+        "data:",
+        JSON.stringify(data, null, 2),
+      );
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -171,11 +181,11 @@ describe("Upcoming Hour Targets API", () => {
     const emptyTargets: typeof mockTargets = [];
     const limitThenable = Promise.resolve(emptyTargets); // Should return empty as it's filtered out
     const mockLimit = vi.fn(() => limitThenable);
-    const mockOrderBy2 = vi.fn().mockReturnValue({ 
+    const mockOrderBy2 = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
-    const mockOrderBy1 = vi.fn().mockReturnValue({ 
-      orderBy: mockOrderBy2, 
+    const mockOrderBy1 = vi.fn().mockReturnValue({
+      orderBy: mockOrderBy2,
       limit: mockLimit,
     });
     const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy1 });
@@ -193,7 +203,12 @@ describe("Upcoming Hour Targets API", () => {
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error("Test failed with status", response.status, "data:", JSON.stringify(data, null, 2));
+      console.error(
+        "Test failed with status",
+        response.status,
+        "data:",
+        JSON.stringify(data, null, 2),
+      );
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -234,11 +249,11 @@ describe("Upcoming Hour Targets API", () => {
     const emptyTargets: typeof mockTargets = [];
     const limitThenable = Promise.resolve(emptyTargets); // Should be filtered out
     const mockLimit = vi.fn(() => limitThenable);
-    const mockOrderBy2 = vi.fn().mockReturnValue({ 
+    const mockOrderBy2 = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
-    const mockOrderBy1 = vi.fn().mockReturnValue({ 
-      orderBy: mockOrderBy2, 
+    const mockOrderBy1 = vi.fn().mockReturnValue({
+      orderBy: mockOrderBy2,
       limit: mockLimit,
     });
     const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy1 });
@@ -256,7 +271,12 @@ describe("Upcoming Hour Targets API", () => {
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error("Test failed with status", response.status, "data:", JSON.stringify(data, null, 2));
+      console.error(
+        "Test failed with status",
+        response.status,
+        "data:",
+        JSON.stringify(data, null, 2),
+      );
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -292,11 +312,11 @@ describe("Upcoming Hour Targets API", () => {
 
     const limitThenable = Promise.resolve(mockTargets);
     const mockLimit = vi.fn(() => limitThenable);
-    const mockOrderBy2 = vi.fn().mockReturnValue({ 
+    const mockOrderBy2 = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
-    const mockOrderBy1 = vi.fn().mockReturnValue({ 
-      orderBy: mockOrderBy2, 
+    const mockOrderBy1 = vi.fn().mockReturnValue({
+      orderBy: mockOrderBy2,
       limit: mockLimit,
     });
     const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy1 });
@@ -314,7 +334,12 @@ describe("Upcoming Hour Targets API", () => {
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error("Test failed with status", response.status, "data:", JSON.stringify(data, null, 2));
+      console.error(
+        "Test failed with status",
+        response.status,
+        "data:",
+        JSON.stringify(data, null, 2),
+      );
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);

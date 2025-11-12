@@ -141,12 +141,16 @@ export async function GET(request: NextRequest) {
     try {
       const base = db.select().from(transactions);
       const filtered = conditions.length ? base.where(and(...conditions)) : base;
-      userTransactions = await Promise.race([
-        filtered.orderBy(desc(transactions.transactionTime)).limit(limit).offset(offset),
-        new Promise((_, reject) =>
+      const queryResult = filtered
+        .orderBy(desc(transactions.transactionTime))
+        .limit(limit)
+        .offset(offset);
+      userTransactions = (await Promise.race([
+        queryResult,
+        new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Database query timeout")), 10000),
         ),
-      ]);
+      ])) as Array<typeof transactions.$inferSelect>;
     } catch (dbError) {
       // Database error in transactions query - error logging handled by error handler middleware
 
@@ -323,12 +327,14 @@ export async function POST(request: NextRequest) {
     // Execute database insertion with error handling
     let created: Array<typeof transactions.$inferSelect> | undefined;
     try {
-      [created] = await Promise.race([
-        db.insert(transactions).values(insertData).returning(),
-        new Promise((_, reject) =>
+      const insertQuery = db.insert(transactions).values(insertData).returning();
+      const result = (await Promise.race([
+        insertQuery,
+        new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Database insert timeout")), 10000),
         ),
-      ]);
+      ])) as Array<typeof transactions.$inferSelect>;
+      created = result;
     } catch (dbError) {
       // Database error creating transaction - error logging handled by error handler middleware
 
@@ -389,12 +395,18 @@ export async function PUT(request: NextRequest) {
     // Execute database update with error handling
     let updated: Array<typeof transactions.$inferSelect> | undefined;
     try {
-      [updated] = await Promise.race([
-        db.update(transactions).set(updateData).where(eq(transactions.id, id)).returning(),
-        new Promise((_, reject) =>
+      const updateQuery = db
+        .update(transactions)
+        .set(updateData)
+        .where(eq(transactions.id, id))
+        .returning();
+      const result = (await Promise.race([
+        updateQuery,
+        new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Database update timeout")), 10000),
         ),
-      ]);
+      ])) as Array<typeof transactions.$inferSelect>;
+      updated = result;
     } catch (dbError) {
       // Database error updating transaction - error logging handled by error handler middleware
 

@@ -1,12 +1,12 @@
-import type { QueueJob } from "@/src/services/queues/supabase-queues";
-import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
-import { DatabaseOperations } from "@/src/services/trading/consolidated/core-trading/utils/database-operations";
+import { EventEmitter } from "node:events";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
 import { UnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
 import { MarketDataManager } from "@/src/services/data/websocket/market-data-manager";
+import type { QueueJob } from "@/src/services/queues/supabase-queues";
 import { AutoSnipingModule } from "@/src/services/trading/consolidated/core-trading/auto-sniping";
+import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
 import type { ModuleContext } from "@/src/services/trading/consolidated/core-trading/types";
-import { EventEmitter } from "node:events";
+import { DatabaseOperations } from "@/src/services/trading/consolidated/core-trading/utils/database-operations";
 
 const logger = createSimpleLogger("execution-handler");
 

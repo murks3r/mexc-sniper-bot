@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
-import {
-  ConfigurationManager,
-  ConfigurationSchema,
-} from "@/src/lib/unified-configuration-management";
+import { ConfigurationManager } from "@/src/lib/config/configuration-manager";
+import { ConfigurationSchema } from "@/src/lib/config/configuration-schema";
 import { AutoSnipingConfigSchema } from "@/src/schemas/comprehensive-api-validation-schemas";
 
 // Auto-sniping configuration endpoint backed by the configuration manager

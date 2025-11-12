@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
-import { db, type NewUserPreferences, userPreferences } from "@/src/db";
+import { db, userPreferences } from "@/src/db";
+import type { NewUserPreferences } from "@/src/db/schemas/auth";
 import { user as authUser } from "@/src/db/schemas/auth";
 import { withApiErrorHandling, withDatabaseErrorHandling } from "@/src/lib/api-middleware";
 import {
@@ -266,7 +267,7 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
   const result = await withDatabaseErrorHandling(async () => {
     return await db
       .update(userPreferences)
-      .set(updateData)
+      .set(updateData as Partial<typeof userPreferences.$inferInsert>)
       .where(eq(userPreferences.userId, validatedUserId))
       .returning();
   }, "update user preferences");
@@ -388,7 +389,9 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
     };
 
     await withDatabaseErrorHandling(async () => {
-      return await db.insert(userPreferences).values(newPrefs);
+      return await db
+        .insert(userPreferences)
+        .values(newPrefs as typeof userPreferences.$inferInsert);
     }, "insert user preferences");
   }
 

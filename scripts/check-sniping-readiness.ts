@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 
+import { and, asc, eq, gte, isNull, lt, or } from "drizzle-orm";
 import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
-import { and, asc, eq, gte, isNull, lt, or } from "drizzle-orm";
-import { getRecommendedMexcService } from "../src/services/api/mexc-unified-exports";
 import { getLogger } from "../src/lib/unified-logger";
+import { getRecommendedMexcService } from "../src/services/api/mexc-unified-exports";
 
 const logger = getLogger("sniping-readiness");
 
@@ -20,14 +20,8 @@ async function getUpcomingExecutableTarget(windowMinutes = 15) {
         or(
           // Ready or active and due now/past
           and(
-            or(
-              eq(snipeTargets.status, "ready"),
-              eq(snipeTargets.status, "active"),
-            ),
-            or(
-              lt(snipeTargets.targetExecutionTime, now),
-              isNull(snipeTargets.targetExecutionTime),
-            ),
+            or(eq(snipeTargets.status, "ready"), eq(snipeTargets.status, "active")),
+            or(lt(snipeTargets.targetExecutionTime, now), isNull(snipeTargets.targetExecutionTime)),
           ),
           // Pending but scheduled within window
           and(
@@ -56,16 +50,15 @@ async function main() {
     const targets = await getUpcomingExecutableTarget(windowMinutes);
     // Also check if there are any ready/active targets (even if not in immediate window)
     const anyReadyTargets = await db
-      .select({ id: snipeTargets.id, status: snipeTargets.status, symbolName: snipeTargets.symbolName })
+      .select({
+        id: snipeTargets.id,
+        status: snipeTargets.status,
+        symbolName: snipeTargets.symbolName,
+      })
       .from(snipeTargets)
-      .where(
-        or(
-          eq(snipeTargets.status, "ready"),
-          eq(snipeTargets.status, "active"),
-        ),
-      )
+      .where(or(eq(snipeTargets.status, "ready"), eq(snipeTargets.status, "active")))
       .limit(1);
-    
+
     if (targets.length > 0) {
       targetsOk = true;
       console.log(`[Targets] Found ${targets.length} candidate(s) in window:`);
@@ -77,13 +70,21 @@ async function main() {
     } else if (anyReadyTargets.length > 0) {
       // If no targets in immediate window, but there are ready/active targets, still consider it OK
       targetsOk = true;
-      console.log(`[Targets] No targets in immediate window, but found ready/active target(s) available.`);
+      console.log(
+        `[Targets] No targets in immediate window, but found ready/active target(s) available.`,
+      );
     } else {
       console.log("[Targets] No executable targets found.");
     }
   } catch (error) {
-    logger.error("Failed to query snipeTargets", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
-    console.error("[Targets] ERROR querying snipeTargets:", error instanceof Error ? error.message : String(error));
+    logger.error("Failed to query snipeTargets", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    console.error(
+      "[Targets] ERROR querying snipeTargets:",
+      error instanceof Error ? error.message : String(error),
+    );
     if (error instanceof Error && error.stack) {
       console.error(error.stack);
     }

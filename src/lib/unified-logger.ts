@@ -38,7 +38,13 @@ export interface LogContext {
 
   // Performance context
   duration?: number;
+  memoryUsage?: number;
   responseTime?: number;
+
+  // Error context
+  errorCode?: string;
+  errorType?: string;
+  stackTrace?: string;
 
   // API context
   method?: string;
@@ -49,6 +55,24 @@ export interface LogContext {
   userId?: string;
   requestId?: string;
   [key: string]: unknown;
+}
+
+/**
+ * Common logger interface for both client and server implementations
+ */
+export interface ILogger {
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, context?: LogContext, error?: Error): void;
+  fatal(message: string, context?: LogContext, error?: Error): void;
+  trading(operation: string, context: LogContext): void;
+  pattern(patternType: string, confidence: number, context?: LogContext): void;
+  api(endpoint: string, method: string, responseTime: number, context?: LogContext): void;
+  agent(agentId: string, taskType: string, context?: LogContext): void;
+  performance(operation: string, duration: number, context?: LogContext): void;
+  cache(operation: "hit" | "miss" | "set" | "delete", key: string, context?: LogContext): void;
+  safety(event: string, riskScore: number, context?: LogContext): void;
 }
 
 export interface LogMetadata {
@@ -64,7 +88,7 @@ export interface LogMetadata {
   };
 }
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";
 
 export interface LoggerConfig {
   level: LogLevel;
@@ -78,8 +102,6 @@ export interface LoggerConfig {
 // ============================================================================
 // Logger Implementation
 // ============================================================================
-
-import type { ILogger } from "./structured-logger";
 
 export class UnifiedLogger implements ILogger {
   private config: LoggerConfig;
@@ -290,6 +312,7 @@ export class UnifiedLogger implements ILogger {
       info: 1,
       warn: 2,
       error: 3,
+      fatal: 4,
     };
 
     return levels[level] >= levels[this.config.level];

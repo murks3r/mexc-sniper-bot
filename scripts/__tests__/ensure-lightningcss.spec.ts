@@ -10,10 +10,7 @@ describe("generateLightningcssPkgIndex", () => {
       arch: "arm64",
     });
 
-    expect(content).toContain(
-      "return require('../lightningcss.darwin-arm64.node');",
-    );
+    expect(content).toContain("return require('../lightningcss.darwin-arm64.node');");
     expect(content).toContain("return require(`lightningcss-${parts.join('-')}`);");
   });
 });
-

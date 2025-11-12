@@ -5,10 +5,11 @@
  * Follows proper risk management principles.
  */
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { userPreferences as userPreferencesTable } from "@/src/db/schemas/auth";
 import { balanceSnapshots } from "@/src/db/schemas/trading";
+import { getLogger } from "@/src/lib/unified-logger";
 
 export interface PositionSizingConfig {
   maxRiskPerTrade: number; // % of total balance (default 2%)
@@ -27,6 +28,7 @@ export interface PositionSizingResult {
 }
 
 export class DynamicPositionSizingService {
+  private logger = getLogger("DynamicPositionSizingService");
   private defaultConfig: PositionSizingConfig = {
     maxRiskPerTrade: 2.0, // 2% risk per trade
     minPositionSize: 10, // $10 minimum
@@ -105,14 +107,13 @@ export class DynamicPositionSizingService {
       const balance = await db
         .select({ freeAmount: balanceSnapshots.freeAmount })
         .from(balanceSnapshots)
-        .where(eq(balanceSnapshots.userId, userId))
-        .where(eq(balanceSnapshots.asset, "USDT"))
+        .where(and(eq(balanceSnapshots.userId, userId), eq(balanceSnapshots.asset, "USDT")))
         .orderBy(desc(balanceSnapshots.timestamp))
         .limit(1);
 
       return balance[0]?.freeAmount || 0;
     } catch (error) {
-      console.error("Failed to get user balance:", error);
+      this.logger.error("Failed to get user balance", { userId }, error as Error);
       return 0;
     }
   }
@@ -136,7 +137,7 @@ export class DynamicPositionSizingService {
         };
       }
     } catch (error) {
-      console.error("Failed to get user preferences:", error);
+      this.logger.error("Failed to get user preferences", { userId }, error as Error);
     }
 
     return {};
@@ -154,7 +155,11 @@ export class DynamicPositionSizingService {
 
       return true;
     } catch (error) {
-      console.error("Failed to update user position size:", error);
+      this.logger.error(
+        "Failed to update user position size",
+        { userId, positionSize },
+        error as Error,
+      );
       return false;
     }
   }

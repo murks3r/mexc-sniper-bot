@@ -45,10 +45,16 @@ export const pollMexcCalendar = USE_INNGEST_FALLBACK
   ? inngest.createFunction(
       { id: "poll-mexc-calendar" },
       { event: "mexc/calendar.poll" },
-      async ({ event, step }: { event: { data: MexcCalendarPollRequestedData }; step: InngestStep }) => {
+      async ({
+        event,
+        step,
+      }: {
+        event: { data: MexcCalendarPollRequestedData };
+        step: InngestStep;
+      }) => {
         const { trigger = "manual", force = false } = event.data;
 
-    // Sync Calendar to Database (direct API call, no agents)
+        // Sync Calendar to Database (direct API call, no agents)
         const syncResult = await step.run("calendar-to-database-sync", async () => {
           return await calendarSyncService.syncCalendarToDatabase("system", {
             timeWindowHours: 72,
@@ -83,7 +89,7 @@ export const pollMexcCalendar = USE_INNGEST_FALLBACK
         };
       },
     )
-  : null as any;
+  : (null as any);
 
 // Removed agent-based workflows: watchMexcSymbol, analyzeMexcPatterns, createMexcTradingStrategy
 // These are no longer needed - calendar sync creates targets directly

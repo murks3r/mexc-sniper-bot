@@ -32,7 +32,7 @@ export const QUEUE_NAMES = {
   METRICS: "metrics_jobs",
 } as const;
 
-export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
+export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
 // Job types routed to pgmq (high-throughput)
 export type PgmqJobType = "execution" | "alert" | "metric" | "order_close";
@@ -57,7 +57,7 @@ export type PgmqMessage<T = unknown> = {
  */
 export async function enqueueToSupabaseQueue<T = unknown>(
   queueName: QueueName,
-  job: PgmqJob<T>
+  job: PgmqJob<T>,
 ): Promise<string> {
   try {
     const { data, error } = await supabaseAdmin.rpc("send", {
@@ -84,7 +84,7 @@ export async function enqueueToSupabaseQueue<T = unknown>(
  */
 export async function popFromSupabaseQueue<T = unknown>(
   queueName: QueueName,
-  visibilityTimeoutSeconds = 30
+  visibilityTimeoutSeconds = 30,
 ): Promise<PgmqMessage<T> | null> {
   try {
     const { data, error } = await supabaseAdmin.rpc("read", {
@@ -117,10 +117,7 @@ export async function popFromSupabaseQueue<T = unknown>(
 /**
  * Mark a job as completed and remove from queue
  */
-export async function deleteFromSupabaseQueue(
-  queueName: QueueName,
-  msgId: string
-): Promise<void> {
+export async function deleteFromSupabaseQueue(queueName: QueueName, msgId: string): Promise<void> {
   try {
     const { error } = await supabaseAdmin.rpc("delete", {
       queue_name: queueName,
@@ -142,10 +139,7 @@ export async function deleteFromSupabaseQueue(
 /**
  * Archive a failed job (move to dead letter queue)
  */
-export async function archiveSupabaseQueueJob(
-  queueName: QueueName,
-  msgId: string
-): Promise<void> {
+export async function archiveSupabaseQueueJob(queueName: QueueName, msgId: string): Promise<void> {
   try {
     const { error } = await supabaseAdmin.rpc("archive", {
       queue_name: queueName,

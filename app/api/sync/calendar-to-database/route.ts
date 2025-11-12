@@ -11,7 +11,13 @@ import { enqueueJob } from "@/src/services/jobs/enqueue";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId = "system", timeWindowHours = 24, forceSync = false, dryRun = false, useQueue = true } = body;
+    const {
+      userId = "system",
+      timeWindowHours = 24,
+      forceSync = false,
+      dryRun = false,
+      useQueue = true,
+    } = body;
 
     // Enqueue job for Bun-based processing (primary method)
     if (useQueue && !dryRun) {
@@ -32,9 +38,9 @@ export async function POST(request: NextRequest) {
               runAt: job.runAt,
               status: job.status,
             },
-          }
+          },
         ),
-        HTTP_STATUS.ACCEPTED,
+        HTTP_STATUS.CREATED,
       );
     }
 

@@ -63,7 +63,7 @@ async function createTestUser() {
     let existingUserData = null;
     try {
       const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-      const foundUser = existingUser?.users?.find((u) => u.email === email);
+      const foundUser = existingUser?.users?.find((u) => u.email === email) ?? null;
       if (foundUser) {
         existingUserData = foundUser;
       }
@@ -84,9 +84,13 @@ async function createTestUser() {
     });
 
     // If user already exists, update instead
-    if (error && (error.message.includes("already been registered") || error.message.includes("already exists"))) {
+    if (
+      error &&
+      (error.message.includes("already been registered") ||
+        error.message.includes("already exists"))
+    ) {
       console.log("⚠️  User already exists, updating password and email confirmation...");
-      
+
       // Get user ID from existing user or find it
       let userId: string;
       if (existingUserData) {
@@ -97,32 +101,32 @@ async function createTestUser() {
         let foundUser = null;
         let page = 1;
         const perPage = 1000;
-        
+
         while (!foundUser) {
           const { data: userList, error: listError } = await supabaseAdmin.auth.admin.listUsers({
             page,
             perPage,
           });
-          
+
           if (listError) {
             console.error("❌ Failed to list users:", listError.message);
             break;
           }
-          
-          foundUser = userList?.users?.find((u) => u.email === email);
-          
+
+          foundUser = userList?.users?.find((u) => u.email === email) ?? null;
+
           if (foundUser) {
             break;
           }
-          
+
           // If we got fewer users than perPage, we've reached the end
           if (!userList?.users || userList.users.length < perPage) {
             break;
           }
-          
+
           page++;
         }
-        
+
         if (!foundUser) {
           console.error("❌ Could not find existing user to update");
           console.error("   The user exists in Supabase but could not be found via API");
@@ -133,17 +137,15 @@ async function createTestUser() {
       }
 
       // Update password and confirm email
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        userId,
-        {
+      const { data: updateData, error: updateError } =
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
           password,
           email_confirm: true,
           user_metadata: {
             name,
             full_name: name,
           },
-        }
-      );
+        });
 
       if (updateError) {
         console.error("❌ Failed to update user:", updateError.message);
@@ -154,10 +156,10 @@ async function createTestUser() {
       console.log(`   User ID: ${updateData.user.id}`);
       console.log(`   Email: ${updateData.user.email}`);
       console.log(`   Email Confirmed: ${updateData.user.email_confirmed_at ? "Yes" : "No"}`);
-      
+
       // Sync user to local database
       await syncUserToDatabase(updateData.user, name, email);
-      
+
       console.log("\n🎉 Test user updated successfully!");
       console.log("\n📋 Login Credentials:");
       console.log(`   Email: ${email}`);
@@ -189,7 +191,7 @@ async function createTestUser() {
 
     // Sync user to local database
     await syncUserToDatabase(data.user, name, email);
-    
+
     console.log("\n🎉 Test user created successfully!");
     console.log("\n📋 Login Credentials:");
     console.log(`   Email: ${email}`);
@@ -228,7 +230,8 @@ async function syncUserToDatabase(supabaseUser: any, name: string, email: string
       console.log("✅ User synced to local database");
     } else {
       // Update existing user
-      await db.update(userTable)
+      await db
+        .update(userTable)
         .set({
           email: supabaseUser.email || email,
           name: name,
@@ -249,4 +252,3 @@ createTestUser().catch((error) => {
   console.error("❌ Script failed:", error);
   process.exit(1);
 });
-

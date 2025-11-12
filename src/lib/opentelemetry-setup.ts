@@ -208,7 +208,7 @@ export async function initializeOpenTelemetry(): Promise<any | null> {
       sdk
         .shutdown()
         .then(() => logger.info("[OpenTelemetry] SDK shut down successfully"))
-        .catch((error: any) => logger.error("[OpenTelemetry] Error shutting down SDK", error))
+        .catch((error: unknown) => logger.error("[OpenTelemetry] Error shutting down SDK", error))
         .finally(() => process.exit(0));
     });
 

@@ -1,5 +1,5 @@
-import { RealTimeSafetyMonitoringService } from "@/src/services/risk/real-time-safety-monitoring-modules";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
+import { RealTimeSafetyMonitoringService } from "@/src/services/risk/real-time-safety-monitoring-modules";
 
 const logger = createSimpleLogger("risk-check-handler");
 
@@ -30,7 +30,9 @@ export async function handleRiskCheckJob() {
     const isSafe = await safetyService.isSystemSafe();
     if (!isSafe) {
       logger.warn("System safety check failed, triggering emergency response");
-      await safetyService.triggerEmergencyResponse("Scheduled risk check detected unsafe conditions");
+      await safetyService.triggerEmergencyResponse(
+        "Scheduled risk check detected unsafe conditions",
+      );
     }
 
     return {

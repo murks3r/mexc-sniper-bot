@@ -13,22 +13,22 @@
  * Set USE_REAL_SUPABASE=true and configure test Supabase credentials.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import {
-  createTestUser,
-  signInTestUser,
-  createAndSignInTestUser,
-  cleanupTestUser,
-  withAuthenticatedUser,
-  ensureTestUserInDatabase,
-  createAuthenticatedRequest,
-  handleRateLimitError,
-} from "@/src/lib/test-helpers/supabase-auth-test-helpers";
-import { requireAuthFromRequest, getSessionFromRequest } from "@/src/lib/supabase-auth-server";
-import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/src/db";
 import { user as userSchema } from "@/src/db/schemas/auth";
-import { eq } from "drizzle-orm";
+import { getSessionFromRequest, requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import {
+  cleanupTestUser,
+  createAndSignInTestUser,
+  createAuthenticatedRequest,
+  createTestUser,
+  ensureTestUserInDatabase,
+  handleRateLimitError,
+  signInTestUser,
+  withAuthenticatedUser,
+} from "@/src/lib/test-helpers/supabase-auth-test-helpers";
+import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 
 const testMode = detectTestMode();
 const skipIntegrationTests = testMode !== "integration";
@@ -90,7 +90,10 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
           password: "TestPassword123!",
         });
 
-        const session = await signInTestUser(user.email!, password);
+        if (!user.email) {
+          throw new Error("User email is missing");
+        }
+        const session = await signInTestUser(user.email, password);
 
         expect(session.session).toBeDefined();
         expect(session.user).toBeDefined();
@@ -100,7 +103,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         expect(session.supabaseUser.email).toBe(user.email);
 
         await cleanupTestUser(user.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -114,7 +117,10 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         password: "CorrectPassword123!",
       });
 
-      await expect(signInTestUser(user.email!, "WrongPassword123!")).rejects.toThrow();
+      if (!user.email) {
+        throw new Error("User email is missing");
+      }
+      await expect(signInTestUser(user.email, "WrongPassword123!")).rejects.toThrow();
 
       await cleanupTestUser(user.id);
     });
@@ -127,15 +133,12 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
           email: `test_session_${Date.now()}@example.com`,
         });
 
-        const request = createAuthenticatedRequest(
-          "http://localhost:3000/api/test",
-          accessToken,
-        );
+        const request = createAuthenticatedRequest("http://localhost:3000/api/test", accessToken);
 
         expect(request.headers.get("Authorization")).toBe(`Bearer ${accessToken}`);
 
         await cleanupTestUser(user.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -158,9 +161,11 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
 
         // Decode payload (second part)
         try {
-          const payload = JSON.parse(
-            Buffer.from(parts[1]!, "base64url").toString("utf-8"),
-          );
+          const payloadPart = parts[1];
+          if (!payloadPart) {
+            throw new Error("JWT payload part is missing");
+          }
+          const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf-8"));
           expect(payload.sub).toBe(user.id);
           expect(payload.email).toBe(user.email);
           expect(payload.role).toBe("authenticated");
@@ -170,7 +175,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         }
 
         await cleanupTestUser(user.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -186,10 +191,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
           email: `test_middleware_${Date.now()}@example.com`,
         });
 
-        const request = createAuthenticatedRequest(
-          "http://localhost:3000/api/test",
-          accessToken,
-        );
+        const request = createAuthenticatedRequest("http://localhost:3000/api/test", accessToken);
 
         // Note: This test requires the request to have proper cookie handling
         // In a real scenario, you'd need to set cookies properly
@@ -202,7 +204,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         expect(accessToken).toBeTruthy();
 
         await cleanupTestUser(user.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -213,9 +215,9 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
     it("should reject request without authentication", async () => {
       const request = new Request("http://localhost:3000/api/test");
 
-      await expect(requireAuthFromRequest(request as any)).rejects.toThrow(
-        "Authentication required",
-      );
+      await expect(
+        requireAuthFromRequest(request as unknown as Parameters<typeof requireAuthFromRequest>[0]),
+      ).rejects.toThrow("Authentication required");
     });
   });
 
@@ -247,11 +249,11 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
           .limit(1);
 
         expect(dbUser.length).toBe(1);
-        expect(dbUser[0]!.email).toBe(user.email);
-        expect(dbUser[0]!.name).toBe(supabaseUser.name);
+        expect(dbUser[0]?.email).toBe(user.email);
+        expect(dbUser[0]?.name).toBe(supabaseUser.name);
 
         await cleanupTestUser(user.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -287,7 +289,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         );
 
         // User should be cleaned up automatically
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (handleRateLimitError(error)) {
           return; // Skip test on rate limit
         }
@@ -321,7 +323,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
       if (userCreated) {
         expect(userId).toBeTruthy();
       }
-      
+
       // Give cleanup a moment to complete
       await new Promise((resolve) => setTimeout(resolve, 1000));
     });
@@ -357,4 +359,3 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
     }, 30000); // Increase timeout for rate limit handling
   });
 });
-

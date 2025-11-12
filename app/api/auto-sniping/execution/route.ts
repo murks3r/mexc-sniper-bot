@@ -15,6 +15,28 @@ import {
   getInitializedCoreTrading,
 } from "@/src/services/trading/consolidated/core-trading/base-service";
 
+// Common error handling wrapper for execution actions
+async function handleExecutionAction<T>(
+  action: () => Promise<T>,
+  successMessage: string,
+  errorMessage: string,
+  successData?: T,
+): Promise<NextResponse> {
+  try {
+    const result = await action();
+    return NextResponse.json(
+      createSuccessResponse(successData || result, { message: successMessage }),
+    );
+  } catch (error) {
+    return NextResponse.json(
+      createErrorResponse(errorMessage, {
+        details: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 400 },
+    );
+  }
+}
+
 let coreTradingPromise: Promise<CoreTradingService> | null = null;
 async function getExecutionService(): Promise<CoreTradingService> {
   if (!coreTradingPromise) {
@@ -146,32 +168,26 @@ export const POST = instrumentedTradingRoute(
           );
 
         case "pause_execution":
-          (await getExecutionService()).pauseExecution();
-          return NextResponse.json(
-            createSuccessResponse(
-              { status: "paused" },
-              { message: "Auto-sniping execution paused successfully" },
-            ),
+          return handleExecutionAction(
+            async () => {
+              const service = await getExecutionService();
+              await service.pauseExecution();
+              return { status: "paused" };
+            },
+            "Auto-sniping execution paused successfully",
+            "Failed to pause execution",
           );
 
         case "resume_execution":
-          try {
-            const service = await getExecutionService();
-            await service.resumeExecution();
-            return NextResponse.json(
-              createSuccessResponse(
-                { status: "resumed" },
-                { message: "Auto-sniping execution resumed successfully" },
-              ),
-            );
-          } catch (error) {
-            return NextResponse.json(
-              createErrorResponse("Failed to resume execution", {
-                details: error instanceof Error ? error.message : "Unknown error",
-              }),
-              { status: 400 },
-            );
-          }
+          return handleExecutionAction(
+            async () => {
+              const service = await getExecutionService();
+              await service.resumeExecution();
+              return { status: "resumed" };
+            },
+            "Auto-sniping execution resumed successfully",
+            "Failed to resume execution",
+          );
 
         // execute_target action removed to restore previous behavior
 

@@ -192,4 +192,4 @@ ORDER BY updated_at DESC;
 
 ## 📚 Full Documentation
 
-See [docs/JOB_QUEUE_SYSTEM.md](./docs/JOB_QUEUE_SYSTEM.md) for complete details.
+See [docs/HYBRID_QUEUE_ARCHITECTURE.md](./docs/HYBRID_QUEUE_ARCHITECTURE.md) for complete details.

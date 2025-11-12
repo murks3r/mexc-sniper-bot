@@ -7,7 +7,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
-import { createTestSession, createAuthenticatedRequest } from "@/src/lib/test-helpers/supabase-auth-test-helpers";
+import {
+  createAuthenticatedRequest,
+  createTestSession,
+} from "@/src/lib/test-helpers/supabase-auth-test-helpers";
 import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 
 const testMode = detectTestMode();

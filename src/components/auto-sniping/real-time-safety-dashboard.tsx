@@ -604,7 +604,7 @@ function SafetyConfigTab({
 
 export function RealTimeSafetyDashboard({
   className = "",
-  _autoRefresh = true,
+  autoRefresh = true,
   showControls = true,
 }: RealTimeSafetyDashboardProps) {
   const logger = createSimpleLogger("RealTimeSafetyDashboard");

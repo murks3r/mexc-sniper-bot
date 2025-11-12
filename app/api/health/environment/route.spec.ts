@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
-import { GET } from "./route";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedCredentials } from "@/src/services/api/user-credentials-service";
+import { GET } from "./route";
 
 const mockedGetUserCredentials = vi.fn();
 
@@ -61,4 +61,3 @@ describe("GET /api/health/environment", () => {
     );
   });
 });
-

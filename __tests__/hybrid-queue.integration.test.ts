@@ -82,12 +82,12 @@ describe("Hybrid Queue Integration", () => {
         timeWindowHours: 72,
       });
 
-      if (job) {
+      if (job && typeof job === "object" && "type" in job && "id" in job) {
         expect(job.type).toBe("calendar_sync");
         const [dbJob] = await db
           .select()
           .from(jobs)
-          .where(eq(jobs.id, job.id));
+          .where(eq(jobs.id, job.id as number));
         expect(dbJob).toBeDefined();
       }
     });
@@ -95,7 +95,7 @@ describe("Hybrid Queue Integration", () => {
     it("should route risk_check to DB queue via unified API", async () => {
       const job = await enqueueJobUnified("risk_check");
 
-      if (job) {
+      if (job && typeof job === "object" && "type" in job) {
         expect(job.type).toBe("risk_check");
       }
     });
@@ -103,7 +103,7 @@ describe("Hybrid Queue Integration", () => {
     it("should route housekeeping to DB queue via unified API", async () => {
       const job = await enqueueJobUnified("housekeeping");
 
-      if (job) {
+      if (job && typeof job === "object" && "type" in job) {
         expect(job.type).toBe("housekeeping");
       }
     });

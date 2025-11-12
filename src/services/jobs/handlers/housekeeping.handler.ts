@@ -1,8 +1,8 @@
 import { and, eq, lt, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/migrations/schema";
-import { DatabaseOperations } from "@/src/services/trading/consolidated/core-trading/utils/database-operations";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
+import { DatabaseOperations } from "@/src/services/trading/consolidated/core-trading/utils/database-operations";
 
 const logger = createSimpleLogger("housekeeping-handler");
 
@@ -37,7 +37,7 @@ export async function handleHousekeepingJob() {
 
       results.jobsDeleted =
         typeof deletedJobs === "object" && deletedJobs && "rowCount" in deletedJobs
-          ? (deletedJobs as any).rowCount ?? 0
+          ? ((deletedJobs as any).rowCount ?? 0)
           : 0;
 
       logger.info("Cleaned up old jobs", { count: results.jobsDeleted });

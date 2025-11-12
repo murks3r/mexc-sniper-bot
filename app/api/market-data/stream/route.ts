@@ -1,106 +1,47 @@
 import type { NextRequest } from "next/server";
 import { mexcWebSocketStream } from "@/src/services/data/mexc-websocket-stream";
+import {
+  handleMarketDataError,
+  initializeWebSocketService,
+  parseStreamParams,
+  SSEStreamHelper,
+} from "../utils";
 
 // Server-Sent Events endpoint that streams live price updates for requested symbols
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const symbolsParam = searchParams.get("symbols") || "BTCUSDT";
-    const symbols = symbolsParam
-      .split(",")
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
+    const { symbols } = parseStreamParams(searchParams);
 
     // Ensure underlying WebSocket stream is initialized and running
-    try {
-      await mexcWebSocketStream.initialize();
-      await mexcWebSocketStream.start();
-      await mexcWebSocketStream.subscribeToSymbolList(symbols);
-    } catch (_err) {
-      // Best-effort: continue; stream may already be initialized/started
-    }
+    await initializeWebSocketService(mexcWebSocketStream, symbols);
 
-    const encoder = new TextEncoder();
-    let keepAliveTimer: NodeJS.Timeout | null = null;
+    const sseHelper = new SSEStreamHelper({ symbols, request });
+    const stream = sseHelper.createStream();
 
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        // Helper to write SSE frames
-        const write = (event: string, data: unknown) => {
-          const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
-          controller.enqueue(encoder.encode(payload));
-        };
+    // Set up price update handler
+    const onPriceUpdate = sseHelper.createPriceUpdateHandler(symbols);
+    mexcWebSocketStream.on("price_update", onPriceUpdate);
 
-        // Initial hello
-        write("hello", { ok: true, symbols });
+    // Handle cleanup on stream cancellation
+    const originalCancel = stream.cancel.bind(stream);
+    stream.cancel = async () => {
+      try {
+        mexcWebSocketStream.off("price_update", onPriceUpdate);
+      } catch {
+        // Ignore cleanup errors
+      }
+      sseHelper.cleanup();
+      await originalCancel();
+    };
 
-        // Keep-alive ping every 20s
-        keepAliveTimer = setInterval(() => {
-          try {
-            controller.enqueue(encoder.encode(":ping\n\n"));
-          } catch {}
-        }, 20000);
-
-        // Forward price updates for requested symbols
-        // biome-ignore lint/suspicious/noExplicitAny: WebSocket message structure varies
-        const onPriceUpdate = (msg: any) => {
-          try {
-            const sym = (msg.symbol || msg.s || "").toUpperCase();
-            if (!sym || !symbols.includes(sym)) return;
-            const price = Number(msg.price || msg.p || msg.lastPrice || msg.c);
-            const ts = Number(msg.ts || msg.timestamp || Date.now());
-            write("price_update", { symbol: sym, price, ts });
-          } catch {}
-        };
-
-        mexcWebSocketStream.on("price_update", onPriceUpdate);
-
-        // Handle close
-        const close = () => {
-          try {
-            mexcWebSocketStream.off("price_update", onPriceUpdate);
-          } catch {}
-          if (keepAliveTimer) {
-            clearInterval(keepAliveTimer);
-            keepAliveTimer = null;
-          }
-          try {
-            controller.close();
-          } catch {}
-        };
-
-        // If the client disconnects
-        // biome-ignore lint/suspicious/noExplicitAny: Request signal property access
-        const signal: AbortSignal | undefined = (request as any).signal;
-        if (signal) {
-          const onAbort = () => close();
-          if (signal.aborted) {
-            close();
-          } else {
-            signal.addEventListener("abort", onAbort, { once: true });
-          }
-        }
-      },
-      cancel() {
-        if (keepAliveTimer) {
-          clearInterval(keepAliveTimer);
-          keepAliveTimer = null;
-        }
-      },
-    });
+    // Set up abort handler for client disconnection
+    sseHelper.setupAbortHandler();
 
     return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
+      headers: sseHelper.getResponseHeaders(),
     });
   } catch (error) {
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return handleMarketDataError(error, "WebSocket stream initialization");
   }
 }

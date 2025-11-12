@@ -13,6 +13,35 @@ import {
   validateRequiredFields,
 } from "@/src/lib/api-json-parser";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
+
+// Common error handling for safety monitoring
+function handleSafetyMonitoringError(error: unknown, actionType: string): NextResponse {
+  // Handle service initialization errors specifically
+  if (
+    (error instanceof Error && error.message.includes("service unavailable")) ||
+    (error instanceof Error && error.message.includes("not properly initialized"))
+  ) {
+    return NextResponse.json(
+      createErrorResponse("Safety monitoring service is not available", {
+        code: "SERVICE_UNAVAILABLE",
+        details: "Service initialization failed",
+      }),
+      { status: 503 },
+    );
+  }
+
+  // Pass through specific error messages for test compatibility
+  const errorMessage =
+    error instanceof Error ? error.message : `Safety monitoring ${actionType} action failed`;
+  return NextResponse.json(
+    createErrorResponse(errorMessage, {
+      code: actionType === "GET" ? "GET_ACTION_FAILED" : "ACTION_FAILED",
+      details: errorMessage,
+    }),
+    { status: 500 },
+  );
+}
+
 import {
   RealTimeSafetyMonitoringService,
   type SafetyConfiguration,
@@ -154,31 +183,7 @@ export const GET = apiAuthWrapper(async (request: NextRequest) => {
     }
   } catch (error: unknown) {
     // GET action failed - error logging handled by error handler middleware
-
-    // Handle service initialization errors specifically
-    if (
-      (error instanceof Error && error.message.includes("service unavailable")) ||
-      (error instanceof Error && error.message.includes("not properly initialized"))
-    ) {
-      return NextResponse.json(
-        createErrorResponse("Safety monitoring service is not available", {
-          code: "SERVICE_UNAVAILABLE",
-          details: "Service initialization failed",
-        }),
-        { status: 503 },
-      );
-    }
-
-    // Pass through specific error messages for test compatibility
-    const errorMessage =
-      error instanceof Error ? error.message : "Safety monitoring GET action failed";
-    return NextResponse.json(
-      createErrorResponse(errorMessage, {
-        code: "GET_ACTION_FAILED",
-        details: errorMessage,
-      }),
-      { status: 500 },
-    );
+    return handleSafetyMonitoringError(error, "GET");
   }
 });
 
@@ -432,29 +437,6 @@ export const POST = apiAuthWrapper(async (request: NextRequest) => {
     }
   } catch (error: unknown) {
     // POST action failed - error logging handled by error handler middleware
-
-    // Handle service initialization errors specifically
-    if (
-      (error instanceof Error && error.message.includes("service unavailable")) ||
-      (error instanceof Error && error.message.includes("not properly initialized"))
-    ) {
-      return NextResponse.json(
-        createErrorResponse("Safety monitoring service is not available", {
-          code: "SERVICE_UNAVAILABLE",
-          details: "Service initialization failed",
-        }),
-        { status: 503 },
-      );
-    }
-
-    // Pass through specific error messages for test compatibility
-    const errorMessage = error instanceof Error ? error.message : "Safety monitoring action failed";
-    return NextResponse.json(
-      createErrorResponse(errorMessage, {
-        code: "ACTION_FAILED",
-        details: errorMessage,
-      }),
-      { status: 500 },
-    );
+    return handleSafetyMonitoringError(error, "POST");
   }
 });

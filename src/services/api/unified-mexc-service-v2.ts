@@ -685,7 +685,7 @@ export class UnifiedMexcServiceV2 {
 
       return hasRecent;
     } catch (error) {
-      console.warn(`Failed to check recent activity for ${currency}:`, error);
+      this.logger.warn("Failed to check recent activity", { currency }, error as Error);
       return false;
     }
   }

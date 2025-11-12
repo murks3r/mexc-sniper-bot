@@ -34,7 +34,7 @@ import {
   HTTP_STATUS,
 } from "./api-response";
 import { globalAPIResponseCache } from "./api-response-cache";
-import { generateCacheKey } from "./cache-manager";
+import { generateCacheKey } from "./cache";
 import { DatabaseError } from "./errors";
 import {
   checkRateLimit,

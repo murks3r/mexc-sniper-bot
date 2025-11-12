@@ -11,6 +11,16 @@
  * 7. Automatic retry logic with adaptive thresholds
  */
 
+// Type guard for error objects
+type ErrorLike = {
+  message?: string;
+  code?: string | number;
+  status?: number;
+  statusCode?: number;
+  headers?: Record<string, string | number | undefined>;
+  [key: string]: unknown;
+};
+
 export interface RateLimitInfo {
   isRateLimited: boolean;
   retryAfter?: number;
@@ -30,7 +40,7 @@ export interface RateLimitInfo {
   errorCode?: string;
   timestamp?: number;
   requestId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RateLimitMetrics {
@@ -153,15 +163,19 @@ export class SupabaseRateLimitHandler {
   /**
    * Enhanced rate limit error detection with comprehensive pattern matching
    */
-  static isRateLimitError(error: any): boolean {
+  static isRateLimitError(error: unknown): boolean {
     if (!error) return false;
 
     SupabaseRateLimitHandler.metrics.totalRequests++;
 
+    // Type guard for error-like objects
+    const err = error && typeof error === "object" ? (error as ErrorLike) : null;
+    if (!err) return false;
+
     // Check error message for rate limit indicators
-    const message = error.message?.toLowerCase() || "";
-    const code = error.code?.toLowerCase() || "";
-    const status = error.status || error.statusCode || 0;
+    const message = (typeof err.message === "string" ? err.message : "").toLowerCase();
+    const code = (typeof err.code === "string" ? err.code : String(err.code || "")).toLowerCase();
+    const status = (typeof err.status === "number" ? err.status : err.statusCode) || 0;
 
     // Check for explicit rate limit errors
     const hasRateLimitError = SupabaseRateLimitHandler.RATE_LIMIT_ERRORS.some(
@@ -209,7 +223,8 @@ export class SupabaseRateLimitHandler {
         code,
         status,
         timestamp: Date.now(),
-        requestId: error.requestId || `req_${Date.now()}`,
+        requestId:
+          (err && typeof err.requestId === "string" ? err.requestId : null) || `req_${Date.now()}`,
       });
     }
 
@@ -219,19 +234,30 @@ export class SupabaseRateLimitHandler {
   /**
    * Enhanced rate limit error analysis with comprehensive metadata
    */
-  static analyzeRateLimitError(error: any): RateLimitInfo {
+  static analyzeRateLimitError(error: unknown): RateLimitInfo {
     if (!SupabaseRateLimitHandler.isRateLimitError(error)) {
+      const err = error && typeof error === "object" ? (error as ErrorLike) : null;
       return {
         isRateLimited: false,
-        message: error.message || "Unknown error",
+        message: (err && typeof err.message === "string" ? err.message : null) || "Unknown error",
         timestamp: Date.now(),
       };
     }
 
-    const message = error.message?.toLowerCase() || "";
-    const code = error.code?.toLowerCase() || "";
-    const status = error.status || error.statusCode || 0;
-    const requestId = error.requestId || `req_${Date.now()}`;
+    const err = error && typeof error === "object" ? (error as ErrorLike) : null;
+    if (!err) {
+      return {
+        isRateLimited: false,
+        message: "Unknown error",
+        timestamp: Date.now(),
+      };
+    }
+
+    const message = (typeof err.message === "string" ? err.message : "").toLowerCase();
+    const code = (typeof err.code === "string" ? err.code : String(err.code || "")).toLowerCase();
+    const status = (typeof err.status === "number" ? err.status : err.statusCode) || 0;
+    const requestId =
+      (typeof err.requestId === "string" ? err.requestId : null) || `req_${Date.now()}`;
 
     // Detect specific rate limit type with priority order
     let limitType: RateLimitInfo["limitType"] = "api"; // Default to api
@@ -267,11 +293,14 @@ export class SupabaseRateLimitHandler {
       timestamp: Date.now(),
       requestId,
       metadata: {
-        originalMessage: error.message,
+        originalMessage: typeof err.message === "string" ? err.message : "",
         status,
-        headers: error.headers || {},
+        headers: (err.headers && typeof err.headers === "object" ? err.headers : {}) as Record<
+          string,
+          unknown
+        >,
         userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "server",
-        retryCount: error.retryCount || 0,
+        retryCount: typeof err.retryCount === "number" ? err.retryCount : 0,
         circuitBreakerState: SupabaseRateLimitHandler.circuitBreaker.state,
       },
     };
@@ -303,19 +332,31 @@ export class SupabaseRateLimitHandler {
   /**
    * Enhanced retry-after extraction with intelligent estimation
    */
-  private static extractRetryAfter(error: any): number | undefined {
-    // Check headers if available (highest priority)
-    if (error.headers?.["retry-after"]) {
-      return parseInt(error.headers["retry-after"], 10);
-    }
+  private static extractRetryAfter(error: unknown): number | undefined {
+    const err = error && typeof error === "object" ? (error as ErrorLike) : null;
+    if (!err) return undefined;
 
-    if (error.headers?.["x-ratelimit-reset"]) {
-      const resetTime = parseInt(error.headers["x-ratelimit-reset"], 10);
-      return Math.max(0, resetTime - Math.floor(Date.now() / 1000));
+    // Check headers if available (highest priority)
+    if (err.headers && typeof err.headers === "object") {
+      const retryAfter = err.headers["retry-after"];
+      if (retryAfter) {
+        const parsed =
+          typeof retryAfter === "string" ? parseInt(retryAfter, 10) : Number(retryAfter);
+        if (!isNaN(parsed)) return parsed;
+      }
+
+      const resetHeader = err.headers["x-ratelimit-reset"];
+      if (resetHeader) {
+        const resetTime =
+          typeof resetHeader === "string" ? parseInt(resetHeader, 10) : Number(resetHeader);
+        if (!isNaN(resetTime)) {
+          return Math.max(0, resetTime - Math.floor(Date.now() / 1000));
+        }
+      }
     }
 
     // Parse from message if included
-    const message = error.message || "";
+    const message = typeof err.message === "string" ? err.message : "";
     const parsedFromMessage = SupabaseRateLimitHandler.parseRetryAfterFromMessage(message);
     if (parsedFromMessage !== undefined) {
       return parsedFromMessage;
@@ -393,13 +434,18 @@ export class SupabaseRateLimitHandler {
   /**
    * Map error to standardized error code
    */
-  private static mapErrorCode(error: any): string {
-    const code = error.code?.toLowerCase();
+  private static mapErrorCode(error: unknown): string {
+    const err = error && typeof error === "object" ? (error as ErrorLike) : null;
+    if (!err) return "UNKNOWN_ERROR";
+
+    const code = err.code
+      ? (typeof err.code === "string" ? err.code : String(err.code)).toLowerCase()
+      : undefined;
     if (code) {
       return code;
     }
 
-    const message = error.message?.toLowerCase() || "";
+    const message = (typeof err.message === "string" ? err.message : "").toLowerCase();
 
     // Check message patterns
     for (const {
@@ -760,12 +806,12 @@ function updateRetryMetrics(delay: number): void {
  * Handle operation failure and determine if retry is needed
  */
 function handleOperationFailure(
-  error: any,
+  error: unknown,
   rateLimitInfo: RateLimitInfo,
   attempt: number,
   config: RetryConfig,
   onRateLimit?: (rateLimitInfo: RateLimitInfo) => void,
-  onFailure?: (error: any) => void,
+  onFailure?: (error: unknown) => void,
 ): { shouldRetry: boolean; delay: number } | null {
   // Record failure for circuit breaker
   if (rateLimitInfo.isRateLimited) {
@@ -801,7 +847,7 @@ export async function withRateLimitHandling<T>(
     onRateLimit?: (rateLimitInfo: RateLimitInfo) => void;
     onRetry?: (attempt: number, delay: number) => void;
     onSuccess?: (result: T) => void;
-    onFailure?: (error: any) => void;
+    onFailure?: (error: unknown) => void;
   } = {},
 ): Promise<T> {
   const config: RetryConfig = {

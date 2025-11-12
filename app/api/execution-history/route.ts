@@ -3,86 +3,126 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { type ExecutionHistory, executionHistory } from "@/src/db/schemas/trading";
 
+interface QueryParams {
+  userId: string | null;
+  limit: number;
+  offset: number;
+  action: string | null;
+  status: string | null;
+  symbolName: string | null;
+  fromDate: string | null;
+  toDate: string | null;
+}
+
+function parseQueryParams(request: NextRequest): QueryParams {
+  const { searchParams } = new URL(request.url);
+  return {
+    userId: searchParams.get("userId"),
+    limit: parseInt(searchParams.get("limit") || "50", 10),
+    offset: parseInt(searchParams.get("offset") || "0", 10),
+    action: searchParams.get("action"),
+    status: searchParams.get("status"),
+    symbolName: searchParams.get("symbol"),
+    fromDate: searchParams.get("fromDate"),
+    toDate: searchParams.get("toDate"),
+  };
+}
+
+function buildQueryConditions(params: QueryParams): SQL[] {
+  const conditions: SQL[] = [];
+
+  if (params.userId) {
+    conditions.push(eq(executionHistory.userId, params.userId));
+  }
+
+  if (params.action) {
+    conditions.push(eq(executionHistory.action, params.action));
+  }
+
+  if (params.status) {
+    conditions.push(eq(executionHistory.status, params.status));
+  }
+
+  if (params.symbolName) {
+    conditions.push(eq(executionHistory.symbolName, params.symbolName));
+  }
+
+  if (params.fromDate) {
+    conditions.push(
+      gte(executionHistory.executedAt, new Date(parseInt(params.fromDate, 10) * 1000)),
+    );
+  }
+
+  if (params.toDate) {
+    conditions.push(lte(executionHistory.executedAt, new Date(parseInt(params.toDate, 10) * 1000)));
+  }
+
+  return conditions;
+}
+
+async function fetchExecutionHistory(
+  params: QueryParams,
+  conditions: SQL[],
+): Promise<ExecutionHistory[]> {
+  try {
+    const base = db.select().from(executionHistory);
+    const filtered = conditions.length ? base.where(and(...conditions)) : base;
+    const queryResult = filtered
+      .orderBy(desc(executionHistory.executedAt))
+      .limit(params.limit)
+      .offset(params.offset);
+
+    return (await Promise.race([
+      queryResult,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Database query timeout")), 10000),
+      ),
+    ])) as ExecutionHistory[];
+  } catch (_dbError) {
+    // Database error in execution history query - error logging handled by error handler middleware
+    throw new Error("Database temporarily unavailable");
+  }
+}
+
+function createFallbackResponse(params: QueryParams) {
+  return {
+    executions: [],
+    pagination: {
+      total: 0,
+      limit: params.limit,
+      offset: params.offset,
+      hasMore: false,
+    },
+    summary: {
+      totalExecutions: 0,
+      successfulExecutions: 0,
+      failedExecutions: 0,
+      totalBuyVolume: 0,
+      totalSellVolume: 0,
+      totalFees: 0,
+      avgExecutionLatencyMs: 0,
+      avgSlippagePercent: 0,
+      successRate: 0,
+    },
+    symbolStats: [],
+    error: "Database temporarily unavailable",
+    fallback: true,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
-    const action = searchParams.get("action"); // "buy", "sell", or null for all
-    const status = searchParams.get("status"); // "success", "failed", or null for all
-    const symbolName = searchParams.get("symbol"); // Filter by specific symbol
-    const fromDate = searchParams.get("fromDate"); // Unix timestamp
-    const toDate = searchParams.get("toDate"); // Unix timestamp
-
-    // Build query conditions
-    const conditions: SQL[] = [];
-    if (userId) {
-      conditions.push(eq(executionHistory.userId, userId));
-    }
-
-    if (action) {
-      conditions.push(eq(executionHistory.action, action));
-    }
-
-    if (status) {
-      conditions.push(eq(executionHistory.status, status));
-    }
-
-    if (symbolName) {
-      conditions.push(eq(executionHistory.symbolName, symbolName));
-    }
-
-    if (fromDate) {
-      conditions.push(gte(executionHistory.executedAt, new Date(parseInt(fromDate, 10) * 1000)));
-    }
-
-    if (toDate) {
-      conditions.push(lte(executionHistory.executedAt, new Date(parseInt(toDate, 10) * 1000)));
-    }
+    const params = parseQueryParams(request);
+    const conditions = buildQueryConditions(params);
 
     // Get execution history with pagination and error handling
     let executions: ExecutionHistory[];
     try {
-      const base = db.select().from(executionHistory);
-      const filtered = conditions.length ? base.where(and(...conditions)) : base;
-      executions = await Promise.race([
-        filtered.orderBy(desc(executionHistory.executedAt)).limit(limit).offset(offset),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database query timeout")), 10000),
-        ),
-      ]);
+      executions = await fetchExecutionHistory(params, conditions);
     } catch (_dbError) {
-      // Database error in execution history query - error logging handled by error handler middleware
-
-      // Return empty execution history with success status
-      const fallbackResponse = {
-        executions: [],
-        pagination: {
-          total: 0,
-          limit,
-          offset,
-          hasMore: false,
-        },
-        summary: {
-          totalExecutions: 0,
-          successfulExecutions: 0,
-          failedExecutions: 0,
-          totalBuyVolume: 0,
-          totalSellVolume: 0,
-          totalFees: 0,
-          avgExecutionLatencyMs: 0,
-          avgSlippagePercent: 0,
-          successRate: 0,
-        },
-        symbolStats: [],
-        error: "Database temporarily unavailable",
-        fallback: true,
-      };
-
       return NextResponse.json({
         success: true,
-        data: fallbackResponse,
+        data: createFallbackResponse(params),
       });
     }
 
@@ -180,9 +220,9 @@ export async function GET(request: NextRequest) {
       })),
       pagination: {
         total: totalCount,
-        limit,
-        offset,
-        hasMore: offset + executions.length < totalCount,
+        limit: params.limit,
+        offset: params.offset,
+        hasMore: params.offset + executions.length < totalCount,
       },
       summary: {
         totalExecutions: executions.length,
@@ -209,13 +249,16 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     // Error fetching execution history - error logging handled by error handler middleware
 
+    // Parse params again for fallback response
+    const params = parseQueryParams(request);
+
     // Return empty data with success status instead of 500 error
     const fallbackResponse = {
       executions: [],
       pagination: {
         total: 0,
-        limit: 50,
-        offset: 0,
+        limit: params.limit,
+        offset: params.offset,
         hasMore: false,
       },
       summary: {

@@ -11,16 +11,16 @@
  * (testing against real Supabase). Set USE_REAL_SUPABASE=true for integration tests.
  */
 
-import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { describe, expect, it, vi } from "vitest";
+import { getSessionFromRequest, requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
 import {
+  cleanupTestUser,
   createAndSignInTestUser,
   createAuthenticatedRequest,
   createTestSession,
-  cleanupTestUser,
   handleRateLimitError,
 } from "@/src/lib/test-helpers/supabase-auth-test-helpers";
-import { requireAuthFromRequest, getSessionFromRequest } from "@/src/lib/supabase-auth-server";
 import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 
 const testMode = detectTestMode();
@@ -64,7 +64,7 @@ describe("API Route Authentication", () => {
 
           // Note: Full integration test would require proper cookie setup
           // which is complex in test environment. This is tested in E2E tests.
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (handleRateLimitError(error)) {
             return; // Skip test on rate limit
           }
@@ -104,7 +104,7 @@ describe("API Route Authentication", () => {
 
           // Note: Full test would require proper cookie setup
           // This verifies the session structure is correct
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (handleRateLimitError(error)) {
             return; // Skip test on rate limit
           }
@@ -236,18 +236,18 @@ describe("API Route Authentication", () => {
 
 describe.skipIf(skipIntegrationTests)("API Route Integration Tests", () => {
   it("should authenticate and access protected route with real JWT", async () => {
-    const { session } = await createAndSignInTestUser({
+    const { session, accessToken } = await createAndSignInTestUser({
       email: `test_integration_${Date.now()}@example.com`,
     });
 
     // Create authenticated request
     const request = createAuthenticatedRequest(
       "http://localhost:3000/api/snipe-targets",
-      session.accessToken,
+      accessToken,
     );
 
     // Verify token is present
-    expect(request.headers.get("Authorization")).toBe(`Bearer ${session.accessToken}`);
+    expect(request.headers.get("Authorization")).toBe(`Bearer ${accessToken}`);
 
     // Note: Full integration test would make actual HTTP request to route
     // This requires running Next.js server, which is better suited for E2E tests
@@ -291,4 +291,3 @@ describe.skipIf(skipIntegrationTests)("API Route Integration Tests", () => {
     expect(session.isAuthenticated).toBe(false);
   });
 });
-

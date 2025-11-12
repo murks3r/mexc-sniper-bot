@@ -58,13 +58,22 @@ async function checkDbQueueHealth() {
 
     interface StatusRow {
       status: string;
-      count: number;
+      count: number | string;
       oldest?: string;
     }
 
-    const counts = (statusCounts as StatusRow[]).reduce(
+    const statusRows = statusCounts as unknown as StatusRow[];
+    const counts = statusRows.reduce(
       (acc, row) => {
-        acc[row.status as keyof typeof acc] = Number(row.count);
+        const statusKey = row.status as keyof typeof acc;
+        if (
+          statusKey === "pending" ||
+          statusKey === "running" ||
+          statusKey === "completed" ||
+          statusKey === "dead"
+        ) {
+          acc[statusKey] = Number(row.count);
+        }
         if (row.status === "pending" && row.oldest) {
           acc.oldestPending = row.oldest;
         }
@@ -74,7 +83,7 @@ async function checkDbQueueHealth() {
     );
 
     // Calculate processing rate (completed jobs in last hour)
-    const [rateResult] = await db.execute(sql`
+    const rateResult = await db.execute(sql`
       SELECT COUNT(*) as recent_completed
       FROM jobs
       WHERE status = 'completed'
@@ -82,10 +91,11 @@ async function checkDbQueueHealth() {
     `);
 
     interface RateResult {
-      recent_completed: number;
+      recent_completed: number | string;
     }
 
-    const processingRate = Number((rateResult as RateResult)?.recent_completed || 0);
+    const rateRow = (rateResult as unknown as RateResult[])[0];
+    const processingRate = Number(rateRow?.recent_completed || 0);
 
     // Determine status
     let status = "healthy";
@@ -125,13 +135,17 @@ async function checkPgmqHealth() {
     const [metrics] = await db.execute(sql`SELECT queue_length FROM pgmq.metrics('metrics_jobs')`);
 
     interface QueueMetric {
-      queue_length: number;
+      queue_length: number | string;
     }
 
+    const autosnipingMetric = (autosniping as unknown as QueueMetric[])[0];
+    const alertsMetric = (alerts as unknown as QueueMetric[])[0];
+    const metricsMetric = (metrics as unknown as QueueMetric[])[0];
+
     const queueLengths = {
-      autosniping: Number((autosniping as QueueMetric)?.queue_length || 0),
-      alerts: Number((alerts as QueueMetric)?.queue_length || 0),
-      metrics: Number((metrics as QueueMetric)?.queue_length || 0),
+      autosniping: Number(autosnipingMetric?.queue_length || 0),
+      alerts: Number(alertsMetric?.queue_length || 0),
+      metrics: Number(metricsMetric?.queue_length || 0),
     };
 
     const total = queueLengths.autosniping + queueLengths.alerts + queueLengths.metrics;

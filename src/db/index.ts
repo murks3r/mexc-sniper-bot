@@ -14,4 +14,3 @@ export * from "./migrations/schema";
 export async function getUserPreferences(userId: string) {
   throw new Error("getUserPreferences not implemented in db index; use dedicated service instead.");
 }
-

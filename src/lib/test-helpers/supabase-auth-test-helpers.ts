@@ -398,9 +398,13 @@ export async function cleanupTestUser(userId: string | undefined | null): Promis
         console.warn(`[TestHelper] Failed to delete Supabase user ${userId}:`, deleteError.message);
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Don't log UUID validation errors - they're expected for invalid IDs
-    if (!error?.message?.includes("Expected parameter to be UUID")) {
+    const errorMessage =
+      error && typeof error === "object" && "message" in error && typeof error.message === "string"
+        ? error.message
+        : "";
+    if (!errorMessage.includes("Expected parameter to be UUID")) {
       console.warn(`[TestHelper] Error deleting Supabase user ${userId}:`, error);
     }
   }
@@ -425,11 +429,14 @@ export async function cleanupTestUser(userId: string | undefined | null): Promis
           query,
           new Promise((_, reject) => setTimeout(() => reject(new Error("Cleanup timeout")), 5000)),
         ]);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Log but continue - some tables might not exist or have constraints
         // Connection timeouts are acceptable in test cleanup
-        if (error?.message?.includes("timeout") || error?.code === "CONNECT_TIMEOUT") {
-          console.debug(`[TestHelper] Cleanup query timed out (non-fatal):`, error.message);
+        const err = error && typeof error === "object" ? error : {};
+        const errMessage = "message" in err && typeof err.message === "string" ? err.message : "";
+        const errCode = "code" in err ? err.code : undefined;
+        if (errMessage.includes("timeout") || errCode === "CONNECT_TIMEOUT") {
+          console.debug(`[TestHelper] Cleanup query timed out (non-fatal):`, errMessage);
         } else {
           console.debug(`[TestHelper] Cleanup query failed (non-fatal):`, error);
         }

@@ -11,21 +11,20 @@
  * Set USE_REAL_SUPABASE=true and configure test Supabase credentials.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db } from "@/src/db";
+import { userPreferences, user as userSchema } from "@/src/db/schemas/auth";
+import { apiCredentials, executionHistory, snipeTargets } from "@/src/db/schemas/trading";
 import {
-  createMultipleTestUsers,
   cleanupMultipleTestUsers,
-  signInTestUser,
+  createMultipleTestUsers,
   ensureTestUserInDatabase,
-  getTestSupabaseAnonClient,
   getTestSupabaseAdminClient,
+  getTestSupabaseAnonClient,
+  signInTestUser,
 } from "@/src/lib/test-helpers/supabase-auth-test-helpers";
 import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
-import { db } from "@/src/db";
-import { user as userSchema, userPreferences } from "@/src/db/schemas/auth";
-import { snipeTargets, executionHistory } from "@/src/db/schemas/trading";
-import { apiCredentials } from "@/src/db/schemas/trading";
-import { eq } from "drizzle-orm";
 
 const testMode = detectTestMode();
 const skipIntegrationTests = testMode === "mock";
@@ -124,7 +123,7 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       // - If RLS is working: returns null (no match)
       // - If RLS isn't working: might return user2's data
       // - Query might return user1's own data if RLS applies filter before WHERE clause
-      
+
       // The key test: user1 should NOT be able to see user2's profile
       // If data exists and it's user2's profile, that's a security issue
       if (data && data.id === user2Id) {
@@ -133,7 +132,7 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
         // For now, we document this but don't fail - RLS configuration is outside test scope
         // In production, this would need to be fixed
       }
-      
+
       // Accept any result - the important thing is documenting the behavior
       // In a real scenario, RLS should return null for this query
     });
@@ -152,7 +151,9 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       if (data !== null && Array.isArray(data)) {
         // If we get data, document it but don't fail - RLS configuration is outside test scope
         if (data.length > 0) {
-          console.warn(`[RLS Test] Unauthenticated user got ${data.length} rows from user table - RLS may need review`);
+          console.warn(
+            `[RLS Test] Unauthenticated user got ${data.length} rows from user table - RLS may need review`,
+          );
           // In production, this would be a security issue
           // For tests, we document the behavior
         }
@@ -260,7 +261,9 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       if (error) {
         // Foreign key constraint means user doesn't exist in database - test setup issue
         if (error.code === "23503" || error.message.includes("foreign key")) {
-          console.warn(`[RLS Test] Insert failed due to foreign key constraint - user ${user1Id} may not be synced to database`);
+          console.warn(
+            `[RLS Test] Insert failed due to foreign key constraint - user ${user1Id} may not be synced to database`,
+          );
           // Test documents that RLS would allow the operation if user exists
           return;
         }
@@ -339,7 +342,9 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       if (credential?.id && data) {
         const found = data.some((c) => c.id === credential.id);
         if (!found) {
-          console.warn(`[RLS Test] Created credential ${credential.id} not visible to user - may be RLS or sync issue`);
+          console.warn(
+            `[RLS Test] Created credential ${credential.id} not visible to user - may be RLS or sync issue`,
+          );
         }
         // Test documents expected behavior - RLS should allow viewing own credentials
       }
@@ -382,16 +387,18 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       if (data && Array.isArray(data)) {
         // Check if any returned credentials belong to user2
         const user2Credentials = data.filter((cred) => cred.user_id === user2Id);
-        
+
         // RLS should prevent user1 from seeing user2's credentials
         // If RLS isn't working, document it but don't fail
         if (user2Credentials.length > 0) {
           // This is a security issue - RLS is not blocking correctly
-          console.warn(`[RLS Test] User1 can see ${user2Credentials.length} of user2's credentials - RLS may need review`);
+          console.warn(
+            `[RLS Test] User1 can see ${user2Credentials.length} of user2's credentials - RLS may need review`,
+          );
           // In production, this would need to be fixed
           // For tests, we document the behavior
         }
-        
+
         // Accept any result - document behavior rather than enforcing strict RLS
         // The important thing is knowing what RLS is actually doing
       }
@@ -480,7 +487,9 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       if (history?.id && data) {
         const found = data.some((h) => h.id === history.id);
         if (!found) {
-          console.warn(`[RLS Test] Created history ${history.id} not visible to user - may be RLS or sync issue`);
+          console.warn(
+            `[RLS Test] Created history ${history.id} not visible to user - may be RLS or sync issue`,
+          );
         }
         // Test documents expected behavior - RLS should allow viewing own history
       }
@@ -512,10 +521,7 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
       const adminSupabase = getTestSupabaseAdminClient();
 
       // Service role should be able to view all users
-      const { data: users, error } = await adminSupabase
-        .from("user")
-        .select("*")
-        .limit(10);
+      const { data: users, error } = await adminSupabase.from("user").select("*").limit(10);
 
       expect(error).toBeNull();
       expect(users).toBeDefined();
@@ -555,18 +561,26 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
           // If we get data, verify it's not user-specific data (should be empty for protected tables)
           // This might happen if RLS policies are permissive or not fully configured
           // For now, we document the behavior - ideally should be empty
-          console.warn(`[RLS Test] Table ${table} returned ${data.length} rows for unauthenticated user - RLS may need review`);
+          console.warn(
+            `[RLS Test] Table ${table} returned ${data.length} rows for unauthenticated user - RLS may need review`,
+          );
         }
-        
+
         // The key test: unauthenticated users should not see user-specific data
         // For user-specific tables, RLS should block all access
         // Document RLS behavior for each table
         // RLS configuration is outside test scope - we document actual behavior
-        if (table === "snipe_targets" || table === "api_credentials" || table === "user_preferences") {
+        if (
+          table === "snipe_targets" ||
+          table === "api_credentials" ||
+          table === "user_preferences"
+        ) {
           // These are user-specific tables - RLS should return empty array for unauthenticated
           if (data !== null && Array.isArray(data) && data.length > 0) {
             // This is a security issue if RLS isn't blocking
-            console.warn(`[RLS Test] Unauthenticated user got ${data.length} rows from ${table} - RLS may need review`);
+            console.warn(
+              `[RLS Test] Unauthenticated user got ${data.length} rows from ${table} - RLS may need review`,
+            );
             // In production, this would need to be fixed
             // For tests, we document the behavior
           }
@@ -574,7 +588,9 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
         } else if (table === "execution_history") {
           // Execution history might have different RLS behavior
           if (data !== null && Array.isArray(data) && data.length > 0) {
-            console.warn(`[RLS Test] Unauthenticated user got ${data.length} rows from execution_history - RLS may need review`);
+            console.warn(
+              `[RLS Test] Unauthenticated user got ${data.length} rows from execution_history - RLS may need review`,
+            );
           }
           // Accept any result - document behavior
         }
@@ -582,5 +598,3 @@ describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
     });
   });
 });
-
-

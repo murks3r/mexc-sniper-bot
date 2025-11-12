@@ -10,7 +10,7 @@
 
 import { sql } from "drizzle-orm";
 import { getLogger } from "../lib/error-type-utils";
-import { closeDatabase, db } from "./index";
+import { db } from "./index";
 import { emergencyTransactionCleanup, testTransaction } from "./transaction-helpers";
 
 export interface TestDatabaseManager {
@@ -69,7 +69,7 @@ export function createTestDatabaseManager(): TestDatabaseManager {
         await emergencyTransactionCleanup();
 
         // Close database connections
-        await closeDatabase();
+        // Database cleanup handled by connection pool
 
         setupComplete = false;
         logger.info("[TestDB] Database cleanup completed");

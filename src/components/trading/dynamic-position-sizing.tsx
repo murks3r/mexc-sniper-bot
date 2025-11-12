@@ -98,7 +98,6 @@ export function DynamicPositionSizing() {
                       Max Risk per Trade: {customConfig.maxRiskPerTrade}%
                     </Label>
                     <Slider
-                      id="maxRiskPerTrade"
                       min={0.5}
                       max={10}
                       step={0.5}
@@ -115,7 +114,6 @@ export function DynamicPositionSizing() {
                       Min Position Size: ${customConfig.minPositionSize}
                     </Label>
                     <Slider
-                      id="minPositionSize"
                       min={5}
                       max={100}
                       step={5}
@@ -134,7 +132,6 @@ export function DynamicPositionSizing() {
                       Max Position Size: ${customConfig.maxPositionSize}
                     </Label>
                     <Slider
-                      id="maxPositionSize"
                       min={100}
                       max={5000}
                       step={100}
@@ -151,7 +148,6 @@ export function DynamicPositionSizing() {
                       Reserve Ratio: {((customConfig.reserveRatio || 0.2) * 100).toFixed(0)}%
                     </Label>
                     <Slider
-                      id="reserveRatio"
                       min={0.1}
                       max={0.5}
                       step={0.05}

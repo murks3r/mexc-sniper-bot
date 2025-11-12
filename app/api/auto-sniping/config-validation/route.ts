@@ -24,6 +24,53 @@ type AutoSnipingConfig = {
   allowedPatternTypes?: string[];
 };
 
+interface ValidationRule {
+  field: keyof AutoSnipingConfig;
+  required?: boolean;
+  type: "number" | "string" | "boolean" | "array";
+  min?: number;
+  max?: number;
+  customValidator?: (value: any) => string | null;
+}
+
+function validateField(value: any, rule: ValidationRule): string | null {
+  // Skip validation if field is undefined and not required
+  if (value === undefined && !rule.required) {
+    return null;
+  }
+
+  // Type validation
+  if (rule.type === "number" && typeof value !== "number") {
+    return `${rule.field} must be a number`;
+  }
+  if (rule.type === "string" && typeof value !== "string") {
+    return `${rule.field} must be a string`;
+  }
+  if (rule.type === "boolean" && typeof value !== "boolean") {
+    return `${rule.field} must be a boolean`;
+  }
+  if (rule.type === "array" && !Array.isArray(value)) {
+    return `${rule.field} must be an array`;
+  }
+
+  // Range validation for numbers
+  if (rule.type === "number" && typeof value === "number") {
+    if (rule.min !== undefined && value < rule.min) {
+      return `${rule.field} must be at least ${rule.min}`;
+    }
+    if (rule.max !== undefined && value > rule.max) {
+      return `${rule.field} must be at most ${rule.max}`;
+    }
+  }
+
+  // Custom validation
+  if (rule.customValidator) {
+    return rule.customValidator(value);
+  }
+
+  return null;
+}
+
 // Configuration validation function
 async function validateAutoSnipingConfig(config: AutoSnipingConfig): Promise<{
   isValid: boolean;
@@ -33,95 +80,92 @@ async function validateAutoSnipingConfig(config: AutoSnipingConfig): Promise<{
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Validate required fields
-  if (config.maxPositions !== undefined) {
-    if (
-      typeof config.maxPositions !== "number" ||
-      config.maxPositions < 1 ||
-      config.maxPositions > 50
-    ) {
-      errors.push("maxPositions must be a number between 1 and 50");
-    }
-  }
+  // Define validation rules
+  const validationRules: ValidationRule[] = [
+    {
+      field: "maxPositions",
+      type: "number",
+      min: 1,
+      max: 50,
+    },
+    {
+      field: "maxDailyTrades",
+      type: "number",
+      min: 1,
+      max: 1000,
+    },
+    {
+      field: "positionSizeUSDT",
+      type: "number",
+      min: 0,
+      max: 10000,
+    },
+    {
+      field: "minConfidence",
+      type: "number",
+      min: 0,
+      max: 100,
+    },
+    {
+      field: "stopLossPercentage",
+      type: "number",
+      min: 0,
+      max: 50,
+    },
+    {
+      field: "maxDrawdownPercentage",
+      type: "number",
+      min: 0,
+      max: 100,
+    },
+    {
+      field: "allowedPatternTypes",
+      type: "array",
+      customValidator: (value: string[]) => {
+        if (!Array.isArray(value)) {
+          return "allowedPatternTypes must be an array";
+        }
 
-  if (config.maxDailyTrades !== undefined) {
-    if (
-      typeof config.maxDailyTrades !== "number" ||
-      config.maxDailyTrades < 1 ||
-      config.maxDailyTrades > 1000
-    ) {
-      errors.push("maxDailyTrades must be a number between 1 and 1000");
-    }
-  }
+        const validTypes = ["ready_state", "pre_ready", "launch_sequence", "risk_warning"];
+        const invalidTypes = value.filter((type: string) => !validTypes.includes(type));
 
-  if (config.positionSizeUSDT !== undefined) {
-    if (
-      typeof config.positionSizeUSDT !== "number" ||
-      config.positionSizeUSDT <= 0 ||
-      config.positionSizeUSDT > 10000
-    ) {
-      errors.push("positionSizeUSDT must be a number between 0 and 10000");
-    }
-  }
+        if (invalidTypes.length > 0) {
+          return `Invalid pattern types: ${invalidTypes.join(", ")}. Valid types: ${validTypes.join(", ")}`;
+        }
 
-  if (config.minConfidence !== undefined) {
-    if (
-      typeof config.minConfidence !== "number" ||
-      config.minConfidence < 0 ||
-      config.minConfidence > 100
-    ) {
-      errors.push("minConfidence must be a number between 0 and 100");
-    }
-  }
+        return null;
+      },
+    },
+  ];
 
-  if (config.stopLossPercentage !== undefined) {
-    if (
-      typeof config.stopLossPercentage !== "number" ||
-      config.stopLossPercentage < 0 ||
-      config.stopLossPercentage > 50
-    ) {
-      errors.push("stopLossPercentage must be a number between 0 and 50");
-    }
-  }
-
-  if (config.maxDrawdownPercentage !== undefined) {
-    if (
-      typeof config.maxDrawdownPercentage !== "number" ||
-      config.maxDrawdownPercentage < 0 ||
-      config.maxDrawdownPercentage > 100
-    ) {
-      errors.push("maxDrawdownPercentage must be a number between 0 and 100");
-    }
-  }
-
-  // Validate pattern types
-  if (config.allowedPatternTypes !== undefined) {
-    if (!Array.isArray(config.allowedPatternTypes)) {
-      errors.push("allowedPatternTypes must be an array");
-    } else {
-      const validTypes = ["ready_state", "pre_ready", "launch_sequence", "risk_warning"];
-      const invalidTypes = config.allowedPatternTypes.filter(
-        (type: string) => !validTypes.includes(type),
-      );
-      if (invalidTypes.length > 0) {
-        errors.push(
-          `Invalid pattern types: ${invalidTypes.join(", ")}. Valid types: ${validTypes.join(", ")}`,
-        );
-      }
+  // Apply validation rules
+  for (const rule of validationRules) {
+    const error = validateField(config[rule.field], rule);
+    if (error) {
+      errors.push(error);
     }
   }
 
   // Add warnings for potentially risky configurations
-  if (config.maxPositions > 20) {
-    warnings.push("High maxPositions value may increase risk exposure");
-  }
+  const warningRules = [
+    {
+      condition: () => config.maxPositions > 20,
+      message: "High maxPositions value may increase risk exposure",
+    },
+    {
+      condition: () => config.stopLossPercentage !== undefined && config.stopLossPercentage < 2,
+      message: "Low stop loss percentage may result in frequent small losses",
+    },
+    {
+      condition: () => config.minConfidence !== undefined && config.minConfidence < 60,
+      message: "Low minimum confidence may result in lower quality trades",
+    },
+  ];
 
-  if (config.stopLossPercentage < 2) {
-    warnings.push("Low stop loss percentage may result in frequent small losses");
-  }
-
-  if (config.minConfidence < 60) {
-    warnings.push("Low minimum confidence may result in lower quality trades");
+  for (const rule of warningRules) {
+    if (rule.condition()) {
+      warnings.push(rule.message);
+    }
   }
 
   return {

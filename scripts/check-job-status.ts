@@ -24,12 +24,13 @@ async function checkJobStatus() {
   for (const job of allJobs) {
     statusCounts[job.status as keyof typeof statusCounts]++;
 
-    const statusEmoji = {
-      pending: "⏳",
-      running: "🏃",
-      completed: "✅",
-      dead: "💀",
-    }[job.status] || "❓";
+    const statusEmoji =
+      {
+        pending: "⏳",
+        running: "🏃",
+        completed: "✅",
+        dead: "💀",
+      }[job.status] || "❓";
 
     console.log(`${statusEmoji} ${job.type} (${job.status})`);
     console.log(`   ID: ${job.id}`);

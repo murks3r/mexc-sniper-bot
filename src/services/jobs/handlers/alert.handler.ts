@@ -1,6 +1,6 @@
+import { createSimpleLogger } from "@/src/lib/unified-logger";
 import type { QueueJob } from "@/src/services/queues/supabase-queues";
 import { RealTimeSafetyMonitoringService } from "@/src/services/risk/real-time-safety-monitoring-modules";
-import { createSimpleLogger } from "@/src/lib/unified-logger";
 
 const logger = createSimpleLogger("alert-handler");
 

@@ -86,11 +86,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch targets from database
-    let query = db.select().from(snipeTargets);
-    if (whereCond) {
-      query = query.where(whereCond);
-    }
-    const targets = await query.orderBy(desc(snipeTargets.createdAt)).limit(100);
+    const baseQuery = db.select().from(snipeTargets);
+    const targets = whereCond
+      ? await baseQuery.where(whereCond).orderBy(desc(snipeTargets.createdAt)).limit(100)
+      : await baseQuery.orderBy(desc(snipeTargets.createdAt)).limit(100);
 
     return NextResponse.json({
       success: true,

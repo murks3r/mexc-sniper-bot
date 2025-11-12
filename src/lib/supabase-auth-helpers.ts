@@ -28,8 +28,8 @@ export async function upsertAuthUser(userData: UpsertAuthUserData): Promise<void
 
   try {
     await db.insert(authUser).values(dataToInsert);
-  } catch (error: any) {
-    if (error.code === "23505") {
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
       // Unique violation - update existing record
       await db
         .update(authUser)

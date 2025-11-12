@@ -6,18 +6,18 @@
  */
 
 import { performance } from "node:perf_hooks";
-import type {
-  PerformanceMetrics,
-  PerformanceAlert,
-  PerformanceThreshold,
-  PerformanceMonitoringConfig,
-  MonitoringStatus,
-  PerformanceSummary,
-  TimingResult,
-  AsyncTimingResult,
-} from "./performance/monitoring-types";
-import { MetricsCollector } from "./performance/metrics-collector";
 import { AlertManager } from "./performance/alert-manager";
+import { MetricsCollector } from "./performance/metrics-collector";
+import type {
+  AsyncTimingResult,
+  MonitoringStatus,
+  PerformanceAlert,
+  PerformanceMetrics,
+  PerformanceMonitoringConfig,
+  PerformanceSummary,
+  PerformanceThreshold,
+  TimingResult,
+} from "./performance/monitoring-types";
 
 export class PerformanceMonitoringService {
   private config: PerformanceMonitoringConfig;
@@ -222,12 +222,12 @@ export const performanceMonitoringService = new PerformanceMonitoringService({
 
 // Re-export types for backward compatibility
 export type {
-  PerformanceMetrics,
-  PerformanceAlert,
-  PerformanceThreshold,
-  PerformanceMonitoringConfig,
-  MonitoringStatus,
-  PerformanceSummary,
-  TimingResult,
   AsyncTimingResult,
+  MonitoringStatus,
+  PerformanceAlert,
+  PerformanceMetrics,
+  PerformanceMonitoringConfig,
+  PerformanceSummary,
+  PerformanceThreshold,
+  TimingResult,
 } from "./performance/monitoring-types";

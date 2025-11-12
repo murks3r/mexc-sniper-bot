@@ -5,7 +5,7 @@
  */
 
 import { performance } from "node:perf_hooks";
-import { PerformanceMetrics, TimingResult, AsyncTimingResult } from "./monitoring-types";
+import type { AsyncTimingResult, PerformanceMetrics, TimingResult } from "./monitoring-types";
 
 export class MetricsCollector {
   private timers: Map<string, number> = new Map();

@@ -13,7 +13,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from openai import AsyncOpenAI
+try:
+    from openai import AsyncOpenAI
+
+    HAS_OPENAI = True
+except ImportError:
+    AsyncOpenAI = None
+    HAS_OPENAI = False
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 class AgentType(Enum):
     """Types of specialized development agents"""
+
     CODE_REVIEWER = "code_reviewer"
     DOCUMENTATION = "documentation"
     TESTING = "testing"
@@ -34,6 +41,7 @@ class AgentType(Enum):
 @dataclass
 class AgentTask:
     """Task specification for an AI agent"""
+
     task_type: AgentType
     description: str
     context: Dict[str, Any]
@@ -44,26 +52,73 @@ class AgentTask:
 
 class CodexAgent:
     """Base class for specialized Codex agents"""
-    
-    def __init__(self, agent_type: AgentType, openai_client: AsyncOpenAI):
+
+    def __init__(self, agent_type: AgentType, openai_client):
         self.agent_type = agent_type
         self.client = openai_client
         self.context = self.load_project_context()
-        
+
     def load_project_context(self) -> Dict[str, Any]:
         """Load project context from Codex setup files"""
         try:
             context_file = Path(__file__).parent / "context.json"
-            with open(context_file, 'r') as f:
+            with open(context_file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
             logger.warning("Context file not found. Run .codex/setup.py first.")
             return {}
-    
+
+    def _read_file_contents(self, file_paths: List[str]) -> List[str]:
+        """Read contents of multiple files safely"""
+        file_contents = []
+        for file_path in file_paths:
+            try:
+                with open(file_path, "r") as f:
+                    content = f.read()
+                    file_contents.append(f"File: {file_path}\n```\n{content}\n```")
+            except FileNotFoundError:
+                logger.warning(f"File not found: {file_path}")
+        return file_contents
+
+    async def _execute_task(
+        self,
+        prompt: str,
+        response_fields: Dict[str, Any],
+        error_prefix: str,
+        max_tokens: int = 2500,
+        temperature: float = 0.1,
+    ) -> Dict[str, Any]:
+        """Common task execution pattern for all agents"""
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+            result = {"agent_type": self.agent_type.value, "status": "completed"}
+
+            # Map response fields dynamically
+            for field, value in response_fields.items():
+                if value == "content":
+                    result[field] = response.choices[0].message.content
+                else:
+                    result[field] = value
+
+            return result
+        except Exception as e:
+            logger.error(f"{error_prefix} failed: {e}")
+            return {
+                "agent_type": self.agent_type.value,
+                "status": "error",
+                "error": str(e),
+            }
+
     async def process_task(self, task: AgentTask) -> Dict[str, Any]:
         """Process a task using the specialized agent"""
         raise NotImplementedError("Subclasses must implement process_task")
-    
+
     def get_system_prompt(self) -> str:
         """Get the system prompt for this agent type"""
         base_context = f"""
@@ -75,9 +130,9 @@ Project Context:
 - AI Features: Pattern detection, trading strategies, market analysis
 - Key Components: Trading agents, MEXC API integration, calendar component
 
-Architecture: {json.dumps(self.context.get('architecture', {}), indent=2)}
+Architecture: {json.dumps(self.context.get("architecture", {}), indent=2)}
 """
-        
+
         agent_prompts = {
             AgentType.CODE_REVIEWER: """
 You are a senior code reviewer specializing in trading systems and AI applications.
@@ -88,7 +143,6 @@ Focus on:
 - Type safety and documentation
 - Following project patterns and best practices
 """,
-            
             AgentType.DOCUMENTATION: """
 You are a technical documentation specialist.
 Focus on:
@@ -98,7 +152,6 @@ Focus on:
 - User guides and setup instructions
 - Code comments and docstrings
 """,
-            
             AgentType.TESTING: """
 You are a testing specialist for financial applications.
 Focus on:
@@ -108,7 +161,6 @@ Focus on:
 - Test data generation and fixtures
 - CI/CD testing strategies
 """,
-            
             AgentType.REFACTORING: """
 You are a refactoring specialist.
 Focus on:
@@ -118,7 +170,6 @@ Focus on:
 - Design pattern implementation
 - Technical debt reduction
 """,
-            
             AgentType.ARCHITECTURE: """
 You are a software architect specializing in trading systems.
 Focus on:
@@ -128,7 +179,6 @@ Focus on:
 - Security and compliance
 - Technology stack optimization
 """,
-            
             AgentType.SECURITY: """
 You are a security specialist for financial applications.
 Focus on:
@@ -138,7 +188,6 @@ Focus on:
 - Trading system security
 - Compliance with financial regulations
 """,
-            
             AgentType.PERFORMANCE: """
 You are a performance optimization specialist.
 Focus on:
@@ -147,30 +196,23 @@ Focus on:
 - Caching strategies
 - Real-time processing efficiency
 - Resource utilization
-"""
+""",
         }
-        
+
         return base_context + agent_prompts.get(self.agent_type, "")
 
 
 class CodeReviewerAgent(CodexAgent):
     """Specialized agent for code review"""
-    
-    def __init__(self, openai_client: AsyncOpenAI):
+
+    def __init__(self, openai_client):
         super().__init__(AgentType.CODE_REVIEWER, openai_client)
-    
+
     async def process_task(self, task: AgentTask) -> Dict[str, Any]:
         """Review code for quality, security, and best practices"""
-        
-        file_contents = []
-        for file_path in task.files:
-            try:
-                with open(file_path, 'r') as f:
-                    content = f.read()
-                    file_contents.append(f"File: {file_path}\n```\n{content}\n```")
-            except FileNotFoundError:
-                logger.warning(f"File not found: {file_path}")
-        
+
+        file_contents = self._read_file_contents(task.files)
+
         prompt = f"""
 {self.get_system_prompt()}
 
@@ -179,7 +221,7 @@ Please review the following code for the MEXC Sniper Bot project:
 {chr(10).join(file_contents)}
 
 Task Description: {task.description}
-Requirements: {', '.join(task.requirements)}
+Requirements: {", ".join(task.requirements)}
 
 Provide a comprehensive code review including:
 1. Security issues and vulnerabilities
@@ -191,44 +233,26 @@ Provide a comprehensive code review including:
 
 Format your response as structured feedback with severity levels.
 """
-        
-        try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=2000,
-                temperature=0.1
-            )
-            
-            return {
-                "agent_type": self.agent_type.value,
-                "review": response.choices[0].message.content,
-                "files_reviewed": task.files,
-                "status": "completed"
-            }
-        except Exception as e:
-            logger.error(f"Code review failed: {e}")
-            return {"agent_type": self.agent_type.value, "status": "error", "error": str(e)}
+
+        return await self._execute_task(
+            prompt,
+            {"review": "content", "files_reviewed": task.files},
+            "Code review",
+            max_tokens=2000,
+        )
 
 
 class DocumentationAgent(CodexAgent):
     """Specialized agent for documentation generation"""
-    
-    def __init__(self, openai_client: AsyncOpenAI):
+
+    def __init__(self, openai_client):
         super().__init__(AgentType.DOCUMENTATION, openai_client)
-    
+
     async def process_task(self, task: AgentTask) -> Dict[str, Any]:
         """Generate comprehensive documentation"""
-        
-        file_contents = []
-        for file_path in task.files:
-            try:
-                with open(file_path, 'r') as f:
-                    content = f.read()
-                    file_contents.append(f"File: {file_path}\n```\n{content}\n```")
-            except FileNotFoundError:
-                logger.warning(f"File not found: {file_path}")
-        
+
+        file_contents = self._read_file_contents(task.files)
+
         prompt = f"""
 {self.get_system_prompt()}
 
@@ -237,7 +261,7 @@ Generate comprehensive documentation for the following code:
 {chr(10).join(file_contents)}
 
 Task Description: {task.description}
-Requirements: {', '.join(task.requirements)}
+Requirements: {", ".join(task.requirements)}
 
 Create documentation that includes:
 1. Overview and purpose
@@ -250,44 +274,26 @@ Create documentation that includes:
 
 Format the documentation in Markdown with proper structure and examples.
 """
-        
-        try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=2500,
-                temperature=0.2
-            )
-            
-            return {
-                "agent_type": self.agent_type.value,
-                "documentation": response.choices[0].message.content,
-                "files_documented": task.files,
-                "status": "completed"
-            }
-        except Exception as e:
-            logger.error(f"Documentation generation failed: {e}")
-            return {"agent_type": self.agent_type.value, "status": "error", "error": str(e)}
+
+        return await self._execute_task(
+            prompt,
+            {"documentation": "content", "files_documented": task.files},
+            "Documentation generation",
+            temperature=0.2,
+        )
 
 
 class TestingAgent(CodexAgent):
     """Specialized agent for test generation"""
-    
-    def __init__(self, openai_client: AsyncOpenAI):
+
+    def __init__(self, openai_client):
         super().__init__(AgentType.TESTING, openai_client)
-    
+
     async def process_task(self, task: AgentTask) -> Dict[str, Any]:
         """Generate comprehensive tests"""
-        
-        file_contents = []
-        for file_path in task.files:
-            try:
-                with open(file_path, 'r') as f:
-                    content = f.read()
-                    file_contents.append(f"File: {file_path}\n```\n{content}\n```")
-            except FileNotFoundError:
-                logger.warning(f"File not found: {file_path}")
-        
+
+        file_contents = self._read_file_contents(task.files)
+
         prompt = f"""
 {self.get_system_prompt()}
 
@@ -296,7 +302,7 @@ Generate comprehensive tests for the following code:
 {chr(10).join(file_contents)}
 
 Task Description: {task.description}
-Requirements: {', '.join(task.requirements)}
+Requirements: {", ".join(task.requirements)}
 
 Create tests that include:
 1. Unit tests for all functions/methods
@@ -309,183 +315,196 @@ Create tests that include:
 Use pytest framework and follow the existing test patterns in the project.
 Include proper async test patterns and mocking for external APIs.
 """
-        
-        try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=2500,
-                temperature=0.1
-            )
-            
-            return {
-                "agent_type": self.agent_type.value,
-                "tests": response.choices[0].message.content,
-                "files_tested": task.files,
-                "status": "completed"
-            }
-        except Exception as e:
-            logger.error(f"Test generation failed: {e}")
-            return {"agent_type": self.agent_type.value, "status": "error", "error": str(e)}
+
+        return await self._execute_task(
+            prompt, {"tests": "content", "files_tested": task.files}, "Test generation"
+        )
 
 
 class MultiAgentOrchestrator:
     """Orchestrates multiple AI agents for development workflows"""
-    
+
     def __init__(self, openai_api_key: Optional[str] = None):
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
-            raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
-        
-        self.client = AsyncOpenAI(api_key=self.api_key)
+            raise ValueError(
+                "OpenAI API key not found. Set OPENAI_API_KEY environment variable."
+            )
+
+        if AsyncOpenAI is None:
+            raise ImportError(
+                "OpenAI library not installed. Install with: pip install openai"
+            )
+
+        self.client = AsyncOpenAI(api_key=self.api_key) if HAS_OPENAI else None
         self.agents = {
             AgentType.CODE_REVIEWER: CodeReviewerAgent(self.client),
             AgentType.DOCUMENTATION: DocumentationAgent(self.client),
             AgentType.TESTING: TestingAgent(self.client),
         }
-    
+
     async def process_workflow(self, tasks: List[AgentTask]) -> Dict[str, Any]:
         """Process multiple tasks using appropriate agents"""
-        
+
         results = []
-        
+
         # Sort tasks by priority
         sorted_tasks = sorted(tasks, key=lambda t: t.priority, reverse=True)
-        
+
         for task in sorted_tasks:
             if task.task_type in self.agents:
-                logger.info(f"Processing {task.task_type.value} task: {task.description}")
-                
+                logger.info(
+                    f"Processing {task.task_type.value} task: {task.description}"
+                )
+
                 try:
                     result = await self.agents[task.task_type].process_task(task)
                     results.append(result)
-                    
+
                     # Add delay to respect rate limits
                     await asyncio.sleep(1)
-                    
+
                 except Exception as e:
                     logger.error(f"Task failed: {e}")
-                    results.append({
-                        "agent_type": task.task_type.value,
-                        "status": "error",
-                        "error": str(e)
-                    })
+                    results.append(
+                        {
+                            "agent_type": task.task_type.value,
+                            "status": "error",
+                            "error": str(e),
+                        }
+                    )
             else:
-                logger.warning(f"No agent available for task type: {task.task_type.value}")
-        
+                logger.warning(
+                    f"No agent available for task type: {task.task_type.value}"
+                )
+
         return {
             "workflow_results": results,
             "total_tasks": len(tasks),
-            "completed_tasks": len([r for r in results if r.get("status") == "completed"]),
-            "failed_tasks": len([r for r in results if r.get("status") == "error"])
+            "completed_tasks": len(
+                [r for r in results if r.get("status") == "completed"]
+            ),
+            "failed_tasks": len([r for r in results if r.get("status") == "error"]),
         }
-    
+
+    def _create_workflow_task(
+        self,
+        agent_type: AgentType,
+        description: str,
+        files: List[str],
+        requirements: List[str],
+    ) -> AgentTask:
+        """Create a standardized workflow task"""
+        return AgentTask(
+            task_type=agent_type,
+            description=description,
+            context={},
+            files=files,
+            requirements=requirements,
+            priority=1,
+        )
+
     async def code_review_workflow(self, file_paths: List[str]) -> Dict[str, Any]:
         """Comprehensive code review workflow"""
-        
-        tasks = [
-            AgentTask(
-                task_type=AgentType.CODE_REVIEWER,
-                description="Comprehensive code review for security, performance, and quality",
-                context={},
-                files=file_paths,
-                requirements=[
-                    "Security vulnerability assessment",
-                    "Performance optimization suggestions",
-                    "Code quality improvements",
-                    "Trading logic validation"
-                ],
-                priority=1
-            )
-        ]
-        
-        return await self.process_workflow(tasks)
-    
+
+        task = self._create_workflow_task(
+            AgentType.CODE_REVIEWER,
+            "Comprehensive code review for security, performance, and quality",
+            file_paths,
+            [
+                "Security vulnerability assessment",
+                "Performance optimization suggestions",
+                "Code quality improvements",
+                "Trading logic validation",
+            ],
+        )
+
+        return await self.process_workflow([task])
+
     async def documentation_workflow(self, file_paths: List[str]) -> Dict[str, Any]:
         """Generate documentation for specified files"""
-        
-        tasks = [
-            AgentTask(
-                task_type=AgentType.DOCUMENTATION,
-                description="Generate comprehensive documentation",
-                context={},
-                files=file_paths,
-                requirements=[
-                    "API documentation with examples",
-                    "Function/class documentation",
-                    "Usage examples",
-                    "Configuration guides"
-                ],
-                priority=1
-            )
-        ]
-        
-        return await self.process_workflow(tasks)
-    
+
+        task = self._create_workflow_task(
+            AgentType.DOCUMENTATION,
+            "Generate comprehensive documentation",
+            file_paths,
+            [
+                "API documentation with examples",
+                "Function/class documentation",
+                "Usage examples",
+                "Configuration guides",
+            ],
+        )
+
+        return await self.process_workflow([task])
+
     async def testing_workflow(self, file_paths: List[str]) -> Dict[str, Any]:
         """Generate comprehensive tests"""
-        
-        tasks = [
-            AgentTask(
-                task_type=AgentType.TESTING,
-                description="Generate comprehensive test suite",
-                context={},
-                files=file_paths,
-                requirements=[
-                    "Unit tests with high coverage",
-                    "Integration tests for APIs",
-                    "Mock trading scenarios",
-                    "Edge case testing"
-                ],
-                priority=1
-            )
-        ]
-        
-        return await self.process_workflow(tasks)
+
+        task = self._create_workflow_task(
+            AgentType.TESTING,
+            "Generate comprehensive test suite",
+            file_paths,
+            [
+                "Unit tests with high coverage",
+                "Integration tests for APIs",
+                "Mock trading scenarios",
+                "Edge case testing",
+            ],
+        )
+
+        return await self.process_workflow([task])
 
 
 # CLI Interface
 async def main():
     """Main CLI interface for multi-agent workflows"""
     import argparse
-    
-    parser = argparse.ArgumentParser(description="Multi-Agent Codex Development Assistant")
-    parser.add_argument("--workflow", choices=["review", "docs", "test"], required=True,
-                       help="Type of workflow to run")
-    parser.add_argument("--files", nargs="+", required=True,
-                       help="Files to process")
+
+    parser = argparse.ArgumentParser(
+        description="Multi-Agent Codex Development Assistant"
+    )
+    parser.add_argument(
+        "--workflow",
+        choices=["review", "docs", "test"],
+        required=True,
+        help="Type of workflow to run",
+    )
+    parser.add_argument("--files", nargs="+", required=True, help="Files to process")
     parser.add_argument("--output", help="Output file for results")
-    
+
     args = parser.parse_args()
-    
+
     try:
         orchestrator = MultiAgentOrchestrator()
-        
+
         if args.workflow == "review":
             results = await orchestrator.code_review_workflow(args.files)
         elif args.workflow == "docs":
             results = await orchestrator.documentation_workflow(args.files)
         elif args.workflow == "test":
             results = await orchestrator.testing_workflow(args.files)
-        
+        else:
+            raise ValueError(f"Unknown workflow: {args.workflow}")
+
         # Output results
         output_data = {
             "workflow_type": args.workflow,
             "timestamp": str(asyncio.get_event_loop().time()),
-            "results": results
+            "results": results,
         }
-        
+
         if args.output:
-            with open(args.output, 'w') as f:
+            with open(args.output, "w") as f:
                 json.dump(output_data, f, indent=2)
             print(f"Results saved to: {args.output}")
         else:
             print(json.dumps(output_data, indent=2))
-            
+
     except Exception as e:
         logger.error(f"Workflow failed: {e}")
         return 1
-    
+
     return 0
 
 
