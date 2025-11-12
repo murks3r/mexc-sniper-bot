@@ -37,12 +37,14 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
 
-  // Detect test environment to disable OAuth providers
+  const isBrowser = typeof window !== "undefined";
+  const userAgent = isBrowser && window.navigator?.userAgent ? window.navigator.userAgent : "";
   const isTestEnvironment =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      process.env.NODE_ENV === "test" ||
-      process.env.PLAYWRIGHT_TEST === "true");
+    isBrowser &&
+    (process.env.NODE_ENV === "test" ||
+      process.env.PLAYWRIGHT_TEST === "true" ||
+      process.env.FORCE_TEST_MODE === "true" ||
+      userAgent.includes("Playwright"));
 
   // Fix hydration by ensuring consistent rendering
   useEffect(() => {
@@ -366,7 +368,9 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
           }}
           providers={isTestEnvironment ? [] : ["google", "github"]}
           redirectTo={
-            typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "/dashboard"
+            typeof window !== "undefined" 
+              ? `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/dashboard`
+              : "/dashboard"
           }
           onlyThirdPartyProviders={false}
           magicLink={true}
