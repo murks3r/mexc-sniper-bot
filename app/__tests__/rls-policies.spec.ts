@@ -29,7 +29,9 @@ import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 const testMode = detectTestMode();
 const skipIntegrationTests = testMode === "mock";
 
-describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
+const describeFn = skipIntegrationTests ? describe.skip : describe;
+
+describeFn("RLS Policy Tests", () => {
   let user1Id: string;
   let user2Id: string;
   let user1Token: string;

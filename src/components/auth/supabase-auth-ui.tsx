@@ -368,9 +368,9 @@ export const SupabaseAuthUI = memo(function SupabaseAuthUI() {
           }}
           providers={isTestEnvironment ? [] : ["google", "github"]}
           redirectTo={
-            typeof window !== "undefined" 
-              ? `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/dashboard`
-              : "/dashboard"
+            typeof window !== "undefined"
+              ? `${(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")}/api/auth/callback?redirect_to=/dashboard`
+              : "/api/auth/callback?redirect_to=/dashboard"
           }
           onlyThirdPartyProviders={false}
           magicLink={true}

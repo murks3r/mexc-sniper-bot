@@ -92,3 +92,4 @@ export function isUpcomingListing(listing: CalendarEntry, hoursAhead: number = 4
 
   return listingTime > now && listingTime <= futureTime;
 }
+

@@ -75,3 +75,4 @@ export function toCacheConfig(config: Required<UnifiedMexcConfigV2>): MexcCacheC
     apiResponseTTL: config.apiResponseTTL,
   };
 }
+
