@@ -12,7 +12,6 @@ import { withDatabaseQueryCache } from "@/src/lib/database-query-cache-middlewar
 import { executeWithRateLimit } from "@/src/lib/database-rate-limiter";
 import { validateExternalApiResponse } from "@/src/lib/enhanced-validation-middleware";
 
-
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
 import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 
@@ -203,7 +202,6 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
     const startTime = Date.now();
     let balanceResponse: Awaited<ReturnType<typeof mexcClient.getAccountBalances>>;
     try {
-
       // Enhanced MEXC API call with proper error handling and monitoring
       const rawResponse = await executeWithRateLimit(async () => {
         return executeWithCircuitBreaker(async () => {
@@ -241,7 +239,9 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
       );
 
       if (!validationResult.success) {
-        throw new Error(`MEXC API response validation failed: ${JSON.stringify(validationResult.error)}`);
+        throw new Error(
+          `MEXC API response validation failed: ${JSON.stringify(validationResult.error)}`,
+        );
       }
 
       balanceResponse = rawResponse;

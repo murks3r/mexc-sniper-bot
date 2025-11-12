@@ -36,6 +36,7 @@ import { Progress } from "@/src/components/ui/progress";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Switch } from "@/src/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import type { SafetyAlert } from "@/src/services/risk/safety/safety-types";
 import { createSimpleLogger } from "../../lib/unified-logger";
 
 interface RealTimeSafetyDashboardProps {
@@ -54,15 +55,16 @@ const mockSafetyData = {
   activeAlerts: [
     {
       id: "1",
+      type: "system_degradation" as const,
       title: "High Latency Detected",
       message: "API response time increased",
-      severity: "medium",
-      category: "connectivity",
-      riskLevel: 25,
+      severity: "medium" as const,
       source: "mexc-api",
       timestamp: new Date().toISOString(),
       acknowledged: false,
-      autoActions: [],
+      resolved: false,
+      actions: [],
+      metadata: { category: "connectivity", riskLevel: 25 },
     },
   ],
   recentActions: [
@@ -79,6 +81,7 @@ const mockSafetyData = {
     currentDrawdown: 2.5,
     successRate: 78.5,
     consecutiveLosses: 0,
+    totalTrades: 156,
     apiLatency: 45,
   },
 };
@@ -238,7 +241,15 @@ function SafetyStatusOverview({
 }
 
 // Risk metrics grid
-function RiskMetricsGrid({ metrics }: { metrics: any }) {
+interface RiskMetrics {
+  currentDrawdown: number;
+  successRate: number;
+  consecutiveLosses: number;
+  totalTrades?: number;
+  apiLatency: number | string;
+  [key: string]: number | string;
+}
+function RiskMetricsGrid({ metrics }: { metrics: RiskMetrics | null }) {
   if (!metrics) return null;
 
   return (
@@ -395,7 +406,7 @@ function SafetyAlertsTab({
   onClearAlerts,
   isAcknowledgingAlert,
 }: {
-  activeAlerts: any[];
+  activeAlerts: SafetyAlert[];
   onAcknowledgeAlert: (alertId: string) => void;
   onClearAlerts: () => void;
   isAcknowledgingAlert: boolean;
@@ -420,7 +431,7 @@ function SafetyAlertsTab({
         {activeAlerts.length > 0 ? (
           <ScrollArea className="h-96">
             <div className="space-y-3">
-              {activeAlerts.map((alert: any) => (
+              {activeAlerts.map((alert) => (
                 <div
                   key={alert.id}
                   className={`border rounded-lg p-4 ${alert.acknowledged ? "bg-gray-50 opacity-60" : "bg-white"}`}
@@ -428,7 +439,7 @@ function SafetyAlertsTab({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <AlertSeverityBadge severity={alert.severity} />
-                      <Badge variant="outline">{alert.category}</Badge>
+                      <Badge variant="outline">{(alert.metadata as any)?.category}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-500">
@@ -450,7 +461,7 @@ function SafetyAlertsTab({
                   <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      Risk Level: {alert.riskLevel}%
+                      Risk Level: {(alert.metadata as any)?.riskLevel}%
                     </Badge>
                     <Badge variant="outline" className="text-xs">
                       Source: {alert.source}
@@ -489,7 +500,7 @@ function SafetyActionsTab({ recentActions }: { recentActions: any[] }) {
         {recentActions.length > 0 ? (
           <ScrollArea className="h-64">
             <div className="space-y-3">
-              {recentActions.map((action: any) => (
+              {recentActions.map((action) => (
                 <div key={action.id} className="border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -593,7 +604,7 @@ function SafetyConfigTab({
 
 export function RealTimeSafetyDashboard({
   className = "",
-  autoRefresh = true,
+  _autoRefresh = true,
   showControls = true,
 }: RealTimeSafetyDashboardProps) {
   const logger = createSimpleLogger("RealTimeSafetyDashboard");

@@ -8,6 +8,7 @@
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { snipeTargets, user } from "@/src/db/schema";
+import { resolveRiskParams } from "@/src/lib/risk-defaults";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
 
 interface CalendarEntry {
@@ -46,11 +47,7 @@ export class CalendarToDatabaseSyncService {
    */
   private async ensureSystemUser(): Promise<void> {
     try {
-      const existingUser = await db
-        .select()
-        .from(user)
-        .where(eq(user.id, "system"))
-        .limit(1);
+      const existingUser = await db.select().from(user).where(eq(user.id, "system")).limit(1);
 
       if (existingUser.length === 0) {
         await db.insert(user).values({
@@ -167,24 +164,21 @@ export class CalendarToDatabaseSyncService {
       this.isRunning = false;
     }
 
-      try {
-        const [{ count }] = (await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(snipeTargets)
-          .where(eq(snipeTargets.userId, userId))) as { count: number }[];
-        this.logger.info("Snipe targets summary after sync", {
-          userId,
-          totalTargetsForUser: Number(count) || 0,
-        });
-      } catch (summaryError) {
-        this.logger.warn("Failed to fetch snipe targets summary after sync", {
-          userId,
-          error:
-            summaryError instanceof Error
-              ? summaryError.message
-              : "Unknown summary error",
-        });
-      }
+    try {
+      const [{ count }] = (await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(snipeTargets)
+        .where(eq(snipeTargets.userId, userId))) as { count: number }[];
+      this.logger.info("Snipe targets summary after sync", {
+        userId,
+        totalTargetsForUser: Number(count) || 0,
+      });
+    } catch (summaryError) {
+      this.logger.warn("Failed to fetch snipe targets summary after sync", {
+        userId,
+        error: summaryError instanceof Error ? summaryError.message : "Unknown summary error",
+      });
+    }
 
     return result;
   }
@@ -306,19 +300,27 @@ export class CalendarToDatabaseSyncService {
           userId,
         });
         try {
+          // Resolve risk parameters using centralized defaults
+          // No explicit values provided, so will use user preferences or global defaults
+          const riskParams = await resolveRiskParams({}, userId);
+
           const insertResult = await db.insert(snipeTargets).values({
             userId,
             vcoinId: launch.vcoinId,
             symbolName,
-            positionSizeUsdt: 100, // Default position size
-            stopLossPercent: 15.0, // Default 15% stop loss
-            takeProfitCustom: 25.0, // Default 25% take profit
+            positionSizeUsdt: 1, // Minimal default - dynamic sizing will determine actual amount at execution time
+            stopLossPercent: riskParams.stopLossPercent,
+            takeProfitLevel: riskParams.takeProfitLevel,
+            takeProfitCustom: riskParams.takeProfitCustom,
             targetExecutionTime: new Date(launch.firstOpenTime),
             status: "active", // Set status to "active" so targets appear in dashboard
             confidenceScore: 85.0, // High confidence for calendar launches
             riskLevel: "medium",
           });
-          this.logger.debug("Target inserted successfully", { insertResult });
+          this.logger.debug("Target inserted successfully", {
+            insertResult,
+            riskParams,
+          });
         } catch (insertError) {
           this.logger.error(
             `Database insert failed for ${launch.vcoinId}`,

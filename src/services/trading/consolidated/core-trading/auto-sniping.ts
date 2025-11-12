@@ -1217,8 +1217,11 @@ export class AutoSnipingModule {
           .where(eq(userPreferencesTable.userId, uid))
           .limit(1);
         if (prefs && prefs.length > 0) {
-          if (typeof prefs[0].amount === "number" && prefs[0].amount > 0) {
-            uiMaxBuyUsdt = prefs[0].amount;
+          if (
+            typeof prefs[0].defaultBuyAmountUsdt === "number" &&
+            prefs[0].defaultBuyAmountUsdt > 0
+          ) {
+            uiMaxBuyUsdt = prefs[0].defaultBuyAmountUsdt;
           }
           if (typeof prefs[0].stopLoss === "number" && prefs[0].stopLoss > 0) {
             stopLossPercent = prefs[0].stopLoss;
@@ -1411,8 +1414,26 @@ export class AutoSnipingModule {
         maxHoldHours,
       } = userValidation;
 
-      // Clamp buy amount to the UI-configured maximum
-      const buyUsdt = Math.min(Number(target.positionSizeUsdt || 0), uiMaxBuyUsdt);
+      // Determine buy size in USDT dynamically with safe fallback
+      const { computeDynamicPositionSizeUsdt } = await import("@/src/lib/dynamic-position-sizer");
+      const dynamicBuyUsdt = await computeDynamicPositionSizeUsdt(
+        this.context.mexcService, // Use mexcService instead of mexcPortfolio
+        this.context.config,
+        { positionSizeUsdt: target.positionSizeUsdt },
+      );
+      const buyUsdt = Math.min(dynamicBuyUsdt, uiMaxBuyUsdt);
+
+      // Resolve takeProfitPercent from target (use custom if available, otherwise resolve from level)
+      const { resolveRiskParams } = await import("@/src/lib/risk-defaults");
+      const riskParams = await resolveRiskParams(
+        {
+          stopLossPercent: stopLossPercent,
+          takeProfitLevel: target.takeProfitLevel ?? undefined,
+          takeProfitCustom: target.takeProfitCustom ?? undefined,
+        },
+        prefsUserId,
+      );
+      const resolvedTakeProfitPercent = riskParams.takeProfitPercent;
 
       const tradeParams: TradeParameters = {
         symbol: target.symbolName,
@@ -1423,7 +1444,7 @@ export class AutoSnipingModule {
         isAutoSnipe: true,
         confidenceScore: target.confidenceScore,
         stopLossPercent: target.stopLossPercent,
-        takeProfitPercent: target.takeProfitCustom ?? undefined,
+        takeProfitPercent: resolvedTakeProfitPercent,
         strategy: target.entryStrategy || "normal",
         snipeTargetId: target.id,
         userId: prefsUserId,
@@ -2657,31 +2678,8 @@ export class AutoSnipingModule {
         }
       }
 
-      // Fallback 5: Try initial klines/candles for new symbols
-      if (
-        !price &&
-        this.context.mexcService &&
-        typeof (this.context.mexcService as any).getKlines === "function"
-      ) {
-        try {
-          const klinesResponse = await (this.context.mexcService as any).getKlines(symbol, "1m", 1);
-          if (klinesResponse?.success && klinesResponse.data?.length > 0) {
-            const kline = klinesResponse.data[0];
-            // Kline format: [openTime, open, high, low, close, volume, closeTime, ...]
-            if (Array.isArray(kline) && kline.length >= 5) {
-              const closePrice = parseFloat(kline[4]); // close price
-              if (closePrice > 0) {
-                price = closePrice;
-                this.context.logger.debug("Price from initial kline", { symbol, price });
-              }
-            }
-          }
-        } catch (klinesError) {
-          this.context.logger.debug(`Failed to get klines for ${symbol}`, {
-            error: klinesError instanceof Error ? klinesError.message : String(klinesError),
-          });
-        }
-      }
+      // Note: getKlines is not implemented in UnifiedMexcService
+      // Skipping klines fallback - previous fallbacks should have succeeded
 
       if (!price) {
         this.context.logger.debug("Price not resolved from any source in this attempt", { symbol });
@@ -4117,6 +4115,10 @@ export class AutoSnipingModule {
       if (!row.executionPrice || !row.actualPositionSize) {
         continue;
       }
+
+      // Determine position size (USDT) dynamically when not explicitly set
+      const dynamicSizeUsdt =
+        row.positionSizeUsdt && row.positionSizeUsdt > 0 ? row.positionSizeUsdt : 1;
 
       const position: Position = {
         id: `${row.symbolName}-${row.id}-rehydrated-${Date.now()}`,

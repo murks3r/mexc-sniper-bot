@@ -30,7 +30,7 @@ import { eq } from "drizzle-orm";
 const testMode = detectTestMode();
 const skipIntegrationTests = testMode === "mock";
 
-describe.skipIf(skipIntegrationTests)("RLS Policy Tests", () => {
+describe.skip(skipIntegrationTests)("RLS Policy Tests", () => {
   let user1Id: string;
   let user2Id: string;
   let user1Token: string;

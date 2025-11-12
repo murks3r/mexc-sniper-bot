@@ -33,19 +33,7 @@
     }
   },
   "files": {
-    "includes": [
-      "src/**/*.ts",
-      "src/**/*.tsx",
-      "app/**/*.ts",
-      "app/**/*.tsx",
-      "!!**/node_modules",
-      "!!**/.next",
-      "!!**/dist",
-      "!!**/test-results",
-      "!!**/playwright-report",
-      "!!**/coverage",
-      "!!**/*.test.ts",
-      "!!**/*.spec.ts"
-    ]
+    "ignoreUnknown": true,
+    "includes": ["src/**/*.ts", "src/**/*.tsx", "app/**/*.ts", "app/**/*.tsx", "scripts/**/*.ts"]
   }
 }

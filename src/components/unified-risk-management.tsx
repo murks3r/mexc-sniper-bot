@@ -1,5 +1,6 @@
 "use client";
 import { Shield } from "lucide-react";
+import { defaultRiskConfig } from "@/src/lib/risk-defaults-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -55,12 +56,15 @@ export function UnifiedRiskManagement({
               <Input
                 id="stop-loss"
                 type="number"
-                min="1"
-                max="50"
+                min={defaultRiskConfig.minStopLossPercent}
+                max={defaultRiskConfig.maxStopLossPercent}
                 step="0.5"
                 value={settings.stopLossPercent}
                 onChange={(e) =>
-                  updateSetting("stopLossPercent", Number.parseFloat(e.target.value) || 5)
+                  updateSetting(
+                    "stopLossPercent",
+                    Number.parseFloat(e.target.value) || defaultRiskConfig.defaultStopLossPercent,
+                  )
                 }
               />
               <span className="text-sm text-muted-foreground">%</span>

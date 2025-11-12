@@ -415,35 +415,8 @@ export class OrderExecutor {
         });
       }
 
-      // Fallback 4: Try initial klines/candles for new symbols
-      try {
-        if (typeof (this.context.mexcService as any).getKlines === "function") {
-          const klinesResponse = await (this.context.mexcService as any).getKlines(
-            normalized,
-            "1m",
-            1,
-          );
-          if (klinesResponse?.success && klinesResponse.data?.length > 0) {
-            const kline = klinesResponse.data[0];
-            // Kline format: [openTime, open, high, low, close, volume, closeTime, ...]
-            if (Array.isArray(kline) && kline.length >= 5) {
-              const closePrice = parseFloat(kline[4]); // close price
-              if (closePrice > 0) {
-                this.context.logger.info("Price from initial kline", {
-                  symbol: normalized,
-                  price: closePrice,
-                });
-                return closePrice;
-              }
-            }
-          }
-        }
-      } catch (klinesError) {
-        this.context.logger.debug("Klines fetch failed", {
-          symbol: normalized,
-          error: klinesError instanceof Error ? klinesError.message : String(klinesError),
-        });
-      }
+      // Note: getKlines is not implemented in UnifiedMexcService
+      // Skipping klines fallback - previous fallbacks should have succeeded
 
       this.context.logger.error("Unable to get current market price", {
         symbol: normalized,

@@ -39,53 +39,51 @@ interface MexcCalendarPollRequestedData {
 // Removed unused event data interfaces (agent-based workflows removed)
 
 // MEXC Calendar Polling Function - Simplified (no agents)
-export const pollMexcCalendar = inngest.createFunction(
-  { id: "poll-mexc-calendar" },
-  { event: "mexc/calendar.poll" },
-  async ({
-    event,
-    step,
-  }: {
-    event: { data: MexcCalendarPollRequestedData };
-    step: InngestStep;
-  }) => {
-    const { trigger = "manual", force = false } = event.data;
+const USE_INNGEST_FALLBACK = process.env.USE_INNGEST_FALLBACK === "true";
+
+export const pollMexcCalendar = USE_INNGEST_FALLBACK
+  ? inngest.createFunction(
+      { id: "poll-mexc-calendar" },
+      { event: "mexc/calendar.poll" },
+      async ({ event, step }: { event: { data: MexcCalendarPollRequestedData }; step: InngestStep }) => {
+        const { trigger = "manual", force = false } = event.data;
 
     // Sync Calendar to Database (direct API call, no agents)
-    const syncResult = await step.run("calendar-to-database-sync", async () => {
-      return await calendarSyncService.syncCalendarToDatabase("system", {
-        timeWindowHours: 72, // 3 days to cover tomorrow's listings
-        forceSync: force,
-        dryRun: false,
-      });
-    });
+        const syncResult = await step.run("calendar-to-database-sync", async () => {
+          return await calendarSyncService.syncCalendarToDatabase("system", {
+            timeWindowHours: 72,
+            forceSync: force,
+            dryRun: false,
+          });
+        });
 
-    // Type guard for sync result
-    if (!isSyncResult(syncResult)) {
-      throw new Error("Invalid sync result format");
-    }
+        // Type guard for sync result
+        if (!isSyncResult(syncResult)) {
+          throw new Error("Invalid sync result format");
+        }
 
-    if (!syncResult.success) {
-      throw new Error(`Calendar sync failed: ${syncResult.errors.join(", ")}`);
-    }
+        if (!syncResult.success) {
+          throw new Error(`Calendar sync failed: ${syncResult.errors.join(", ")}`);
+        }
 
-    return {
-      status: "success",
-      trigger,
-      sync: {
-        processed: syncResult.processed,
-        created: syncResult.created,
-        updated: syncResult.updated,
-        skipped: syncResult.skipped,
-        errors: syncResult.errors,
+        return {
+          status: "success",
+          trigger,
+          sync: {
+            processed: syncResult.processed,
+            created: syncResult.created,
+            updated: syncResult.updated,
+            skipped: syncResult.skipped,
+            errors: syncResult.errors,
+          },
+          timestamp: new Date().toISOString(),
+          metadata: {
+            databaseSynced: syncResult.success,
+          },
+        };
       },
-      timestamp: new Date().toISOString(),
-      metadata: {
-        databaseSynced: syncResult.success,
-      },
-    };
-  },
-);
+    )
+  : null as any;
 
 // Removed agent-based workflows: watchMexcSymbol, analyzeMexcPatterns, createMexcTradingStrategy
 // These are no longer needed - calendar sync creates targets directly

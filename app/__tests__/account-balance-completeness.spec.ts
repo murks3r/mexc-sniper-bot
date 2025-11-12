@@ -4,27 +4,27 @@
  * Verifies that all assets are returned with USDT valuations, including zero balances.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock environment variables
-vi.hoisted(() => {
+(() => {
   process.env.MEXC_API_KEY = "test-api-key";
   process.env.MEXC_SECRET_KEY = "test-secret-key";
-});
+})();
 
 // Mock authentication - use hoisted to ensure it's available before route import
-const mockRequireAuth = vi.hoisted(() => vi.fn().mockResolvedValue({ 
+const mockRequireAuth = vi.fn().mockResolvedValue({
   id: "test-user-id",
-  email: "test@example.com", 
+  email: "test@example.com",
   name: "Test User",
-  emailVerified: true
-}));
+  emailVerified: true,
+});
 vi.mock("@/src/lib/supabase-auth-server", () => ({
   requireAuthFromRequest: mockRequireAuth,
 }));
 
 // Mock MEXC service
-const mockGetAccountBalances = vi.hoisted(() => vi.fn());
+const mockGetAccountBalances = vi.fn();
 vi.mock("@/src/services/api/unified-mexc-service-factory", () => ({
   getUnifiedMexcService: vi.fn().mockResolvedValue({
     getAccountBalances: mockGetAccountBalances,
@@ -254,4 +254,3 @@ describe("Account Balance API Completeness", () => {
     nowSpy.mockRestore();
   });
 });
-

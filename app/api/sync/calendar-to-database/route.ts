@@ -6,14 +6,39 @@ import {
   HTTP_STATUS,
 } from "@/src/lib/api-response";
 import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+import { enqueueJob } from "@/src/services/jobs/enqueue";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId = "system", timeWindowHours = 24, forceSync = false, dryRun = false } = body;
+    const { userId = "system", timeWindowHours = 24, forceSync = false, dryRun = false, useQueue = true } = body;
 
-    // Calendar-to-database sync triggered
+    // Enqueue job for Bun-based processing (primary method)
+    if (useQueue && !dryRun) {
+      const job = await enqueueJob({
+        type: "calendar_sync",
+        payload: { userId, timeWindowHours, forceSync },
+        runAt: new Date(),
+      });
 
+      return apiResponse(
+        createSuccessResponse(
+          { jobId: job.id, queuedAt: job.createdAt },
+          {
+            message: "Calendar sync job enqueued successfully",
+            jobDetails: {
+              id: job.id,
+              type: job.type,
+              runAt: job.runAt,
+              status: job.status,
+            },
+          }
+        ),
+        HTTP_STATUS.ACCEPTED,
+      );
+    }
+
+    // Direct execution (for dryRun or when useQueue=false)
     const result = await calendarSyncService.syncCalendarToDatabase(userId, {
       timeWindowHours,
       forceSync,

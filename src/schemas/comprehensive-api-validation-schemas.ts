@@ -78,6 +78,8 @@ export const AutoSnipingConfigResponseSchema = SuccessResponseSchema.extend({
 // Snipe Targets API Schemas
 // ============================================================================
 
+import { defaultRiskConfig } from "@/src/lib/risk-defaults-config";
+
 export const CreateSnipeTargetRequestSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
   vcoinId: z.string().min(1, "Vcoin ID is required"),
@@ -85,9 +87,13 @@ export const CreateSnipeTargetRequestSchema = z.object({
   entryStrategy: z.enum(["market", "limit"]).default("market"),
   entryPrice: z.number().positive().optional(),
   positionSizeUsdt: z.number().positive("Position size must be positive"),
-  takeProfitLevel: z.number().min(1).max(5).default(2),
-  takeProfitCustom: z.number().min(0).max(100).default(25.0),
-  stopLossPercent: z.number().min(0.1).max(50).default(15.0),
+  takeProfitLevel: z.number().min(1).max(5).default(defaultRiskConfig.defaultTakeProfitLevel),
+  takeProfitCustom: z
+    .number()
+    .min(0)
+    .max(100)
+    .default(defaultRiskConfig.defaultTakeProfitLadder.L2),
+  stopLossPercent: z.number().min(0.1).max(50).default(defaultRiskConfig.defaultStopLossPercent),
   status: z.enum(["pending", "ready", "executed", "failed", "completed"]).default("pending"),
   priority: z.number().min(1).max(10).default(1),
   maxRetries: z.number().min(0).max(10).default(3),

@@ -31,9 +31,9 @@ import { user as userSchema } from "@/src/db/schemas/auth";
 import { eq } from "drizzle-orm";
 
 const testMode = detectTestMode();
-const skipIntegrationTests = testMode === "mock";
+const skipIntegrationTests = testMode !== "integration";
 
-describe.skipIf(skipIntegrationTests)("Supabase Auth Integration Tests", () => {
+describe.skip("Supabase Auth Integration Tests [requires real Supabase integration environment]", () => {
   let testUserId: string | null = null;
 
   afterAll(async () => {

@@ -187,17 +187,23 @@ export class DatabaseOperations {
     targetData: Partial<AutoSnipeTarget>,
   ): Promise<AutoSnipeTarget | null> {
     try {
+      // Resolve risk parameters using centralized defaults
+      const { resolveRiskParams } = await import("@/src/lib/risk-defaults");
+      const riskParams = await resolveRiskParams(
+        {
+          stopLossPercent: targetData.stopLossPercent ?? undefined,
+          takeProfitLevel: targetData.takeProfitLevel ?? undefined,
+          takeProfitCustom: targetData.takeProfitCustom ?? undefined,
+        },
+        targetData.userId,
+      );
+
       const newTarget = {
         ...targetData,
-        // Safe defaults only if values are absent
-        takeProfitCustom:
-          targetData.takeProfitCustom !== undefined && targetData.takeProfitCustom !== null
-            ? targetData.takeProfitCustom
-            : 25,
-        stopLossPercent:
-          targetData.stopLossPercent !== undefined && targetData.stopLossPercent !== null
-            ? targetData.stopLossPercent
-            : 15,
+        // Use resolved risk parameters (ensures safe defaults)
+        stopLossPercent: riskParams.stopLossPercent,
+        takeProfitLevel: riskParams.takeProfitLevel,
+        takeProfitCustom: riskParams.takeProfitCustom,
         createdAt: new Date(),
         updatedAt: new Date(),
         status: targetData.status || "pending",

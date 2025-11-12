@@ -1,13 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 import { GET } from "./route";
-import {
-  getUserCredentials,
-  type DecryptedCredentials,
-} from "@/src/services/api/user-credentials-service";
+import type { DecryptedCredentials } from "@/src/services/api/user-credentials-service";
+
+const mockedGetUserCredentials = vi.fn();
 
 vi.mock("@/src/services/api/user-credentials-service", () => ({
-  getUserCredentials: vi.fn(),
+  getUserCredentials: mockedGetUserCredentials,
 }));
 
 describe("GET /api/health/environment", () => {
@@ -16,8 +15,6 @@ describe("GET /api/health/environment", () => {
     MEXC_SECRET_KEY: process.env.MEXC_SECRET_KEY,
     AUTO_SNIPING_HEALTH_USER_ID: process.env.AUTO_SNIPING_HEALTH_USER_ID,
   };
-
-  const mockedGetUserCredentials = vi.mocked(getUserCredentials);
 
   beforeEach(() => {
     vi.clearAllMocks();

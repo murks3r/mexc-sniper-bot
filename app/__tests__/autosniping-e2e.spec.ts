@@ -20,10 +20,10 @@ const TEST_POSITION_SIZE = 100;
 const TEST_USER_ID = "test-user-e2e";
 
 // Mock environment variables for MEXC API
-vi.hoisted(() => {
+(() => {
   process.env.MEXC_API_KEY = "test-api-key";
   process.env.MEXC_SECRET_KEY = "test-secret-key";
-});
+})();
 
 // Mock core trading service to avoid Zod validation errors
 vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => ({

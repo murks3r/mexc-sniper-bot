@@ -35,7 +35,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
   describe("getAccountBalances response structure", () => {
     it("should include lastUpdated field in data object", async () => {
       // Mock balance response
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
         data: [
           { asset: "USDT", free: "1000.00", locked: "0.00" },
@@ -45,7 +45,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
       });
 
       // Mock ticker responses
-      vi.mocked(mockCache.getOrSet).mockResolvedValue({
+      (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
         data: [
           { symbol: "BTCUSDT", price: "50000.00", lastPrice: "50000.00" },
@@ -85,7 +85,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
       });
 
       // Mock responses
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
         data: [
           { asset: "USDT", free: "100.00", locked: "0.00" },
@@ -93,7 +93,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
         timestamp: Date.now(),
       });
 
-      vi.mocked(mockCache.getOrSet).mockResolvedValue({
+      (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
         data: [],
         timestamp: Date.now(),
@@ -112,13 +112,13 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
     });
 
     it("should have lastUpdated as ISO 8601 datetime string", async () => {
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
         data: [{ asset: "USDT", free: "1000.00", locked: "0.00" }],
         timestamp: Date.now(),
       });
 
-      vi.mocked(mockCache.getOrSet).mockResolvedValue({
+      (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
         data: [],
         timestamp: Date.now(),
@@ -136,7 +136,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
     });
 
     it("should include all required PortfolioSummary fields", async () => {
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
         data: [
           { asset: "BTC", free: "1.0", locked: "0.0" },
@@ -145,7 +145,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
         timestamp: Date.now(),
       });
 
-      vi.mocked(mockCache.getOrSet).mockResolvedValue({
+      (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
         data: [{ symbol: "BTCUSDT", price: "50000.00" }],
         timestamp: Date.now(),
@@ -171,7 +171,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
 
   describe("Type safety with AccountBalanceSchema", () => {
     it("should validate balance entries with AccountBalanceSchema", async () => {
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: true,
         data: [
           { asset: "USDT", free: "1000.00", locked: "50.00" },
@@ -179,7 +179,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
         timestamp: Date.now(),
       });
 
-      vi.mocked(mockCache.getOrSet).mockResolvedValue({
+      (mockCache.getOrSet as any).mockResolvedValue({
         success: true,
         data: [],
         timestamp: Date.now(),
@@ -205,7 +205,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
 
   describe("Error handling maintains type safety", () => {
     it("should not include lastUpdated in error responses", async () => {
-      vi.mocked(mockCoreClient.getAccountBalance).mockResolvedValue({
+      (mockCoreClient.getAccountBalance as any).mockResolvedValue({
         success: false,
         error: "API Error",
         timestamp: Date.now(),

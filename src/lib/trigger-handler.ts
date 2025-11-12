@@ -1,14 +1,16 @@
 import type { NextRequest } from "next/server";
+import { EXECUTION_MODE } from "../config/execution-mode";
 import { inngest } from "../inngest/client";
 import { createErrorResponse, createSuccessResponse } from "./api-response";
 
 /**
- * Factory function to create consistent trigger handlers for Inngest workflows
+ * Factory function to create consistent trigger handlers
+ * Supports hybrid queue architecture with feature flag routing
  */
 export function createTriggerHandler(
   eventName: string,
   description: string,
-  dataTransform?: (body: any) => any,
+  dataTransform?: (body: unknown) => unknown,
 ) {
   return async function POST(request: NextRequest) {
     try {
@@ -23,20 +25,34 @@ export function createTriggerHandler(
       // Transform data if transformer provided
       const eventData = dataTransform ? dataTransform(body) : body;
 
-      // Send event to Inngest
-      const event = await inngest.send({
-        name: eventName,
-        data: {
-          triggeredBy: "ui",
-          timestamp: new Date().toISOString(),
-          ...eventData,
-        },
-      });
+      let eventId: string | undefined;
+
+      // Send event to Inngest if:
+      // - Inngest is primary executor, OR
+      // - Inngest fallback is enabled, OR
+      // - Dual-run mode is enabled
+      if (
+        EXECUTION_MODE.primary === "inngest" ||
+        EXECUTION_MODE.inngestFallback ||
+        EXECUTION_MODE.dualRun
+      ) {
+        const event = await inngest.send({
+          name: eventName,
+          data: {
+            triggeredBy: "ui",
+            timestamp: new Date().toISOString(),
+            ...eventData,
+          },
+        });
+        eventId = event.ids[0];
+      }
 
       return createSuccessResponse(
         {
           message: `${description} workflow triggered`,
-          eventId: event.ids[0],
+          eventId,
+          executionMode: EXECUTION_MODE.primary,
+          fallbackEnabled: EXECUTION_MODE.inngestFallback,
           ...eventData,
         },
         {
@@ -86,7 +102,10 @@ export const TriggerHandlers = {
 /**
  * Higher-order function to add authentication to trigger handlers
  */
-export function withAuth(handler: Function, _requiredRole = "user") {
+export function withAuth(
+  handler: (request: NextRequest) => Promise<Response>,
+  _requiredRole = "user",
+) {
   return async (request: NextRequest) => {
     // Extract and validate authentication headers
     const authHeader = request.headers.get("authorization");
@@ -117,11 +136,16 @@ export function withAuth(handler: Function, _requiredRole = "user") {
 /**
  * Higher-order function to add rate limiting to trigger handlers
  */
-export function withRateLimit(handler: Function, maxRequests = 10, windowMs = 60000) {
+export function withRateLimit(
+  handler: (request: NextRequest) => Promise<Response>,
+  maxRequests = 10,
+  windowMs = 60000,
+) {
   const requests = new Map<string, number[]>();
 
   return async (request: NextRequest) => {
-    const clientIP = (request as any).ip || request.headers.get("x-forwarded-for") || "unknown";
+    const clientIP =
+      (request as { ip?: string }).ip || request.headers.get("x-forwarded-for") || "unknown";
     const now = Date.now();
     const windowStart = now - windowMs;
 

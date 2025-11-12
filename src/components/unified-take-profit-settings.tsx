@@ -28,6 +28,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { defaultRiskConfig } from "@/src/lib/risk-defaults-config";
 import {
   createCustomTakeProfitLevel,
   DEFAULT_CUSTOM_CONFIG,
@@ -57,7 +58,8 @@ export function UnifiedTakeProfitSettings({
 }: UnifiedTakeProfitSettingsProps) {
   const [customLevels, setCustomLevels] = useState<TakeProfitLevel[]>(customStrategy?.levels || []);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [stopLoss, setStopLoss] = useState(15);
+  // Use centralized default for stop loss
+  const [stopLoss, setStopLoss] = useState(defaultRiskConfig.defaultStopLossPercent);
   const [trailingStop, setTrailingStop] = useState(true);
   const [maxPosition, setMaxPosition] = useState(investmentAmount);
 
@@ -437,8 +439,8 @@ export function UnifiedTakeProfitSettings({
                     <Slider
                       value={[stopLoss]}
                       onValueChange={([value]) => setStopLoss(value)}
-                      min={5}
-                      max={30}
+                      min={defaultRiskConfig.minStopLossPercent}
+                      max={defaultRiskConfig.maxStopLossPercent}
                       step={1}
                       className="flex-1"
                     />

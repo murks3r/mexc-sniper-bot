@@ -24,7 +24,7 @@ import { requireAuthFromRequest, getSessionFromRequest } from "@/src/lib/supabas
 import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 
 const testMode = detectTestMode();
-const skipIntegrationTests = testMode === "mock";
+const skipIntegrationTests = testMode !== "integration";
 
 describe("API Route Authentication", () => {
   describe("requireAuthFromRequest", () => {

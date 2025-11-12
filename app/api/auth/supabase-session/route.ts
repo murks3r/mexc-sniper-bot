@@ -1,26 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/src/lib/supabase-auth";
+import { getSession, getUser } from "@/src/lib/supabase-auth";
 
 export async function GET(_request: NextRequest) {
   try {
-    const session = await getSession();
+    // Use getUser() to authenticate with Supabase Auth server (more secure than getSession())
+    const user = await getUser();
 
-    if (!session.isAuthenticated || !session.user) {
+    if (!user) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
+    // Get session for access token (needed for client-side operations)
+    const session = await getSession();
+
     return NextResponse.json({
       user: {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        username: session.user.username,
-        image: session.user.picture,
-        emailVerified: session.user.emailVerified,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        image: user.picture,
+        emailVerified: user.emailVerified,
       },
       session: {
-        id: session.user.id,
-        userId: session.user.id,
+        id: user.id,
+        userId: user.id,
         accessToken: session.accessToken,
       },
     });

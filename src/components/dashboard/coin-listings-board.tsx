@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
@@ -13,7 +14,6 @@ import {
   Zap,
 } from "lucide-react";
 import { memo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useMexcCalendar } from "../../hooks/use-mexc-data";
 import { usePatternSniper } from "../../hooks/use-pattern-sniper";
 import type { TradingTargetDisplay } from "../../types/trading-display-types";

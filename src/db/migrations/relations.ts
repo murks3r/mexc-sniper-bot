@@ -5,10 +5,12 @@ import {
   alertNotifications,
   alertRules,
   apiCredentials,
+  balanceSnapshots,
   executionHistory,
   notificationChannels,
   patternEmbeddings,
   patternSimilarityCache,
+  portfolioSummary,
   positionSnapshots,
   session,
   simulationSessions,
@@ -46,6 +48,8 @@ export const userRelations = relations(user, ({ many }) => ({
   strategyPhaseExecutions: many(strategyPhaseExecutions),
   transactions: many(transactions),
   userPreferences: many(userPreferences),
+  balanceSnapshots: many(balanceSnapshots),
+  portfolioSummaries: many(portfolioSummary),
 }));
 
 export const alertInstancesRelations = relations(alertInstances, ({ one, many }) => ({
@@ -83,13 +87,13 @@ export const apiCredentialsRelations = relations(apiCredentials, ({ one }) => ({
 }));
 
 export const executionHistoryRelations = relations(executionHistory, ({ one }) => ({
-  user: one(user, {
-    fields: [executionHistory.userId],
-    references: [user.id],
-  }),
   snipeTarget: one(snipeTargets, {
     fields: [executionHistory.snipeTargetId],
     references: [snipeTargets.id],
+  }),
+  user: one(user, {
+    fields: [executionHistory.userId],
+    references: [user.id],
   }),
 }));
 
@@ -154,13 +158,13 @@ export const simulationTradesRelations = relations(simulationTrades, ({ one }) =
 }));
 
 export const tradingStrategiesRelations = relations(tradingStrategies, ({ one, many }) => ({
-  user: one(user, {
-    fields: [tradingStrategies.userId],
-    references: [user.id],
-  }),
   strategyTemplate: one(strategyTemplates, {
     fields: [tradingStrategies.strategyTemplateId],
     references: [strategyTemplates.id],
+  }),
+  user: one(user, {
+    fields: [tradingStrategies.userId],
+    references: [user.id],
   }),
   strategyConfigBackups: many(strategyConfigBackups),
   strategyPerformanceMetrics: many(strategyPerformanceMetrics),
@@ -181,25 +185,25 @@ export const strategyConfigBackupsRelations = relations(strategyConfigBackups, (
 export const strategyPerformanceMetricsRelations = relations(
   strategyPerformanceMetrics,
   ({ one }) => ({
-    user: one(user, {
-      fields: [strategyPerformanceMetrics.userId],
-      references: [user.id],
-    }),
     tradingStrategy: one(tradingStrategies, {
       fields: [strategyPerformanceMetrics.strategyId],
       references: [tradingStrategies.id],
+    }),
+    user: one(user, {
+      fields: [strategyPerformanceMetrics.userId],
+      references: [user.id],
     }),
   }),
 );
 
 export const strategyPhaseExecutionsRelations = relations(strategyPhaseExecutions, ({ one }) => ({
-  user: one(user, {
-    fields: [strategyPhaseExecutions.userId],
-    references: [user.id],
-  }),
   tradingStrategy: one(tradingStrategies, {
     fields: [strategyPhaseExecutions.strategyId],
     references: [tradingStrategies.id],
+  }),
+  user: one(user, {
+    fields: [strategyPhaseExecutions.userId],
+    references: [user.id],
   }),
 }));
 
@@ -215,19 +219,33 @@ export const transactionLocksRelations = relations(transactionLocks, ({ many }) 
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
-  user: one(user, {
-    fields: [transactions.userId],
-    references: [user.id],
-  }),
   snipeTarget: one(snipeTargets, {
     fields: [transactions.snipeTargetId],
     references: [snipeTargets.id],
+  }),
+  user: one(user, {
+    fields: [transactions.userId],
+    references: [user.id],
   }),
 }));
 
 export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
   user: one(user, {
     fields: [userPreferences.userId],
+    references: [user.id],
+  }),
+}));
+
+export const balanceSnapshotsRelations = relations(balanceSnapshots, ({ one }) => ({
+  user: one(user, {
+    fields: [balanceSnapshots.userId],
+    references: [user.id],
+  }),
+}));
+
+export const portfolioSummaryRelations = relations(portfolioSummary, ({ one }) => ({
+  user: one(user, {
+    fields: [portfolioSummary.userId],
     references: [user.id],
   }),
 }));

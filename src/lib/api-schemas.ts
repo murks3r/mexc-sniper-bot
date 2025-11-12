@@ -6,6 +6,7 @@
  */
 
 import type { ValidationFunction, ValidationSchema } from "./api-middleware";
+import { defaultRiskConfig } from "./risk-defaults-config";
 import { Validators } from "./validators";
 
 // =======================
@@ -123,15 +124,20 @@ export const SnipeTargetCreateSchema: ValidationSchema = {
     return num;
   },
   takeProfitLevel: (value: any) => {
-    const level = Number(value) || 2;
+    const level = Number(value) || defaultRiskConfig.defaultTakeProfitLevel;
     if (level < 1 || level > 4) {
       throw new Error("Take profit level must be between 1 and 4");
     }
     return level;
   },
-  takeProfitCustom: (value: any) => (value !== undefined && value !== null ? Number(value) : 25.0),
+  takeProfitCustom: (value: any) =>
+    value !== undefined && value !== null
+      ? Number(value)
+      : defaultRiskConfig.defaultTakeProfitLadder.L2, // Default to level 2 (25%)
   stopLossPercent: (value: any) =>
-    value !== undefined ? Validators.stopLossPercent(Number(value)) : 15.0,
+    value !== undefined
+      ? Validators.stopLossPercent(Number(value))
+      : defaultRiskConfig.defaultStopLossPercent,
   priority: (value: any) => {
     const priority = Number(value) || 1;
     if (priority < 1 || priority > 10) {

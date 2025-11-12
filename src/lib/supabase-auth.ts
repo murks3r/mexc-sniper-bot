@@ -117,19 +117,45 @@ export async function getSession(): Promise<SupabaseSession> {
 }
 
 /**
- * Get user from server-side
+ * Get authenticated user from server-side (secure - validates with Supabase Auth server)
+ * Use this instead of getSession() when you need to verify authentication
  */
 export async function getUser(): Promise<SupabaseUser | null> {
-  const session = await getSession();
-  return session.user;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      getLogger().debug("No authenticated user found", { error: error?.message });
+      return null;
+    }
+
+    const supabaseUser: SupabaseUser = {
+      id: user.id,
+      email: user.email ?? "",
+      name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || "User",
+      username: user.user_metadata?.username,
+      picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
+      emailVerified: !!user.email_confirmed_at,
+    };
+
+    return supabaseUser;
+  } catch (error) {
+    getLogger().error("Error getting authenticated user:", error);
+    return null;
+  }
 }
 
 /**
  * Check if user is authenticated
+ * Uses getUser() for secure authentication validation
  */
 export async function isAuthenticated(): Promise<boolean> {
-  const session = await getSession();
-  return session.isAuthenticated;
+  const user = await getUser();
+  return user !== null;
 }
 
 /**
@@ -292,18 +318,19 @@ export async function getUserFromDatabase(supabaseId: string) {
 
 /**
  * Require authentication - throws if not authenticated
+ * Uses getUser() for secure authentication validation
  */
 export async function requireAuth(): Promise<SupabaseUser> {
-  const session = await getSession();
+  const user = await getUser();
 
-  if (!session.isAuthenticated || !session.user) {
+  if (!user) {
     throw new Error("Authentication required");
   }
 
   // Sync user with database
-  await syncUserWithDatabase(session.user);
+  await syncUserWithDatabase(user);
 
-  return session.user;
+  return user;
 }
 
 /**

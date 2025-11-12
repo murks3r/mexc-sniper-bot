@@ -7,26 +7,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock authentication - use hoisted to ensure it's available before route import
-const mockRequireAuth = vi.hoisted(() => vi.fn().mockImplementation(async (request) => {
+const mockRequireAuth = vi.fn().mockImplementation(async (request) => {
   console.log("Mock requireAuthFromRequest called");
-  return { 
+  return {
     id: "test-user-id",
-    email: "test@example.com", 
+    email: "test@example.com",
     name: "Test User",
-    emailVerified: true
+    emailVerified: true,
   };
-}));
+});
 vi.mock("@/src/lib/supabase-auth-server", () => ({
   requireAuthFromRequest: mockRequireAuth,
 }));
 
 // Mock database
-const mockDb = vi.hoisted(() => {
-  const selectHandler = vi.fn();
-  return {
-    select: selectHandler,
-  };
-});
+const mockSelect = vi.fn();
+const mockDb = {
+  select: mockSelect,
+};
 vi.mock("@/src/db", () => ({ db: mockDb }));
 
 // Import after mocking
@@ -125,7 +123,7 @@ describe("Upcoming Hour Targets API", () => {
         riskLevel: "low",
         createdAt: now,
       },
-    ] as const;
+    ];
 
     setupDatabaseMock(mockTargets);
 

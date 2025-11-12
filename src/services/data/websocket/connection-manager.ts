@@ -61,6 +61,7 @@ export class MexcConnectionManager extends EventEmitter {
   private healthCheckInterval?: NodeJS.Timeout;
   private isConnecting = false;
   private isConnected = false;
+  private isCleaningUp = false; // Guard to prevent multiple cleanup calls
   private lastPingTime = 0;
   private metrics!: ConnectionMetrics;
   private circuitBreaker!: CircuitBreakerState;
@@ -187,23 +188,48 @@ export class MexcConnectionManager extends EventEmitter {
    * Clean up connection resources
    */
   private cleanup(): void {
+    // Prevent multiple concurrent cleanup calls
+    if (this.isCleaningUp) {
+      return;
+    }
+    this.isCleaningUp = true;
+
     if (this.ws) {
       try {
         this.ws.removeAllListeners();
-        if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-          this.ws.close();
+        // Check if WebSocket is in a state that can be closed
+        // WebSocket.CONNECTING = 0, WebSocket.OPEN = 1, WebSocket.CLOSING = 2, WebSocket.CLOSED = 3
+        const readyState = this.ws.readyState;
+        if (readyState === WebSocket.OPEN || readyState === WebSocket.CONNECTING) {
+          try {
+            this.ws.close();
+          } catch (closeError) {
+            // WebSocket might have been closed concurrently, ignore the error
+            if (!(closeError instanceof Error && closeError.message.includes("closed"))) {
+              this.logger.warn("Error closing WebSocket during cleanup", {
+                error: closeError instanceof Error ? closeError.message : String(closeError),
+                readyState,
+                connectionId: this.connectionId,
+              });
+            }
+          }
         }
       } catch (error) {
-        this.logger.error("Error during WebSocket cleanup", {
-          error: error instanceof Error ? error.message : String(error),
-          connectionId: this.connectionId,
-        });
+        // Only log if it's not a "closed" error (which is expected)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (!errorMessage.includes("closed")) {
+          this.logger.error("Error during WebSocket cleanup", {
+            error: errorMessage,
+            connectionId: this.connectionId,
+          });
+        }
       } finally {
         this.ws = null;
       }
     }
     this.isConnected = false;
     this.isConnecting = false;
+    this.isCleaningUp = false;
   }
 
   /**
