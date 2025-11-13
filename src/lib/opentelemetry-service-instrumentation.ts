@@ -11,8 +11,8 @@ export interface InstrumentServiceMethodConfig {
   operationType?: string;
 }
 
-export function instrumentServiceMethod<T extends (...args: any[]) => any>(
-  config: InstrumentServiceMethodConfig,
+export function instrumentServiceMethod<_T extends (...args: any[]) => any>(
+  _config: InstrumentServiceMethodConfig,
 ): (target: any, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor {
   return (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) => {
     // Return descriptor as-is without instrumentation

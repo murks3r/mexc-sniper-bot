@@ -342,14 +342,14 @@ export class SupabaseRateLimitHandler {
       if (retryAfter) {
         const parsed =
           typeof retryAfter === "string" ? parseInt(retryAfter, 10) : Number(retryAfter);
-        if (!isNaN(parsed)) return parsed;
+        if (!Number.isNaN(parsed)) return parsed;
       }
 
       const resetHeader = err.headers["x-ratelimit-reset"];
       if (resetHeader) {
         const resetTime =
           typeof resetHeader === "string" ? parseInt(resetHeader, 10) : Number(resetHeader);
-        if (!isNaN(resetTime)) {
+        if (!Number.isNaN(resetTime)) {
           return Math.max(0, resetTime - Math.floor(Date.now() / 1000));
         }
       }

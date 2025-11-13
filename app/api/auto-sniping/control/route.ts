@@ -19,7 +19,7 @@ import * as SupabaseAuthServer from "@/src/lib/supabase-auth-server";
 import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
 import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
-import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
+import { getUnifiedAutoSnipingOrchestrator, type UnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
 
 // Helper function to load and validate user credentials
 async function loadUserCredentials(userId: string) {
@@ -31,7 +31,10 @@ async function loadUserCredentials(userId: string) {
 }
 
 // Helper function to update orchestrator and core trading configs
-async function updateConfigs(orchestrator: any, userCreds: any) {
+async function updateConfigs(
+  orchestrator: UnifiedAutoSnipingOrchestrator,
+  userCreds: { apiKey: string; secretKey: string },
+) {
   await orchestrator.updateConfig({
     enabled: true,
     mexcConfig: {
@@ -53,7 +56,7 @@ async function updateConfigs(orchestrator: any, userCreds: any) {
 }
 
 // Helper function to set current user on orchestrator
-function setCurrentUserOnOrchestrator(orchestrator: any, userId: string) {
+function setCurrentUserOnOrchestrator(orchestrator: UnifiedAutoSnipingOrchestrator, userId: string) {
   try {
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic method call on orchestrator
     (orchestrator as any).setCurrentUser?.(userId);
@@ -63,7 +66,7 @@ function setCurrentUserOnOrchestrator(orchestrator: any, userId: string) {
 }
 
 // Helper function to initialize orchestrator if needed
-async function ensureOrchestratorInitialized(orchestrator: any) {
+async function ensureOrchestratorInitialized(orchestrator: UnifiedAutoSnipingOrchestrator) {
   const orchestratorStatus = await orchestrator.getStatus();
   if (!orchestratorStatus.isInitialized) {
     const originalConfig = orchestrator.getConfig();
@@ -98,7 +101,7 @@ async function setAndVerifyUserOnAutoSniping(userId: string) {
 }
 
 // Helper function to verify orchestrator state after start
-async function verifyOrchestratorState(orchestrator: any, userId: string) {
+async function verifyOrchestratorState(orchestrator: UnifiedAutoSnipingOrchestrator, userId: string) {
   const status = await orchestrator.getStatus();
 
   if (!status.autoSnipingEnabled) {
@@ -137,7 +140,7 @@ async function syncCalendarBestEffort() {
 }
 
 // Action handler for starting auto-sniping
-async function handleStart(orchestrator: any, user: any) {
+async function handleStart(orchestrator: UnifiedAutoSnipingOrchestrator, user: { id: string }) {
   try {
     const userCreds = await loadUserCredentials(user.id);
     await updateConfigs(orchestrator, userCreds);
@@ -215,7 +218,7 @@ async function handleStart(orchestrator: any, user: any) {
 }
 
 // Action handler for stopping auto-sniping
-async function handleStop(orchestrator: any) {
+async function handleStop(orchestrator: UnifiedAutoSnipingOrchestrator) {
   await orchestrator.stop();
   const finalStatus = await orchestrator.getStatus();
   return Response.json(
@@ -231,7 +234,7 @@ async function handleStop(orchestrator: any) {
 }
 
 // Action handler for getting status
-async function handleStatus(orchestrator: any) {
+async function handleStatus(orchestrator: UnifiedAutoSnipingOrchestrator) {
   const status = await orchestrator.getStatus();
   return Response.json(
     createSuccessResponse({
@@ -245,7 +248,7 @@ async function handleStatus(orchestrator: any) {
 }
 
 // Action handler for emergency stop
-async function handleEmergencyStop(orchestrator: any, reason?: string) {
+async function handleEmergencyStop(orchestrator: UnifiedAutoSnipingOrchestrator, reason?: string) {
   const stopReason = reason || "Manual emergency stop requested";
   await orchestrator.emergencyStop();
   return Response.json(
@@ -261,7 +264,10 @@ async function handleEmergencyStop(orchestrator: any, reason?: string) {
 }
 
 // Action handler for updating config
-async function handleUpdateConfig(orchestrator: any, config: any) {
+async function handleUpdateConfig(
+  orchestrator: UnifiedAutoSnipingOrchestrator,
+  config: Record<string, unknown>,
+) {
   if (!config) {
     return Response.json(
       createErrorResponse("Config parameter is required for update_config action"),

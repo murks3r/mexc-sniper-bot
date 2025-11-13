@@ -5,7 +5,6 @@
  * for metrics collection, alert management, and type definitions.
  */
 
-import { performance } from "node:perf_hooks";
 import { AlertManager } from "./performance/alert-manager";
 import { MetricsCollector } from "./performance/metrics-collector";
 import type {
@@ -15,7 +14,6 @@ import type {
   PerformanceMetrics,
   PerformanceMonitoringConfig,
   PerformanceSummary,
-  PerformanceThreshold,
   TimingResult,
 } from "./performance/monitoring-types";
 

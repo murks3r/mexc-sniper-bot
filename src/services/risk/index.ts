@@ -68,7 +68,7 @@ export {
 } from "./real-time-safety-monitoring-modules/risk-assessment";
 
 // Utility function for easy setup
-export function createSafetySystem(config: any) {
+export function createSafetySystem(_config: any) {
   return new IntegratedSafetyMonitoringSystem();
 }
 

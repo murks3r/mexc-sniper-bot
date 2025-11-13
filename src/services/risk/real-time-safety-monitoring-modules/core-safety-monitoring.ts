@@ -131,7 +131,7 @@ export class CoreSafetyMonitoring {
         overallRiskScore,
       };
 
-      const _duration = timer.end({
+      timer.end({
         riskScore: overallRiskScore,
         violationsCount: thresholdResults.violations.length,
         status: "success",
@@ -140,7 +140,7 @@ export class CoreSafetyMonitoring {
 
       return result;
     } catch (error) {
-      const _duration = timer.end({ status: "failed" });
+      timer.end({ status: "failed" });
 
       // Monitoring cycle failed - error logging handled by error handler middleware
 

@@ -1,4 +1,4 @@
-import { ErrorCollector, ValidationError } from "./error-utils";
+import { ErrorCollector, ValidationError } from "./errors";
 
 /**
  * Validation utilities for common data validation patterns

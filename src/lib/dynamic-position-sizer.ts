@@ -1,8 +1,5 @@
 import type { UnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
-import type {
-  CoreTradingConfig,
-  TradeParameters,
-} from "@/src/services/trading/consolidated/core-trading/types";
+import type { CoreTradingConfig } from "@/src/services/trading/consolidated/core-trading/types";
 
 export interface DynamicPositionSizeOptions {
   minPositionUsdt?: number; // default 1

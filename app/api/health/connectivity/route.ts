@@ -203,21 +203,21 @@ function calculateHealthScore(
   overallLatency: number,
 ): { status: "healthy" | "degraded" | "unhealthy"; healthScore: number } {
   let healthScore = 100;
-  let passedChecks = 0;
-  let totalChecks = 0;
+  let _passedChecks = 0;
+  let _totalChecks = 0;
 
   // Network check
-  totalChecks++;
+  _totalChecks++;
   if (response.checks.network.status === "pass") {
-    passedChecks++;
+    _passedChecks++;
   } else {
     healthScore -= 50;
   }
 
   // Authentication check
-  totalChecks++;
+  _totalChecks++;
   if (response.checks.authentication.status === "pass" && hasCredentials) {
-    passedChecks++;
+    _passedChecks++;
   } else if (!hasCredentials) {
     healthScore -= 20; // Less penalty for no credentials
   } else {
@@ -226,9 +226,9 @@ function calculateHealthScore(
 
   // API check (only if we have credentials)
   if (hasCredentials) {
-    totalChecks++;
+    _totalChecks++;
     if (response.checks.api.status === "pass") {
-      passedChecks++;
+      _passedChecks++;
     } else {
       healthScore -= 30;
     }

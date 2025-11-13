@@ -222,7 +222,7 @@ export async function getDefaultTestUser(): Promise<TestUser> {
 
   try {
     return await helpers.signInTestUser(existingUser);
-  } catch (error) {
+  } catch (_error) {
     // If sign in fails, create new user
     const newUser = await helpers.createTestUser("default");
     return await helpers.signInTestUser(newUser);

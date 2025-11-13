@@ -1995,3 +1995,6 @@ export const portfolioSummary = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+// Export Database type for Drizzle
+export type Database = typeof schema;

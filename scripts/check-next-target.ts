@@ -10,7 +10,7 @@
  *   bun run scripts/check-next-target.ts --sync  # Sync calendar first, then check
  */
 
-import { and, asc, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
 import { calendarSyncService } from "../src/services/calendar-to-database-sync";
@@ -258,9 +258,7 @@ async function main() {
 
   // Check if target is overdue
   if (target.targetExecutionTime && target.targetExecutionTime < new Date()) {
-    const minutesOverdue = Math.floor(
-      (new Date().getTime() - target.targetExecutionTime.getTime()) / 60000,
-    );
+    const minutesOverdue = Math.floor((Date.now() - target.targetExecutionTime.getTime()) / 60000);
     console.log(`\n⚠️  WARNING: Target is ${minutesOverdue} minutes overdue!`);
   }
 }

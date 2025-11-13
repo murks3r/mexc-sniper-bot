@@ -11,7 +11,7 @@
  * Set PROCESS_PGMQ=true to enable pgmq processing.
  */
 
-import { and, eq, gt, lte, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import { db, jobs } from "../src/db";
 import { handleCalendarSyncJob } from "../src/services/jobs/handlers/calendar-sync.handler";
 import { handleHousekeepingJob } from "../src/services/jobs/handlers/housekeeping.handler";
@@ -57,7 +57,7 @@ async function fetchPendingDbJobs() {
     await db
       .update(jobs)
       .set({ status: "running", updatedAt: sql`now()` })
-      .where(sql`${jobs.id} = ANY(${jobIds})`);
+      .where(inArray(jobs.id, jobIds));
   }
 
   return pendingJobs;

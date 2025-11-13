@@ -24,7 +24,7 @@ vi.mock("@/src/lib/query-client", () => ({
 
 // Mock React Query to avoid DOM dependencies
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: vi.fn((options) => ({
+  useQuery: vi.fn((_options) => ({
     data: undefined,
     isLoading: false,
     isError: false,

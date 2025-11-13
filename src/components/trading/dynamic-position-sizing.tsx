@@ -5,7 +5,7 @@
  * based on user balance and risk management.
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/src/components/ui/alert";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
@@ -39,7 +39,7 @@ export function DynamicPositionSizing() {
   // Calculate on mount and when config changes
   useEffect(() => {
     calculatePositionSize(customConfig);
-  }, []); // Only on mount
+  }, [calculatePositionSize, customConfig]); // Only on mount
 
   const handleRecalculate = async () => {
     await calculatePositionSize(customConfig);

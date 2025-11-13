@@ -340,7 +340,7 @@ class SystemReadinessVerifier {
    * Print comprehensive readiness report
    */
   printReport(): void {
-    console.log("\n" + "=".repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
     console.log("📋 SYSTEM READINESS REPORT");
     console.log("=".repeat(80));
 
@@ -371,7 +371,7 @@ class SystemReadinessVerifier {
       0,
     );
 
-    console.log("\n" + "=".repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
     console.log("📊 SUMMARY");
     console.log("=".repeat(80));
     console.log(`Total Checks: ${totalChecks}`);
@@ -387,7 +387,7 @@ class SystemReadinessVerifier {
           : "⚠️  READY WITH WARNINGS"
         : "❌ NOT READY";
 
-    console.log("\n" + "=".repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
     console.log(`🎯 OVERALL STATUS: ${overallStatus}`);
     console.log("=".repeat(80));
 

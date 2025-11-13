@@ -9,7 +9,7 @@
  * - Orchestrator state verification
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
 import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";

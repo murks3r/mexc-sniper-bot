@@ -506,7 +506,7 @@ export class ConnectionHealthMonitor {
     this.alertCallbacks.forEach((callback) => {
       try {
         callback(alert);
-      } catch (error) {
+      } catch (_error) {
         // Error in alert callback - errors are handled by the alert system
       }
     });

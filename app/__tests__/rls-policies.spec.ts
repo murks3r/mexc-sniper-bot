@@ -11,11 +11,7 @@
  * Set USE_REAL_SUPABASE=true and configure test Supabase credentials.
  */
 
-import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db } from "@/src/db";
-import { userPreferences, user as userSchema } from "@/src/db/schemas/auth";
-import { apiCredentials, executionHistory, snipeTargets } from "@/src/db/schemas/trading";
 import {
   cleanupMultipleTestUsers,
   createMultipleTestUsers,
@@ -35,7 +31,7 @@ describeFn("RLS Policy Tests", () => {
   let user1Id: string;
   let user2Id: string;
   let user1Token: string;
-  let user2Token: string;
+  let _user2Token: string;
 
   beforeAll(async () => {
     try {
@@ -45,15 +41,15 @@ describeFn("RLS Policy Tests", () => {
       });
 
       // Sign in both users (with retry logic)
-      const user1Session = await signInTestUser(users[0]!.user.email!, users[0]!.password);
+      const user1Session = await signInTestUser(users[0]?.user.email!, users[0]?.password);
       // Small delay between sign-ins
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const user2Session = await signInTestUser(users[1]!.user.email!, users[1]!.password);
+      const user2Session = await signInTestUser(users[1]?.user.email!, users[1]?.password);
 
-      user1Id = users[0]!.user.id;
-      user2Id = users[1]!.user.id;
+      user1Id = users[0]?.user.id;
+      user2Id = users[1]?.user.id;
       user1Token = user1Session.accessToken;
-      user2Token = user2Session.accessToken;
+      _user2Token = user2Session.accessToken;
 
       // Ensure users exist in database
       await ensureTestUserInDatabase(user1Session.supabaseUser);
@@ -167,8 +163,8 @@ describeFn("RLS Policy Tests", () => {
   });
 
   describe("Snipe Targets RLS", () => {
-    let user1TargetId: number | null = null;
-    let user2TargetId: number | null = null;
+    let _user1TargetId: number | null = null;
+    let _user2TargetId: number | null = null;
 
     beforeAll(async () => {
       // Create test snipe targets for both users using admin client (bypasses RLS)
@@ -186,7 +182,7 @@ describeFn("RLS Policy Tests", () => {
         .select()
         .single();
 
-      user1TargetId = target1?.id || null;
+      _user1TargetId = target1?.id || null;
 
       // Create target for user2
       const { data: target2 } = await adminSupabase
@@ -200,7 +196,7 @@ describeFn("RLS Policy Tests", () => {
         .select()
         .single();
 
-      user2TargetId = target2?.id || null;
+      _user2TargetId = target2?.id || null;
     });
 
     it("should allow user to view own snipe targets", async () => {

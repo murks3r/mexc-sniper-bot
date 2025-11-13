@@ -86,7 +86,7 @@ export class MetricsCollector {
     return totalRequests / uptime;
   }
 
-  async measureAsync<T>(operation: string, fn: () => Promise<T>): Promise<AsyncTimingResult<T>> {
+  async measureAsync<T>(_operation: string, fn: () => Promise<T>): Promise<AsyncTimingResult<T>> {
     const startTime = performance.now();
     try {
       const result = await fn();
@@ -101,7 +101,7 @@ export class MetricsCollector {
     }
   }
 
-  measure<T>(operation: string, fn: () => T): TimingResult<T> {
+  measure<T>(_operation: string, fn: () => T): TimingResult<T> {
     const startTime = performance.now();
     try {
       const result = fn();

@@ -137,7 +137,7 @@ export function estimateCorrelation(symbol1: string, symbol2: string): number {
 
     // Default correlation for unrelated assets
     return 0.35;
-  } catch (error) {
+  } catch (_error) {
     // Conservative default on error
     return 0.35;
   }

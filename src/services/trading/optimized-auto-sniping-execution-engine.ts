@@ -25,7 +25,7 @@ export class OptimizedAutoSnipingExecutionEngine {
     return [];
   }
 
-  async updatePositionSize(symbol: string, size: number): Promise<void> {
+  async updatePositionSize(_symbol: string, _size: number): Promise<void> {
     // Stub implementation
   }
 }

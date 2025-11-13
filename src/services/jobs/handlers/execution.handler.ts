@@ -42,7 +42,7 @@ export async function handleExecutionJob(job: QueueJob) {
       secretKey: process.env.MEXC_SECRET_KEY || "",
     });
 
-    const marketDataManager = new MarketDataManager();
+    const _marketDataManager = new MarketDataManager();
 
     // Create a minimal module context for execution
     const moduleContext: ModuleContext = {

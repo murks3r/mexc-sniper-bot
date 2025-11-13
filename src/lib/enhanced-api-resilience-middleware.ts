@@ -8,11 +8,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { ApiResponse } from "./api-response";
 import { apiResponse } from "./api-response";
-import {
-  executeWithResilience,
-  type FallbackStrategy,
-  globalResilienceCoordinator,
-} from "./enhanced-resilience-manager";
+import { executeWithResilience, globalResilienceCoordinator } from "./enhanced-resilience-manager";
+import type { FallbackStrategy } from "./resilience/fallback-manager";
 import { createLogger } from "./unified-logger";
 
 const logger = createLogger("enhanced-api-resilience", {

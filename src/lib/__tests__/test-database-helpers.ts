@@ -7,8 +7,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/src/types/database-types";
-import { createAuthTestHelpers, type TestUser } from "./auth-test-helpers";
+import type { Database } from "@/src/db/migrations/schema";
+import { createAuthTestHelpers } from "./auth-test-helpers";
 
 export interface TestDatabaseHelpers {
   createTestSnipeTarget: (userId: string, overrides?: Partial<any>) => Promise<any>;

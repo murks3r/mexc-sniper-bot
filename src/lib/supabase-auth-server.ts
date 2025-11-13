@@ -1,9 +1,6 @@
 import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
-import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
-import { db } from "@/src/db";
-import { user as authUser } from "@/src/db/schemas/auth";
 import { createSupabaseAdminClient } from "@/src/lib/supabase-auth";
 import { authUserExists, upsertAuthUser } from "@/src/lib/supabase-auth-helpers";
 

@@ -8,7 +8,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
-import type { MexcServiceResponse } from "../../data/modules/mexc-api-types";
 import type { MexcCacheLayer } from "../../data/modules/mexc-cache-layer";
 import type { MexcCoreClient } from "../../data/modules/mexc-core-client";
 import { UnifiedMexcPortfolioModule } from "../unified-mexc-portfolio";
@@ -184,7 +183,7 @@ describe("UnifiedMexcPortfolioModule - Type Safety", () => {
       expect(response.data?.balances).toBeDefined();
 
       // Validate each balance against AccountBalanceSchema
-      for (const balance of response.data!.balances) {
+      for (const balance of response.data?.balances) {
         const validation = AccountBalanceSchema.safeParse(balance);
 
         if (!validation.success) {

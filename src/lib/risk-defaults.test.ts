@@ -4,7 +4,7 @@
  * Unit tests for risk parameter resolution logic
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type ResolveRiskParamsInput, resolveRiskParamsSync } from "./risk-defaults";
 import { defaultRiskConfig } from "./risk-defaults-config";
 

@@ -815,11 +815,6 @@ export class EnhancedRiskManager {
     }
   }
 
-  private extractBaseAsset(symbol: string): string {
-    // Extract base asset from trading pair
-    return symbol.replace(/USDT$|BUSD$|BTC$|ETH$|BNB$/, "").toUpperCase();
-  }
-
   private async estimateTradeRisk(params: TradeParameters): Promise<number> {
     const positionValue = params.quoteOrderQty || 0;
     const stopLossRisk = params.stopLossPercent ? params.stopLossPercent / 100 : 0.2;

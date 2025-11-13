@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock authentication - use hoisted to ensure it's available before route import
-const mockRequireAuth = vi.fn().mockImplementation(async (request) => {
+const mockRequireAuth = vi.fn().mockImplementation(async (_request) => {
   console.log("Mock requireAuthFromRequest called");
   return {
     id: "test-user-id",

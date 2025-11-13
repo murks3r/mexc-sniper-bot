@@ -309,20 +309,19 @@ export class EventHandling {
       // Race between operation execution and timeout
       await Promise.race([operation.handler(), timeoutPromise]);
 
-      const duration = timer.end({
+      timer.end({
         operationId: operation.id,
         operationName: operation.name,
         status: "success",
       });
 
       operation.executionCount++;
-      operation.totalExecutionTime += duration;
       this.stats.totalExecutions++;
 
       // Clear any previous error
       operation.lastError = undefined;
     } catch (error) {
-      const _duration = timer.end({
+      timer.end({
         operationId: operation.id,
         operationName: operation.name,
         status: "failed",

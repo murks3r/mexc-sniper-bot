@@ -14,7 +14,7 @@
  */
 
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/src/db";
 import { user as userSchema } from "@/src/db/schemas/auth";
 import { getSessionFromRequest, requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
@@ -31,7 +31,7 @@ import {
 import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
 
 const testMode = detectTestMode();
-const skipIntegrationTests = testMode !== "integration";
+const _skipIntegrationTests = testMode !== "integration";
 
 describe.skip("Supabase Auth Integration Tests [requires real Supabase integration environment]", () => {
   let testUserId: string | null = null;
@@ -169,7 +169,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
           expect(payload.sub).toBe(user.id);
           expect(payload.email).toBe(user.email);
           expect(payload.role).toBe("authenticated");
-        } catch (error) {
+        } catch (_error) {
           // If decoding fails, at least verify token structure
           expect(parts.length).toBe(3);
         }
@@ -196,7 +196,7 @@ describe.skip("Supabase Auth Integration Tests [requires real Supabase integrati
         // Note: This test requires the request to have proper cookie handling
         // In a real scenario, you'd need to set cookies properly
         // For now, we test the session extraction
-        const extractedSession = await getSessionFromRequest(request);
+        const _extractedSession = await getSessionFromRequest(request);
 
         // The session extraction might fail without proper cookie setup
         // But we can verify the token is valid by checking the user

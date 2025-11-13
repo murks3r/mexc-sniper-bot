@@ -654,7 +654,7 @@ export class UnifiedMexcServiceV2 {
 
   async getBulkActivityData(
     currencies: string[],
-    options?: ActivityQueryOptionsType,
+    _options?: ActivityQueryOptionsType,
   ): Promise<MexcServiceResponse<any[]>> {
     return this.coreModule.getBulkActivityData(currencies);
   }

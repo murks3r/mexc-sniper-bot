@@ -10,7 +10,7 @@ export interface CookieOptions {
   domain?: string;
   secure?: boolean;
   httpOnly?: boolean;
-  sameSite?: string;
+  sameSite?: "strict" | "lax" | "none" | boolean;
 }
 
 /**
@@ -34,7 +34,11 @@ export function getCookie(name: string): string | undefined {
 /**
  * Set cookie with options
  */
-export function setCookie(name: string, value: string, options?: CookieOptions): void {
+export function setCookie(
+  name: string,
+  value: string,
+  options?: CookieOptions & { sameSite?: "strict" | "lax" | "none" | boolean },
+): void {
   if (typeof document === "undefined") {
     return;
   }
@@ -69,12 +73,57 @@ export function removeCookie(name: string, options?: { path?: string }): void {
 }
 
 /**
+ * Get all cookies as a string
+ */
+export function getAllCookies(): string {
+  if (typeof document === "undefined") {
+    return "";
+  }
+  return document.cookie;
+}
+
+/**
+ * Set multiple cookies (for compatibility with CookieMethodsBrowser)
+ */
+export function setAllCookies(cookies: Record<string, string>): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  for (const [name, value] of Object.entries(cookies)) {
+    setCookie(name, value);
+  }
+}
+
+/**
  * Create cookie handlers for Supabase client
+ * Compatible with CookieMethodsBrowser interface from @supabase/ssr
  */
 export function createCookieHandlers() {
   return {
     get: getCookie,
-    set: setCookie,
+    getAll: getAllCookies,
+    set: (
+      name: string,
+      value: string,
+      options?: {
+        path?: string;
+        maxAge?: number;
+        domain?: string;
+        secure?: boolean;
+        httpOnly?: boolean;
+        sameSite?: "strict" | "lax" | "none" | boolean;
+      },
+    ) => {
+      setCookie(name, value, {
+        path: options?.path,
+        maxAge: options?.maxAge,
+        domain: options?.domain,
+        secure: options?.secure,
+        httpOnly: options?.httpOnly,
+        sameSite: typeof options?.sameSite === "string" ? options.sameSite : undefined,
+      });
+    },
+    setAll: setAllCookies,
     remove: removeCookie,
   };
 }

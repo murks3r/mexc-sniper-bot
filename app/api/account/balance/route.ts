@@ -14,6 +14,7 @@ import { validateExternalApiResponse } from "@/src/lib/enhanced-validation-middl
 
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
 import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
+import type { UnifiedMexcClient } from "@/src/services/api/mexc-client-factory";
 
 // Request validation schema - userId is optional for environment fallback
 const _BalanceRequestSchema = z.object({
@@ -197,7 +198,7 @@ async function setupMexcClient(
   return { client: clientResult.client };
 }
 
-async function fetchBalanceData(mexcClient: any) {
+async function fetchBalanceData(mexcClient: UnifiedMexcClient) {
   // Add timeout to prevent hanging requests
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error("Request timeout: MEXC API call took too long")), 15000);
@@ -243,7 +244,7 @@ async function fetchBalanceData(mexcClient: any) {
     );
   }
 
-  return rawResponse;
+  return rawResponse as z.infer<typeof responseSchema>;
 }
 
 function handleMexcError(mexcError: unknown, hasUserCredentials: boolean, credentialsType: string) {
@@ -300,7 +301,11 @@ function handleMexcError(mexcError: unknown, hasUserCredentials: boolean, creden
 }
 
 function createSuccessResponse(
-  balanceData: any,
+  balanceData: {
+    balances: z.infer<typeof AccountBalanceSchema>[];
+    totalUsdtValue: number;
+    lastUpdated: string;
+  },
   hasUserCredentials: boolean,
   credentialsType: string,
   startTime: number,
@@ -323,7 +328,7 @@ function createSuccessResponse(
 }
 
 function createBalanceErrorResponse(
-  balanceResponse: any,
+  balanceResponse: { error?: string; success?: boolean },
   hasUserCredentials: boolean,
   credentialsType: string,
 ) {
@@ -364,7 +369,7 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
     const startTime = Date.now();
 
     // Fetch balance data
-    let balanceResponse;
+    let balanceResponse: Awaited<ReturnType<typeof fetchBalanceData>>;
     try {
       balanceResponse = await fetchBalanceData(mexcClient);
     } catch (mexcError) {

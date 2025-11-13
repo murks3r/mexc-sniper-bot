@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db, jobs } from "@/src/db";
 
 export type JobType = "calendar_sync" | "risk_check" | "housekeeping";

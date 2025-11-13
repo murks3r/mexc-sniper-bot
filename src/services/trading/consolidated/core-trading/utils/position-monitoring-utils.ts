@@ -34,4 +34,3 @@ export function calculateRealizedPnL(position: Position, exitPrice: number): num
 
   return position.side === "BUY" ? exitValue - entryValue : entryValue - exitValue;
 }
-

@@ -138,13 +138,17 @@ export class DatabaseOperations {
     additionalFilters?: any,
   ): Promise<AutoSnipeTarget[]> {
     try {
-      let query = db.select().from(snipeTargets).where(eq(snipeTargets.status, status));
+      const whereClause = additionalFilters
+        ? and(eq(snipeTargets.status, status), additionalFilters)
+        : eq(snipeTargets.status, status);
 
-      if (additionalFilters) {
-        query = query.where(and(eq(snipeTargets.status, status), additionalFilters));
-      }
-
-      const targets = await query.orderBy(snipeTargets.createdAt).limit(limit).execute();
+      const targets = await db
+        .select()
+        .from(snipeTargets)
+        .where(whereClause)
+        .orderBy(snipeTargets.createdAt)
+        .limit(limit)
+        .execute();
 
       return targets as AutoSnipeTarget[];
     } catch (error) {
@@ -198,18 +202,74 @@ export class DatabaseOperations {
         targetData.userId,
       );
 
-      const newTarget = {
-        ...targetData,
-        // Use resolved risk parameters (ensures safe defaults)
+      // Validate required fields
+      if (!targetData.userId) {
+        throw new Error("userId is required to create a snipe target");
+      }
+      if (!targetData.symbolName && !targetData.symbol) {
+        throw new Error("symbolName or symbol is required to create a snipe target");
+      }
+      if (!targetData.vcoinId) {
+        throw new Error("vcoinId is required to create a snipe target");
+      }
+      if (!targetData.positionSizeUsdt && !targetData.quantity && !targetData.amount) {
+        throw new Error(
+          "positionSizeUsdt, quantity, or amount is required to create a snipe target",
+        );
+      }
+
+      // Map AutoSnipeTarget properties to database schema
+      const dbTarget: {
+        userId: string;
+        symbolName: string;
+        vcoinId: string;
+        positionSizeUsdt: number;
+        stopLossPercent: number;
+        takeProfitLevel: number;
+        takeProfitCustom?: number;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        entryStrategy?: string;
+        entryPrice?: number;
+        targetExecutionTime?: Date;
+        confidenceScore?: number;
+        priority?: number;
+        maxRetries?: number;
+        currentRetries?: number;
+        riskLevel?: string;
+      } = {
+        // Required fields
+        userId: targetData.userId,
+        symbolName: (targetData.symbol || targetData.symbolName) as string,
+        vcoinId: targetData.vcoinId as string,
+        positionSizeUsdt: (targetData.quantity ||
+          targetData.amount ||
+          targetData.positionSizeUsdt) as number,
         stopLossPercent: riskParams.stopLossPercent,
         takeProfitLevel: riskParams.takeProfitLevel,
         takeProfitCustom: riskParams.takeProfitCustom,
+        status: targetData.status || "pending",
         createdAt: new Date(),
         updatedAt: new Date(),
-        status: targetData.status || "pending",
+        // Optional fields
+        entryStrategy: (targetData.orderType || targetData.entryStrategy) as string | undefined,
+        entryPrice: (targetData.price || targetData.targetPrice || targetData.entryPrice) as
+          | number
+          | undefined,
+        targetExecutionTime: targetData.scheduledAt
+          ? new Date(targetData.scheduledAt)
+          : targetData.targetExecutionTime,
+        confidenceScore: (targetData.confidence || targetData.confidenceScore) as
+          | number
+          | undefined,
+        priority: targetData.priority,
+        maxRetries: targetData.maxRetries,
+        currentRetries: targetData.currentRetries,
+        riskLevel: targetData.riskLevel,
       };
 
-      const result = await db.insert(snipeTargets).values(newTarget).returning();
+      const result = await db.insert(snipeTargets).values(dbTarget).returning();
 
       return result.length > 0 ? (result[0] as AutoSnipeTarget) : null;
     } catch (error) {

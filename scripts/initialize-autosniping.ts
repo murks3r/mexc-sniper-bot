@@ -14,7 +14,7 @@ async function checkAutoSnipingStatus() {
   try {
     // Check next target
     console.log("\n📊 Checking next target...");
-    const { execSync } = await import("child_process");
+    const { execSync } = await import("node:child_process");
 
     const targetOutput = execSync("npm run check-target", {
       encoding: "utf8",
@@ -41,7 +41,7 @@ async function checkAutoSnipingStatus() {
       console.log("✅ Dynamic position sizer is available");
 
       // Create minimal test config
-      const testConfig = {
+      const _testConfig = {
         apiKey: "test",
         secretKey: "test",
         enablePaperTrading: true,

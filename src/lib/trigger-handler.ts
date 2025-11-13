@@ -3,27 +3,58 @@ import { EXECUTION_MODE } from "../config/execution-mode";
 import { inngest } from "../inngest/client";
 import { createErrorResponse, createSuccessResponse } from "./api-response";
 
+// Type definitions for trigger event data
+interface CalendarPollData extends Record<string, unknown> {
+  force?: boolean;
+  userId?: string;
+  timeWindowHours?: number;
+}
+
+interface PatternAnalysisData extends Record<string, unknown> {
+  symbols?: unknown[];
+  userId?: string;
+}
+
+interface SymbolWatchData extends Record<string, unknown> {
+  vcoinId?: string;
+  symbol?: string;
+  userId?: string;
+}
+
+interface TradingStrategyData extends Record<string, unknown> {
+  symbols?: unknown[];
+  strategy?: string;
+  userId?: string;
+}
+
+interface EmergencyStopData extends Record<string, unknown> {
+  reason?: string;
+  userId?: string;
+}
+
 /**
  * Factory function to create consistent trigger handlers
  * Supports hybrid queue architecture with feature flag routing
  */
-export function createTriggerHandler(
+export function createTriggerHandler<T extends Record<string, unknown> = Record<string, unknown>>(
   eventName: string,
   description: string,
-  dataTransform?: (body: unknown) => unknown,
+  dataTransform?: (body: T) => Record<string, unknown>,
 ) {
   return async function POST(request: NextRequest) {
     try {
       // Parse request body if present
-      let body = {};
+      let body: Record<string, unknown> = {};
       try {
-        body = await request.json();
+        const parsed = await request.json();
+        body =
+          typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
       } catch {
         // No body or invalid JSON, use empty object
       }
 
       // Transform data if transformer provided
-      const eventData = dataTransform ? dataTransform(body) : body;
+      const eventData = dataTransform ? dataTransform(body as T) : body;
 
       let eventId: string | undefined;
 
@@ -73,30 +104,45 @@ export function createTriggerHandler(
  * Common trigger handlers for MEXC workflows
  */
 export const TriggerHandlers = {
-  calendarPoll: createTriggerHandler("mexc/calendar.poll", "Calendar polling"),
+  calendarPoll: createTriggerHandler<CalendarPollData>("mexc/calendar.poll", "Calendar polling"),
 
-  patternAnalysis: createTriggerHandler("mexc/patterns.analyze", "Pattern analysis", (body) => ({
-    symbols: body.symbols || [],
-  })),
+  patternAnalysis: createTriggerHandler<PatternAnalysisData>(
+    "mexc/patterns.analyze",
+    "Pattern analysis",
+    (body) => ({
+      symbols: body.symbols || [],
+      userId: body.userId,
+    }),
+  ),
 
-  symbolWatch: createTriggerHandler("mexc/symbol.watch", "Symbol watch", (body) => ({
-    vcoinId: body.vcoinId,
-    symbol: body.symbol,
-  })),
+  symbolWatch: createTriggerHandler<SymbolWatchData>(
+    "mexc/symbol.watch",
+    "Symbol watch",
+    (body) => ({
+      vcoinId: body.vcoinId,
+      symbol: body.symbol,
+      userId: body.userId,
+    }),
+  ),
 
-  tradingStrategy: createTriggerHandler(
+  tradingStrategy: createTriggerHandler<TradingStrategyData>(
     "mexc/strategy.create",
     "Trading strategy creation",
     (body) => ({
       symbols: body.symbols || [],
       strategy: body.strategy || "balanced",
+      userId: body.userId,
     }),
   ),
 
-  emergency: createTriggerHandler("mexc/emergency.stop", "Emergency stop", (body) => ({
-    reason: body.reason || "Manual trigger",
-    userId: body.userId,
-  })),
+  emergency: createTriggerHandler<EmergencyStopData>(
+    "mexc/emergency.stop",
+    "Emergency stop",
+    (body) => ({
+      reason: body.reason || "Manual trigger",
+      userId: body.userId,
+    }),
+  ),
 };
 
 /**

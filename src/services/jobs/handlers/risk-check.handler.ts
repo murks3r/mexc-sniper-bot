@@ -18,9 +18,9 @@ export async function handleRiskCheckJob() {
 
     logger.info("Risk check completed", {
       overallRiskScore: assessment.overallRiskScore,
-      systemHealth: assessment.systemHealth.status,
-      criticalRisks: assessment.criticalRisks.length,
-      warnings: assessment.warnings.length,
+      systemHealth: assessment.system.systemHealth.status,
+      criticalRisks: assessment.system.systemHealth.criticalIssues?.length || 0,
+      warnings: assessment.system.systemHealth.warnings?.length || 0,
     });
 
     // Get safety report for additional context

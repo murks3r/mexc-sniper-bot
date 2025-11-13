@@ -348,7 +348,7 @@ export class CalendarToDatabaseSyncService {
       const now = new Date();
 
       // Delete old targets with status "pending" or "ready"
-      const deletedResult = await db
+      const _deletedResult = await db
         .delete(snipeTargets)
         .where(
           and(

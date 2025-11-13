@@ -265,9 +265,11 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
 
   // Try to update first
   const result = await withDatabaseErrorHandling(async () => {
+    // Remove Date fields that will be handled by database defaults
+    const { createdAt, ...updateDataWithoutDates } = updateData;
     return await db
       .update(userPreferences)
-      .set(updateData as Partial<typeof userPreferences.$inferInsert>)
+      .set(updateDataWithoutDates as Partial<typeof userPreferences.$inferInsert>)
       .where(eq(userPreferences.userId, validatedUserId))
       .returning();
   }, "update user preferences");
@@ -389,9 +391,11 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
     };
 
     await withDatabaseErrorHandling(async () => {
+      // Remove Date fields that will be handled by database defaults
+      const { createdAt, updatedAt, ...newPrefsWithoutDates } = newPrefs;
       return await db
         .insert(userPreferences)
-        .values(newPrefs as typeof userPreferences.$inferInsert);
+        .values(newPrefsWithoutDates as typeof userPreferences.$inferInsert);
     }, "insert user preferences");
   }
 

@@ -13,7 +13,6 @@ import type {
 } from "@/src/lib/websocket-types";
 import { type ConnectionManagerOptions, MexcConnectionManager } from "./connection-manager";
 import { MarketDataManager } from "./market-data-manager";
-import { webSocketServer } from "./websocket-server";
 
 // ======================
 // Stream Configuration
@@ -307,19 +306,19 @@ export class MexcWebSocketStreamService extends EventEmitter {
    */
   private setupEventHandlers(): void {
     // Handle price updates
-    this.on("price_update", async (price: TradingPriceMessage) => {
+    this.on("price_update", async (_price: TradingPriceMessage) => {
       // Broadcast to WebSocket server - disabled for now
       // webSocketServer.broadcast("trading_prices", price);
     });
 
     // Handle trading signals
-    this.on("trading_signal", async (signal: TradingSignalMessage) => {
+    this.on("trading_signal", async (_signal: TradingSignalMessage) => {
       // Broadcast to WebSocket server - disabled for now
       // webSocketServer.broadcast("trading_signals", signal);
     });
 
     // Handle notifications
-    this.on("notification", async (notification: NotificationMessage) => {
+    this.on("notification", async (_notification: NotificationMessage) => {
       // Broadcast to WebSocket server - disabled for now
       // webSocketServer.broadcast("notifications", notification);
     });

@@ -6,17 +6,28 @@
  * performance monitoring across the application.
  */
 
-import { loggerRegistry, type LoggerConfig } from "./unified-logger";
+import { loggerRegistry } from "./unified-logger";
 
 /**
  * Creates a timer for performance monitoring
  * @param operation - The name of the operation being timed
  * @param component - The component name for logging context
- * @returns A function that stops the timer and logs the duration
+ * @returns A timer object with an end() method that stops the timer and logs the duration
  */
-export function createTimer(operation: string, component: string): () => void {
+export function createTimer(
+  operation: string,
+  component: string,
+): { end: (context?: Record<string, unknown>) => number } {
   const logger = loggerRegistry.getLogger(component);
-  return logger.startTimer(operation);
+  const startTime = Date.now();
+
+  return {
+    end: (context?: Record<string, unknown>) => {
+      const duration = Date.now() - startTime;
+      logger.performance(operation, duration, context as any);
+      return duration;
+    },
+  };
 }
 
 /**

@@ -248,7 +248,7 @@ export class TransactionLockService {
       await this.processQueueForResource(lockResults[0]?.resourceId || "");
 
       return true;
-    } catch (err) {
+    } catch (_err) {
       // Error logging handled by error handler middleware
       return false;
     }
@@ -551,7 +551,7 @@ export class TransactionLockService {
             lte(transactionQueue.createdAt, cutoffTime),
           ),
         );
-    } catch (error) {
+    } catch (_error) {
       // Error logging handled by error handler middleware
     }
   }
@@ -692,7 +692,7 @@ export class TransactionLockService {
         );
 
       return updatedLocks.length > 0;
-    } catch (error) {
+    } catch (_error) {
       // Error logging handled by error handler middleware
       return false;
     }
