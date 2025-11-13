@@ -6,7 +6,10 @@
  * circuit breaking when limits are exceeded.
  */
 
+import { getLogger } from "./unified-logger";
+
 export class DatabaseRateLimiter {
+  private readonly logger = getLogger("database-rate-limiter");
   private queryCount = 0;
   private resetTime = Date.now();
   private readonly maxQueriesPerMinute: number;
@@ -37,11 +40,11 @@ export class DatabaseRateLimiter {
       const error = new Error(
         `Database query rate limit exceeded - preventing cost overrun. Limit: ${this.maxQueriesPerMinute}/min`,
       );
-      console.error(`🚨 [COST PROTECTION] ${error.message}`, {
+      this.logger.error("Cost protection - rate limit exceeded", {
         currentCount: this.queryCount,
         limit: this.maxQueriesPerMinute,
         operation: operationName,
-        timestamp: new Date().toISOString(),
+        message: error.message,
       });
       throw error;
     }
@@ -50,7 +53,7 @@ export class DatabaseRateLimiter {
 
     // Warn when approaching limit (check after incrementing)
     if (this.queryCount >= (this.maxQueriesPerMinute * this.emergencyThreshold) / 100) {
-      console.warn(`⚠️ [COST WARNING] Approaching query limit`, {
+      this.logger.warn("Cost warning - approaching query limit", {
         operation: operationName,
         currentCount: this.queryCount,
         limit: this.maxQueriesPerMinute,
@@ -75,17 +78,16 @@ export class DatabaseRateLimiter {
 
       // Log slow queries that could cause cost issues
       if (queryTime > 5000) {
-        console.error(`💸 [COST ALERT] Slow query detected`, {
+        this.logger.error("Cost alert - slow query detected", {
           operation: operationName,
           duration: queryTime,
           threshold: 5000,
           potentialCost: this.estimateQueryCost(queryTime),
-          timestamp: new Date().toISOString(),
         });
       }
 
       // Log query metrics for monitoring
-      console.debug(`📊 [QUERY METRICS]`, {
+      this.logger.debug("Query metrics", {
         operation: operationName,
         duration: queryTime,
         queryCount: this.queryCount,
@@ -95,12 +97,15 @@ export class DatabaseRateLimiter {
       return result;
     } catch (error) {
       const queryTime = Date.now() - startTime;
-      console.error(`❌ [QUERY FAILED]`, {
-        operation: operationName,
-        duration: queryTime,
-        error: error instanceof Error ? error.message : String(error),
-        queryCount: this.queryCount,
-      });
+      this.logger.error(
+        "Query failed",
+        {
+          operation: operationName,
+          duration: queryTime,
+          queryCount: this.queryCount,
+        },
+        error instanceof Error ? error : undefined,
+      );
       throw error;
     }
   }
@@ -135,9 +140,8 @@ export class DatabaseRateLimiter {
    * Force reset the rate limiter (emergency use only)
    */
   emergencyReset(): void {
-    console.warn(`🔄 [EMERGENCY RESET] Database rate limiter reset manually`, {
+    this.logger.warn("Emergency reset - database rate limiter reset manually", {
       previousCount: this.queryCount,
-      timestamp: new Date().toISOString(),
     });
     this.queryCount = 0;
     this.resetTime = Date.now();

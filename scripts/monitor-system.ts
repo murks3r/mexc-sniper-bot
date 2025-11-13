@@ -16,28 +16,34 @@
 import { sql } from "drizzle-orm";
 import { db } from "../src/db";
 
+type JobQueueStatus = {
+  pending: number;
+  running: number;
+  completed: number;
+  dead: number;
+  oldestPending: string | null;
+};
+
+type TradeExecutionStats = {
+  recentExecutions: number;
+  successful: number;
+  failed: number;
+  lastExecution: string | null;
+};
+
+type SystemHealthStats = {
+  dbConnected: boolean;
+  queueProcessing: boolean;
+};
+
 interface MonitoringResult {
   timestamp: string;
-  jobQueue: {
-    pending: number;
-    running: number;
-    completed: number;
-    dead: number;
-    oldestPending: string | null;
-  };
-  tradeExecution: {
-    recentExecutions: number;
-    successful: number;
-    failed: number;
-    lastExecution: string | null;
-  };
-  systemHealth: {
-    dbConnected: boolean;
-    queueProcessing: boolean;
-  };
+  jobQueue: JobQueueStatus;
+  tradeExecution: TradeExecutionStats;
+  systemHealth: SystemHealthStats;
 }
 
-async function checkJobQueue() {
+async function checkJobQueue(): Promise<JobQueueStatus> {
   try {
     const statusCounts = await db.execute(sql`
       SELECT
@@ -49,30 +55,31 @@ async function checkJobQueue() {
       GROUP BY status
     `);
 
-    const counts = (Array.isArray(statusCounts) ? statusCounts : [statusCounts]).reduce(
-      (acc, row: { status: string; count: string | number; oldest?: string }) => {
-        const status = row.status as keyof typeof acc;
-        if (
-          status === "pending" ||
-          status === "running" ||
-          status === "completed" ||
-          status === "dead"
-        ) {
-          acc[status] = Number(row.count);
-        }
-        if (row.status === "pending" && row.oldest) {
-          acc.oldestPending = row.oldest;
-        }
-        return acc;
-      },
-      {
-        pending: 0,
-        running: 0,
-        completed: 0,
-        dead: 0,
-        oldestPending: null as string | null,
-      },
-    );
+    const rows = (Array.isArray(statusCounts) ? statusCounts : [statusCounts]) as Array<{
+      status: string;
+      count: string | number;
+      oldest?: string | null;
+    }>;
+
+    const counts: JobQueueStatus = {
+      pending: 0,
+      running: 0,
+      completed: 0,
+      dead: 0,
+      oldestPending: null,
+    };
+
+    for (const row of rows) {
+      if (row.status === "pending" || row.status === "running" || row.status === "completed") {
+        counts[row.status] = Number(row.count);
+      }
+      if (row.status === "dead") {
+        counts.dead = Number(row.count);
+      }
+      if (row.status === "pending" && row.oldest) {
+        counts.oldestPending = row.oldest;
+      }
+    }
 
     return counts;
   } catch (error) {
@@ -87,7 +94,7 @@ async function checkJobQueue() {
   }
 }
 
-async function checkTradeExecution() {
+async function checkTradeExecution(): Promise<TradeExecutionStats> {
   try {
     // Check execution history from last hour
     const executions = await db.execute(sql`
@@ -100,13 +107,13 @@ async function checkTradeExecution() {
       WHERE created_at > NOW() - INTERVAL '1 hour'
     `);
 
-    const result = Array.isArray(executions) ? executions[0] : executions;
-    const row = result as {
+    const rows = (Array.isArray(executions) ? executions : [executions]) as Array<{
       total: string | number;
       successful: string | number;
       failed: string | number;
       last_execution: string | null;
-    };
+    }>;
+    const row = rows[0];
 
     return {
       recentExecutions: Number(row?.total || 0),
@@ -125,7 +132,7 @@ async function checkTradeExecution() {
   }
 }
 
-async function checkSystemHealth() {
+async function checkSystemHealth(): Promise<SystemHealthStats> {
   try {
     // Test database connection
     await db.execute(sql`SELECT 1`);

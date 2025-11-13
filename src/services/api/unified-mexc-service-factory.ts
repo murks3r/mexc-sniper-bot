@@ -8,6 +8,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { apiCredentials, db } from "@/src/db";
+import { getLogger } from "../../lib/unified-logger";
 import { getUnifiedMexcClient, type UnifiedMexcClient } from "./mexc-client-factory";
 import type { UnifiedMexcConfig } from "./mexc-client-types";
 import { getEncryptionService } from "./secure-encryption-service";
@@ -147,6 +148,7 @@ export class UnifiedMexcServiceFactory {
   private credentialCache = new CredentialCache();
   private serviceCache = new ServiceInstanceCache();
   private encryptionService = getEncryptionService();
+  private readonly logger = getLogger("unified-mexc-service-factory");
 
   constructor(config: Partial<ServiceFactoryConfig> = {}) {
     this.config = {
@@ -158,7 +160,7 @@ export class UnifiedMexcServiceFactory {
       ...config,
     };
 
-    console.info("[UnifiedMexcServiceFactory] Initialized with config:", {
+    this.logger.info("Initialized with config", {
       enableGlobalCache: this.config.enableGlobalCache,
       credentialCacheTTL: this.config.credentialCacheTTL,
       serviceInstanceCacheTTL: this.config.serviceInstanceCacheTTL,
@@ -194,16 +196,14 @@ export class UnifiedMexcServiceFactory {
       });
 
       if (!credentials) {
-        console.warn(
-          "[UnifiedMexcServiceFactory] No valid credentials found, falling back to environment",
-        );
+        this.logger.warn("No valid credentials found, falling back to environment");
 
         // Check if environment credentials exist with improved validation
         const envApiKey = process.env.MEXC_API_KEY?.trim();
         const envSecretKey = process.env.MEXC_SECRET_KEY?.trim();
 
         if (!envApiKey || !envSecretKey || envApiKey.length < 10 || envSecretKey.length < 10) {
-          console.error("[UnifiedMexcServiceFactory] Invalid or missing environment credentials", {
+          this.logger.error("Invalid or missing environment credentials", {
             hasApiKey: !!envApiKey,
             hasSecretKey: !!envSecretKey,
             apiKeyLength: envApiKey?.length || 0,
@@ -214,7 +214,7 @@ export class UnifiedMexcServiceFactory {
           );
         }
 
-        console.info("[UnifiedMexcServiceFactory] Using environment credentials as fallback");
+        this.logger.info("Using environment credentials as fallback");
         return this.createServiceInstance({
           apiKey: envApiKey,
           secretKey: envSecretKey,
@@ -226,7 +226,7 @@ export class UnifiedMexcServiceFactory {
       if (this.config.enableGlobalCache && !skipCache) {
         const cachedService = this.serviceCache.get(credentials.apiKey, credentials.secretKey);
         if (cachedService) {
-          console.info("[UnifiedMexcServiceFactory] Using cached service instance");
+          this.logger.info("Using cached service instance");
           return cachedService;
         }
       }
@@ -236,12 +236,12 @@ export class UnifiedMexcServiceFactory {
 
       // 4. Test credentials if they're from database to ensure they work
       if (credentials.source === "database") {
-        console.info("[UnifiedMexcServiceFactory] Testing database credentials...");
+        this.logger.info("Testing database credentials");
         const testResult = await this.testService(service);
 
         if (!testResult.authentication) {
-          console.warn(
-            "[UnifiedMexcServiceFactory] Database credentials failed authentication, trying environment fallback",
+          this.logger.warn(
+            "Database credentials failed authentication, trying environment fallback",
             {
               error: testResult.error,
               credentialsSource: credentials.source,
@@ -253,7 +253,7 @@ export class UnifiedMexcServiceFactory {
           const envSecretKey = process.env.MEXC_SECRET_KEY?.trim();
 
           if (envApiKey && envSecretKey && envApiKey.length >= 10 && envSecretKey.length >= 10) {
-            console.info("[UnifiedMexcServiceFactory] Falling back to environment credentials");
+            this.logger.info("Falling back to environment credentials");
             const envService = this.createServiceInstance({
               apiKey: envApiKey,
               secretKey: envSecretKey,
@@ -263,9 +263,7 @@ export class UnifiedMexcServiceFactory {
             // Test environment credentials
             const envTestResult = await this.testService(envService);
             if (envTestResult.authentication) {
-              console.info(
-                "[UnifiedMexcServiceFactory] Environment credentials work, using fallback",
-              );
+              this.logger.info("Environment credentials work, using fallback");
 
               // Cache the working environment service
               if (this.config.enableGlobalCache && !skipCache) {
@@ -279,7 +277,7 @@ export class UnifiedMexcServiceFactory {
 
               return envService;
             } else {
-              console.error("[UnifiedMexcServiceFactory] Environment credentials also failed", {
+              this.logger.error("Environment credentials also failed", {
                 error: envTestResult.error,
               });
             }
@@ -291,7 +289,7 @@ export class UnifiedMexcServiceFactory {
           );
         }
 
-        console.info("[UnifiedMexcServiceFactory] Database credentials authenticated successfully");
+        this.logger.info("Database credentials authenticated successfully");
       }
 
       // 5. Cache the service instance
@@ -304,7 +302,7 @@ export class UnifiedMexcServiceFactory {
         );
       }
 
-      console.info("[UnifiedMexcServiceFactory] Created new service instance:", {
+      this.logger.info("Created new service instance", {
         hasApiKey: Boolean(credentials.apiKey),
         hasSecretKey: Boolean(credentials.secretKey),
         source: credentials.source,
@@ -313,21 +311,23 @@ export class UnifiedMexcServiceFactory {
 
       return service;
     } catch (error) {
-      console.error("[UnifiedMexcServiceFactory] Failed to get service:", error);
+      this.logger.error(
+        "Failed to get service",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
 
       // Improved fallback to environment credentials
       if (this.config.fallbackToEnvironment) {
-        console.info(
-          "[UnifiedMexcServiceFactory] Falling back to environment credentials due to error",
-        );
+        this.logger.info("Falling back to environment credentials due to error");
 
         const envApiKey = process.env.MEXC_API_KEY?.trim();
         const envSecretKey = process.env.MEXC_SECRET_KEY?.trim();
 
         if (!envApiKey || !envSecretKey) {
-          console.error(
-            "[UnifiedMexcServiceFactory] Environment fallback failed - no credentials available",
-          );
+          this.logger.error("Environment fallback failed - no credentials available");
           throw new Error("All credential sources failed - no valid MEXC API credentials found");
         }
 
@@ -400,7 +400,7 @@ export class UnifiedMexcServiceFactory {
       if (!skipCache && this.config.enableGlobalCache) {
         const cached = this.credentialCache.get(userId);
         if (cached && cached.source === "database") {
-          console.info("[UnifiedMexcServiceFactory] Using cached user credentials");
+          this.logger.info("Using cached user credentials");
           return {
             apiKey: cached.apiKey,
             secretKey: cached.secretKey,
@@ -411,7 +411,7 @@ export class UnifiedMexcServiceFactory {
 
       // Validate userId before database query
       if (!userId || userId.trim() === "" || userId === "undefined" || userId === "null") {
-        console.warn("[UnifiedMexcServiceFactory] Invalid userId provided:", userId);
+        this.logger.warn("Invalid userId provided", { userId });
         return null;
       }
 
@@ -434,7 +434,7 @@ export class UnifiedMexcServiceFactory {
       ]);
 
       if (!credentials || !credentials[0]) {
-        console.info(`[UnifiedMexcServiceFactory] No credentials found for user: ${userId}`);
+        this.logger.info("No credentials found for user", { userId });
         return null;
       }
 
@@ -445,7 +445,7 @@ export class UnifiedMexcServiceFactory {
 
         // Validate decrypted credentials
         if (!apiKey || !secretKey) {
-          console.warn("[UnifiedMexcServiceFactory] Failed to decrypt credentials - empty result");
+          this.logger.warn("Failed to decrypt credentials - empty result");
           return null;
         }
 
@@ -460,7 +460,7 @@ export class UnifiedMexcServiceFactory {
           });
         }
 
-        console.info("[UnifiedMexcServiceFactory] Retrieved user credentials from database");
+        this.logger.info("Retrieved user credentials from database");
 
         return {
           apiKey,
@@ -468,11 +468,23 @@ export class UnifiedMexcServiceFactory {
           source: "database",
         };
       } catch (decryptError) {
-        console.error("[UnifiedMexcServiceFactory] Failed to decrypt credentials:", decryptError);
+        this.logger.error(
+          "Failed to decrypt credentials",
+          {
+            error: decryptError instanceof Error ? decryptError.message : String(decryptError),
+          },
+          decryptError instanceof Error ? decryptError : undefined,
+        );
         return null;
       }
     } catch (error) {
-      console.error("[UnifiedMexcServiceFactory] Failed to get user credentials:", error);
+      this.logger.error(
+        "Failed to get user credentials",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
       // Don't throw - gracefully fallback to environment credentials
       return null;
     }
@@ -511,7 +523,7 @@ export class UnifiedMexcServiceFactory {
    */
   invalidateUserCredentials(userId: string): void {
     this.credentialCache.invalidate(userId);
-    console.info(`[UnifiedMexcServiceFactory] Invalidated credentials cache for user: ${userId}`);
+    this.logger.info("Invalidated credentials cache for user", { userId });
   }
 
   /**
@@ -520,7 +532,7 @@ export class UnifiedMexcServiceFactory {
   clearAllCaches(): void {
     this.credentialCache.clear();
     this.serviceCache.clear();
-    console.info("[UnifiedMexcServiceFactory] Cleared all caches");
+    this.logger.info("Cleared all caches");
   }
 
   /**
@@ -551,7 +563,7 @@ export class UnifiedMexcServiceFactory {
 
     // Implement status synchronization callbacks
     this.triggerStatusSynchronization(userId);
-    console.info(`[UnifiedMexcServiceFactory] Credential operation success - invalidated caches`);
+    this.logger.info("Credential operation success - invalidated caches");
   }
 
   /**
@@ -638,9 +650,11 @@ export class UnifiedMexcServiceFactory {
         }
       }
 
-      console.info("[UnifiedMexcServiceFactory] Status synchronization triggered", { userId });
+      this.logger.info("Status synchronization triggered", { userId });
     } catch (error) {
-      console.warn("[UnifiedMexcServiceFactory] Failed to trigger status synchronization:", error);
+      this.logger.warn("Failed to trigger status synchronization", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }

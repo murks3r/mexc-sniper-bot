@@ -10,7 +10,10 @@ import { db } from "@/src/db";
 import { snipeTargets, user } from "@/src/db/schema";
 import { resolveRiskParams } from "@/src/lib/risk-defaults";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
-import { qualifyAndCacheSymbol, isSymbolApiTradable } from "@/src/services/symbol-qualification.service";
+import {
+  isSymbolApiTradable,
+  qualifyAndCacheSymbol,
+} from "@/src/services/symbol-qualification.service";
 
 interface CalendarEntry {
   vcoinId: string;

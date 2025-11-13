@@ -8,7 +8,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
-import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
+import { getUnifiedAutoSnipingOrchestrator } from "../src/services/trading/unified-auto-sniping-orchestrator";
 
 async function executeFaster() {
   console.log("🎯 Executing FASTER (ID: 179)\n");
@@ -34,19 +34,25 @@ async function executeFaster() {
       console.log("✅ Status updated to 'ready'\n");
     }
 
-    // Get core trading and execute
+    // Get auto-sniping module and execute
     console.log("⚡ Executing...\n");
-    const coreTrading = getCoreTrading();
+    const autoSniping = getUnifiedAutoSnipingOrchestrator();
 
-    // @ts-expect-error - accessing private member
-    const autoSniping = coreTrading.autoSniping;
+    // Convert to AutoSnipeTarget format
+    const autoSnipeTarget = {
+      ...target,
+      symbol: target.symbolName,
+      side: "buy" as const,
+      orderType: "market" as const,
+      quantity: target.positionSizeUsdt,
+      amount: target.positionSizeUsdt,
+      price: undefined,
+      confidence: target.confidenceScore,
+      scheduledAt: target.targetExecutionTime?.toISOString() || null,
+      executedAt: null,
+    };
 
-    if (!autoSniping) {
-      console.error("❌ Auto-sniping module not available");
-      process.exit(1);
-    }
-
-    const result = await autoSniping.executeSnipeTarget(target, undefined);
+    const result = await autoSniping.executeSnipeTarget(autoSnipeTarget);
 
     console.log("📊 Result:");
     console.log(JSON.stringify(result, null, 2));

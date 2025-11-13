@@ -2,6 +2,9 @@ import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { executionHistory } from "../db/schema";
 import { getConnectivityStatus, performSystemHealthCheck } from "./health-checks";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("emergency-recovery");
 export interface EmergencyRecoveryPlan {
   emergencyType: string;
   severity: "low" | "medium" | "high" | "critical";
@@ -651,7 +654,13 @@ export class EmergencyRecoveryService {
         executionLatencyMs: 0,
       });
     } catch (error) {
-      console.error("Failed to log emergency event:", error);
+      logger.error(
+        "Failed to log emergency event",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
     }
   }
 }

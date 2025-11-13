@@ -6,10 +6,6 @@
 
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { z } from "zod";
-import type { BalanceItemSchema } from "@/src/schemas/mexc-api-validation-schemas";
-
-type BalanceItem = z.infer<typeof BalanceItemSchema>;
 
 // Mock environment variables
 (() => {
@@ -28,13 +24,17 @@ vi.mock("@/src/lib/supabase-auth-server", () => ({
   requireAuthFromRequest: mockRequireAuth,
 }));
 
-// Mock MEXC service
-const mockGetAccountBalances = vi.fn();
-vi.mock("@/src/services/api/unified-mexc-service-factory", () => ({
-  getUnifiedMexcService: vi.fn().mockResolvedValue({
-    getAccountBalances: mockGetAccountBalances,
-  }),
-}));
+// Mock MEXC service - use factory function to avoid hoisting issues
+vi.mock("@/src/services/api/unified-mexc-service-factory", () => {
+  const mockGetAccountBalances = vi.fn();
+  return {
+    getUnifiedMexcService: vi.fn().mockResolvedValue({
+      getAccountBalances: mockGetAccountBalances,
+    }),
+    // Export mock for use in tests
+    __mockGetAccountBalances: mockGetAccountBalances,
+  };
+});
 
 // Mock other dependencies
 vi.mock("@/src/lib/database-circuit-breaker", () => ({
@@ -55,10 +55,16 @@ vi.mock("@/src/lib/enhanced-validation-middleware", () => ({
 
 // Import after mocking
 import { GET } from "../api/account/balance/route";
+import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 
 describe("Account Balance API Completeness", () => {
-  beforeEach(() => {
+  let mockGetAccountBalances: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Get the mock function from the mocked module
+    const mockService = await getUnifiedMexcService("test-user-id");
+    mockGetAccountBalances = mockService.getAccountBalances as ReturnType<typeof vi.fn>;
   });
 
   it("should return all assets including zero balances", async () => {
@@ -156,7 +162,9 @@ describe("Account Balance API Completeness", () => {
       timestamp: Date.now(),
     };
 
-    mockGetAccountBalances.mockResolvedValue(mockBalances);
+    if (mockGetAccountBalances) {
+      mockGetAccountBalances.mockResolvedValue(mockBalances);
+    }
 
     const request = new Request("http://localhost:3000/api/account/balance?userId=test-user-id", {
       method: "GET",
@@ -204,7 +212,9 @@ describe("Account Balance API Completeness", () => {
       timestamp: Date.now(),
     };
 
-    mockGetAccountBalances.mockResolvedValue(mockBalances);
+    if (mockGetAccountBalances) {
+      mockGetAccountBalances.mockResolvedValue(mockBalances);
+    }
 
     const request = new Request("http://localhost:3000/api/account/balance?userId=test-user-id", {
       method: "GET",
@@ -239,7 +249,9 @@ describe("Account Balance API Completeness", () => {
       timestamp: 1700000000000,
     };
 
-    mockGetAccountBalances.mockResolvedValue(mockBalances);
+    if (mockGetAccountBalances) {
+      mockGetAccountBalances.mockResolvedValue(mockBalances);
+    }
 
     const nowSpy = vi.spyOn(Date, "now");
     nowSpy.mockImplementationOnce(() => 1_000);

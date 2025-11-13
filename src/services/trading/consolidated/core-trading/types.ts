@@ -375,6 +375,10 @@ export interface ServiceStatus {
   uptime: number;
   lastHealthCheck: Date;
   version: string;
+
+  // Initialization Status
+  isInitialized: boolean;
+  isActive: boolean;
 }
 
 // Extended interface for frontend-specific status data
@@ -406,6 +410,10 @@ export interface ExtendedServiceStatus extends ServiceStatus {
   errorCount?: number;
   readyTargets?: number;
   activeTargets?: number;
+  processedTargets?: number;
+  successfulSnipes?: number;
+  failedSnipes?: number;
+  lastSnipeCheck?: string;
   config?: {
     maxConcurrentTargets?: number;
     retryAttempts?: number;

@@ -100,7 +100,10 @@ export class EnhancedMemoryManager extends EventEmitter {
       heapUtilization: memoryUsage.heapUsed / memoryUsage.heapTotal,
       external: memoryUsage.external,
       rss: memoryUsage.rss,
-      buffers: (memoryUsage as any).buffers || 0,
+      buffers:
+        "buffers" in memoryUsage && typeof memoryUsage.buffers === "number"
+          ? memoryUsage.buffers
+          : 0,
       arrayBuffers: memoryUsage.arrayBuffers,
       timestamp: Date.now(),
     };
@@ -169,9 +172,10 @@ export class EnhancedMemoryManager extends EventEmitter {
           previousAverage: olderAvg,
         });
 
-        console.warn(
-          `[Memory Manager] Potential memory leak detected: ${(growth / 1024 / 1024).toFixed(2)}MB/min growth`,
-        );
+        this.logger.warn("Potential memory leak detected", {
+          growthMB: (growth / 1024 / 1024).toFixed(2),
+          growthPerMinute: growth,
+        });
       }
     } else {
       this.memoryLeakDetected = false;
@@ -212,10 +216,11 @@ export class EnhancedMemoryManager extends EventEmitter {
 
     this.emit("memory-pressure", event);
 
-    console.warn(`[Memory Manager] Memory pressure detected: ${level}`, {
+    this.logger.warn("Memory pressure detected", {
+      level,
       heapUtilization: `${(metrics.heapUtilization * 100).toFixed(2)}%`,
-      heapUsed: `${(metrics.heapUsed / 1024 / 1024).toFixed(2)}MB`,
-      heapTotal: `${(metrics.heapTotal / 1024 / 1024).toFixed(2)}MB`,
+      heapUsedMB: `${(metrics.heapUsed / 1024 / 1024).toFixed(2)}`,
+      heapTotalMB: `${(metrics.heapTotal / 1024 / 1024).toFixed(2)}`,
       recommendations,
     });
   }
@@ -277,7 +282,7 @@ export class EnhancedMemoryManager extends EventEmitter {
   }
 
   emergencyCleanup(): void {
-    console.error("[Memory Manager] Emergency memory cleanup initiated");
+    this.logger.error("Emergency memory cleanup initiated");
 
     // Force garbage collection multiple times
     this.triggerGarbageCollection();

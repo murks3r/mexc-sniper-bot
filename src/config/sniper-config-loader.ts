@@ -8,7 +8,7 @@
  * - Default values
  */
 
-import { existsSync, readFileSync, watchFile } from "node:fs";
+import { existsSync, readFileSync, unwatchFile, watchFile } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
@@ -167,7 +167,7 @@ export class SniperConfigLoader {
    */
   stopWatching(): void {
     if (this.watchHandle) {
-      watchFile.unwatchFile(this.configPath);
+      unwatchFile(this.configPath);
       this.watchHandle = null;
       this.logger.debug("Stopped watching config file");
     }

@@ -45,10 +45,26 @@ export class BalanceGuard {
   private lastWebSocketUpdate: Map<string, number> = new Map();
   private websocketStaleThresholdMs = 5000; // Consider websocket stale after 5s
 
-  constructor(client: AsyncMexcClient, config: BalanceGuardConfig) {
+  constructor(
+    client: AsyncMexcClient,
+    config: BalanceGuardConfig,
+    logger?: StructuredLoggerAdapter,
+  ) {
     this.client = client;
     this.config = config;
-    this.logger = new StructuredLoggerAdapter();
+    this.logger = logger ?? new StructuredLoggerAdapter();
+  }
+
+  /**
+   * Reset internal state (useful for testing)
+   */
+  reset(): void {
+    this.balances.clear();
+    this.lastWebSocketUpdate.clear();
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
   }
 
   /**

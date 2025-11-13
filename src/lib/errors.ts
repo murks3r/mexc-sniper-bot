@@ -545,3 +545,61 @@ export function ensureError(error: unknown): Error {
 
   return newError;
 }
+
+/**
+ * Error collector for aggregating multiple validation errors
+ */
+export class ErrorCollector {
+  private errors: Map<string, string[]> = new Map();
+
+  /**
+   * Add an error for a specific field
+   */
+  add(error: string, field?: string): void {
+    const key = field || "general";
+    if (!this.errors.has(key)) {
+      this.errors.set(key, []);
+    }
+    this.errors.get(key)!.push(error);
+  }
+
+  /**
+   * Check if there are any errors
+   */
+  hasErrors(): boolean {
+    return this.errors.size > 0;
+  }
+
+  /**
+   * Get all errors as an array
+   */
+  getAll(): Array<{ field: string; messages: string[] }> {
+    return Array.from(this.errors.entries()).map(([field, messages]) => ({
+      field,
+      messages,
+    }));
+  }
+
+  /**
+   * Throw ValidationError if there are any errors
+   */
+  throwIfErrors(): void {
+    if (!this.hasErrors()) {
+      return;
+    }
+
+    const fieldErrors = this.getAll();
+    const messages = fieldErrors
+      .map(({ field, messages }) => `${field}: ${messages.join(", ")}`)
+      .join("; ");
+
+    throw new ValidationError(messages);
+  }
+
+  /**
+   * Clear all errors
+   */
+  clear(): void {
+    this.errors.clear();
+  }
+}

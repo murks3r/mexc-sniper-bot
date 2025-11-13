@@ -3,6 +3,10 @@
  * Provides basic circuit breaker functionality for database operations
  */
 
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("database-circuit-breaker");
+
 export interface CircuitBreakerConfig {
   failureThreshold: number;
   resetTimeout: number;
@@ -23,7 +27,13 @@ export async function executeWithCircuitBreaker<T>(
   try {
     return await operation();
   } catch (error) {
-    console.error(`[Circuit Breaker] Operation ${operationId} failed:`, error);
+    logger.error(
+      "Operation failed",
+      {
+        operationId,
+      },
+      error instanceof Error ? error : undefined,
+    );
     throw error;
   }
 }

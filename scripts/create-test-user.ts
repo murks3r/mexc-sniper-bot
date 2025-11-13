@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Create Test User Script
  *
@@ -9,6 +10,7 @@
  *   bun run scripts/create-test-user.ts --email user@example.com --password "SecurePass123!"
  */
 
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 
 // Get environment variables
@@ -60,10 +62,11 @@ async function createTestUser() {
 
   try {
     // Try to find existing user first
-    let existingUserData = null;
+    let existingUserData: User | null = null;
     try {
       const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-      const foundUser = existingUser?.users?.find((u) => u.email === email) ?? null;
+      const existingUsers = (existingUser?.users as User[] | undefined) ?? undefined;
+      const foundUser = existingUsers?.find((u) => u.email === email) ?? null;
       if (foundUser) {
         existingUserData = foundUser;
       }
@@ -98,7 +101,7 @@ async function createTestUser() {
       } else {
         // Try to find user by email - paginate through all users if needed
         console.log("   Searching for user by email...");
-        let foundUser = null;
+        let foundUser: User | null = null;
         let page = 1;
         const perPage = 1000;
 
@@ -113,7 +116,8 @@ async function createTestUser() {
             break;
           }
 
-          foundUser = userList?.users?.find((u) => u.email === email) ?? null;
+          const users = (userList?.users as User[] | undefined) ?? undefined;
+          foundUser = users?.find((u) => u.email === email) ?? null;
 
           if (foundUser) {
             break;
@@ -185,8 +189,8 @@ async function createTestUser() {
 
     console.log("✅ User created successfully!");
     console.log(`   User ID: ${data.user.id}`);
-    console.log(`   Email: ${data.user.email}`);
-    console.log(`   Email Confirmed: ${data.user.email_confirmed_at ? "Yes" : "No"}`);
+    console.log(`   Email: ${data.user?.email || "N/A"}`);
+    console.log(`   Email Confirmed: ${data.user?.email_confirmed_at ? "Yes" : "No"}`);
     console.log(`   Created: ${data.user.created_at}`);
 
     // Sync user to local database

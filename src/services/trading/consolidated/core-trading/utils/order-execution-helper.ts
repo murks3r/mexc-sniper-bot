@@ -60,6 +60,13 @@ export class OrderExecutionHelper {
   }
 
   /**
+   * Execute a trade (alias for executeRealTrade for convenience)
+   */
+  async executeTrade(params: TradeParameters): Promise<TradeResult> {
+    return this.executeRealTrade(params);
+  }
+
+  /**
    * Execute a real trade with validation and retry logic
    */
   async executeRealTrade(params: TradeParameters): Promise<TradeResult> {
@@ -221,10 +228,11 @@ export class OrderExecutionHelper {
             source: result.source || "mexc-service",
           };
         } else {
-          // Return error for retry detection
+          // Return error for retry detection, preserving data for error code detection
           return {
             success: false,
             error: result.error || "Order execution failed",
+            data: result.data, // Preserve data to allow retry logic to detect error codes
             timestamp: Date.now(),
             source: result.source || "mexc-service",
           };

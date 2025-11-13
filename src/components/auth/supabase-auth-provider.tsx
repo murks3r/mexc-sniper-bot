@@ -1,14 +1,14 @@
 "use client";
 
-import type { Session as ClerkSession, User as ClerkUser } from "@clerk/nextjs";
 import { useClerk, useSession, useUser } from "@clerk/nextjs";
+import type { SessionResource, UserResource } from "@clerk/types";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { syncClerkUserWithDatabase } from "@/src/lib/clerk-supabase-client";
 
 type ClerkAuthContextType = {
-  user: ClerkUser | null;
-  session: ClerkSession | null;
+  user: UserResource | null;
+  session: SessionResource | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isAnonymous: boolean;

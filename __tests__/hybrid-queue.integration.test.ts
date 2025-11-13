@@ -16,8 +16,13 @@ import { enqueueJobUnified } from "../src/services/queues/unified-queue";
 
 describe("Hybrid Queue Integration", () => {
   beforeEach(async () => {
-    // Clean up test data
-    await db.delete(jobs).where(sql`1=1`);
+    // Clean up test data - delete all jobs
+    try {
+      await db.delete(jobs);
+    } catch (error) {
+      // If delete fails, try with a condition
+      await db.execute(sql`DELETE FROM jobs`);
+    }
   });
 
   describe("DB Queue (Scheduled Tasks)", () => {

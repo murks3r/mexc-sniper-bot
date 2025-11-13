@@ -11,9 +11,12 @@
  * - Order spam strategy with safeguards
  */
 
+import { getLogger } from "../../lib/unified-logger";
 import type { SymbolFilter } from "../api/mexc-client-types";
 import type { MexcServiceResponse } from "../data/modules/mexc-api-types";
 import type { OrderResult } from "../data/modules/mexc-core-trading";
+
+const logger = getLogger("advanced-sniper-utils");
 
 // ============================================================================
 // Configuration Types
@@ -104,20 +107,34 @@ export const MEXC_ERROR_CODES = {
  *
  * Error 10007 = "Symbol not yet tradeable" - happens when listing announced but trading not enabled
  */
+interface ErrorWithCode extends Error {
+  code?: number;
+  response?: {
+    data?: {
+      code?: number;
+    };
+  };
+}
+
+interface ResponseWithCode {
+  code?: number;
+}
+
 export async function executeOrderWithRetry<T>(
   orderFn: () => Promise<MexcServiceResponse<T>>,
   config: Partial<RetryConfig> = {},
 ): Promise<MexcServiceResponse<T>> {
   const finalConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
-  let lastError: any = null;
+  let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < finalConfig.maxRetries; attempt++) {
     try {
       const result = await orderFn();
 
       // Check if result contains error code 10007
-      // Note: We use type assertion here since error codes may appear in data or response
-      const errorCode = (result.data as any)?.code || (result as any)?.code;
+      const responseData = result.data as ResponseWithCode | undefined;
+      const responseCode = (result as unknown as ResponseWithCode)?.code;
+      const errorCode = responseData?.code ?? responseCode;
 
       if (errorCode === MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE) {
         const delay = Math.min(
@@ -125,9 +142,12 @@ export async function executeOrderWithRetry<T>(
           finalConfig.maxDelayMs,
         );
 
-        console.warn(
-          `⏳ Symbol not yet tradeable (Error ${errorCode}). Retry ${attempt + 1}/${finalConfig.maxRetries} in ${delay}ms...`,
-        );
+        logger.warn("Symbol not yet tradeable, retrying", {
+          errorCode: String(errorCode),
+          attempt: attempt + 1,
+          maxRetries: finalConfig.maxRetries,
+          delayMs: delay,
+        });
 
         await sleep(delay);
         continue;
@@ -136,10 +156,12 @@ export async function executeOrderWithRetry<T>(
       // Success or non-retryable error
       return result;
     } catch (error) {
-      lastError = error;
+      const caughtError = error instanceof Error ? error : new Error(String(error));
+      lastError = caughtError;
 
       // Check if error is retryable
-      const errorCode = (error as any)?.code || (error as any)?.response?.data?.code;
+      const errorWithCode = caughtError as ErrorWithCode;
+      const errorCode = errorWithCode.code ?? errorWithCode.response?.data?.code;
 
       if (
         errorCode === MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE ||
@@ -150,23 +172,33 @@ export async function executeOrderWithRetry<T>(
           finalConfig.maxDelayMs,
         );
 
-        console.warn(
-          `⏳ Retryable error ${errorCode}. Attempt ${attempt + 1}/${finalConfig.maxRetries} in ${delay}ms...`,
-        );
+        logger.warn("Retryable error encountered, retrying", {
+          errorCode: errorCode ? String(errorCode) : undefined,
+          attempt: attempt + 1,
+          maxRetries: finalConfig.maxRetries,
+          delayMs: delay,
+          errorMessage: caughtError.message,
+        });
 
         await sleep(delay);
         continue;
       }
 
       // Non-retryable error
-      throw error;
+      throw caughtError;
     }
   }
 
-  // Max retries exceeded
-  throw new Error(
-    `Max retries (${finalConfig.maxRetries}) exceeded. Last error: ${lastError?.message || "Unknown"}`,
+  // Max retries exceeded - ensure lastError is captured
+  const errorMessage = lastError?.message ?? "Unknown error";
+  const finalError = new Error(
+    `Max retries (${finalConfig.maxRetries}) exceeded. Last error: ${errorMessage}`,
   );
+  // Attach original error as cause if supported (ES2022+)
+  if (lastError && "cause" in Error.prototype) {
+    (finalError as Error & { cause?: Error }).cause = lastError;
+  }
+  throw finalError;
 }
 
 // ============================================================================
@@ -306,8 +338,10 @@ export async function waitForExecutionWindow(
     await sleep(finalConfig.pollIntervalMs);
   }
 
-  console.info(`🎯 Execution window opened at ${startTime.toISOString()}`);
-  console.info(`⏰ Window closes at ${endTime.toISOString()}`);
+  logger.info("Execution window opened", {
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+  });
 
   return { startTime, endTime };
 }
@@ -346,7 +380,7 @@ export interface OrderSpamResult {
  */
 export async function executeOrderSpamStrategy(
   orderFn: () => Promise<MexcServiceResponse<OrderResult>>,
-  cancelFn: (orderId: number) => Promise<MexcServiceResponse<any>>,
+  cancelFn: (orderId: number) => Promise<MexcServiceResponse<unknown>>,
   endTime: Date,
   config: Partial<OrderSpamConfig> = {},
 ): Promise<OrderSpamResult> {
@@ -362,15 +396,20 @@ export async function executeOrderSpamStrategy(
   let filledOrder: OrderResult | undefined;
   let totalAttempts = 0;
 
-  console.warn("⚠️ ORDER SPAM STRATEGY ACTIVATED - Multiple orders will be placed!");
+  logger.warn("Order spam strategy activated - multiple orders will be placed", {
+    maxConcurrentOrders: finalConfig.maxConcurrentOrders,
+    burstIntervalMs: finalConfig.burstIntervalMs,
+    autoCancel: finalConfig.autoCancel,
+  });
 
   try {
     while (isWithinExecutionWindow(endTime) && !filledOrder) {
       // Safety limit check
       if (attemptedOrders.length >= finalConfig.maxConcurrentOrders) {
-        console.warn(
-          `⚠️ Max concurrent orders (${finalConfig.maxConcurrentOrders}) reached. Waiting for fills...`,
-        );
+        logger.warn("Max concurrent orders reached, waiting for fills", {
+          maxConcurrentOrders: finalConfig.maxConcurrentOrders,
+          currentOrders: attemptedOrders.length,
+        });
         await sleep(finalConfig.burstIntervalMs);
         continue;
       }
@@ -384,14 +423,16 @@ export async function executeOrderSpamStrategy(
           const orderId = result.data.orderId;
           attemptedOrders.push(orderId);
 
-          console.info(
-            `📤 Order placed: ${orderId} (${attemptedOrders.length}/${finalConfig.maxConcurrentOrders})`,
-          );
+          logger.info("Order placed", {
+            orderId,
+            currentOrders: attemptedOrders.length,
+            maxConcurrentOrders: finalConfig.maxConcurrentOrders,
+          });
 
           // Check if filled immediately
           if (result.data.status === "FILLED") {
             filledOrder = result.data;
-            console.info(`✅ Order ${orderId} FILLED immediately!`);
+            logger.info("Order filled immediately", { orderId });
             break;
           }
         } else if (result.error) {
@@ -407,9 +448,11 @@ export async function executeOrderSpamStrategy(
 
     // Cancel all unfilled orders if auto-cancel enabled
     if (finalConfig.autoCancel && filledOrder) {
-      console.info(
-        `🧹 Cancelling ${attemptedOrders.length - 1} unfilled orders (keeping ${filledOrder.orderId})...`,
-      );
+      const ordersToCancel = attemptedOrders.length - 1;
+      logger.info("Cancelling unfilled orders", {
+        ordersToCancel,
+        filledOrderId: filledOrder.orderId,
+      });
 
       for (const orderId of attemptedOrders) {
         if (orderId !== filledOrder.orderId) {
@@ -417,15 +460,19 @@ export async function executeOrderSpamStrategy(
             const cancelResult = await cancelFn(orderId);
             if (cancelResult.success) {
               cancelledOrders.push(orderId);
-              console.info(`✅ Cancelled order ${orderId}`);
+              logger.info("Order cancelled successfully", { orderId });
             } else {
-              errors.push(`Failed to cancel order ${orderId}: ${cancelResult.error}`);
-              console.error(`❌ Failed to cancel order ${orderId}`);
+              const errorMsg = `Failed to cancel order ${orderId}: ${cancelResult.error}`;
+              errors.push(errorMsg);
+              logger.error("Failed to cancel order", { orderId, error: cancelResult.error });
             }
           } catch (error) {
-            errors.push(
-              `Error cancelling order ${orderId}: ${error instanceof Error ? error.message : String(error)}`,
-            );
+            const errorMsg = `Error cancelling order ${orderId}: ${error instanceof Error ? error.message : String(error)}`;
+            errors.push(errorMsg);
+            logger.error("Error cancelling order", {
+              orderId,
+              error: error instanceof Error ? error.message : String(error),
+            });
           }
         }
       }
@@ -479,30 +526,19 @@ ${result.errors.length > 0 ? `\n❌ Errors:\n${result.errors.map((e) => `   - ${
  * Debug: Log quantity validation details
  */
 export function logQuantityValidation(result: QuantityValidationResult): void {
-  console.info("🧮 Quantity Validation:");
-  console.info(`   Raw Quantity: ${result.details.rawQuantity}`);
-  console.info(`   Rounded Quantity: ${result.details.roundedQuantity}`);
-  console.info(`   Precision: ${result.details.precision}`);
-  console.info(`   Step Size: ${result.details.stepSize}`);
-  console.info(`   Min Qty: ${result.details.minQty}`);
-  console.info(`   Max Qty: ${result.details.maxQty}`);
-  console.info(`   Notional Value: $${result.details.notionalValue?.toFixed(4)}`);
-  console.info(`   Min Notional: $${result.details.minNotional}`);
-  console.info(`   Valid: ${result.isValid ? "✅" : "❌"}`);
-
-  if (result.warnings.length > 0) {
-    console.warn("⚠️ Warnings:");
-    for (const warning of result.warnings) {
-      console.warn(`   - ${warning}`);
-    }
-  }
-
-  if (result.errors.length > 0) {
-    console.error("❌ Errors:");
-    for (const error of result.errors) {
-      console.error(`   - ${error}`);
-    }
-  }
+  logger.info("Quantity validation", {
+    rawQuantity: result.details.rawQuantity,
+    roundedQuantity: result.details.roundedQuantity,
+    precision: result.details.precision,
+    stepSize: result.details.stepSize,
+    minQty: result.details.minQty,
+    maxQty: result.details.maxQty,
+    notionalValue: result.details.notionalValue,
+    minNotional: result.details.minNotional,
+    isValid: result.isValid,
+    warnings: result.warnings,
+    errors: result.errors,
+  });
 }
 
 // ============================================================================

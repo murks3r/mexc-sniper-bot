@@ -26,10 +26,11 @@
 
 import { and, desc, eq, gte, isNull, lt, or } from "drizzle-orm";
 import { db } from "../../src/db";
-import { apiCredentials, positions, snipeTargets, userPreferences } from "../../src/db/schemas/trading";
-import { getCoreTrading } from "../../src/services/trading/consolidated/core-trading/base-service";
+import { userPreferences } from "../../src/db/schemas/auth";
+import { apiCredentials, positions, snipeTargets } from "../../src/db/schemas/trading";
 import { toSafeError } from "../../src/lib/error-type-utils";
 import { getLogger } from "../../src/lib/unified-logger";
+import { getCoreTrading } from "../../src/services/trading/consolidated/core-trading/base-service";
 
 const logger = getLogger("auto-sniper-validation");
 
@@ -334,10 +335,12 @@ class AutoSniperValidator {
 
     try {
       const coreTrading = getCoreTrading({
-        userId: target.userId,
         paperTradingMode: true,
         autoSnipingEnabled: false,
       });
+      if (target.userId) {
+        coreTrading.setCurrentUser(target.userId);
+      }
 
       console.log("  Initializing core trading service...");
       const status = await coreTrading.getServiceStatus();
@@ -355,13 +358,15 @@ class AutoSniperValidator {
       console.log(`  Execution Time: ${executionTime}ms`);
       console.log(`  Success: ${result.success ? "✅" : "❌"}`);
 
-      if (result.success && result.data) {
+      if (result.success) {
         console.log("\n  Execution Details:");
-        console.log(`    Order ID: ${result.data.orderId}`);
-        console.log(`    Executed Price: $${result.data.executedPrice}`);
-        console.log(`    Executed Quantity: ${result.data.executedQuantity}`);
-        console.log(`    Total Cost: $${result.data.totalCost}`);
-        console.log(`    Latency: ${result.data.latencyMs}ms`);
+        console.log(`    Order ID: ${result.orderId ?? "n/a"}`);
+        console.log(`    Executed Price: $${result.executedPrice ?? result.price ?? "n/a"}`);
+        console.log(
+          `    Executed Quantity: ${result.executedQuantity ?? result.executedQty ?? "n/a"}`,
+        );
+        console.log(`    Total Cost: $${result.cummulativeQuoteQty ?? "n/a"}`);
+        console.log(`    Latency: ${result.executionTime ?? "n/a"}ms`);
       } else {
         console.log(`\n  Error: ${result.error}`);
       }
@@ -416,14 +421,17 @@ class AutoSniperValidator {
         console.log(`       Entry: $${pos.entryPrice} × ${pos.quantity}`);
         console.log(`       Stop Loss: $${pos.stopLossPrice || "N/A"}`);
         console.log(`       Take Profit: $${pos.takeProfitPrice || "N/A"}`);
-        console.log(`       Unrealized PnL: $${pos.unrealizedPnl || 0}`);
+        console.log(`       Realized PnL: $${pos.realizedPnl || 0}`);
         console.log(`       Created: ${pos.createdAt}`);
       }
 
       // Validation checks
       const checks = [
         { name: "Positions have symbol", pass: recentPositions.every((p) => !!p.symbolName) },
-        { name: "Positions have entry price", pass: recentPositions.every((p) => p.entryPrice > 0) },
+        {
+          name: "Positions have entry price",
+          pass: recentPositions.every((p) => p.entryPrice > 0),
+        },
         { name: "Positions have quantity", pass: recentPositions.every((p) => p.quantity > 0) },
         { name: "Positions have status", pass: recentPositions.every((p) => !!p.status) },
       ];

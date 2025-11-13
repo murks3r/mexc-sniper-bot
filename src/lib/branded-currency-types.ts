@@ -35,31 +35,31 @@
  * Branded type for USDT (Tether) amounts
  * Precision: 2 decimal places
  */
-export type USDT = number & { readonly __brand: 'USDT' };
+export type USDT = number & { readonly __brand: "USDT" };
 
 /**
  * Branded type for BTC (Bitcoin) amounts
  * Precision: 8 decimal places
  */
-export type BTC = number & { readonly __brand: 'BTC' };
+export type BTC = number & { readonly __brand: "BTC" };
 
 /**
  * Branded type for ETH (Ethereum) amounts
  * Precision: 8 decimal places
  */
-export type ETH = number & { readonly __brand: 'ETH' };
+export type ETH = number & { readonly __brand: "ETH" };
 
 /**
  * Branded type for generic quote currency (base unit for trading pairs)
  * Precision: Variable, determined at construction
  */
-export type QuoteCurrency = number & { readonly __brand: 'QuoteCurrency' };
+export type QuoteCurrency = number & { readonly __brand: "QuoteCurrency" };
 
 /**
  * Branded type for generic base currency (traded asset)
  * Precision: Variable, determined at construction
  */
-export type BaseCurrency = number & { readonly __brand: 'BaseCurrency' };
+export type BaseCurrency = number & { readonly __brand: "BaseCurrency" };
 
 // ============================================================================
 // Precision Configuration
@@ -91,7 +91,7 @@ export class CurrencyValidationError extends Error {
     public readonly value: unknown,
   ) {
     super(message);
-    this.name = 'CurrencyValidationError';
+    this.name = "CurrencyValidationError";
   }
 }
 
@@ -147,7 +147,7 @@ function applyPrecision(value: number, decimals: number): number {
  * toUSDT(NaN);                      // Error: not finite
  */
 export function toUSDT(value: number): USDT {
-  validateNumber(value, 'USDT');
+  validateNumber(value, "USDT");
   return applyPrecision(value, CURRENCY_PRECISION.USDT) as USDT;
 }
 
@@ -166,7 +166,7 @@ export function toUSDT(value: number): USDT {
 export function parseUSDT(str: string): USDT {
   const value = Number(str);
   if (Number.isNaN(value)) {
-    throw new CurrencyValidationError(`Cannot parse "${str}" as USDT`, 'USDT', str);
+    throw new CurrencyValidationError(`Cannot parse "${str}" as USDT`, "USDT", str);
   }
   return toUSDT(value);
 }
@@ -187,7 +187,7 @@ export function parseUSDT(str: string): USDT {
  * const precise = toBTC(0.123456789); // OK: 0.12345679 BTC (rounded to 8 decimals)
  */
 export function toBTC(value: number): BTC {
-  validateNumber(value, 'BTC');
+  validateNumber(value, "BTC");
   return applyPrecision(value, CURRENCY_PRECISION.BTC) as BTC;
 }
 
@@ -197,7 +197,7 @@ export function toBTC(value: number): BTC {
 export function parseBTC(str: string): BTC {
   const value = Number(str);
   if (Number.isNaN(value)) {
-    throw new CurrencyValidationError(`Cannot parse "${str}" as BTC`, 'BTC', str);
+    throw new CurrencyValidationError(`Cannot parse "${str}" as BTC`, "BTC", str);
   }
   return toBTC(value);
 }
@@ -210,7 +210,7 @@ export function parseBTC(str: string): BTC {
  * Create an ETH amount with validation and precision enforcement
  */
 export function toETH(value: number): ETH {
-  validateNumber(value, 'ETH');
+  validateNumber(value, "ETH");
   return applyPrecision(value, CURRENCY_PRECISION.ETH) as ETH;
 }
 
@@ -220,7 +220,7 @@ export function toETH(value: number): ETH {
 export function parseETH(str: string): ETH {
   const value = Number(str);
   if (Number.isNaN(value)) {
-    throw new CurrencyValidationError(`Cannot parse "${str}" as ETH`, 'ETH', str);
+    throw new CurrencyValidationError(`Cannot parse "${str}" as ETH`, "ETH", str);
   }
   return toETH(value);
 }
@@ -232,16 +232,22 @@ export function parseETH(str: string): ETH {
 /**
  * Create a quote currency amount (for trading pair quotes like USDT, BTC, etc.)
  */
-export function toQuoteCurrency(value: number, precision = CURRENCY_PRECISION.GENERIC_QUOTE): QuoteCurrency {
-  validateNumber(value, 'QuoteCurrency');
+export function toQuoteCurrency(
+  value: number,
+  precision = CURRENCY_PRECISION.GENERIC_QUOTE,
+): QuoteCurrency {
+  validateNumber(value, "QuoteCurrency");
   return applyPrecision(value, precision) as QuoteCurrency;
 }
 
 /**
  * Create a base currency amount (for the asset being traded)
  */
-export function toBaseCurrency(value: number, precision = CURRENCY_PRECISION.GENERIC_BASE): BaseCurrency {
-  validateNumber(value, 'BaseCurrency');
+export function toBaseCurrency(
+  value: number,
+  precision = CURRENCY_PRECISION.GENERIC_BASE,
+): BaseCurrency {
+  validateNumber(value, "BaseCurrency");
   return applyPrecision(value, precision) as BaseCurrency;
 }
 
@@ -259,7 +265,9 @@ export function toBaseCurrency(value: number, precision = CURRENCY_PRECISION.GEN
  * const usdt = toUSDT(10.99);
  * const raw = toRaw(usdt);  // 10.99 (number)
  */
-export function toRaw<T extends USDT | BTC | ETH | QuoteCurrency | BaseCurrency>(amount: T): number {
+export function toRaw<T extends USDT | BTC | ETH | QuoteCurrency | BaseCurrency>(
+  amount: T,
+): number {
   return amount as number;
 }
 
@@ -307,7 +315,7 @@ export function add<T extends USDT | BTC | ETH>(a: T, b: T, precision: number): 
 export function subtract<T extends USDT | BTC | ETH>(a: T, b: T, precision: number): T {
   const result = (a as number) - (b as number);
   if (result < 0) {
-    throw new CurrencyValidationError('Subtraction resulted in negative amount', 'Unknown', result);
+    throw new CurrencyValidationError("Subtraction resulted in negative amount", "Unknown", result);
   }
   return applyPrecision(result, precision) as T;
 }
@@ -320,16 +328,24 @@ export function subtract<T extends USDT | BTC | ETH>(a: T, b: T, precision: numb
  * const price = toUSDT(50000);
  * const cost = multiply(price, toRaw(btc), CURRENCY_PRECISION.USDT);
  */
-export function multiply<T extends USDT | BTC | ETH>(amount: T, scalar: number, precision: number): T {
+export function multiply<T extends USDT | BTC | ETH>(
+  amount: T,
+  scalar: number,
+  precision: number,
+): T {
   return applyPrecision((amount as number) * scalar, precision) as T;
 }
 
 /**
  * Divide currency by a scalar
  */
-export function divide<T extends USDT | BTC | ETH>(amount: T, scalar: number, precision: number): T {
+export function divide<T extends USDT | BTC | ETH>(
+  amount: T,
+  scalar: number,
+  precision: number,
+): T {
   if (scalar === 0) {
-    throw new CurrencyValidationError('Cannot divide by zero', 'Unknown', scalar);
+    throw new CurrencyValidationError("Cannot divide by zero", "Unknown", scalar);
   }
   return applyPrecision((amount as number) / scalar, precision) as T;
 }
@@ -400,8 +416,10 @@ export function min<T extends USDT | BTC | ETH>(a: T, b: T): T {
 /**
  * Type guard to check if a value is a valid currency amount
  */
-export function isCurrencyAmount(value: unknown): value is USDT | BTC | ETH | QuoteCurrency | BaseCurrency {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+export function isCurrencyAmount(
+  value: unknown,
+): value is USDT | BTC | ETH | QuoteCurrency | BaseCurrency {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 // ============================================================================

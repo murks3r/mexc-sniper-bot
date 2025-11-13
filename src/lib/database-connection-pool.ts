@@ -3,6 +3,9 @@
  */
 
 import { trace } from "@opentelemetry/api";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("database-connection-pool");
 
 export interface ConnectionPoolConfig {
   maxConnections: number;
@@ -236,7 +239,13 @@ export class DatabaseConnectionPool {
           }
         } catch (error) {
           // Log error but don't fail the shutdown
-          console.warn("Error closing database connection:", error);
+          logger.warn(
+            "Error closing database connection",
+            {
+              error: error instanceof Error ? error.message : String(error),
+            },
+            error instanceof Error ? error : undefined,
+          );
         }
       }),
     );

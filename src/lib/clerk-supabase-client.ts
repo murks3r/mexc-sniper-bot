@@ -1,4 +1,5 @@
 import type { User } from "@clerk/nextjs/server";
+import type { UserResource } from "@clerk/types";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export function createClerkSupabaseClient(getToken: () => Promise<string | null>) {
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
-      fetch: async (url, options = {}) => {
+      fetch: async (url, options: RequestInit = {}) => {
         const clerkToken = await getToken();
 
         if (clerkToken) {
@@ -65,7 +66,7 @@ export function createAdminSupabaseClient() {
 /**
  * Sync Clerk user with Supabase database
  */
-export async function syncClerkUserWithDatabase(user: User) {
+export async function syncClerkUserWithDatabase(user: User | UserResource) {
   const adminClient = createAdminSupabaseClient();
 
   const { error } = await adminClient.from("auth.user").upsert(

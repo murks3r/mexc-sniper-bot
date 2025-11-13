@@ -307,11 +307,12 @@ async function checkServiceConfiguration() {
   try {
     const coreTrading = getCoreTrading();
     const status = await coreTrading.getServiceStatus();
+    const moduleContext = coreTrading.getModuleContext();
 
     addResult("Service Configuration", "✅", "Service configuration retrieved", {
       autoSnipingEnabled: status.autoSnipingEnabled,
-      maxConcurrentPositions: status.maxConcurrentPositions,
-      snipeCheckInterval: status.snipeCheckInterval,
+      maxConcurrentPositions: status.maxPositions,
+      snipeCheckInterval: moduleContext.config.snipeCheckInterval,
       paperTradingMode: status.paperTradingMode,
     });
 
@@ -339,7 +340,9 @@ async function checkActivePositions() {
       "Open Positions",
       openPositions.length >= 0 ? "✅" : "⚠️",
       `Found ${openPositions.length} open position(s)`,
-      { positions: openPositions.map((p) => ({ id: p.id, symbol: p.symbol, status: p.status })) },
+      {
+        positions: openPositions.map((p) => ({ id: p.id, symbol: p.symbolName, status: p.status })),
+      },
     );
 
     return openPositions;

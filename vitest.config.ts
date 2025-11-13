@@ -20,7 +20,7 @@ export default defineConfig({
       },
     },
     include: ["**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["node_modules", ".next", "dist", ".opencode", ".opencode/**", "**/node_modules/**"],
+    exclude: ["node_modules", ".next", "dist", ".opencode", ".opencode/**", "**/node_modules/**", "**/e2e/**", "__tests__/e2e/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

@@ -60,13 +60,12 @@ export async function qualifySymbol(symbol: string): Promise<QualificationResult
     }
 
     // Step 2: Find this symbol in the response
-    const symbolInfo = exchangeInfoResponse.data.symbols?.find(
-      (s: any) => s.symbol === symbol.toUpperCase(),
-    );
+    // getAllSymbols() returns SymbolEntry[] directly, not an object with symbols property
+    const symbolInfo = exchangeInfoResponse.data.find((s) => s.symbol === symbol.toUpperCase());
 
     if (!symbolInfo) {
       logger.warn(`Symbol ${symbol} not found in exchangeInfo`, {
-        totalSymbols: exchangeInfoResponse.data.symbols?.length || 0,
+        totalSymbols: exchangeInfoResponse.data.length || 0,
       });
       return {
         symbol,
@@ -76,7 +75,9 @@ export async function qualifySymbol(symbol: string): Promise<QualificationResult
     }
 
     // Step 3: Check the critical flags (Scenario A, B, C from the document)
-    const isSpotTradingAllowed = symbolInfo.isSpotTradingAllowed ?? false;
+    // Note: getAllSymbols() returns extended SymbolEntry with isSpotTradingAllowed
+    const extendedInfo = symbolInfo as ExtendedSymbolInfo;
+    const isSpotTradingAllowed = extendedInfo.isSpotTradingAllowed ?? false;
     const status = symbolInfo.status;
 
     // Scenario C: Success
@@ -88,7 +89,7 @@ export async function qualifySymbol(symbol: string): Promise<QualificationResult
       });
 
       // Step 4: Extract trading rules for cache (Slice 1.3)
-      const tradingRules = extractTradingRules(symbolInfo);
+      const tradingRules = extractTradingRules(extendedInfo);
 
       return {
         symbol,
@@ -132,7 +133,25 @@ export async function qualifySymbol(symbol: string): Promise<QualificationResult
  *
  * Maps MEXC fields to our database schema per Table 1 in the optimization plan.
  */
-function extractTradingRules(symbolInfo: any): NewMexcSymbol {
+// Extended symbol info with trading permissions and precision fields
+interface ExtendedSymbolInfo {
+  symbol: string;
+  status: string;
+  baseAsset: string;
+  quoteAsset: string;
+  isSpotTradingAllowed?: boolean;
+  isMarginTradingAllowed?: boolean;
+  baseAssetPrecision?: number;
+  quotePrecision?: number;
+  quoteAssetPrecision?: number;
+  baseSizePrecision?: number | string;
+  quoteAmountPrecision?: number | string;
+  quoteAmountPrecisionMarket?: number | string;
+  orderTypes?: string[];
+  filters?: unknown[];
+}
+
+function extractTradingRules(symbolInfo: ExtendedSymbolInfo): NewMexcSymbol {
   // Map MEXC exchangeInfo fields to our schema
   return {
     symbol: symbolInfo.symbol,
@@ -174,27 +193,36 @@ function extractTradingRules(symbolInfo: any): NewMexcSymbol {
  */
 export async function cacheTradingRules(rules: NewMexcSymbol): Promise<void> {
   try {
-    // Upsert the rules
-    await db
-      .insert(mexcSymbols)
-      .values(rules)
-      .onConflictDoUpdate({
-        target: mexcSymbols.symbol,
-        set: {
-          ...rules,
-          updatedAt: new Date(),
-        },
-      });
+    // Add lastQualifiedAt timestamp
+    const rulesWithTimestamp = {
+      ...rules,
+      lastQualifiedAt: new Date(),
+    };
 
-    logger.info(`💾 Cached trading rules for ${rules.symbol}`, {
-      isApiTradable: rules.isApiTradable,
-    });
-  } catch (error) {
-    logger.error(`Failed to cache trading rules for ${rules.symbol}`, {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
+    // Try insert first
+    await db.insert(mexcSymbols).values(rulesWithTimestamp);
+  } catch (error: unknown) {
+    // If insert fails (unique constraint violation), update existing record
+    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+      await db
+        .update(mexcSymbols)
+        .set({
+          ...rules,
+          lastQualifiedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(mexcSymbols.symbol, rules.symbol));
+    } else {
+      logger.error(`Failed to cache trading rules for ${rules.symbol}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
+
+  logger.info(`💾 Cached trading rules for ${rules.symbol}`, {
+    isApiTradable: rules.isApiTradable,
+  });
 }
 
 /**
@@ -204,7 +232,11 @@ export async function cacheTradingRules(rules: NewMexcSymbol): Promise<void> {
  */
 export async function getCachedTradingRules(symbol: string) {
   try {
-    const cached = await db.select().from(mexcSymbols).where(eq(mexcSymbols.symbol, symbol)).limit(1);
+    const cached = await db
+      .select()
+      .from(mexcSymbols)
+      .where(eq(mexcSymbols.symbol, symbol))
+      .limit(1);
 
     if (cached.length === 0) {
       logger.warn(`No cached rules found for ${symbol}`);

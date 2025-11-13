@@ -1,4 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("query-client");
 
 /**
  * React Query Configuration - Anti-Retry Storm Configuration
@@ -76,7 +79,13 @@ export const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Add error handling for mutations
       onError: (error) => {
-        console.error("[QueryClient] Mutation error:", error);
+        logger.error(
+          "Mutation error",
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          error instanceof Error ? error : undefined,
+        );
       },
     },
   },

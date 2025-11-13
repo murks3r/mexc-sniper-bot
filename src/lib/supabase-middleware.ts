@@ -98,7 +98,9 @@ export async function updateSession(request: NextRequest) {
         authError = null;
       } else {
         // Unexpected error - log it
-        console.warn("Unexpected auth error:", sessionError);
+        logger.warn("Unexpected auth error", {
+          error: sessionError instanceof Error ? sessionError.message : String(sessionError),
+        });
         user = null;
         authError = sessionError;
       }
@@ -135,7 +137,13 @@ export async function updateSession(request: NextRequest) {
       !error.message.includes("refresh") &&
       !error.message.includes("Unable to connect")
     ) {
-      console.error("Supabase middleware error:", error);
+      logger.error(
+        "Supabase middleware error",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
     }
     // If anything fails, just continue with the request (fail-safe behavior)
     return response;

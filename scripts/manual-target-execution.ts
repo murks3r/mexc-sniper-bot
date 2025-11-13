@@ -61,11 +61,12 @@ async function executeTargetById(targetId: number) {
     console.log("🔧 Initializing core trading service...");
     const coreTrading = getCoreTrading();
 
-    // Initialize if needed
-    const status = await coreTrading.getStatus();
-    if (!status.isInitialized) {
-      console.log("   Service not initialized, initializing now...");
-      await coreTrading.initialize();
+    // Initialize service to ensure dependencies are ready
+    console.log("   Ensuring service is initialized...");
+    const initResult = await coreTrading.initialize();
+    if (!initResult.success) {
+      console.warn("   ⚠️  Service initialization reported an issue:", initResult.error);
+    } else {
       console.log("   ✅ Service initialized");
     }
 
@@ -79,25 +80,9 @@ async function executeTargetById(targetId: number) {
 
     console.log("   ✅ Service ready\n");
 
-    // Execute the target using the auto-sniping module
+    // Execute the target using the public helper
     console.log("⚡ Executing target...\n");
-
-    // Access the auto-sniping module directly via the private member
-    const autoSnipingModule = (coreTrading as any).autoSniping;
-
-    if (!autoSnipingModule) {
-      console.error("❌ Could not access auto-sniping module");
-      console.error(
-        "Available methods:",
-        Object.getOwnPropertyNames(coreTrading).filter(
-          (name) => name.includes("nipe") || name.includes("uto"),
-        ),
-      );
-      process.exit(1);
-    }
-
-    // Direct execution
-    const result = await autoSnipingModule.executeSnipeTarget(target, undefined);
+    const result = await coreTrading.executeSnipeTarget(targetId);
 
     console.log(`\n${"=".repeat(60)}`);
     console.log("📊 Execution Result:");
@@ -105,12 +90,14 @@ async function executeTargetById(targetId: number) {
 
     if (result.success) {
       console.log("✅ EXECUTION SUCCESSFUL");
-      console.log(`   Order ID: ${result.data?.orderId}`);
-      console.log(`   Executed price: $${result.data?.executedPrice}`);
-      console.log(`   Executed quantity: ${result.data?.executedQuantity}`);
-      console.log(`   Symbol: ${result.data?.symbol}`);
-      console.log(`   Side: ${result.data?.side}`);
-      console.log(`   Total cost: $${result.data?.totalCost}`);
+      console.log(`   Order ID: ${result.orderId ?? "n/a"}`);
+      console.log(`   Executed price: $${result.executedPrice ?? result.price ?? "n/a"}`);
+      console.log(
+        `   Executed quantity: ${result.executedQuantity ?? result.executedQty ?? "n/a"}`,
+      );
+      console.log(`   Symbol: ${result.symbol ?? target.symbolName}`);
+      console.log(`   Side: ${result.side ?? "BUY"}`);
+      console.log(`   Total cost: $${result.cummulativeQuoteQty ?? "n/a"}`);
     } else {
       console.log("❌ EXECUTION FAILED");
       console.log(`   Error: ${result.error}`);

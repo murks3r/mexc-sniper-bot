@@ -1,6 +1,9 @@
 import { eq, sql } from "drizzle-orm";
+import { getLogger } from "@/src/lib/unified-logger";
 import { db, executeWithRetry } from "./index";
 import { type NewPatternEmbedding, patternEmbeddings, patternSimilarityCache } from "./schema";
+
+const logger = getLogger("vector-utils");
 
 // Vector similarity functions for PostgreSQL
 export class VectorUtils {
@@ -66,7 +69,7 @@ export class VectorUtils {
         discoveredAt: new Date(),
         lastSeenAt: new Date(),
       });
-    }, "Store pattern embedding");
+    });
   }
 
   /**
@@ -126,7 +129,7 @@ export class VectorUtils {
         .slice(0, limit);
 
       return results;
-    }, "Find similar patterns");
+    });
   }
 
   /**
@@ -157,7 +160,7 @@ export class VectorUtils {
           expiresAt,
         })
         .returning();
-    }, "Cache pattern similarity");
+    });
   }
 
   /**
@@ -183,7 +186,7 @@ export class VectorUtils {
         .limit(1);
 
       return result[0] || null;
-    }, "Get cached similarity");
+    });
   }
 
   /**
@@ -198,7 +201,7 @@ export class VectorUtils {
         .where(sql`${patternSimilarityCache.expiresAt} <= ${now}`);
 
       return 0; // Return count for deleted records
-    }, "Cleanup expired cache");
+    });
   }
 
   /**
@@ -241,7 +244,7 @@ export class VectorUtils {
       }
 
       await db.update(patternEmbeddings).set(updates).where(sql`pattern_id = ${patternId}`);
-    }, "Update pattern metrics");
+    });
   }
 
   /**
@@ -263,7 +266,7 @@ export class VectorUtils {
       }
 
       return null;
-    }, "Get pattern");
+    });
   }
 
   /**
@@ -356,7 +359,7 @@ export class VectorUtils {
         .from(patternEmbeddings)
         .where(sql.join(conditions, sql` AND `))
         .orderBy(sql`discovered_at DESC`);
-    }, "Get patterns by type and date");
+    });
   }
 
   /**
@@ -392,7 +395,7 @@ export class VectorUtils {
         .from(patternEmbeddings)
         .where(sql.join(conditions, sql` AND `))
         .orderBy(sql`discovered_at DESC`);
-    }, "Get patterns by date range");
+    });
   }
 
   /**
@@ -414,7 +417,7 @@ export class VectorUtils {
         );
 
       return (result as any).changes || (result as any).rowsAffected || 0;
-    }, "Deactivate old patterns");
+    });
   }
 
   /**
@@ -487,12 +490,12 @@ export class VectorUtils {
             });
           }
         } catch (error) {
-          console.warn(`[VectorUtils] Failed to process pattern ${pattern.patternId}:`, error);
+          logger.warn(`Failed to process pattern ${pattern.patternId}`, { error });
         }
       }
 
       return similarities.sort((a, b) => b.cosineSimilarity - a.cosineSimilarity).slice(0, limit);
-    }, "Enhanced similarity search");
+    });
   }
 }
 

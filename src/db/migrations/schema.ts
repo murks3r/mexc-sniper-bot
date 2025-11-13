@@ -1997,4 +1997,4 @@ export const portfolioSummary = pgTable(
 );
 
 // Export Database type for Drizzle
-export type Database = typeof schema;
+export type Database = typeof allTables;

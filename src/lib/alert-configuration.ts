@@ -8,6 +8,9 @@ import {
   type SelectAlertRule,
   type SelectNotificationChannel,
 } from "@/src/db/schemas/alerts";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("alert-configuration");
 // ==========================================
 // VALIDATION SCHEMAS
 // ==========================================
@@ -503,12 +506,19 @@ export class AlertConfigurationService {
           };
           const ruleId = await this.createAlertRule(validatedTemplate, createdBy);
           deployedRules.push(ruleId);
-          console.info(`Deployed built-in rule: ${template.name}`);
+          logger.info("Deployed built-in rule", { name: template.name });
         } else {
-          console.info(`Built-in rule already exists: ${template.name}`);
+          logger.info("Built-in rule already exists", { name: template.name });
         }
       } catch (error) {
-        console.error(`Failed to deploy built-in rule ${templateKey}:`, error);
+        logger.error(
+          "Failed to deploy built-in rule",
+          {
+            templateKey,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          error instanceof Error ? error : undefined,
+        );
       }
     }
 
@@ -642,7 +652,10 @@ export class AlertConfigurationService {
     };
 
     await this.db.insert(notificationChannels).values(channelData);
-    console.info(`Created notification channel: ${channelId} - ${validated.name}`);
+    logger.info("Created notification channel", {
+      channelId,
+      name: validated.name,
+    });
     return channelId;
   }
 

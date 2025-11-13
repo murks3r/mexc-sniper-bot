@@ -14,19 +14,20 @@ import {
 
 const hasRealClerk = !!process.env.CLERK_SECRET_KEY;
 
+// Mock must be hoisted to top level
+const mockRequireAuth = vi.fn().mockResolvedValue({
+  id: "test-user-id",
+  email: "test@example.com",
+  name: "Test User",
+  emailVerified: true,
+});
+
+vi.mock("@/src/lib/clerk-auth-server", () => ({
+  requireClerkAuth: mockRequireAuth,
+}));
+
 describe("Authentication Debug", () => {
   describe("Mocked Auth (Unit Tests)", () => {
-    const mockRequireAuth = vi.fn().mockResolvedValue({
-      id: "test-user-id",
-      email: "test@example.com",
-      name: "Test User",
-      emailVerified: true,
-    });
-
-    vi.mock("@/src/lib/clerk-auth-server", () => ({
-      requireClerkAuth: mockRequireAuth,
-    }));
-
     it("should mock requireClerkAuth correctly", async () => {
       const { requireClerkAuth: mockedRequireAuth } = await import("@/src/lib/clerk-auth-server");
       const user = await mockedRequireAuth();

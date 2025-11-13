@@ -3,6 +3,10 @@
  * Centralized logic for handling trading configuration with environment variable support
  */
 
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("trading-config-helpers");
+
 /**
  * Get paper trading mode with environment variable override
  * Priority: MEXC_PAPER_TRADING env var > PAPER_TRADING_MODE env var > default (false)
@@ -59,7 +63,7 @@ export const TRADING_ENV_VARS = {
  */
 export function logTradingConfig() {
   const config = getTradingConfigDefaults();
-  console.info("[Trading Config]", {
+  logger.info("Trading configuration", {
     paperTradingMode: config.paperTradingMode,
     autoSnipingEnabled: config.autoSnipingEnabled,
     environmentVariables: {

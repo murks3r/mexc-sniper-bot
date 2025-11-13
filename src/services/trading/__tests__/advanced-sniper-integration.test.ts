@@ -36,6 +36,14 @@ describe("Advanced Sniper Integration", () => {
           success: true,
           data: { status: "TRADING" },
         }),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
+        }),
       };
 
       const mockContext = {
@@ -64,7 +72,7 @@ describe("Advanced Sniper Integration", () => {
       const result = await orderExecutor.executeRealSnipe(params);
 
       expect(result.success).toBe(true);
-      expect(result.data?.orderId).toBe("12345");
+      expect(result.data?.orderId).toBe("12345"); // orderId is converted to string
       // Should have been called twice due to retry
       expect(mockMexcService.placeOrder).toHaveBeenCalledTimes(2);
     });
@@ -79,6 +87,14 @@ describe("Advanced Sniper Integration", () => {
         getSymbolInfoBasic: vi.fn().mockResolvedValue({
           success: true,
           data: { status: "TRADING" },
+        }),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
         }),
       };
 
@@ -117,6 +133,14 @@ describe("Advanced Sniper Integration", () => {
         getSymbolInfoBasic: vi.fn().mockResolvedValue({
           success: true,
           data: { status: "TRADING" },
+        }),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
         }),
       };
 
@@ -167,7 +191,14 @@ describe("Advanced Sniper Integration", () => {
           success: true,
           data: { status: "TRADING" },
         }),
-        getCurrentPrice: vi.fn().mockResolvedValue(1.0),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
+        }),
       };
 
       const mockContext = {
@@ -242,7 +273,7 @@ describe("Advanced Sniper Integration", () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data?.orderId).toBe(11111);
+      expect(result.data?.orderId).toBe("11111"); // orderId is converted to string
       expect(mockMexcService.placeOrder).toHaveBeenCalledTimes(2);
     });
   });
@@ -288,6 +319,14 @@ describe("Advanced Sniper Integration", () => {
         getSymbolInfoBasic: vi.fn().mockResolvedValue({
           success: true,
           data: { status: "TRADING" },
+        }),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
         }),
       };
 
@@ -351,6 +390,14 @@ describe("Advanced Sniper Integration", () => {
         getSymbolInfoBasic: vi.fn().mockResolvedValue({
           success: true,
           data: { status: "TRADING" },
+        }),
+        getAccountBalance: vi.fn().mockResolvedValue({
+          success: true,
+          data: [{ asset: "USDT", free: "10000", locked: "0" }],
+        }),
+        getTicker: vi.fn().mockResolvedValue({
+          success: true,
+          data: { price: "50000", lastPrice: "50000" },
         }),
         cancelOrder: vi.fn().mockResolvedValue({
           success: true,

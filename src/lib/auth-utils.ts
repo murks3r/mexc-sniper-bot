@@ -4,6 +4,9 @@
  */
 
 import type { Session, User } from "@supabase/supabase-js";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("auth-utils");
 
 /**
  * Check if a user is anonymous based on their JWT claims
@@ -53,7 +56,13 @@ export function getIsAnonymousFromToken(token: string | null | undefined): boole
     // Check for is_anonymous claim
     return payload.is_anonymous === true;
   } catch (error) {
-    console.warn("[AuthUtils] Failed to decode JWT token:", error);
+    logger.warn(
+      "Failed to decode JWT token",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof Error ? error : undefined,
+    );
     return false;
   }
 }

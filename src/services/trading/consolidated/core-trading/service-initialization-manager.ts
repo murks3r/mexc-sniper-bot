@@ -9,6 +9,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
+import { getLogger } from "../../../lib/unified-logger";
 import type { CoreTradingService } from "./base-service";
 import { createInitializedCoreTrading, getInitializedCoreTrading } from "./base-service";
 
@@ -62,20 +63,7 @@ export class ServiceInitializationManager {
   private initializationPromise: Promise<ServiceInitializationResult> | null = null;
   private initializationStartTime: number = 0;
 
-  private logger = {
-    debug: (message: string, context?: any) => {
-      console.debug("[service-init-manager]", message, context || "");
-    },
-    info: (message: string, context?: any) => {
-      console.info("[service-init-manager]", message, context || "");
-    },
-    warn: (message: string, context?: any) => {
-      console.warn("[service-init-manager]", message, context || "");
-    },
-    error: (message: string, context?: any) => {
-      console.error("[service-init-manager]", message, context || "");
-    },
-  };
+  private readonly logger = getLogger("service-init-manager");
 
   private constructor() {}
 
@@ -90,7 +78,10 @@ export class ServiceInitializationManager {
    * FIXED: Get Core Trading Service with guaranteed initialization
    * Prevents "Core Trading Service is not initialized" errors
    */
-  public async getInitializedService(config?: any): Promise<ServiceInitializationResult> {
+  public async getInitializedService(config?: {
+    initializationConfig?: ServiceInitializationConfig;
+    forceNew?: boolean;
+  }): Promise<ServiceInitializationResult> {
     // If already initializing, wait for completion
     if (this.initializationPromise) {
       this.logger.debug("Initialization already in progress, waiting...");
@@ -124,7 +115,10 @@ export class ServiceInitializationManager {
   /**
    * FIXED: Perform Core Trading Service initialization with enhanced error handling
    */
-  private async performInitialization(config?: any): Promise<ServiceInitializationResult> {
+  private async performInitialization(config?: {
+    initializationConfig?: ServiceInitializationConfig;
+    forceNew?: boolean;
+  }): Promise<ServiceInitializationResult> {
     const initConfig: ServiceInitializationConfig = {
       retryAttempts: 3,
       retryDelay: 1000,
@@ -242,7 +236,10 @@ export class ServiceInitializationManager {
   /**
    * FIXED: Attempt single service initialization with circuit breaker safety
    */
-  private async attemptServiceInitialization(config?: any): Promise<CoreTradingService> {
+  private async attemptServiceInitialization(config?: {
+    initializationConfig?: ServiceInitializationConfig;
+    forceNew?: boolean;
+  }): Promise<CoreTradingService> {
     this.logger.debug("Attempting Core Trading Service initialization...");
 
     // FIXED: Use factory function with initialization guarantee
@@ -321,7 +318,10 @@ const manager = ServiceInitializationManager.getInstance();
 /**
  * FIXED: Convenience function to get initialized Core Trading Service
  */
-export async function getInitializedCoreService(config?: any): Promise<CoreTradingService> {
+export async function getInitializedCoreService(config?: {
+  initializationConfig?: ServiceInitializationConfig;
+  forceNew?: boolean;
+}): Promise<CoreTradingService> {
   const result = await manager.getInitializedService(config);
 
   if (!result.success || !result.service) {

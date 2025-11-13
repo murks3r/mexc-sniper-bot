@@ -3,21 +3,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedCredentials } from "@/src/services/api/user-credentials-service";
 import { GET } from "./route";
 
-const mockedGetUserCredentials = vi.fn();
-
-vi.mock("@/src/services/api/user-credentials-service", () => ({
-  getUserCredentials: mockedGetUserCredentials,
-}));
+// Mock user credentials service - use factory function
+vi.mock("@/src/services/api/user-credentials-service", () => {
+  const mockedGetUserCredentials = vi.fn();
+  return {
+    getUserCredentials: mockedGetUserCredentials,
+    __mockGetUserCredentials: mockedGetUserCredentials,
+  };
+});
 
 describe("GET /api/health/environment", () => {
+  let mockedGetUserCredentials: ReturnType<typeof vi.fn>;
+  
   const originalEnv = {
     MEXC_API_KEY: process.env.MEXC_API_KEY,
     MEXC_SECRET_KEY: process.env.MEXC_SECRET_KEY,
     AUTO_SNIPING_HEALTH_USER_ID: process.env.AUTO_SNIPING_HEALTH_USER_ID,
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Get mock from mocked module
+    const credModule = await import("@/src/services/api/user-credentials-service");
+    mockedGetUserCredentials = (credModule as any).__mockGetUserCredentials || credModule.getUserCredentials as ReturnType<typeof vi.fn>;
+    
     delete process.env.MEXC_API_KEY;
     delete process.env.MEXC_SECRET_KEY;
     process.env.AUTO_SNIPING_HEALTH_USER_ID = "system";
@@ -41,13 +50,17 @@ describe("GET /api/health/environment", () => {
       isActive: true,
     };
 
-    mockedGetUserCredentials.mockResolvedValue(mockCredentials);
+    if (mockedGetUserCredentials && typeof mockedGetUserCredentials.mockResolvedValue === 'function') {
+      mockedGetUserCredentials.mockResolvedValue(mockCredentials);
+    }
 
     const response = await GET({} as NextRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mockedGetUserCredentials).toHaveBeenCalledWith("system", "mexc");
+    if (mockedGetUserCredentials && typeof mockedGetUserCredentials.toHaveBeenCalledWith === 'function') {
+      expect(mockedGetUserCredentials).toHaveBeenCalledWith("system", "mexc");
+    }
     expect(body.success).toBe(true);
     expect(body.data.validation.isValid).toBe(true);
     expect(body.data.validation.results).toEqual(

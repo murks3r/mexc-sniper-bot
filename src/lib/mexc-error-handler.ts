@@ -108,7 +108,10 @@ export function parseMexcError(error: any): {
  *
  * This is the core error handling state machine (Table 2 from the optimization plan).
  */
-export function handleMexcError(error: any, context?: { symbol?: string; orderId?: string }): ErrorHandlingResult {
+export function handleMexcError(
+  error: any,
+  context?: { symbol?: string; orderId?: string },
+): ErrorHandlingResult {
   const parsed = parseMexcError(error);
   const { httpCode, mexcCode, message } = parsed;
 
@@ -283,7 +286,7 @@ export async function executeErrorAction(
   }
 
   // Exponential backoff: delay * 2^(attempt - 1)
-  const delay = result.retryDelayMs * Math.pow(2, currentAttempt - 1);
+  const delay = result.retryDelayMs * 2 ** (currentAttempt - 1);
 
   logger.warn(`Retrying after ${delay}ms (attempt ${currentAttempt}/${maxRetries})`, {
     category: result.category,

@@ -16,7 +16,7 @@ export interface OrderData {
   symbol: string;
   side: "BUY" | "SELL";
   type: "LIMIT" | "MARKET";
-  quantity: string;
+  quantity?: string;
   price?: string;
   timeInForce?: "GTC" | "IOC" | "FOK";
   quoteOrderQty?: string;

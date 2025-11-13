@@ -16,6 +16,9 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeAll, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { detectTestMode, validateTestEnvironment, isTestEnvironmentConfigured } from "@/src/lib/test-helpers/test-supabase-client";
+import { getLogger } from "@/src/lib/unified-logger";
+
+const logger = getLogger("vitest-setup");
 
 // Load test environment variables
 import { config } from "dotenv";
@@ -48,26 +51,26 @@ if (!useRealSupabase && testMode === "mock") {
     if (projectRef && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       // Use the provided DATABASE_URL if available, otherwise construct from env
       // Note: This is a fallback - prefer setting DATABASE_URL directly
-      console.warn(`[Vitest Setup] DATABASE_URL not set, attempting to construct from Supabase URL`);
+      logger.warn(`DATABASE_URL not set, attempting to construct from Supabase URL`);
     }
   }
   
   // Validate real Supabase configuration
   const { configured, missing } = isTestEnvironmentConfigured();
   if (!configured) {
-    console.warn(
-      `[Vitest Setup] Test environment not fully configured. Missing: ${missing.join(", ")}. ` +
+    logger.warn(
+      `Test environment not fully configured. Missing: ${missing.join(", ")}. ` +
         `Tests requiring real Supabase may fail. Set USE_REAL_SUPABASE=true and configure all required env vars.`,
     );
   } else {
-    console.log(`[Vitest Setup] Running in ${testMode} mode with real Supabase configuration`);
+    logger.info(`Running in ${testMode} mode with real Supabase configuration`);
   }
 }
 
 // Log test mode for debugging
 if (process.env.NODE_ENV === "test") {
-  console.log(`[Vitest Setup] Test mode: ${testMode}`);
-  console.log(`[Vitest Setup] USE_REAL_SUPABASE: ${useRealSupabase}`);
+  logger.info(`Test mode: ${testMode}`);
+  logger.info(`USE_REAL_SUPABASE: ${useRealSupabase}`);
 }
 
 vi.mock("next/font/google", () => {
@@ -91,8 +94,8 @@ if (testMode !== "mock") {
     try {
       validateTestEnvironment();
     } catch (error) {
-      console.warn(
-        `[Vitest Setup] Test environment validation failed: ${error}. ` +
+      logger.warn(
+        `Test environment validation failed: ${error}. ` +
           `Some integration tests may fail. Set USE_MOCK_DATABASE=true to run in mock mode.`,
       );
     }

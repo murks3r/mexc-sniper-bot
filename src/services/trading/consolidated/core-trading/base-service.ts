@@ -31,6 +31,7 @@ import type {
   TradeResult,
 } from "./types";
 import { validateConfig } from "./types";
+import { DatabaseOperations } from "./utils/database-operations";
 
 /**
  * Core Trading Service
@@ -76,6 +77,11 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
 
   // Module context for sharing between modules
   private moduleContext: ModuleContext;
+
+  // Public access to module context for debugging
+  public getModuleContext() {
+    return this.moduleContext;
+  }
 
   constructor(config: Partial<CoreTradingConfig> = {}) {
     super();
@@ -739,6 +745,24 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
    */
   async getStatus(): Promise<ServiceStatus> {
     return this.getServiceStatus();
+  }
+
+  /**
+   * Execute trade
+   */
+  async executeSnipeTarget(targetId: number): Promise<TradeResult> {
+    this.ensureInitialized();
+    const target = await DatabaseOperations.getSnipeTargetById(targetId);
+
+    if (!target) {
+      return {
+        success: false,
+        error: `Snipe target ${targetId} not found`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    return this.autoSniping.executeSnipeTarget(target, undefined);
   }
 
   /**

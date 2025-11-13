@@ -39,59 +39,42 @@ async function debugPriceFetch() {
   // Test through core trading
   console.log("\n3️⃣ Testing through core trading service:");
   const coreTrading = getCoreTrading();
+  const moduleContext = coreTrading.getModuleContext();
+  const coreMexc = moduleContext.mexcService;
 
-  // @ts-expect-error - accessing private member
-  const autoSniping = coreTrading.autoSniping;
-
-  if (autoSniping?.context?.mexcService) {
-    console.log("✅ MEXC service available in context");
+  if (coreMexc) {
+    console.log("✅ MEXC service available in core trading context");
     try {
-      const price = await autoSniping.context.mexcService.getCurrentPrice("FASTERUSDT");
-      console.log(`✅ Price via context: $${price}`);
+      const price = await coreMexc.getCurrentPrice("FASTERUSDT");
+      console.log(`✅ Price via core context: $${price}`);
     } catch (error) {
-      console.log(`❌ Context price error: ${error.message}`);
+      console.log(`❌ Core context price error: ${error.message}`);
     }
 
     try {
-      const ticker = await autoSniping.context.mexcService.getTicker("FASTERUSDT");
-      console.log(`✅ Ticker via context success: ${ticker.success}`);
-      console.log(`   Ticker data:`, ticker.data);
+      const ticker = await coreMexc.getTicker("FASTERUSDT");
+      console.log(`✅ Core ticker success: ${ticker.success}`);
+      console.log(`   Core ticker data:`, ticker.data);
     } catch (error) {
-      console.log(`❌ Context ticker error: ${error.message}`);
-    }
-  } else {
-    console.log("❌ MEXC service NOT available in context");
-    console.log("   Context keys:", Object.keys(autoSniping?.context || {}));
-  }
-
-  // Test normalizeSymbol
-  console.log("\n4️⃣ Testing normalizeSymbol:");
-  if (autoSniping?.normalizeSymbol) {
-    const normalized = autoSniping.normalizeSymbol("FASTER");
-    console.log(`✅ 'FASTER' -> '${normalized}'`);
-  } else {
-    console.log("❌ normalizeSymbol not available");
-  }
-
-  // Test getCurrentMarketPrice
-  console.log("\n5️⃣ Testing getCurrentMarketPrice:");
-  if (autoSniping?.getCurrentMarketPrice) {
-    try {
-      const price = await autoSniping.getCurrentMarketPrice("FASTER");
-      console.log(`✅ Price: $${price}`);
-    } catch (error) {
-      console.log(`❌ Price fetch error: ${error.message}`);
-    }
-
-    try {
-      const price = await autoSniping.getCurrentMarketPrice("FASTERUSDT");
-      console.log(`✅ Price (USDT suffix): $${price}`);
-    } catch (error) {
-      console.log(`❌ Price fetch error (USDT): ${error.message}`);
+      console.log(`❌ Core ticker error: ${error.message}`);
     }
   } else {
-    console.log("❌ getCurrentMarketPrice not available");
+    console.log("❌ MEXC service NOT exposed via module context");
   }
+
+  const marketDataService = moduleContext.marketDataService;
+  if (marketDataService) {
+    console.log("\n4️⃣ Testing marketDataService bridge:");
+    const { price } = await marketDataService.getCurrentPrice("FASTERUSDT");
+    console.log(price ? `✅ Market data price: $${price}` : "❌ No price from market data service");
+  } else {
+    console.log("\n4️⃣ Market data service not configured in context");
+  }
+
+  console.log("\n5️⃣ Context configuration snapshot:");
+  console.log(`   maxConcurrentPositions: ${moduleContext.config.maxConcurrentPositions}`);
+  console.log(`   snipeCheckInterval: ${moduleContext.config.snipeCheckInterval}ms`);
+  console.log(`   paperTradingMode: ${moduleContext.config.enablePaperTrading ? "ON" : "OFF"}`);
 
   console.log(`\n${"=".repeat(60)}`);
   console.log("\n📊 Debug complete");

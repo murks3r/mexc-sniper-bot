@@ -113,7 +113,7 @@ export async function checkDatabaseHealth() {
     ]);
 
     if (result) {
-      console.info("[DB Health] Database connection successful");
+      logger.info("Database connection successful");
       const healthResult = {
         healthy: true,
         message: "Database is connected",
@@ -134,7 +134,13 @@ export async function checkDatabaseHealth() {
     return healthResult;
   } catch (error) {
     const errorMessage = (error as Error)?.message || "Unknown error";
-    console.error("[DB Health] Database error:", error);
+    logger.error(
+      "Database error",
+      {
+        error: errorMessage,
+      },
+      error instanceof Error ? error : undefined,
+    );
 
     // Determine specific error type for better error handling
     const isConnectivityError =
@@ -334,7 +340,7 @@ export async function checkAuthTables(includeAllTables = false) {
 export function clearHealthCheckCaches(): void {
   healthCache.clear();
   circuitBreakers.clear();
-  console.info("[DB Health] All health check caches and circuit breakers cleared");
+  logger.info("All health check caches and circuit breakers cleared");
 }
 
 export function getHealthCheckCacheStats(): {

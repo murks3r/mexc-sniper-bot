@@ -7,12 +7,12 @@
  * Use this when the job queue is not processing targets properly.
  */
 
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
 import { toSafeError } from "../src/lib/error-type-utils";
 import { getLogger } from "../src/lib/unified-logger";
-import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
+import { getUnifiedAutoSnipingOrchestrator } from "../src/services/trading/unified-auto-sniping-orchestrator";
 
 const logger = getLogger("direct-execution");
 
@@ -42,10 +42,10 @@ async function executeReadyTargets() {
       return;
     }
 
-    // Get the core trading service (which contains the auto-sniping module)
-    console.log("🔧 Initializing core trading service...");
-    const coreTrading = getCoreTrading();
-    const status = await coreTrading.getServiceStatus();
+    // Get auto-sniping module directly
+    console.log("🔧 Initializing auto-sniping module...");
+    const autoSniping = getUnifiedAutoSnipingOrchestrator();
+    const status = await autoSniping.getServiceStatus();
 
     console.log(`✅ Service status: ${status.isHealthy ? "HEALTHY" : "UNHEALTHY"}`);
     console.log(`   Auto-sniping enabled: ${status.autoSnipingEnabled}`);
@@ -69,7 +69,20 @@ async function executeReadyTargets() {
 
       try {
         // Use the auto-sniping module to execute this target
-        const result = await coreTrading.executeSnipeTarget(target.id);
+        const autoSnipeTarget = {
+          ...target,
+          symbol: target.symbolName,
+          side: "buy" as const,
+          orderType: "market" as const,
+          quantity: target.positionSizeUsdt,
+          amount: target.positionSizeUsdt,
+          price: undefined,
+          confidence: target.confidenceScore,
+          scheduledAt: target.targetExecutionTime?.toISOString() || null,
+          executedAt: null,
+        };
+
+        const result = await autoSniping.executeSnipeTarget(autoSnipeTarget);
 
         if (result.success) {
           console.log(`✅ SUCCESS: Order ${result.data?.orderId} executed`);

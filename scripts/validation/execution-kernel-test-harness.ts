@@ -27,8 +27,8 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "../../src/db";
-import { executionHistory, positions, snipeTargets } from "../../src/db/schemas/trading";
 import { saveExecutionHistory } from "../../src/db/execution-history-helpers";
+import { executionHistory, positions, snipeTargets } from "../../src/db/schemas/trading";
 import { toSafeError } from "../../src/lib/error-type-utils";
 import { getLogger } from "../../src/lib/unified-logger";
 import { getCoreTrading } from "../../src/services/trading/consolidated/core-trading/base-service";
@@ -125,7 +125,9 @@ class ExecutionKernelHarness {
       await db.execute("SELECT 1");
       console.log("  ✅ Database connection: OK");
     } catch (error) {
-      throw new Error(`Database connection failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Database connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     // Check environment variables
@@ -134,7 +136,9 @@ class ExecutionKernelHarness {
       const hasSecretKey = !!process.env.MEXC_SECRET_KEY;
 
       console.log(`  ${hasApiKey ? "✅" : "❌"} MEXC_API_KEY: ${hasApiKey ? "SET" : "MISSING"}`);
-      console.log(`  ${hasSecretKey ? "✅" : "❌"} MEXC_SECRET_KEY: ${hasSecretKey ? "SET" : "MISSING"}`);
+      console.log(
+        `  ${hasSecretKey ? "✅" : "❌"} MEXC_SECRET_KEY: ${hasSecretKey ? "SET" : "MISSING"}`,
+      );
 
       if (!hasApiKey || !hasSecretKey) {
         throw new Error("Live trading requires MEXC_API_KEY and MEXC_SECRET_KEY in .env.local");
@@ -159,11 +163,13 @@ class ExecutionKernelHarness {
   private async initializeTradingService(): Promise<any> {
     console.log("🔧 Step 2: Initializing Trading Service\n");
 
-    const coreTrading = getCoreTrading({
-      userId: this.config.userId,
+    const coreTrading = getCoreTrading();
+    await coreTrading.updateConfig({
       paperTradingMode: this.config.mode === "paper",
-      autoSnipingEnabled: false, // Manual control for testing
+      enablePaperTrading: this.config.mode === "paper",
+      autoSnipingEnabled: false,
     });
+    coreTrading.setCurrentUser(this.config.userId);
 
     const status = await coreTrading.getServiceStatus();
 
@@ -204,44 +210,48 @@ class ExecutionKernelHarness {
 
     const executionStart = Date.now();
 
-    let result;
     if (this.config.mode === "paper") {
       console.log("  📝 Executing paper trade...");
-      result = await coreTrading.paperTrade(orderParams);
     } else {
       console.log("  💰 Executing live trade...");
-      result = await coreTrading.executeTrade(orderParams);
     }
+
+    const result = await coreTrading.executeTrade(orderParams);
 
     const executionTime = Date.now() - executionStart;
 
     console.log(`\n  Execution Time: ${executionTime}ms`);
     console.log(`  Result: ${result.success ? "✅ SUCCESS" : "❌ FAILED"}`);
 
-    if (result.success && result.data) {
+    if (result.success) {
       console.log("\n  Order Details:");
-      console.log(`    Order ID: ${result.data.orderId}`);
-      console.log(`    Symbol: ${result.data.symbol}`);
-      console.log(`    Status: ${result.data.status}`);
-      console.log(`    Executed Qty: ${result.data.executedQty}`);
-      console.log(`    Executed Price: ${result.data.price}`);
-      if (result.data.paperTrade) {
+      console.log(`    Order ID: ${result.orderId}`);
+      console.log(`    Symbol: ${result.symbol}`);
+      console.log(`    Status: ${result.status}`);
+      console.log(`    Executed Qty: ${result.executedQty || result.quantity || "0"}`);
+      console.log(`    Executed Price: ${result.price || result.executedPrice || "N/A"}`);
+      if (result.paperTrade) {
         console.log(`    🎭 Paper Trade: YES`);
       }
 
       // Save to execution history manually to ensure it's tracked
+      const executedQtyValue = parseFloat(result.executedQty || result.quantity || "0");
+      const executedPriceValue = result.price
+        ? parseFloat(result.price)
+        : result.executedPrice || 0;
+
       const executionHistoryId = await saveExecutionHistory({
         userId: this.config.userId,
         vcoinId: this.config.symbol.replace("USDT", ""),
         symbolName: this.config.symbol,
         orderType: "market",
         orderSide: "buy",
-        requestedQuantity: parseFloat(result.data.executedQty || "0"),
-        executedQuantity: parseFloat(result.data.executedQty || "0"),
-        executedPrice: parseFloat(result.data.price || "0"),
+        requestedQuantity: executedQtyValue,
+        executedQuantity: executedQtyValue,
+        executedPrice: executedPriceValue,
         totalCost: this.config.amountUsdt,
-        exchangeOrderId: result.data.orderId,
-        exchangeStatus: result.data.status,
+        exchangeOrderId: result.orderId ?? undefined,
+        exchangeStatus: result.status ?? "unknown",
         exchangeResponse: result,
         executionLatencyMs: executionTime,
         status: "success",
@@ -260,7 +270,7 @@ class ExecutionKernelHarness {
     return {
       ...result,
       executionTime,
-      executionHistoryId: result.data?.orderId,
+      executionHistoryId: result.orderId,
     };
   }
 
@@ -370,9 +380,9 @@ class ExecutionKernelHarness {
     console.log(`Symbol: ${this.config.symbol}`);
     console.log(`Amount: $${this.config.amountUsdt} USDT`);
     console.log();
-    console.log(`Order ID: ${orderResult.data?.orderId}`);
-    console.log(`Executed Price: $${orderResult.data?.price}`);
-    console.log(`Executed Quantity: ${orderResult.data?.executedQty}`);
+    console.log(`Order ID: ${orderResult.orderId ?? "n/a"}`);
+    console.log(`Executed Price: $${orderResult.price || orderResult.executedPrice || "n/a"}`);
+    console.log(`Executed Quantity: ${orderResult.executedQty || orderResult.quantity || "n/a"}`);
     console.log(`Execution Time: ${orderResult.executionTime}ms`);
     console.log();
     console.log(`Total Test Time: ${totalTime}ms`);

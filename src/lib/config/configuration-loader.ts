@@ -4,7 +4,10 @@
  * Handles loading configuration from environment variables and defaults
  */
 
+import { getLogger } from "../unified-logger";
 import { type Configuration, ConfigurationSchema } from "./configuration-schema";
+
+const logger = getLogger("configuration-loader");
 
 export class ConfigurationLoader {
   private static removeUndefined(obj: any): any {
@@ -39,7 +42,13 @@ export class ConfigurationLoader {
           : error instanceof Error
             ? error.message
             : "Unknown validation error";
-      console.warn(`Configuration invalid; using defaults (${details})`);
+      logger.warn(
+        "Configuration invalid; using defaults",
+        {
+          details,
+        },
+        error instanceof Error ? error : undefined,
+      );
 
       return ConfigurationSchema.parse({
         app: {},

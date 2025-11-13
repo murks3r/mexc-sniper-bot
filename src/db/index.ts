@@ -47,7 +47,6 @@ export async function getUserPreferences(userId: string) {
         takeProfitLevel4: schema.userPreferences.takeProfitLevel4,
         takeProfitCustom: schema.userPreferences.takeProfitCustom,
         defaultTakeProfitLevel: schema.userPreferences.defaultTakeProfitLevel,
-        maxPositionSizeUsdt: schema.userPreferences.maxPositionSizeUsdt,
         riskTolerance: schema.userPreferences.riskTolerance,
       })
       .from(schema.userPreferences)

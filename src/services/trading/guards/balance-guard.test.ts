@@ -6,28 +6,37 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AsyncMexcClient } from "@/src/services/trading/clients/async-mexc-client";
 import { BalanceGuard } from "./balance-guard";
+
+// Mock StructuredLoggerAdapter
+const mockLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+};
+
+vi.mock("@/src/lib/structured-logger-adapter", () => ({
+  StructuredLoggerAdapter: vi.fn().mockImplementation(() => mockLogger),
+}));
 
 describe("BalanceGuard", () => {
   let balanceGuard: BalanceGuard;
-  let mockClient: any;
-  let mockLogger: any;
+  let mockClient: {
+    getAccountInfo: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
+    // Reset all mocks
+    vi.clearAllMocks();
+
     // Mock AsyncMexcClient
     mockClient = {
       getAccountInfo: vi.fn(),
     };
 
-    // Mock StructuredLoggerAdapter
-    mockLogger = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    };
-
-    balanceGuard = new BalanceGuard(mockClient, {
+    balanceGuard = new BalanceGuard(mockClient as unknown as AsyncMexcClient, {
       minBalanceBufferPercent: 10,
       checkIntervalMs: 5000,
     });
@@ -35,6 +44,7 @@ describe("BalanceGuard", () => {
 
   afterEach(() => {
     balanceGuard.stop();
+    balanceGuard.reset(); // Reset internal state
     vi.clearAllMocks();
   });
 
@@ -52,13 +62,10 @@ describe("BalanceGuard", () => {
   describe("Start and Stop", () => {
     it("should start periodic balance refresh", async () => {
       const accountInfo = {
-        success: true,
-        data: {
-          balances: [
-            { asset: "USDT", free: "1000.0", locked: "0.0" },
-            { asset: "BTC", free: "0.5", locked: "0.0" },
-          ],
-        },
+        balances: [
+          { asset: "USDT", free: "1000.0", locked: "0.0" },
+          { asset: "BTC", free: "0.5", locked: "0.0" },
+        ],
       };
 
       mockClient.getAccountInfo.mockResolvedValue(accountInfo);
@@ -77,12 +84,14 @@ describe("BalanceGuard", () => {
     });
 
     it("should not start if already running", () => {
-      balanceGuard.start();
       const spy = vi.spyOn(global, "setInterval");
+
+      balanceGuard.start();
+      const firstCallCount = spy.mock.calls.length;
 
       balanceGuard.start(); // Second call
 
-      expect(spy).toHaveBeenCalledTimes(1); // Only called once
+      expect(spy).toHaveBeenCalledTimes(firstCallCount); // No additional calls
       spy.mockRestore();
     });
 
@@ -99,18 +108,18 @@ describe("BalanceGuard", () => {
   describe("Balance Refresh", () => {
     it("should refresh balance from API", async () => {
       const accountInfo = {
-        success: true,
-        data: {
-          balances: [
-            { asset: "USDT", free: "500.0", locked: "50.0" },
-            { asset: "BTC", free: "0.25", locked: "0.0" },
-          ],
-        },
+        balances: [
+          { asset: "USDT", free: "500.0", locked: "50.0" },
+          { asset: "BTC", free: "0.25", locked: "0.0" },
+        ],
       };
 
       mockClient.getAccountInfo.mockResolvedValue(accountInfo);
 
-      await balanceGuard.start();
+      balanceGuard.start();
+
+      // Wait for initial balance fetch
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockClient.getAccountInfo).toHaveBeenCalled();
       expect(mockLogger.debug).toHaveBeenCalledWith("Balance refreshed from API", {
@@ -121,25 +130,32 @@ describe("BalanceGuard", () => {
       expect(allBalances.size).toBe(2);
       expect(allBalances.get("USDT")?.free).toBe("500.0");
       expect(allBalances.get("BTC")?.free).toBe("0.25");
+
+      balanceGuard.stop();
     });
 
     it("should handle API refresh failure", async () => {
       const error = new Error("API rate limit");
       mockClient.getAccountInfo.mockRejectedValue(error);
 
-      await balanceGuard.start();
+      balanceGuard.start();
+
+      // Wait for error to be caught and logged
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockLogger.error).toHaveBeenCalledWith("Failed to fetch initial balance", {
         error: "API rate limit",
       });
+
+      balanceGuard.stop();
     });
 
     it("should skip API refresh for fresh websocket data", async () => {
       const accountInfo = {
-        success: true,
-        data: {
-          balances: [{ asset: "USDT", free: "1000.0", locked: "0.0" }],
-        },
+        balances: [
+          { asset: "USDT", free: "1000.0", locked: "0.0" },
+          { asset: "BTC", free: "0.5", locked: "0.0" },
+        ],
       };
 
       mockClient.getAccountInfo.mockResolvedValue(accountInfo);
@@ -151,14 +167,19 @@ describe("BalanceGuard", () => {
         locked: "0.0",
       });
 
-      await balanceGuard.start();
+      balanceGuard.start();
 
-      // Should not call API for USDT (fresh websocket data)
+      // Wait for initial balance fetch
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Should call API but skip USDT (fresh websocket data), only update BTC
       expect(mockClient.getAccountInfo).toHaveBeenCalledTimes(1);
       expect(mockLogger.debug).toHaveBeenCalledWith(
         "Skipping API refresh for asset with fresh websocket data",
         { asset: "USDT" },
       );
+
+      balanceGuard.stop();
     });
   });
 
@@ -229,6 +250,9 @@ describe("BalanceGuard", () => {
     });
 
     it("should block order when asset not found", async () => {
+      // Mock getAccountInfo to return empty balances
+      mockClient.getAccountInfo.mockResolvedValue({ balances: [] });
+
       const result = await balanceGuard.canExecuteOrder("ETH", 100);
 
       expect(result.allowed).toBe(false);
@@ -238,10 +262,7 @@ describe("BalanceGuard", () => {
 
     it("should refresh from API when no balance data exists", async () => {
       const accountInfo = {
-        success: true,
-        data: {
-          balances: [{ asset: "BTC", free: "2.0", locked: "0.0" }],
-        },
+        balances: [{ asset: "BTC", free: "2.0", locked: "0.0" }],
       };
 
       mockClient.getAccountInfo.mockResolvedValue(accountInfo);
@@ -261,14 +282,14 @@ describe("BalanceGuard", () => {
         locked: "0.0",
       });
 
-      // Fast forward time to make websocket data stale
-      vi.advanceTimersByTime(6000); // 6 seconds > 5 second threshold
+      // Wait for the websocket data to become stale (5+ seconds)
+      // Instead of using fake timers, we'll directly manipulate the timestamp
+      const staleTime = Date.now() - 6000; // 6 seconds ago
+      // @ts-expect-error - accessing private field for testing
+      balanceGuard.lastWebSocketUpdate.set("USDT", staleTime);
 
       const accountInfo = {
-        success: true,
-        data: {
-          balances: [{ asset: "USDT", free: "800.0", locked: "0.0" }],
-        },
+        balances: [{ asset: "USDT", free: "800.0", locked: "0.0" }],
       };
 
       mockClient.getAccountInfo.mockResolvedValue(accountInfo);
@@ -298,14 +319,31 @@ describe("BalanceGuard", () => {
     });
 
     it("should handle balance check errors", async () => {
+      // Create a fresh guard instance to ensure no balance data exists
+      const freshGuard = new BalanceGuard(mockClient as unknown as AsyncMexcClient, {
+        minBalanceBufferPercent: 10,
+        checkIntervalMs: 5000,
+      });
+
       const error = new Error("Network timeout");
       mockClient.getAccountInfo.mockRejectedValue(error);
 
-      const result = await balanceGuard.canExecuteOrder("USDT", 100);
+      // This should call refreshBalance() which will throw, caught by canExecuteOrder
+      const result = await freshGuard.canExecuteOrder("USDT", 100);
 
+      // Should catch error and return fail-safe result
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("Error checking balance");
       expect(result.reason).toContain("Network timeout");
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "Error checking balance",
+        expect.objectContaining({
+          asset: "USDT",
+          requiredBalance: 100,
+        }),
+      );
+
+      freshGuard.stop();
     });
   });
 
@@ -416,38 +454,38 @@ describe("BalanceGuard", () => {
         locked: "0.0",
       });
 
+      // USDT: 100 available, need 80 + 10% buffer = 88, so should be allowed (100 >= 88)
+      // BTC: 1 available, need 2 + 10% buffer = 2.2, so should be blocked (1 < 2.2)
       const usdtResult = await balanceGuard.canExecuteOrder("USDT", 80);
       const btcResult = await balanceGuard.canExecuteOrder("BTC", 2);
 
-      expect(usdtResult.allowed).toBe(false); // 100 < 80 + 10% buffer
-      expect(btcResult.allowed).toBe(false); // 1 < 2 + 10% buffer
+      expect(usdtResult.allowed).toBe(true); // 100 >= 80 + 10% buffer (88)
+      expect(btcResult.allowed).toBe(false); // 1 < 2 + 10% buffer (2.2)
     });
   });
 
   describe("Integration with AsyncMexcClient", () => {
     it("should work with real AsyncMexcClient interface", async () => {
       // This test verifies BalanceGuard can work with the actual AsyncMexcClient
-      const mockRealClient: any = {
+      const mockRealClient = {
         getAccountInfo: vi.fn().mockResolvedValue({
-          success: true,
-          data: {
-            balances: [{ asset: "USDT", free: "500.0", locked: "0.0" }],
-          },
+          balances: [{ asset: "USDT", free: "500.0", locked: "0.0" }],
         }),
       };
 
-      const realGuard = new BalanceGuard(mockRealClient, {
+      const realGuard = new BalanceGuard(mockRealClient as unknown as AsyncMexcClient, {
         minBalanceBufferPercent: 15,
         checkIntervalMs: 10000,
       });
 
       realGuard.start();
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait for initial balance fetch
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       const result = await realGuard.canExecuteOrder("USDT", 400);
 
       expect(result.allowed).toBe(true);
-      expect(result.bufferRequired).toBe(460); // 400 + 15% buffer
+      expect(result.bufferRequired).toBeCloseTo(460, 2); // 400 + 15% buffer
 
       realGuard.stop();
     });

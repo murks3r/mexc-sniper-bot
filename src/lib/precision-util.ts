@@ -37,7 +37,7 @@ export class PrecisionError extends Error {
  * truncate(0.01234567, 4) => 0.0123
  */
 export function truncate(value: number, decimals: number): number {
-  const multiplier = Math.pow(10, decimals);
+  const multiplier = 10 ** decimals;
   return Math.floor(value * multiplier) / multiplier;
 }
 
@@ -118,10 +118,10 @@ export function validateLimitBuyOrder(
   const formattedPrice = toFixed(formattedPriceNum, rules.quotePrecision);
 
   // STEP 2: Calculate the ideaI quantity
-  let quantity = usdToSpend / formattedPriceNum;
+  const quantity = usdToSpend / formattedPriceNum;
 
   // STEP 3: Format the quantity (truncate)
-  let formattedQuantityNum = truncate(quantity, rules.baseAssetPrecision);
+  const formattedQuantityNum = truncate(quantity, rules.baseAssetPrecision);
   const formattedQuantity = toFixed(formattedQuantityNum, rules.baseAssetPrecision);
 
   // STEP 4: Validate against minimum quantity

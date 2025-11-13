@@ -1,5 +1,5 @@
 import type { User } from "@clerk/nextjs/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { createAdminSupabaseClient, syncClerkUserWithDatabase } from "./clerk-supabase-client";
 
 export interface AuthenticatedUser {
@@ -21,8 +21,7 @@ export async function getClerkUser(): Promise<User | null> {
     return null;
   }
 
-  const { user } = await auth();
-  return user;
+  return await clerkClient.users.getUser(userId);
 }
 
 /**
@@ -35,7 +34,7 @@ export async function requireClerkAuth(): Promise<AuthenticatedUser> {
     throw new Error("Authentication required");
   }
 
-  const { user } = await auth();
+  const user = await clerkClient.users.getUser(userId);
 
   if (!user) {
     throw new Error("Authentication required");

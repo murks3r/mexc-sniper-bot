@@ -20,23 +20,16 @@ type OrderResponse = { orderId: number };
 
 describe("Advanced Sniper Utilities", () => {
   describe("executeOrderWithRetry", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it("should succeed on first attempt", async () => {
-      const mockFn = vi.fn<[], Promise<MexcServiceResponse<OrderResponse>>>().mockResolvedValue({
-        success: true,
-        data: { orderId: 123 },
-      });
+      const mockFn = vi
+        .fn()
+        .mockResolvedValue({ success: true, data: { orderId: 123 } })
+        .mockResolvedValue({
+          success: true,
+          data: { orderId: 123 },
+        });
 
-      const promise = executeOrderWithRetry<OrderResponse>(mockFn);
-      await vi.runAllTimersAsync();
-      const result = await promise;
+      const result = await executeOrderWithRetry(mockFn);
 
       expect(result.success).toBe(true);
       expect(result.data?.orderId).toBe(123);
@@ -53,39 +46,36 @@ describe("Advanced Sniper Utilities", () => {
         .mockResolvedValueOnce({
           success: true,
           data: { orderId: 123 },
-        } as MexcServiceResponse<OrderResponse>);
+        });
 
-      const promise = executeOrderWithRetry<OrderResponse>(mockFn, {
+      // Use very short delays to make the test fast
+      const result = await executeOrderWithRetry(mockFn, {
         maxRetries: 3,
-        initialDelayMs: 100,
+        initialDelayMs: 1,
       });
-
-      // Fast-forward through first retry delay
-      await vi.advanceTimersByTimeAsync(100);
-
-      const result = await promise;
 
       expect(result.success).toBe(true);
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
 
     it("should fail after max retries", async () => {
-      const mockFn = vi.fn<[], Promise<MexcServiceResponse<OrderResponse>>>().mockResolvedValue({
-        success: false,
-        data: { code: MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE },
-      });
+      const mockFn = vi
+        .fn()
+        .mockResolvedValue({ success: true, data: { orderId: 123 } })
+        .mockResolvedValue({
+          success: false,
+          data: { code: MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE },
+        });
 
-      const promise = executeOrderWithRetry<OrderResponse>(mockFn, {
-        maxRetries: 2,
-        initialDelayMs: 100,
-        maxDelayMs: 200,
-      });
+      // Use very short delays to make the test fast
+      await expect(
+        executeOrderWithRetry(mockFn, {
+          maxRetries: 2,
+          initialDelayMs: 1,
+          maxDelayMs: 5,
+        }),
+      ).rejects.toThrow("Max retries");
 
-      // Fast-forward through all retry delays
-      await vi.advanceTimersByTimeAsync(100); // First retry
-      await vi.advanceTimersByTimeAsync(150); // Second retry (capped at 200ms)
-
-      await expect(promise).rejects.toThrow("Max retries");
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
 
@@ -94,9 +84,7 @@ describe("Advanced Sniper Utilities", () => {
         .fn<[], Promise<MexcServiceResponse<OrderResponse>>>()
         .mockRejectedValue(new Error("Invalid symbol"));
 
-      const promise = executeOrderWithRetry<OrderResponse>(mockFn);
-
-      await expect(promise).rejects.toThrow("Invalid symbol");
+      await expect(executeOrderWithRetry(mockFn)).rejects.toThrow("Invalid symbol");
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
   });
@@ -176,28 +164,14 @@ describe("Advanced Sniper Utilities", () => {
   });
 
   describe("waitForExecutionWindow", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it("should wait until execution window", async () => {
-      const launchTime = new Date(Date.now() + 5000); // 5 seconds in future
+      // Use a launch time that's very close but still in the future
+      const launchTime = new Date(Date.now() + 50); // 50ms in future
 
       const promise = waitForExecutionWindow(launchTime, {
-        preLaunchOffsetMs: -1000, // Start 1s before
-        pollIntervalMs: 100,
+        preLaunchOffsetMs: -10, // Start 10ms before
+        pollIntervalMs: 5,
       });
-
-      // Fast-forward to just before window (3.5s = 3500ms)
-      vi.advanceTimersByTime(3500);
-      await Promise.resolve();
-
-      // Fast-forward past window start
-      vi.advanceTimersByTime(1000);
 
       const result = await promise;
 
@@ -220,23 +194,13 @@ describe("Advanced Sniper Utilities", () => {
   });
 
   describe("sleep", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it("should sleep for specified duration", async () => {
-      const promise = sleep(1000);
+      const start = Date.now();
+      await sleep(10); // Sleep for 10ms
+      const elapsed = Date.now() - start;
 
-      vi.advanceTimersByTime(999);
-      await Promise.resolve();
-      // Should still be pending
-
-      vi.advanceTimersByTime(1);
-      await promise; // Should resolve now
+      // Should be at least 10ms, but allow some margin
+      expect(elapsed).toBeGreaterThanOrEqual(8);
     });
   });
 });

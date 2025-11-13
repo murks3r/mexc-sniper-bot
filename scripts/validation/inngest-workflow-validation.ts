@@ -27,9 +27,9 @@
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../../src/db";
 import { monitoredListings, snipeTargets } from "../../src/db/schema";
-import { calendarSyncService } from "../../src/services/calendar-to-database-sync";
 import { toSafeError } from "../../src/lib/error-type-utils";
 import { getLogger } from "../../src/lib/unified-logger";
+import { calendarSyncService } from "../../src/services/calendar-to-database-sync";
 
 const logger = getLogger("inngest-workflow-validation");
 
@@ -202,7 +202,8 @@ class InngestWorkflowValidator {
       console.log("\n  Recent Listings:");
       for (let i = 0; i < Math.min(5, listings.length); i++) {
         const listing = listings[i];
-        console.log(`\n    ${i + 1}. ${listing.vcoinNameFull} (${listing.vcoinId})`);
+        const listingName = listing.projectName || listing.symbolName;
+        console.log(`\n    ${i + 1}. ${listingName} (${listing.vcoinId})`);
         console.log(`       Launch Time: ${listing.firstOpenTime}`);
         console.log(`       Status: ${listing.status}`);
         console.log(`       Has Ready Pattern: ${listing.hasReadyPattern ? "YES" : "NO"}`);

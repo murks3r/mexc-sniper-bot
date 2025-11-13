@@ -11,6 +11,10 @@
  * - Use `withErrorLogging(fn, context)` for consistent async error handling
  */
 
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("error-type-utils");
+
 export interface SafeError {
   name: string;
   message: string;
@@ -22,24 +26,6 @@ export interface SafeError {
 /**
  * Safely converts unknown error to Error object with proper typing
  */
-// Lazy logger initialization to prevent build-time errors
-let _logger: any = null;
-
-export function getLogger() {
-  if (!_logger) {
-    _logger = {
-      info: (message: string, context?: any) =>
-        console.info("[error-type-utils]", message, context || ""),
-      warn: (message: string, context?: any) =>
-        console.warn("[error-type-utils]", message, context || ""),
-      error: (message: string, context?: any, error?: Error) =>
-        console.error("[error-type-utils]", message, context || "", error || ""),
-      debug: (message: string, context?: any) =>
-        console.debug("[error-type-utils]", message, context || ""),
-    };
-  }
-  return _logger;
-}
 
 export function toSafeError(error: unknown): SafeError {
   if (error instanceof Error) {
@@ -201,18 +187,17 @@ export function withErrorLogging<T extends (...args: any[]) => Promise<any>>(
     } catch (error) {
       const safeError = toSafeError(error);
 
-      if (logger) {
-        getLogger().error(`${context} failed`, safeError, {
+      logger.error(
+        `${context} failed`,
+        {
           operation: context,
           timestamp: new Date().toISOString(),
           args: args.length,
-        });
-      } else {
-        getLogger().error(`[${context}] Error:`, safeError.message, {
+          error: safeError.message,
           stack: safeError.stack,
-          timestamp: new Date().toISOString(),
-        });
-      }
+        },
+        safeError as Error,
+      );
 
       throw ensureError(error);
     }
@@ -227,7 +212,7 @@ export function standardCatch(context: string, operation?: string) {
     const safeError = toSafeError(error);
     const fullContext = operation ? `${context}.${operation}` : context;
 
-    getLogger().error(`[${fullContext}] Error:`, {
+    logger.error(`[${fullContext}] Error`, {
       message: safeError.message,
       name: safeError.name,
       stack: safeError.stack,

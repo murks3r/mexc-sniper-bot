@@ -29,6 +29,16 @@ const TEST_USER_ID = "test-user-e2e";
 vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => ({
   getCoreTrading: vi.fn().mockImplementation((config) => ({
     config,
+    executeTrade: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        symbol: TEST_SYMBOL,
+        orderId: "test-order-123",
+        executedPrice: 1.234,
+        executedQuantity: 50.0,
+        status: "FILLED",
+      },
+    }),
     autoSniping: {
       setCurrentUser: vi.fn(),
       getStatus: vi.fn().mockReturnValue({
@@ -93,6 +103,7 @@ vi.mock("@/src/services/trading/unified-auto-sniping-orchestrator", () => ({
 // Mock user credentials service
 vi.mock("@/src/services/api/user-credentials-service", () => ({
   getUserCredentials: vi.fn().mockResolvedValue({
+    provider: "mexc",
     exchange: "mexc",
     apiKey: "test-api-key",
     secretKey: "test-secret-key",

@@ -5,9 +5,9 @@
  * Quick execution script without error handling complexity
  */
 
-import { eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { snipeTargets } from "../src/db/schemas/trading";
+import { positions, snipeTargets } from "../src/db/schemas/trading";
 import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
 
 async function executeVfarm() {
@@ -38,23 +38,33 @@ async function executeVfarm() {
     console.log("⚡ Executing...\n");
     const coreTrading = getCoreTrading();
 
-    // @ts-expect-error - accessing private member
-    const autoSniping = coreTrading.autoSniping;
+    // Convert to AutoSnipeTarget format
+    const autoSnipeTarget = {
+      ...target,
+      symbol: target.symbolName,
+      side: "buy" as const,
+      orderType: "market" as const,
+      quantity: target.positionSizeUsdt,
+      amount: target.positionSizeUsdt,
+      price: undefined,
+      confidence: target.confidenceScore,
+      // @ts-expect-error - targetExecutionTime from database is string but interface expects Date
+      scheduledAt: target.targetExecutionTime,
+      executedAt: null,
+    };
 
-    if (!autoSniping) {
-      console.error("❌ Auto-sniping module not available");
-      process.exit(1);
-    }
-
-    const result = await autoSniping.executeSnipeTarget(target, undefined);
+    const result = await coreTrading.executeSnipeTarget(autoSnipeTarget);
 
     console.log("📊 Result:");
     console.log(JSON.stringify(result, null, 2));
 
     // Check if trade was created
-    const position = await db.query.positions.findFirst({
-      where: sql`snipe_target_id = 191 AND created_at > NOW() - INTERVAL '2 minutes'`,
-    });
+    const [position] = await db
+      .select()
+      .from(positions)
+      .where(eq(positions.snipeTargetId, 191))
+      .orderBy(desc(positions.createdAt))
+      .limit(1);
 
     if (position) {
       console.log(`\n✅ POSITION CREATED!`);

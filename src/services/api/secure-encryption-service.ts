@@ -11,6 +11,8 @@
  */
 
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
+import type { LogContext } from "../../lib/unified-logger";
+import { getLogger } from "../../lib/unified-logger";
 
 // Constants for cryptographic operations
 const ALGORITHM = "aes-256-gcm";
@@ -34,27 +36,7 @@ interface EncryptedData {
 }
 
 export class SecureEncryptionService {
-  private _logger?: {
-    info: (message: string, context?: any) => void;
-    warn: (message: string, context?: any) => void;
-    error: (message: string, context?: any, error?: Error) => void;
-    debug: (message: string, context?: any) => void;
-  };
-  private getLogger() {
-    if (!this._logger) {
-      this._logger = {
-        info: (message: string, context?: any) =>
-          console.info("[secure-encryption-service]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[secure-encryption-service]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error("[secure-encryption-service]", message, context || "", error || ""),
-        debug: (message: string, context?: any) =>
-          console.debug("[secure-encryption-service]", message, context || ""),
-      };
-    }
-    return this._logger;
-  }
+  private readonly logger = getLogger("secure-encryption-service");
 
   private masterKey: Buffer;
   public keyId: string;
@@ -128,7 +110,7 @@ export class SecureEncryptionService {
       // Return as base64-encoded JSON
       return Buffer.from(JSON.stringify(encryptedData)).toString("base64");
     } catch (error) {
-      this.getLogger().error("[Encryption] Encryption failed:", error);
+      this.logger.error("Encryption failed", {}, error instanceof Error ? error : undefined);
       throw new Error("Failed to encrypt data");
     }
   }
@@ -172,7 +154,7 @@ export class SecureEncryptionService {
 
       return plaintext.toString("utf8");
     } catch (error) {
-      this.getLogger().error("[Encryption] Decryption failed:", error);
+      this.logger.error("Decryption failed", {}, error instanceof Error ? error : undefined);
 
       // Don't leak information about why decryption failed
       throw new Error("Failed to decrypt data");

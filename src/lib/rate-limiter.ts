@@ -5,6 +5,9 @@
  */
 
 import { adaptiveRateLimiter } from "@/src/services/api/adaptive-rate-limiter";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("rate-limiter");
 
 interface RateLimitEntry {
   count: number;
@@ -43,38 +46,9 @@ const RATE_LIMITS = {
   },
 };
 
-// Security event logging - lazy initialization
-let _logger: any = null;
-
-function getLogger(): {
-  info: (message: string, context?: any) => void;
-  warn: (message: string, context?: any) => void;
-  error: (message: string, context?: any, error?: Error) => void;
-  debug: (message: string, context?: any) => void;
-} {
-  if (!_logger) {
-    try {
-      _logger = {
-        info: (message: string, context?: any) =>
-          console.info("[rate-limiter]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[rate-limiter]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error("[rate-limiter]", message, context || "", error || ""),
-        debug: (message: string, context?: any) =>
-          console.debug("[rate-limiter]", message, context || ""),
-      };
-    } catch {
-      // Fallback during build time
-      _logger = {
-        debug: console.debug.bind(console),
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console),
-      } as any;
-    }
-  }
-  return _logger;
+// Security event logging - using unified logger
+function getSecurityLogger() {
+  return logger;
 }
 
 export function logSecurityEvent(event: Omit<SecurityEvent, "timestamp">): void {
@@ -83,7 +57,7 @@ export function logSecurityEvent(event: Omit<SecurityEvent, "timestamp">): void 
     timestamp: Date.now(),
   };
 
-  getLogger().debug(`Logging security event: ${securityEvent.type}`, securityEvent);
+  logger.debug(`Logging security event: ${securityEvent.type}`, securityEvent);
   securityEvents.push(securityEvent);
 
   // Keep only last 1000 events to prevent memory bloat
@@ -92,7 +66,7 @@ export function logSecurityEvent(event: Omit<SecurityEvent, "timestamp">): void 
   }
 
   // Log to console for monitoring (in production, send to logging service)
-  getLogger().info(`[SECURITY] ${event.type}: ${event.ip} -> ${event.endpoint}`, {
+  logger.info(`[SECURITY] ${event.type}: ${event.ip} -> ${event.endpoint}`, {
     timestamp: new Date(securityEvent.timestamp).toISOString(),
     ...event.metadata,
   });
@@ -165,7 +139,13 @@ export async function checkRateLimit(
       };
     }
   } catch (error) {
-    getLogger().error("[Rate Limiter] Adaptive rate limiter failed:", error);
+    logger.error(
+      "Adaptive rate limiter failed",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof Error ? error : undefined,
+    );
     // Continue with traditional rate limiting on adaptive failure
   }
 

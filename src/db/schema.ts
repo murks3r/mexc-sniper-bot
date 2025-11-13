@@ -17,6 +17,7 @@ import {
 } from "./schemas/alerts";
 // Import all table definitions from modular files
 import { account, session, user, userPreferences, verification } from "./schemas/auth";
+import { mexcSymbols } from "./schemas/mexc-symbols";
 import {
   coinActivities,
   monitoredListings,
@@ -61,7 +62,6 @@ import {
   transactionQueue,
   transactions,
 } from "./schemas/trading";
-import { mexcSymbols } from "./schemas/mexc-symbols";
 import { workflowActivity, workflowSystemStatus } from "./schemas/workflows";
 
 // Export all tables individually for backward compatibility
@@ -135,12 +135,12 @@ export {
 export type * from "./schemas/alerts";
 // Export all types
 export type * from "./schemas/auth";
+export type * from "./schemas/mexc-symbols";
 export type * from "./schemas/patterns";
 export type * from "./schemas/performance";
 export type * from "./schemas/safety";
 export type * from "./schemas/strategies";
 export type * from "./schemas/trading";
-export type * from "./schemas/mexc-symbols";
 export type * from "./schemas/workflows";
 
 // Create a consolidated schema object for drizzle (required for proper table relationships)

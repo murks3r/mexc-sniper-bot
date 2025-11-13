@@ -7,39 +7,64 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock authentication - use hoisted to ensure it's available before route import
-const mockRequireAuth = vi.fn().mockImplementation(async () => {
-  return {
-    id: "test-user-id",
-    email: "test@example.com",
-    name: "Test User",
-    emailVerified: true,
-  };
-});
-vi.mock("@/src/lib/clerk-auth-server", () => ({
-  requireClerkAuth: mockRequireAuth,
-}));
-
-// Mock database
-const mockSelect = vi.fn();
-const mockDb = {
-  select: mockSelect,
-};
-vi.mock("@/src/db", () => ({ db: mockDb }));
-
-// Import after mocking
-import { GET } from "../api/snipe-targets/upcoming-hour/route";
-
-describe("Upcoming Hour Targets API", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Ensure authentication mock is always properly set up
-    mockRequireAuth.mockResolvedValue({
+// Mock authentication - use factory function
+vi.mock("@/src/lib/clerk-auth-server", () => {
+  const mockRequireAuth = vi.fn().mockImplementation(async () => {
+    return {
       id: "test-user-id",
       email: "test@example.com",
       name: "Test User",
       emailVerified: true,
-    });
+    };
+  });
+  return {
+    requireClerkAuth: mockRequireAuth,
+    __mockRequireAuth: mockRequireAuth,
+  };
+});
+
+// Mock database - use factory function
+vi.mock("@/src/db", () => {
+  const mockSelect = vi.fn();
+  const mockDb = {
+    select: mockSelect,
+  };
+  return { 
+    db: mockDb,
+    __mockDb: mockDb,
+    __mockSelect: mockSelect,
+  };
+});
+
+// Import after mocking
+import { GET } from "../api/snipe-targets/upcoming-hour/route";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+import { db } from "@/src/db";
+
+describe("Upcoming Hour Targets API", () => {
+  let mockRequireAuth: ReturnType<typeof vi.fn>;
+  let mockDb: { select: ReturnType<typeof vi.fn> };
+  let mockSelect: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    // Get mocks from mocked modules
+    const authModule = await import("@/src/lib/clerk-auth-server");
+    mockRequireAuth = (authModule as any).__mockRequireAuth || requireClerkAuth as ReturnType<typeof vi.fn>;
+    
+    const dbModule = await import("@/src/db");
+    mockDb = (dbModule as any).__mockDb || db;
+    mockSelect = (dbModule as any).__mockSelect || db.select as ReturnType<typeof vi.fn>;
+    
+    // Ensure authentication mock is always properly set up
+    if (mockRequireAuth && typeof mockRequireAuth.mockResolvedValue === 'function') {
+      mockRequireAuth.mockResolvedValue({
+        id: "test-user-id",
+        email: "test@example.com",
+        name: "Test User",
+        emailVerified: true,
+      });
+    }
   });
 
   // Helper function to set up database mock
@@ -54,9 +79,11 @@ describe("Upcoming Hour Targets API", () => {
     const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy1 });
     const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
 
-    mockDb.select.mockReturnValue({
-      from: mockFrom,
-    } as any);
+    if (mockDb && mockDb.select) {
+      mockDb.select.mockReturnValue({
+        from: mockFrom,
+      } as any);
+    }
   }
 
   afterEach(() => {

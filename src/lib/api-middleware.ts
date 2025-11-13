@@ -42,6 +42,9 @@ import {
   getClientIP,
   logSecurityEvent,
 } from "./rate-limiter";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("api-middleware");
 
 // =======================
 // Types and Interfaces
@@ -316,7 +319,13 @@ async function applyCacheMiddleware(
 
     return null;
   } catch (error) {
-    console.error("[API Middleware] Cache retrieval error:", error);
+    logger.error(
+      "Cache retrieval error",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof Error ? error : undefined,
+    );
     return null;
   }
 }
@@ -357,7 +366,13 @@ async function cacheResponse(
         : undefined,
     });
   } catch (error) {
-    console.error("[API Middleware] Cache storage error:", error);
+    logger.error(
+      "Cache storage error",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof Error ? error : undefined,
+    );
   }
 }
 
@@ -645,11 +660,11 @@ function logRequest(
     logData.headers = Object.fromEntries(request.headers.entries());
   }
 
-  console.info("[API Request]", logData);
+  logger.info("API Request", logData);
 }
 
 function logResponse(context: ApiContext, response: Response, duration: number): void {
-  console.info("[API Response]", {
+  logger.info("API Response", {
     endpoint: context.endpoint,
     status: response.status,
     duration: `${duration}ms`,
@@ -662,12 +677,14 @@ function handleMiddlewareError(
   context: Partial<ApiContext>,
   duration: number,
 ): Response {
-  console.error("[API Middleware Error]", {
-    endpoint: context.endpoint,
-    duration: `${duration}ms`,
-    error: error instanceof Error ? error.message : "Unknown error",
-    stack: error instanceof Error ? error.stack : undefined,
-  });
+  logger.error(
+    "API Middleware Error",
+    {
+      endpoint: context.endpoint,
+      duration: `${duration}ms`,
+    },
+    error instanceof Error ? error : undefined,
+  );
 
   return handleApiRouteError(error, "Internal server error");
 }
@@ -704,10 +721,14 @@ export function withApiErrorHandling<Args extends unknown[]>(
     try {
       return await handler(request, ...args);
     } catch (error) {
-      console.error("[API Middleware] Route error", {
-        url: request.url,
-        error,
-      });
+      logger.error(
+        "Route error",
+        {
+          url: request.url,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
       return handleApiRouteError(error, defaultMessage);
     }
   };
@@ -727,10 +748,14 @@ export async function withDatabaseErrorHandling<T>(
       throw error;
     }
 
-    console.error("[API Middleware] Database operation failed", {
-      action: actionDescription,
-      error,
-    });
+    logger.error(
+      "Database operation failed",
+      {
+        action: actionDescription,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof Error ? error : undefined,
+    );
 
     const dbError = error instanceof Error ? error : new Error(String(error));
     throw new DatabaseError(`Failed to ${actionDescription}`, undefined, dbError);

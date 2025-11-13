@@ -5,6 +5,9 @@
  */
 
 import { toSafeError } from "./error-type-utils";
+import { getLogger } from "./unified-logger";
+
+const logger = getLogger("api-response");
 export interface ApiResponse<T = unknown> {
   /** Indicates if the request was successful */
   success: boolean;
@@ -54,40 +57,7 @@ export interface ApiResponse<T = unknown> {
  * Creates a successful API response
  */
 
-// Lazy logger initialization to prevent webpack bundling issues
-let _logger: any = null;
-
-function getLogger(): {
-  info: (message: string, context?: any) => void;
-  warn: (message: string, context?: any) => void;
-  error: (message: string, context?: any, error?: Error) => void;
-  debug: (message: string, context?: any) => void;
-} {
-  if (!_logger) {
-    try {
-      _logger = {
-        info: (message: string, context?: any) =>
-          console.info("[api-response]", message, context || ""),
-        warn: (message: string, context?: any) =>
-          console.warn("[api-response]", message, context || ""),
-        error: (message: string, context?: any, error?: Error) =>
-          console.error("[api-response]", message, context || "", error || ""),
-        debug: (message: string, context?: any) =>
-          console.debug("[api-response]", message, context || ""),
-      };
-    } catch (_error) {
-      // Fallback to console logging during build time
-      _logger = {
-        debug: console.debug.bind(console),
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console),
-        fatal: console.error.bind(console),
-      } as any;
-    }
-  }
-  return _logger;
-}
+// Using unified logger - no fallback needed
 
 export function createSuccessResponse<T>(data: T, meta?: ApiResponse<T>["meta"]): ApiResponse<T> {
   return {
@@ -256,7 +226,13 @@ export function createApiResponse<T>(response: ApiResponse<T>, status?: number):
  */
 export function handleApiError(error: unknown, defaultMessage = "An error occurred"): Response {
   const safeError = toSafeError(error);
-  getLogger().error("API Error:", safeError);
+  logger.error(
+    "API Error",
+    {
+      error: safeError.message,
+    },
+    safeError as Error,
+  );
 
   const errorMessage = safeError.message || defaultMessage;
   return createApiResponse(createErrorResponse(errorMessage), HTTP_STATUS.INTERNAL_SERVER_ERROR);
@@ -321,7 +297,14 @@ export function createApiRouteHandler<T = Record<string, unknown>>(
       const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
       return createApiResponse(result, statusCode);
     } catch (error) {
-      getLogger().error(`[${serviceName}] API request failed:`, error);
+      logger.error(
+        `[${serviceName}] API request failed`,
+        {
+          serviceName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error instanceof Error ? error : undefined,
+      );
       return handleApiError(error, `${serviceName} request failed`);
     }
   };

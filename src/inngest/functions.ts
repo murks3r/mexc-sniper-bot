@@ -1,12 +1,17 @@
 // Build-safe imports - avoid structured logger to prevent webpack bundling issues
-import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
-import { qualifyAndCacheSymbol, type QualificationResult } from "@/src/services/symbol-qualification.service";
+
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
+import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+import {
+  type QualificationResult,
+  qualifyAndCacheSymbol,
+} from "@/src/services/symbol-qualification.service";
 import { inngest } from "./client";
 
 // Inngest step interface
 interface InngestStep {
   run: (id: string, fn: () => Promise<unknown>) => Promise<unknown>;
+  sleep: (id: string, ms: number) => Promise<void>;
 }
 
 // Simplified type definitions (no agents)
@@ -117,13 +122,7 @@ export const qualifyMexcSymbol = USE_INNGEST_FALLBACK
   ? inngest.createFunction(
       { id: "qualify-mexc-symbol", retries: 2 },
       { event: "mexc/symbol.qualify" },
-      async ({
-        event,
-        step,
-      }: {
-        event: { data: MexcSymbolQualifyData };
-        step: InngestStep;
-      }) => {
+      async ({ event, step }: { event: { data: MexcSymbolQualifyData }; step: InngestStep }) => {
         const { symbol, vcoinId, reason = "calendar-sync" } = event.data;
 
         // Step 1: Qualify and cache the symbol
@@ -173,13 +172,7 @@ export const monitorMexcOrder = USE_INNGEST_FALLBACK
   ? inngest.createFunction(
       { id: "monitor-mexc-order", retries: 3 },
       { event: "mexc/order.placed" },
-      async ({
-        event,
-        step,
-      }: {
-        event: { data: MexcOrderMonitorData };
-        step: InngestStep;
-      }) => {
+      async ({ event, step }: { event: { data: MexcOrderMonitorData }; step: InngestStep }) => {
         const { orderId, symbol, side } = event.data;
 
         // Poll order status until filled or timeout
@@ -195,9 +188,15 @@ export const monitorMexcOrder = USE_INNGEST_FALLBACK
             return statusResponse;
           });
 
+          // Type guard for orderStatus
+          const statusResponse = orderStatus as {
+            success?: boolean;
+            data?: { status?: string; [key: string]: unknown };
+          };
+
           // Check if order is filled
-          if (orderStatus.success && orderStatus.data) {
-            const status = orderStatus.data.status;
+          if (statusResponse.success && statusResponse.data) {
+            const status = statusResponse.data.status;
 
             if (status === "FILLED") {
               // Order is filled - return success
@@ -207,7 +206,7 @@ export const monitorMexcOrder = USE_INNGEST_FALLBACK
                 symbol,
                 side,
                 fillTime: new Date().toISOString(),
-                metadata: orderStatus.data,
+                metadata: statusResponse.data,
               };
             }
 
