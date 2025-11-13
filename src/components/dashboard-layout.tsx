@@ -7,18 +7,7 @@ import { useEffect } from "react";
 import { queryKeys } from "@/src/lib/query-client";
 import { useAuth } from "../components/auth/supabase-auth-provider";
 import { useAuthCacheManager } from "../hooks/use-auth-cache-manager";
-import { Badge } from "./ui/badge";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -31,7 +20,8 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "./ui/optimized-exports";
-import { ChevronRight, LayoutDashboard, LogOut, Shield, User, Zap } from "./ui/optimized-icons";
+import { LayoutDashboard, Zap } from "./ui/optimized-icons";
+import { UserMenu } from "./user-menu";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -41,14 +31,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, signOut, isAnonymous } = useAuth();
+  const { user } = useAuth();
 
   // Manage authentication cache clearing
   useAuthCacheManager();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   const mainNavItems = [
     {
@@ -188,69 +174,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t p-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start h-auto p-2">
-                  <Avatar className="h-8 w-8 mr-2">
-                    <AvatarImage src={user?.user_metadata?.avatar_url} />
-                    <AvatarFallback>
-                      {isAnonymous ? "G" : user?.email?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {isAnonymous
-                          ? "Guest User"
-                          : user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
-                      </span>
-                      {isAnonymous && (
-                        <Badge variant="secondary" className="text-xs">
-                          Guest
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {isAnonymous ? "Anonymous account" : user?.email || "user@example.com"}
-                    </span>
-                  </div>
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  {isAnonymous ? "Guest Account" : "My Account"}
-                </DropdownMenuLabel>
-                {isAnonymous && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => router.push("/auth")}
-                      className="cursor-pointer"
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      Upgrade Account
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                {/* Removed: Settings link - page removed, merged into dashboard */}
-                <DropdownMenuSeparator />
-                {isAnonymous && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    Your data will be lost if you sign out
-                  </div>
-                )}
-                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <SidebarFooter className="border-t p-4 flex items-center justify-center">
+            <UserMenu />
           </SidebarFooter>
         </Sidebar>
 

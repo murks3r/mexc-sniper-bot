@@ -10,6 +10,8 @@ import { requireAuth } from "@/src/lib/supabase-auth";
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 
+export const dynamic = "force-dynamic";
+
 interface HealthCheckResponse {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;

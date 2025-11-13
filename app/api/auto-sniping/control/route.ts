@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 /**
  * Auto-Sniping Control API Route
  *
@@ -10,16 +12,6 @@
  * - POST /control with action=status: Get current status
  * - POST /control with action=emergency_stop: Emergency halt
  */
-
-import type { NextRequest } from "next/server";
-import { requireApiAuth } from "@/src/lib/api-auth";
-import { handleApiRouteError } from "@/src/lib/api-error-handler";
-import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
-import * as SupabaseAuthServer from "@/src/lib/supabase-auth-server";
-import { getUserCredentials } from "@/src/services/api/user-credentials-service";
-import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
-import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
-import { getUnifiedAutoSnipingOrchestrator, type UnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
 
 // Helper function to load and validate user credentials
 async function loadUserCredentials(userId: string) {
@@ -56,7 +48,10 @@ async function updateConfigs(
 }
 
 // Helper function to set current user on orchestrator
-function setCurrentUserOnOrchestrator(orchestrator: UnifiedAutoSnipingOrchestrator, userId: string) {
+function setCurrentUserOnOrchestrator(
+  orchestrator: UnifiedAutoSnipingOrchestrator,
+  userId: string,
+) {
   try {
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic method call on orchestrator
     (orchestrator as any).setCurrentUser?.(userId);
@@ -101,7 +96,10 @@ async function setAndVerifyUserOnAutoSniping(userId: string) {
 }
 
 // Helper function to verify orchestrator state after start
-async function verifyOrchestratorState(orchestrator: UnifiedAutoSnipingOrchestrator, userId: string) {
+async function verifyOrchestratorState(
+  orchestrator: UnifiedAutoSnipingOrchestrator,
+  userId: string,
+) {
   const status = await orchestrator.getStatus();
 
   if (!status.autoSnipingEnabled) {
@@ -341,7 +339,7 @@ export const POST = async (request: NextRequest) => {
 export const GET = async (request: NextRequest) => {
   try {
     // Use new request-aware authentication
-    const _user = await SupabaseAuthServer.requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
 
     const coreTrading = getCoreTrading();
     const status = await coreTrading.getServiceStatus();
@@ -374,7 +372,7 @@ export const GET = async (request: NextRequest) => {
 export const PUT = async (request: NextRequest) => {
   try {
     // Use new request-aware authentication
-    const _user = await SupabaseAuthServer.requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
 
     const config = await request.json();
 
@@ -412,7 +410,7 @@ export const PUT = async (request: NextRequest) => {
 export const DELETE = async (request: NextRequest) => {
   try {
     // Use new request-aware authentication
-    const _user = await SupabaseAuthServer.requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
 
     const body = await request.json().catch(() => ({}));
     const { reason } = body;

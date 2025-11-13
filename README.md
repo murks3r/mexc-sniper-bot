@@ -12,7 +12,7 @@ A focused cryptocurrency trading bot for automated sniping of new token listings
 - **🛡️ Robust Error Handling**: Comprehensive error handling and retry logic
 - **📈 Confidence Scoring**: 0-100% reliability metrics for every trading signal
 - **⚙️ User Configurable**: Customizable take profit levels, stop-loss, and risk management
-- **🔐 Secure Authentication**: Supabase Auth with email bypass and rate limit handling
+- **🔐 Secure Authentication**: Clerk identity platform with Supabase-backed RLS sync for scoped access
 - **🧪 Comprehensive Testing**: Extensive test suite with Vitest and Playwright
 
 ## 🏗️ Architecture
@@ -53,7 +53,7 @@ Focused sniping system with core components:
 ### 🚀 **Technology Stack**
 
 - **Frontend**: Next.js 15 with TypeScript and React 19
-- **Authentication**: Supabase Auth with secure session management
+- **Authentication**: Clerk + Supabase RLS integration with a custom Clerk sign-in experience
 - **Workflows**: Inngest for reliable background task orchestration (calendar sync)
 - **Database**: Drizzle ORM with PostgreSQL for data persistence
 - **Data Management**: TanStack Query v5.80.6 for real-time data fetching and caching
@@ -65,7 +65,8 @@ Focused sniping system with core components:
 ## 📋 Prerequisites
 
 - **Node.js 20.11.0+** and bun/npm (see package.json engines)
-- **Supabase account** (required for authentication)
+- **Clerk account** (handles authentication and integrates with Supabase for RLS)
+- **Supabase account** (optional but recommended for hosting the `auth.user` table used by Clerk sync helpers)
 - **MEXC API credentials** (required for trading execution)
 - **PostgreSQL database** (Supabase, NeonDB, or local PostgreSQL)
 
@@ -90,7 +91,11 @@ npm install
 Create a `.env.local` file:
 
 ```bash
-# Required - Supabase Authentication
+# Required - Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_a2Vlbi1zcGFuaWVsLTM0LmNsZXJrLmFjY291bnRzLmRldiQ
+CLERK_SECRET_KEY=sk_test_UBsD62bCWRotK6kAFCl30zARnGL9d3Q0AbbLhRkJXq
+
+# Required - Supabase integration (user sync + RLS for protected tables)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -121,16 +126,13 @@ TEST_USER_EMAIL=your_test_email@example.com
 TEST_USER_PASSWORD=your_test_password
 ```
 
-### 2.1. Supabase Authentication Setup
+### 2.1. Clerk + Supabase Authentication Setup
 
-1. **Create a Supabase account** at [https://supabase.com](https://supabase.com)
-2. **Create a new project** in your Supabase dashboard
-3. **Configure authentication settings**:
-   - Site URL: `http://localhost:3008`
-   - Redirect URLs: `http://localhost:3008/auth/callback`
-   - Email confirmation: Can be bypassed in development
-4. **Copy credentials** from Settings → API to your `.env.local` file
-5. **Optional**: Configure custom SMTP for production (see SMTP Configuration Guide)
+1. **Create a Clerk application** via [https://clerk.com](https://clerk.com) and copy the publishable and secret keys into `.env.local`.
+2. **Configure Clerk as a third-party provider** in your Supabase project via the Clerk Supabase integration wizard, then run the generated commands from `scripts/setup-supabase-queues.sql` if you want the packaged helpers for syncing users.
+3. **Apply RLS policies** that compare `auth.jwt()->>'sub'` to the user identifier on your protected tables; follow Clerk’s Supabase integration guide for exact SQL and token usage: https://clerk.com/docs/guides/development/integrations/databases/supabase
+4. **Use the custom Clerk sign-in page** at `/auth` (and `/sign-in`)—it is implemented in `src/components/auth/clerk-sign-in-page.tsx` and mirrors the pattern from the Clerk custom sign-in guide (https://clerk.com/docs/nextjs/guides/development/custom-sign-in-or-up-page).
+5. **Optional**: Configure your SMTP provider via Supabase settings when you need custom email delivery.
 
 ### 3. Setup Database
 
@@ -158,7 +160,7 @@ make dev-inngest # Inngest dev server on port 8288
 ### 5. Access the Application
 
 - **Homepage**: http://localhost:3008 (public landing page)
-- **Authentication**: http://localhost:3008/auth (Supabase Auth login)
+- **Authentication**: http://localhost:3008/auth or http://localhost:3008/sign-in (Clerk-powered custom page)
 - **Trading Dashboard**: http://localhost:3008/dashboard (authenticated users)
 - **Inngest Dashboard**: http://localhost:8288 (development workflow monitoring)
 
@@ -391,7 +393,7 @@ make deps-update
 - **Code Quality**: Use Biome.js for formatting and linting, maintain high test pass rate
 - **Focus**: Keep code focused on sniping functionality - avoid adding non-essential features
 - **Database**: Use Drizzle ORM for all database operations with safe migrations
-- **Authentication**: All protected routes must use Supabase Auth integration
+- **Authentication**: All protected routes must pass through Clerk (with Supabase RLS where applicable)
 - **Error Handling**: Implement comprehensive error handling with proper logging
 - **Documentation**: Add JSDoc comments and update relevant documentation
 - **Performance**: Optimize for Vercel serverless deployment and global edge performance

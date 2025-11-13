@@ -231,7 +231,7 @@ export function UpgradeAnonymousAccount({ onSuccess, onCancel }: UpgradeAnonymou
           <p className="text-xs text-muted-foreground text-center">
             You can also link your account using{" "}
             <Button variant="link" className="h-auto p-0 text-xs" asChild>
-              <a href="/auth">OAuth providers</a>
+              <a href="/sign-in">OAuth providers</a>
             </Button>
           </p>
         </div>

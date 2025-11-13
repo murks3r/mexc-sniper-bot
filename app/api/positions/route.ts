@@ -2,11 +2,13 @@ import { and, eq, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { positions } from "@/src/db/schemas/trading";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuthFromRequest(request);
+    const user = await requireClerkAuth();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "open"; // "open", "closed", or "all"
 

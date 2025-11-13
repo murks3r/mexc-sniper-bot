@@ -13,8 +13,8 @@ import { executeWithRateLimit } from "@/src/lib/database-rate-limiter";
 import { validateExternalApiResponse } from "@/src/lib/enhanced-validation-middleware";
 
 import { AccountBalanceSchema } from "@/src/schemas/external-api-validation-schemas";
-import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 import type { UnifiedMexcClient } from "@/src/services/api/mexc-client-factory";
+import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 
 // Request validation schema - userId is optional for environment fallback
 const _BalanceRequestSchema = z.object({

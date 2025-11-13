@@ -158,7 +158,15 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
         }),
       },
       marketDataService: {
-        getCurrentPrice: async (_symbol) => ({ price: 0 }),
+        getCurrentPrice: async (symbol: string) => {
+          try {
+            const price = await this.mexcService.getCurrentPrice(symbol);
+            return { price };
+          } catch (error) {
+            this.logger.warn(`Failed to fetch price for ${symbol}`, { error });
+            return { price: 0 };
+          }
+        },
       },
       marketData: {
         getLatestPrice: (symbol: string) => {

@@ -4,12 +4,12 @@
  * Tests that the advanced retry logic is properly integrated into production modules
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MEXC_ERROR_CODES } from "../advanced-sniper-utils";
 import { AutoSnipingModule } from "../consolidated/core-trading/auto-sniping";
 import { OrderExecutor } from "../consolidated/core-trading/modules/order-executor";
-import { OrderExecutionHelper } from "../consolidated/core-trading/utils/order-execution-helper";
-import { MEXC_ERROR_CODES } from "../advanced-sniper-utils";
 import type { TradeParameters } from "../consolidated/core-trading/types";
+import { OrderExecutionHelper } from "../consolidated/core-trading/utils/order-execution-helper";
 
 describe("Advanced Sniper Integration", () => {
   describe("Error 10007 Retry Integration", () => {

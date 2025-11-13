@@ -1,9 +1,10 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { HydrationWrapper } from "../src/components/auth/hydration-wrapper";
-import { SupabaseAuthProvider } from "../src/components/auth/supabase-auth-provider";
+import { ClerkAuthProvider } from "../src/components/auth/supabase-auth-provider";
 import { StatusProviderWrapper } from "../src/components/providers/status-provider-wrapper";
 import { QueryProvider } from "../src/components/query-provider";
 import { Toaster } from "../src/components/ui/toaster";
@@ -35,19 +36,21 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <HydrationWrapper fallback={<div className="min-h-screen bg-background animate-pulse" />}>
-          <SupabaseAuthProvider>
-            <QueryProvider>
-              <StatusProviderWrapper>
-                {children}
-                <Toaster />
-              </StatusProviderWrapper>
-            </QueryProvider>
-          </SupabaseAuthProvider>
-        </HydrationWrapper>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <HydrationWrapper fallback={<div className="min-h-screen bg-background animate-pulse" />}>
+            <ClerkAuthProvider>
+              <QueryProvider>
+                <StatusProviderWrapper>
+                  {children}
+                  <Toaster />
+                </StatusProviderWrapper>
+              </QueryProvider>
+            </ClerkAuthProvider>
+          </HydrationWrapper>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

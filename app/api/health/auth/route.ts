@@ -1,5 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getSession } from "@/src/lib/supabase-auth";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Validates URL format and protocol
@@ -18,65 +20,54 @@ function validateUrlFormat(url: string | undefined, allowedProtocols: string[]):
 }
 
 /**
- * Health check endpoint for Supabase Auth configuration and functionality
+ * Health check endpoint for Clerk + Supabase auth configuration
  *
- * This endpoint validates:
- * - Environment variables are properly configured
- * - Supabase SDK is functioning correctly
- * - Authentication service connectivity
+ * Validates:
+ * - Required environment variables for Clerk and Supabase sync helpers
+ * - Clerk SDK accessibility via `auth()`
+ * - URL formatting for Supabase backend
  *
  * Used by CI/CD pipelines and monitoring systems
  */
 export async function GET() {
   try {
-    // Required environment variables for Supabase Auth
     const requiredEnvs = [
       "DATABASE_URL",
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "SUPABASE_SERVICE_ROLE_KEY",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "CLERK_SECRET_KEY",
     ];
 
-    // Check for missing environment variables (undefined/null, not empty strings)
     const missing = requiredEnvs.filter((env) => process.env[env] === undefined);
 
-    if (missing.length > 0) {
-      return NextResponse.json(
-        {
-          status: "error",
-          error: "Missing required environment variables",
-          missing_env_vars: missing,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 500 },
-      );
-    }
-
-    // Test Supabase SDK functionality
-    let supabaseStatus = "unknown";
-    let authTestResult = null;
+    let clerkStatus: {
+      sdkAccessible: boolean;
+      sessionId: string | null;
+      userId: string | null;
+      sessionClaims: Record<string, unknown> | null;
+      error?: string;
+    } | null = null;
 
     try {
-      // This tests the SDK initialization without requiring a user session
-      const session = await getSession();
-      supabaseStatus = "initialized";
-      authTestResult = {
-        sdk_accessible: true,
-        session_check_working: true,
-        auth_status: session.isAuthenticated || false,
-        user_present: Boolean(session.user),
+      const session = await auth();
+      clerkStatus = {
+        sdkAccessible: true,
+        sessionId: session.sessionId ?? null,
+        userId: session.userId ?? null,
+        sessionClaims: session.session?.claims ?? null,
       };
-    } catch (sdkError) {
-      // Auth Health Check Supabase SDK Error - error logging handled by error handler middleware
-      supabaseStatus = "error";
-      authTestResult = {
-        sdk_accessible: false,
-        error: sdkError instanceof Error ? sdkError.message : "Unknown SDK error",
+    } catch (clerkError) {
+      clerkStatus = {
+        sdkAccessible: false,
+        sessionId: null,
+        userId: null,
+        sessionClaims: null,
+        error: clerkError instanceof Error ? clerkError.message : "Unknown Clerk SDK error",
       };
     }
 
-    // Validate configuration values with proper URL validation
-    // Support both postgresql:// and postgres:// protocols (Supabase uses postgres://)
     const databaseUrl = process.env.DATABASE_URL || "";
     const databaseUrlFormat =
       databaseUrl.startsWith("postgresql://") || databaseUrl.startsWith("postgres://");
@@ -91,26 +82,31 @@ export async function GET() {
       service_role_key_format: Boolean(
         process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0,
       ),
+      clerk_publishable_key: Boolean(
+        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+          process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.length > 0,
+      ),
+      clerk_secret_key: Boolean(
+        process.env.CLERK_SECRET_KEY && process.env.CLERK_SECRET_KEY.length > 0,
+      ),
     };
 
     const allConfigValid = Object.values(configValidation).every(Boolean);
 
-    // Determine overall health status
     let overallStatus: "healthy" | "warning" | "unhealthy";
     let message: string;
 
-    if (supabaseStatus === "error" || !allConfigValid) {
+    if (missing.length > 0 || !clerkStatus?.sdkAccessible || !allConfigValid) {
       overallStatus = "unhealthy";
       message = "Authentication system has critical issues";
-    } else if (supabaseStatus === "unknown") {
+    } else if (clerkStatus?.sdkAccessible) {
+      overallStatus = "healthy";
+      message = "Authentication system is fully configured";
+    } else {
       overallStatus = "warning";
       message = "Authentication system partially functional";
-    } else {
-      overallStatus = "healthy";
-      message = "Authentication system fully operational";
     }
 
-    // Additional deployment environment info
     let supabaseDomain = null;
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
@@ -131,22 +127,20 @@ export async function GET() {
     return NextResponse.json({
       status: overallStatus,
       message,
-      auth_configured: allConfigValid,
-      supabase_sdk_status: supabaseStatus,
-      configuration_validation: configValidation,
-      auth_test_result: authTestResult,
-      deployment_info: deploymentInfo,
+      auth_configured: missing.length === 0 && clerkStatus?.sdkAccessible,
+      missing_env_vars: missing,
       environment_variables: {
         total_required: requiredEnvs.length,
         configured: requiredEnvs.length - missing.length,
         missing_count: missing.length,
       },
+      clerk_status: clerkStatus,
+      configuration_validation: configValidation,
+      deployment_info: deploymentInfo,
       timestamp: new Date().toISOString(),
-      version: "2.0.0-supabase",
+      version: "2.0.0",
     });
   } catch (error) {
-    // Auth Health Check Unexpected error - error logging handled by error handler middleware
-
     const errorObj = error as Error | { message?: string };
     return NextResponse.json(
       {
@@ -155,16 +149,11 @@ export async function GET() {
         details: errorObj?.message || "Unknown error occurred",
         timestamp: new Date().toISOString(),
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }
 
-/**
- * Handle OPTIONS requests for CORS
- */
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

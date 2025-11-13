@@ -2,14 +2,16 @@ import { and, desc, eq, or, type SQL } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+
+export const dynamic = "force-dynamic";
 
 // Create snipe target endpoint
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const _user = await requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
     // Request from user
 
     // Manual creation is disabled: only system background processes create targets
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Get authenticated user
-    const user = await requireAuthFromRequest(request);
+    const user = await requireClerkAuth();
     // Fetching targets for user
 
     const { searchParams } = new URL(request.url);

@@ -7,7 +7,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import { serviceConflictDetector } from "@/src/services/trading/service-conflict-detector";
 
 /**
@@ -17,7 +17,7 @@ import { serviceConflictDetector } from "@/src/services/trading/service-conflict
 export async function GET(request: NextRequest) {
   try {
     // Require authentication
-    const _user = await requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
     // Status request from user
 
     // Get service conflict status
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require authentication
-    const _user = await requireAuthFromRequest(request);
+    const _user = await requireClerkAuth();
     // Force reset requested by user
 
     const body = await request.json().catch(() => ({}));

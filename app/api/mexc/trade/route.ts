@@ -9,12 +9,8 @@ import {
   createSuccessResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
-import { getCachedCredentials } from "@/src/lib/credential-cache";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
-import { getLogger } from "@/src/lib/unified-logger";
-import type { OrderParameters } from "@/src/services/api/mexc-client-types";
-import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
-import { transactionLockService } from "@/src/services/data/transaction-lock-service";
+
+export const dynamic = "force-dynamic";
 // Risk management service removed in minimization - manual trade risk assessment disabled
 // import { enhancedRiskManagementService } from "@/src/services/risk/enhanced-risk-management-service";
 
@@ -22,7 +18,7 @@ export async function POST(request: NextRequest) {
   const logger = getLogger("mexc-trade-api");
   try {
     // Get authenticated user
-    const user = await requireAuthFromRequest(request);
+    const user = await requireClerkAuth();
     const userId = user.id;
     logger.info("Trade request received", { email: user.email, userId });
 

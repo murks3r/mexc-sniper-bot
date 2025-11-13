@@ -279,7 +279,7 @@ export class CalendarToDatabaseSyncService {
           .set({
             symbolName,
             targetExecutionTime: new Date(launch.firstOpenTime),
-            status: "active", // Set to "active" so targets appear in dashboard
+            status: "ready", // Set to "ready" so targets are immediately eligible for execution
             confidenceScore: 85.0, // High confidence for calendar launches
             riskLevel: "medium",
             updatedAt: new Date(),
@@ -313,7 +313,7 @@ export class CalendarToDatabaseSyncService {
             takeProfitLevel: riskParams.takeProfitLevel,
             takeProfitCustom: riskParams.takeProfitCustom,
             targetExecutionTime: new Date(launch.firstOpenTime),
-            status: "active", // Set status to "active" so targets appear in dashboard
+            status: "ready", // Set status to "ready" so targets are immediately eligible for execution
             confidenceScore: 85.0, // High confidence for calendar launches
             riskLevel: "medium",
           });
@@ -340,44 +340,71 @@ export class CalendarToDatabaseSyncService {
 
   /**
    * Cleanup old targets that are past the time window
-   * Also marks "active" targets as "failed" if their execution time has passed
+   * Transitions "active" targets to "ready" when execution time passes
+   * Marks "ready" targets as "failed" if they remain unexecuted past a grace period
    */
   private async cleanupOldTargets(timeWindowHours: number, result: SyncResult): Promise<void> {
     try {
       const cutoffTime = new Date(Date.now() - timeWindowHours * 60 * 60 * 1000);
       const now = new Date();
 
-      // Delete old targets with status "pending" or "ready"
+      // Delete old targets with status "pending"
       const _deletedResult = await db
         .delete(snipeTargets)
         .where(
-          and(
-            lt(snipeTargets.targetExecutionTime, cutoffTime),
-            inArray(snipeTargets.status, ["pending", "ready"]),
-          ),
+          and(lt(snipeTargets.targetExecutionTime, cutoffTime), eq(snipeTargets.status, "pending")),
         );
 
-      // Mark "active" targets as "failed" if their execution time has passed
-      // These are targets that were never executed and are now stale
-      const staleActiveTargets = await db
+      // Transition "active" targets to "ready" when their execution time arrives
+      // This allows them to be picked up by the auto-sniping service
+      const transitionToReady = await db
         .update(snipeTargets)
         .set({
-          status: "failed",
-          errorMessage: "Target execution time passed without execution",
+          status: "ready",
           updatedAt: new Date(),
         })
         .where(and(eq(snipeTargets.status, "active"), lt(snipeTargets.targetExecutionTime, now)))
         .returning({ id: snipeTargets.id, symbolName: snipeTargets.symbolName });
 
-      if (staleActiveTargets.length > 0) {
-        this.logger.info("Marked stale active targets as failed", {
-          count: staleActiveTargets.length,
-          targets: staleActiveTargets.map((t) => `${t.symbolName} (id: ${t.id})`),
+      if (transitionToReady.length > 0) {
+        this.logger.info("Transitioned active targets to ready for execution", {
+          count: transitionToReady.length,
+          targets: transitionToReady.map((t) => `${t.symbolName} (id: ${t.id})`),
+        });
+        result.updated += transitionToReady.length;
+      }
+
+      // Mark "ready" targets as "failed" if they remain unexecuted 2 hours past execution time
+      // These are targets that were not executed by the auto-sniping service
+      const staleReadyTargets = await db
+        .update(snipeTargets)
+        .set({
+          status: "failed",
+          errorMessage: "Target execution time passed without execution by auto-sniping service",
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(snipeTargets.status, "ready"),
+            lt(
+              snipeTargets.targetExecutionTime,
+              new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 hours grace period
+            ),
+          ),
+        )
+        .returning({ id: snipeTargets.id, symbolName: snipeTargets.symbolName });
+
+      if (staleReadyTargets.length > 0) {
+        this.logger.warn("Marked stale ready targets as failed", {
+          count: staleReadyTargets.length,
+          targets: staleReadyTargets.map((t) => `${t.symbolName} (id: ${t.id})`),
         });
       }
 
       this.logger.info("Cleaned up old targets", {
         cutoff: cutoffTime.toISOString(),
+        transitionedToReady: transitionToReady.length,
+        markedAsFailed: staleReadyTargets.length,
       });
     } catch (error) {
       this.logger.error(

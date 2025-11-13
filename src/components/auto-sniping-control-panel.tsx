@@ -198,9 +198,9 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
 
       // Handle authentication errors by redirecting to login
       if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
-        // Redirect to auth page after a brief delay
+        // Redirect to sign-in page after a brief delay
         setTimeout(() => {
-          window.location.href = `/auth?redirect_to=${encodeURIComponent(window.location.pathname)}`;
+          window.location.href = `/sign-in?redirect_to=${encodeURIComponent(window.location.pathname)}`;
         }, 2000);
       }
     },
@@ -271,7 +271,7 @@ export function AutoSnipingControlPanel({ className = "" }: AutoSnipingControlPa
       // Handle authentication errors by redirecting to login
       if (error.message.includes("sign in") || error.message.includes("Authentication required")) {
         setTimeout(() => {
-          window.location.href = `/auth?redirect_to=${encodeURIComponent(window.location.pathname)}`;
+          window.location.href = `/sign-in?redirect_to=${encodeURIComponent(window.location.pathname)}`;
         }, 2000);
       }
     },

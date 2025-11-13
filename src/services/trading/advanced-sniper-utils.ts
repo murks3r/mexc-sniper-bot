@@ -11,9 +11,9 @@
  * - Order spam strategy with safeguards
  */
 
-import type { OrderData, OrderResult } from "../data/modules/mexc-core-trading";
-import type { MexcServiceResponse } from "../data/modules/mexc-api-types";
 import type { SymbolFilter } from "../api/mexc-client-types";
+import type { MexcServiceResponse } from "../data/modules/mexc-api-types";
+import type { OrderData, OrderResult } from "../data/modules/mexc-core-trading";
 
 // ============================================================================
 // Configuration Types
@@ -121,7 +121,7 @@ export async function executeOrderWithRetry<T>(
 
       if (errorCode === MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE) {
         const delay = Math.min(
-          finalConfig.initialDelayMs * Math.pow(finalConfig.backoffMultiplier, attempt),
+          finalConfig.initialDelayMs * finalConfig.backoffMultiplier ** attempt,
           finalConfig.maxDelayMs,
         );
 
@@ -146,7 +146,7 @@ export async function executeOrderWithRetry<T>(
         errorCode === MEXC_ERROR_CODES.RATE_LIMIT
       ) {
         const delay = Math.min(
-          finalConfig.initialDelayMs * Math.pow(finalConfig.backoffMultiplier, attempt),
+          finalConfig.initialDelayMs * finalConfig.backoffMultiplier ** attempt,
           finalConfig.maxDelayMs,
         );
 

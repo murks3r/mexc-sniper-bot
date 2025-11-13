@@ -7,6 +7,8 @@ import {
   SSEStreamHelper,
 } from "../utils";
 
+export const dynamic = "force-dynamic";
+
 // Server-Sent Events endpoint that streams live price updates for requested symbols
 export async function GET(request: NextRequest) {
   try {

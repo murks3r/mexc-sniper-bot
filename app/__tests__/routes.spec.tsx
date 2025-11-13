@@ -1,8 +1,30 @@
-import { describe, expect, it } from "vitest";
+import type { ReactNode } from "react";
+import { describe, expect, it, vi } from "vitest";
 import {
   createAuthenticatedRequest,
   createTestSession,
-} from "@/src/lib/test-helpers/supabase-auth-test-helpers";
+} from "@/src/lib/test-helpers/clerk-auth-test-helpers";
+
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "geist" }),
+  Geist_Mono: () => ({ variable: "geist-mono" }),
+}));
+
+vi.mock("@clerk/nextjs", () => {
+  const { createElement, Fragment } = require("react");
+  return {
+    useUser: () => ({ user: null, isLoaded: true }),
+    useSession: () => ({ session: null }),
+    useClerk: () => ({ signOut: vi.fn() }),
+    ClerkProvider: ({ children }: { children: ReactNode }) =>
+      createElement(Fragment, null, children),
+    SignIn: () => createElement("div", null, "Sign In"),
+    SignUp: () => createElement("div", null, "Sign Up"),
+    UserButton: () => createElement("div", null, "User Button"),
+    SignInButton: ({ children }: { children: ReactNode }) =>
+      createElement(Fragment, null, children),
+  };
+});
 
 /**
  * Route Integration Tests
@@ -54,7 +76,7 @@ describe("Route Integration Tests", () => {
       const testSession = createTestSession();
       const request = createAuthenticatedRequest(
         "http://localhost:3000/api/snipe-targets",
-        testSession.accessToken,
+        testSession.sessionToken,
       );
 
       expect(request.headers.get("Authorization")).toBeTruthy();
@@ -63,33 +85,59 @@ describe("Route Integration Tests", () => {
 
     it("should verify test session structure for route testing", () => {
       const testSession = createTestSession({
+        clerkUserId: "route-test-user",
         user: {
           id: "route-test-user",
-          aud: "authenticated",
-          role: "authenticated",
-          email: "route-test@example.com",
-          email_confirmed_at: new Date().toISOString(),
-          phone: "",
-          confirmation_sent_at: new Date().toISOString(),
-          confirmed_at: new Date().toISOString(),
-          last_sign_in_at: new Date().toISOString(),
-          app_metadata: {},
-          user_metadata: {},
-          identities: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        supabaseUser: {
-          id: "route-test-user",
-          email: "route-test@example.com",
-          name: "Route Test User",
-          emailVerified: true,
-        },
+          object: "user",
+          username: "route-test-user",
+          firstName: "Route",
+          lastName: "Test",
+          emailAddresses: [
+            {
+              id: "email_1",
+              emailAddress: "route-test@example.com",
+              verification: { status: "verified", strategy: "email_link" },
+              linkedTo: [],
+            },
+          ],
+          phoneNumbers: [],
+          web3Wallets: [],
+          externalAccounts: [],
+          samlAccounts: [],
+          publicMetadata: {},
+          privateMetadata: {},
+          unsafeMetadata: {},
+          primaryEmailAddressId: "email_1",
+          primaryPhoneNumberId: null,
+          primaryWeb3WalletId: null,
+          passwordEnabled: true,
+          totpEnabled: false,
+          backupCodeEnabled: false,
+          twoFactorEnabled: false,
+          banned: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastSignInAt: Date.now(),
+          imageUrl: "",
+          hasImage: false,
+          profileImageUrl: "",
+          externalId: null,
+        } as any,
+        session: {
+          id: "sess_1",
+          object: "session",
+          userId: "route-test-user",
+          status: "active",
+          lastActiveAt: Date.now(),
+          expireAt: Date.now() + 3600 * 1000,
+          abandonAt: Date.now() + 3600 * 1000,
+        } as any,
+        sessionToken: "mock-session-token-123",
       });
 
       expect(testSession.user.id).toBe("route-test-user");
-      expect(testSession.accessToken).toBeTruthy();
-      expect(testSession.supabaseUser.email).toBe("route-test@example.com");
+      expect(testSession.sessionToken).toBeTruthy();
+      expect(testSession.user.emailAddresses[0]?.emailAddress).toBe("route-test@example.com");
     });
   });
 });

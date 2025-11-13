@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { ensureUserInDatabase, getSession } from "@/src/lib/supabase-auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_request: NextRequest) {
   try {
     const session = await getSession();

@@ -2,20 +2,20 @@
  * Tests for Advanced Sniper Utilities
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  executeOrderWithRetry,
-  validateAndAdjustQuantity,
-  waitForExecutionWindow,
-  isWithinExecutionWindow,
-  sleep,
-  MEXC_ERROR_CODES,
-  DEFAULT_RETRY_CONFIG,
-  DEFAULT_TIMING_CONFIG,
-  type QuantityValidationResult,
-} from "../advanced-sniper-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SymbolFilter } from "../../api/mexc-client-types";
 import type { MexcServiceResponse } from "../../data/modules/mexc-api-types";
+import {
+  DEFAULT_RETRY_CONFIG,
+  DEFAULT_TIMING_CONFIG,
+  executeOrderWithRetry,
+  isWithinExecutionWindow,
+  MEXC_ERROR_CODES,
+  type QuantityValidationResult,
+  sleep,
+  validateAndAdjustQuantity,
+  waitForExecutionWindow,
+} from "../advanced-sniper-utils";
 
 describe("Advanced Sniper Utilities", () => {
   describe("executeOrderWithRetry", () => {

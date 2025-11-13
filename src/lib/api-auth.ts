@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createErrorResponse, HTTP_STATUS } from "./api-response";
 import { shouldBypassRateLimit } from "./bypass-rate-limit";
+import { requireClerkAuth } from "./clerk-auth-server";
 import { AuthorizationError } from "./errors";
 import {
   checkRateLimit,
@@ -9,7 +10,6 @@ import {
   isIPSuspicious,
   logSecurityEvent,
 } from "./rate-limiter";
-import { getSession, requireAuth } from "./supabase-auth";
 /**
  * Alias for requireApiAuth to maintain compatibility
  */
@@ -99,7 +99,7 @@ export async function requireApiAuth(
   }
 
   try {
-    const user = await requireAuth();
+    const user = await requireClerkAuth();
 
     // Log successful authentication for monitoring
     logSecurityEvent({
@@ -110,7 +110,7 @@ export async function requireApiAuth(
       userId: user.id,
       metadata: {
         success: true,
-        method: "supabase_session",
+        method: "clerk_session",
       },
     });
 
@@ -125,7 +125,7 @@ export async function requireApiAuth(
       metadata: {
         success: false,
         error: error instanceof Error ? error.message : "unknown_error",
-        method: "supabase_session",
+        method: "clerk_session",
       },
     });
 
@@ -149,7 +149,7 @@ export async function requireApiAuth(
  */
 export async function validateUserAccess(_request: NextRequest, userId: string) {
   try {
-    const user = await requireAuth();
+    const user = await requireClerkAuth();
 
     if (user.id !== userId) {
       throw new Response(
@@ -192,8 +192,7 @@ export async function validateUserAccess(_request: NextRequest, userId: string) 
  */
 export async function getOptionalAuth() {
   try {
-    const session = await getSession();
-    return session.isAuthenticated ? session.user : null;
+    return await requireClerkAuth();
   } catch (_error) {
     return null;
   }

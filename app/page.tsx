@@ -1,5 +1,6 @@
 "use client";
 
+import { SignInButton } from "@clerk/nextjs";
 import { BarChart3, Bot, Brain, Clock, Shield, Target, TrendingUp, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -98,10 +99,12 @@ function HomePage() {
             <span className="font-semibold text-lg">MEXC Sniper</span>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => window.location.assign("/auth")}>
-              Sign In
-            </Button>
-            <Button onClick={() => window.location.assign("/auth")}>Get Started</Button>
+            <SignInButton mode="modal">
+              <Button variant="ghost">Sign In</Button>
+            </SignInButton>
+            <SignInButton mode="modal">
+              <Button>Get Started</Button>
+            </SignInButton>
           </div>
         </div>
       </header>
@@ -122,22 +125,17 @@ function HomePage() {
             detection.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button
-              size="lg"
-              onClick={() => window.location.assign("/auth")}
-              className="px-8 py-3 text-lg"
-            >
-              <Zap className="w-5 h-5 mr-2" />
-              Get Started
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => window.location.assign("/auth")}
-              className="px-8 py-3 text-lg"
-            >
-              Sign In
-            </Button>
+            <SignInButton mode="modal">
+              <Button size="lg" className="px-8 py-3 text-lg">
+                <Zap className="w-5 h-5 mr-2" />
+                Get Started
+              </Button>
+            </SignInButton>
+            <SignInButton mode="modal">
+              <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
+                Sign In
+              </Button>
+            </SignInButton>
           </div>
         </div>
 
@@ -270,14 +268,12 @@ function HomePage() {
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Join the future of automated cryptocurrency trading with AI-powered precision.
             </p>
-            <Button
-              size="lg"
-              onClick={() => window.location.assign("/auth")}
-              className="px-12 py-4 text-lg"
-            >
-              <Zap className="w-5 h-5 mr-2" />
-              Sign Up Now
-            </Button>
+            <SignInButton mode="modal">
+              <Button size="lg" className="px-12 py-4 text-lg">
+                <Zap className="w-5 h-5 mr-2" />
+                Sign Up Now
+              </Button>
+            </SignInButton>
           </CardContent>
         </Card>
       </main>

@@ -13,8 +13,8 @@
  * Or schedule via cron: 0,5,10,15,20,25,30,35,40,45,50,55 * * * * cd /path/to/project && bun run scripts/monitor-system.ts --once
  */
 
-import { db } from "../src/db";
 import { sql } from "drizzle-orm";
+import { db } from "../src/db";
 
 interface MonitoringResult {
   timestamp: string;
@@ -52,7 +52,12 @@ async function checkJobQueue() {
     const counts = (Array.isArray(statusCounts) ? statusCounts : [statusCounts]).reduce(
       (acc, row: { status: string; count: string | number; oldest?: string }) => {
         const status = row.status as keyof typeof acc;
-        if (status === "pending" || status === "running" || status === "completed" || status === "dead") {
+        if (
+          status === "pending" ||
+          status === "running" ||
+          status === "completed" ||
+          status === "dead"
+        ) {
           acc[status] = Number(row.count);
         }
         if (row.status === "pending" && row.oldest) {
@@ -168,7 +173,9 @@ async function monitor() {
   console.log(`   Successful: ${tradeExecution.successful}`);
   console.log(`   Failed: ${tradeExecution.failed}`);
   if (tradeExecution.lastExecution) {
-    const age = Math.round((Date.now() - new Date(tradeExecution.lastExecution).getTime()) / 1000 / 60);
+    const age = Math.round(
+      (Date.now() - new Date(tradeExecution.lastExecution).getTime()) / 1000 / 60,
+    );
     console.log(`   Last Execution: ${age} minutes ago`);
   }
 
@@ -235,4 +242,3 @@ if (import.meta.main) {
     }, interval);
   }
 }
-

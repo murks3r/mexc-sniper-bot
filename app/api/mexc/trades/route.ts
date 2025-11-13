@@ -3,6 +3,8 @@ import { apiAuthWrapper } from "@/src/lib/api-auth";
 import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
 import { getUnifiedMexcServiceV2 } from "@/src/services/api/unified-mexc-service-v2";
 
+export const dynamic = "force-dynamic";
+
 export const GET = apiAuthWrapper(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);

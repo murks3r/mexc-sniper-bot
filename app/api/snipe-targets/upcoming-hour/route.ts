@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 /**
  * Upcoming Hour Targets API Endpoint
  *
@@ -5,16 +7,10 @@
  * Used for production readiness verification.
  */
 
-import { and, eq, gt, isNull, lt, or } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/src/db";
-import { snipeTargets } from "@/src/db/schemas/trading";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
-
 export async function GET(request: NextRequest) {
   try {
     // Get authenticated user
-    const user = await requireAuthFromRequest(request);
+    const user = await requireClerkAuth();
 
     const now = new Date();
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);

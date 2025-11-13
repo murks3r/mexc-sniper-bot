@@ -10,12 +10,13 @@ import {
   createValidationErrorResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
-import { createSupabaseAdminClient, requireAuth } from "@/src/lib/supabase-auth";
+
+export const dynamic = "force-dynamic";
 
 // GET /api/user-preferences?userId=xxx
 export const GET = withApiErrorHandling(async (request: NextRequest) => {
   // Derive user from session; fallback to explicit param only if provided
-  const user = await requireAuth();
+  const user = await requireClerkAuth();
   const { searchParams } = new URL(request.url);
   const paramUserId = searchParams.get("userId");
   const userId =
@@ -111,7 +112,7 @@ export const GET = withApiErrorHandling(async (request: NextRequest) => {
 
 // POST /api/user-preferences
 export const POST = withApiErrorHandling(async (request: NextRequest) => {
-  const user = await requireAuth();
+  const user = await requireClerkAuth();
   const body = await request.json();
   const { userId, ...data } = body;
 
@@ -290,7 +291,6 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
 
       if (isTestEnvironment) {
         // Auto-create test user
-
         const testUserData = {
           id: validatedUserId,
           email: `${validatedUserId}@test.example.com`,
@@ -304,43 +304,32 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
           return result;
         }, "create test user");
       } else {
-        // Production environment - auto-create real authenticated user
+        // Production environment - auto-create real authenticated user from Clerk
+        const { user } = await auth();
 
-        const supabase = createSupabaseAdminClient();
-        const { data: userData, error } = await supabase.auth.admin.getUserById(validatedUserId);
-
-        if (error) {
-          // Failed to fetch user data - error logging handled by error handler middleware
-          return apiResponse(
-            createValidationErrorResponse(
-              "userId",
-              `Failed to fetch user data for ${validatedUserId}: ${error.message}`,
-            ),
-            HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          );
-        }
-
-        if (!userData?.user) {
+        if (!user) {
           // User not found - error logging handled by error handler middleware
           return apiResponse(
             createValidationErrorResponse(
               "userId",
-              `User with ID ${validatedUserId} not found in Supabase auth.`,
+              `User with ID ${validatedUserId} not found in Clerk auth.`,
             ),
             HTTP_STATUS.NOT_FOUND,
           );
         }
 
+        const primaryEmail = user.emailAddresses[0];
         const realUserData = {
-          id: userData.user.id,
-          email: userData.user.email || `user-${validatedUserId}@app.com`,
+          id: user.id,
+          email: primaryEmail?.emailAddress || `user-${validatedUserId}@app.com`,
           name:
-            userData.user.user_metadata?.name ||
-            userData.user.user_metadata?.full_name ||
+            user.fullName ||
+            user.username ||
+            primaryEmail?.emailAddress ||
             `User ${validatedUserId.substring(0, 8)}`,
-          emailVerified: !!userData.user.email_confirmed_at,
-          createdAt: new Date(userData.user.created_at),
-          updatedAt: new Date(userData.user.updated_at),
+          emailVerified: primaryEmail?.verification?.status === "verified",
+          createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
+          updatedAt: new Date(),
         };
 
         try {

@@ -6,83 +6,115 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import {
   createAuthenticatedRequest,
   createTestSession,
-} from "@/src/lib/test-helpers/supabase-auth-test-helpers";
-import { detectTestMode } from "@/src/lib/test-helpers/test-supabase-client";
+} from "@/src/lib/test-helpers/clerk-auth-test-helpers";
 
-const testMode = detectTestMode();
-const skipIntegrationTests = testMode === "mock";
+const hasRealClerk = !!process.env.CLERK_SECRET_KEY;
 
 describe("Authentication Debug", () => {
   describe("Mocked Auth (Unit Tests)", () => {
-    // Mock authentication - use hoisted to ensure it's available before route import
-    const mockRequireAuth = vi.hoisted(() =>
-      vi.fn().mockResolvedValue({
-        id: "test-user-id",
-        email: "test@example.com",
-        name: "Test User",
-        emailVerified: true,
-      }),
-    );
+    const mockRequireAuth = vi.fn().mockResolvedValue({
+      id: "test-user-id",
+      email: "test@example.com",
+      name: "Test User",
+      emailVerified: true,
+    });
 
-    vi.mock("@/src/lib/supabase-auth-server", () => ({
-      requireAuthFromRequest: mockRequireAuth,
+    vi.mock("@/src/lib/clerk-auth-server", () => ({
+      requireClerkAuth: mockRequireAuth,
     }));
 
-    it("should mock requireAuthFromRequest correctly", async () => {
-      const mockRequest = new Request("http://localhost:3000/test");
-
-      const user = await requireAuthFromRequest(mockRequest as any);
+    it("should mock requireClerkAuth correctly", async () => {
+      const { requireClerkAuth: mockedRequireAuth } = await import("@/src/lib/clerk-auth-server");
+      const user = await mockedRequireAuth();
 
       expect(user).toBeDefined();
       expect(user.id).toBe("test-user-id");
-      expect(mockRequireAuth).toHaveBeenCalledWith(mockRequest);
+      expect(mockRequireAuth).toHaveBeenCalled();
     });
   });
 
   describe("Test Helpers Usage", () => {
     it("should create test session with test helpers", () => {
       const testSession = createTestSession({
-        supabaseUser: {
+        clerkUserId: "test-user-123",
+        user: {
           id: "test-user-123",
-          email: "test@example.com",
-          name: "Test User",
-          emailVerified: true,
-        },
+          object: "user",
+          username: "testuser",
+          firstName: "Test",
+          lastName: "User",
+          emailAddresses: [
+            {
+              id: "email_1",
+              emailAddress: "test@example.com",
+              verification: { status: "verified", strategy: "email_link" },
+              linkedTo: [],
+            },
+          ],
+          phoneNumbers: [],
+          web3Wallets: [],
+          externalAccounts: [],
+          samlAccounts: [],
+          publicMetadata: {},
+          privateMetadata: {},
+          unsafeMetadata: {},
+          primaryEmailAddressId: "email_1",
+          primaryPhoneNumberId: null,
+          primaryWeb3WalletId: null,
+          passwordEnabled: true,
+          totpEnabled: false,
+          backupCodeEnabled: false,
+          twoFactorEnabled: false,
+          banned: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastSignInAt: Date.now(),
+          imageUrl: "",
+          hasImage: false,
+          profileImageUrl: "",
+          externalId: null,
+        } as any,
+        sessionToken: "mock-token-123",
       });
 
       expect(testSession.user).toBeDefined();
-      expect(testSession.accessToken).toBeTruthy();
-      expect(testSession.supabaseUser.id).toBe("test-user-123");
+      expect(testSession.sessionToken).toBeTruthy();
+      expect(testSession.clerkUserId).toBe("test-user-123");
     });
 
     it("should create authenticated request with test helpers", () => {
       const testSession = createTestSession();
       const request = createAuthenticatedRequest(
         "http://localhost:3000/api/test",
-        testSession.accessToken,
+        testSession.sessionToken,
       );
 
-      expect(request.headers.get("Authorization")).toBe(`Bearer ${testSession.accessToken}`);
+      expect(request.headers.get("Authorization")).toBe(`Bearer ${testSession.sessionToken}`);
     });
   });
 
-  describe.skipIf(skipIntegrationTests)("Real Auth (Integration Tests)", () => {
-    it("should work with real Supabase auth when configured", async () => {
-      // This test demonstrates how to use real auth in integration tests
-      // It requires USE_REAL_SUPABASE=true and proper Supabase credentials
+  describe("Real Auth (Integration Tests)", () => {
+    it("should work with real Clerk auth when configured", async () => {
+      // This test works with both real and mock Clerk
       const testSession = createTestSession();
 
       // Verify session structure
-      expect(testSession.session).toBeDefined();
       expect(testSession.user).toBeDefined();
-      expect(testSession.accessToken).toBeTruthy();
+      expect(testSession.sessionToken).toBeTruthy();
 
-      // Note: For full integration test, use createAndSignInTestUser()
-      // from supabase-auth-test-helpers
+      if (hasRealClerk) {
+        // Real integration test would use createAndSignInClerkUser()
+        // For now, verify mock structure works
+        expect(testSession.user.id).toBeTruthy();
+      } else {
+        // Mock test - verify structure
+        expect(testSession.user.id).toBeTruthy();
+        expect(typeof testSession.sessionToken).toBe("string");
+      }
     });
   });
 });

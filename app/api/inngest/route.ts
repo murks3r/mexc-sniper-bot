@@ -1,6 +1,8 @@
 // Build-safe dynamic imports to prevent SSR issues during Next.js build
 import { serve } from "inngest/next";
 
+export const dynamic = "force-dynamic";
+
 // Use dynamic imports to prevent build-time evaluation issues
 async function getInngestSetup() {
   try {
@@ -11,15 +13,7 @@ async function getInngestSetup() {
 
     return {
       client: inngest,
-      functions: [
-        // Core workflow functions (simplified - no agents)
-        pollMexcCalendar, // Calendar sync to database
-
-        // Scheduled monitoring functions (minimized)
-        scheduledCalendarMonitoring, // Every 30 minutes - essential for auto-sniping
-        // Removed: scheduledHealthCheck, scheduledDailyReport, emergencyResponseHandler
-        // Removed: scheduledPatternAnalysis, scheduledIntensiveAnalysis (agent-based)
-      ],
+      functions: [pollMexcCalendar, scheduledCalendarMonitoring].filter(Boolean),
     };
   } catch (_error) {
     // Fallback for build-time safety - error logging handled by error handler middleware

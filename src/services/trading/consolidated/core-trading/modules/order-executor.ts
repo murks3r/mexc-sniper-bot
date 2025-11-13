@@ -6,8 +6,11 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
-import { executeOrderWithRetry, MEXC_ERROR_CODES } from "@/src/services/trading/advanced-sniper-utils";
 import type { TradingOrderData } from "@/src/services/api/unified-mexc-trading";
+import {
+  executeOrderWithRetry,
+  MEXC_ERROR_CODES,
+} from "@/src/services/trading/advanced-sniper-utils";
 import type { ModuleContext, Position, TradeParameters, TradeResult } from "../types";
 
 export class OrderExecutor {

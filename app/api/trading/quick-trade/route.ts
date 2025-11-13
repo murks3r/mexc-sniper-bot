@@ -7,8 +7,8 @@ import {
   createSuccessResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
-import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
+
+export const dynamic = "force-dynamic";
 
 const quickTradeSchema = z.object({
   symbol: z.string().min(1, "Symbol is required"),
@@ -29,7 +29,7 @@ const quickTradeSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const user = await requireAuthFromRequest(request);
+    const user = await requireClerkAuth();
     const userId = user.id;
 
     const body = await request.json();

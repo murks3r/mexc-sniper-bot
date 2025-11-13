@@ -3,6 +3,8 @@ import { requireAuth } from "@/src/lib/supabase-auth";
 import { getUserCredentials } from "@/src/services/api/user-credentials-service";
 import { getGlobalHealthMonitor } from "@/src/services/data/connection-health-monitor";
 
+export const dynamic = "force-dynamic";
+
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache window
 
 interface ConnectivityCheckResult {

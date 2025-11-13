@@ -1,16 +1,35 @@
 /**
- * Trading Strategy Manager Stub
+ * Trading Strategy Manager
  *
- * Stub implementation for trading strategy management.
+ * Provides default trading strategy for sniping operations.
  */
 
+export interface TakeProfitLevel {
+  percentage: number;
+  quantityPercent: number;
+}
+
+export interface TradingStrategy {
+  name: string;
+  levels: TakeProfitLevel[];
+}
+
 export class TradingStrategyManager {
-  getStrategy() {
-    return null;
+  private defaultStrategy: TradingStrategy = {
+    name: "default-sniper",
+    levels: [
+      { percentage: 2, quantityPercent: 50 },
+      { percentage: 5, quantityPercent: 30 },
+      { percentage: 10, quantityPercent: 20 },
+    ],
+  };
+
+  getStrategy(): TradingStrategy {
+    return this.defaultStrategy;
   }
 
-  setStrategy() {
-    // Stub
+  setStrategy(strategy: TradingStrategy) {
+    this.defaultStrategy = strategy;
   }
 }
 

@@ -1,172 +1,132 @@
+export const dynamic = "force-dynamic";
+
 /**
  * Authentication Test Endpoint
  *
- * Tests if the current user is properly authenticated with Supabase.
- * Helps debug authentication issues with the dashboard.
+ * Provides insight into Clerk authentication state for debugging.
  */
 
-import { type NextRequest, NextResponse } from "next/server";
-import { getSession, requireAuth } from "@/src/lib/supabase-auth";
-import {
-  debugRequestCookies,
-  getSessionFromRequest,
-  requireAuthFromRequest,
-} from "@/src/lib/supabase-auth-server";
+type AuthTestResult = {
+  timestamp: string;
+  headers: {
+    cookie: string;
+    authorization: string;
+    userAgent: string | null;
+  };
+  clerk: {
+    hasSession: boolean;
+    userId: string | null;
+    sessionId: string | null;
+    sessionClaims: Record<string, unknown> | null;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      username: string | null;
+      verified: boolean;
+    } | null;
+  };
+  environment: {
+    nodeEnv: string | undefined;
+    hasClerkPublishableKey: boolean;
+    hasClerkSecretKey: boolean;
+  };
+  authCheck?: {
+    success: boolean;
+    method: string;
+    userId?: string;
+    email?: string;
+    message: string;
+    error?: string;
+  };
+};
 
 export async function GET(request: NextRequest) {
   try {
-    // Debug cookie information
-    const cookieDebug = debugRequestCookies(request);
-
-    // Test both old and new session retrieval methods
-    const oldSession = await getSession();
-    const newSession = await getSessionFromRequest(request);
-
-    type AuthTestResult = {
-      timestamp: string;
-      cookieDebug: ReturnType<typeof debugRequestCookies>;
-      oldSessionCheck: {
-        hasSession: boolean;
-        isAuthenticated: boolean;
-        hasUser: boolean;
-        userId?: string;
-        userEmail?: string;
-        method: string;
-      };
-      newSessionCheck: {
-        hasSession: boolean;
-        isAuthenticated: boolean;
-        hasUser: boolean;
-        userId?: string;
-        userEmail?: string;
-        method: string;
-      };
-      headers: {
-        cookie: string;
-        authorization: string;
-        userAgent: string | null;
-      };
-      environment: {
-        nodeEnv: string | undefined;
-        hasSupabaseUrl: boolean;
-        hasSupabaseKey: boolean;
-      };
-      authCheck?: {
-        success: boolean;
-        userId?: string;
-        email?: string;
-        method?: string;
-        message: string;
-        newMethodError?: string;
-        oldMethodError?: string;
-      };
+    const cookieHeader = request.headers.get("cookie");
+    const authHeaders = {
+      cookie: cookieHeader ? "Present" : "Missing",
+      authorization: request.headers.has("authorization") ? "Present" : "Missing",
+      userAgent: request.headers.get("user-agent"),
     };
+
+    const clerkAuth = await auth();
+    const hasSession = Boolean(clerkAuth.userId);
+    const userInfo = clerkAuth.user
+      ? {
+          id: clerkAuth.user.id,
+          email: clerkAuth.user.primaryEmailAddress?.emailAddress ?? "",
+          name: `${clerkAuth.user.firstName ?? ""} ${clerkAuth.user.lastName ?? ""}`.trim(),
+          username: clerkAuth.user.username,
+          verified: (clerkAuth.user.emailAddresses ?? []).some(
+            (email) => email.verification?.status === "verified",
+          ),
+        }
+      : null;
 
     const result: AuthTestResult = {
       timestamp: new Date().toISOString(),
-      cookieDebug,
-      oldSessionCheck: {
-        hasSession: !!oldSession,
-        isAuthenticated: oldSession.isAuthenticated,
-        hasUser: !!oldSession.user,
-        userId: oldSession.user?.id,
-        userEmail: oldSession.user?.email,
-        method: "Legacy getSession()",
-      },
-      newSessionCheck: {
-        hasSession: !!newSession,
-        isAuthenticated: newSession.isAuthenticated,
-        hasUser: !!newSession.user,
-        userId: newSession.user?.id,
-        userEmail: newSession.user?.email,
-        method: "Request-aware getSessionFromRequest()",
-      },
-      headers: {
-        cookie: request.headers.get("cookie") ? "Present" : "Missing",
-        authorization: request.headers.get("authorization") ? "Present" : "Missing",
-        userAgent: request.headers.get("user-agent"),
+      headers: authHeaders,
+      clerk: {
+        hasSession,
+        userId: clerkAuth.userId,
+        sessionId: clerkAuth.sessionId,
+        sessionClaims: clerkAuth.session?.claims,
+        user: userInfo,
       },
       environment: {
         nodeEnv: process.env.NODE_ENV,
-        hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        hasClerkPublishableKey: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        hasClerkSecretKey: !!process.env.CLERK_SECRET_KEY,
       },
     };
 
-    // Test authentication with both methods
-    const sessionToUse = newSession.isAuthenticated ? newSession : oldSession;
-
-    if (sessionToUse.isAuthenticated && sessionToUse.user) {
-      try {
-        // Try new request-aware method first
-        const authUser = await requireAuthFromRequest(request);
-        result.authCheck = {
-          success: true,
-          userId: authUser.id,
-          email: authUser.email,
-          method: "Request-aware requireAuthFromRequest()",
-          message: "✅ Authentication successful",
-        };
-      } catch (newAuthError) {
-        // Fall back to old method
-        try {
-          const authUser = await requireAuth();
-          result.authCheck = {
-            success: true,
-            userId: authUser.id,
-            email: authUser.email,
-            method: "Legacy requireAuth()",
-            message: "✅ Authentication successful (fallback)",
-          };
-        } catch (oldAuthError) {
-          result.authCheck = {
-            success: false,
-            newMethodError:
-              newAuthError instanceof Error ? newAuthError.message : String(newAuthError),
-            oldMethodError:
-              oldAuthError instanceof Error ? oldAuthError.message : String(oldAuthError),
-            message: "❌ Both auth methods failed",
-          };
-        }
-      }
-    } else {
+    try {
+      const authenticatedUser = await requireClerkAuth();
+      result.authCheck = {
+        success: true,
+        method: "requireClerkAuth",
+        userId: authenticatedUser.id,
+        email: authenticatedUser.email,
+        message: "✅ Clerk authentication succeeded",
+      };
+    } catch (authError) {
       result.authCheck = {
         success: false,
-        message: "❌ No valid session found with either method",
+        method: "requireClerkAuth",
+        message: "❌ Clerk authentication failed",
+        error: authError instanceof Error ? authError.message : String(authError),
       };
     }
 
-    // Determine overall status - prefer new method but accept either
-    const isFullyAuthenticated = result.authCheck.success;
-    const bestMethod = newSession.isAuthenticated
-      ? "new"
-      : oldSession.isAuthenticated
-        ? "old"
-        : "none";
+    const isFullyAuthenticated = Boolean(result.authCheck?.success);
 
     return NextResponse.json({
       success: isFullyAuthenticated,
       message: isFullyAuthenticated
-        ? `✅ User is fully authenticated via ${bestMethod} method and can use protected endpoints`
-        : "❌ Authentication issue detected",
+        ? "✅ Clerk session is valid and protected routes should work"
+        : "❌ Clerk session missing or invalid",
       data: result,
       fix: isFullyAuthenticated
         ? null
         : {
-            detectedIssue: cookieDebug.hasCookieHeader
-              ? "Session cookies present but not being read properly"
-              : "No session cookies found",
-            solution: cookieDebug.hasCookieHeader
-              ? "Server-side session detection issue - using new request-aware method should fix this"
-              : "User needs to sign in first",
+            detectedIssue: cookieHeader
+              ? "Clerk session cookies present but auth guards failing"
+              : "No Clerk session cookies found",
+            solution: cookieHeader
+              ? "Ensure Clerk middleware (`auth()`) is loading session data before calling protected endpoints"
+              : "Sign in via the Clerk-powered auth page and retry",
           },
       recommendations: isFullyAuthenticated
-        ? ["Authentication is working properly", "Start Sniping button should work from dashboard"]
+        ? [
+            "Authentication is healthy",
+            "Start Sniping should be available",
+            "Clerk tokens are being forwarded correctly",
+          ]
         : [
-            "User should sign in via /auth page",
-            "If already signed in, the new request-aware auth method should fix the issue",
-            "Check browser developer tools for session cookies",
-            "Try refreshing the page to restore session",
+            "Visit /auth or /sign-in to sign in with Clerk",
+            "Confirm Clerk publishable key and secret key are configured",
+            "If issues persist, check browser DevTools for missing Clerk cookies",
           ],
     });
   } catch (error) {
@@ -176,9 +136,9 @@ export async function GET(request: NextRequest) {
         message: "Authentication test failed",
         error: error instanceof Error ? error.message : String(error),
         recommendations: [
-          "Check Supabase environment variables",
-          "Verify Supabase service is accessible",
-          "Check server logs for detailed errors",
+          "Confirm Clerk environment variables exist",
+          "Ensure Clerk session cookies are accessible",
+          "Check server console for detailed errors",
         ],
       },
       { status: 500 },

@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAuthFromRequest } from "@/src/lib/supabase-auth-server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 
 // Create snipe targets from pattern detection results
 export async function POST(request: NextRequest) {
   try {
     // Disallow manual target creation via this debug endpoint
-    await requireAuthFromRequest(request);
+    await requireClerkAuth();
     return NextResponse.json(
       {
         success: false,
