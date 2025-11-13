@@ -6,6 +6,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
+import { executeOrderWithRetry, MEXC_ERROR_CODES } from "@/src/services/trading/advanced-sniper-utils";
 import type { TradingOrderData } from "@/src/services/api/unified-mexc-trading";
 import type { ModuleContext, Position, TradeParameters, TradeResult } from "../types";
 
@@ -266,74 +267,82 @@ export class OrderExecutor {
   }
 
   /**
-   * Execute order with retry logic
+   * Execute order with advanced retry logic (handles Error 10007)
    */
   private async executeOrderWithRetry(params: TradeParameters): Promise<TradeResult> {
-    const maxRetries = this.context.config.maxRetries || 3;
-    const retryDelay = 1000; // Fixed retry delay
+    // Get retry configuration from context with defaults
+    const retryConfig = {
+      maxRetries: this.context.config.maxRetries || 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 5000,
+      backoffMultiplier: 1.5,
+    };
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        this.context.logger.info(`Order execution attempt ${attempt}/${maxRetries}`, {
-          symbol: params.symbol,
-          side: params.side,
-          quantity: params.quantity,
-        });
+    // Create order execution function
+    const orderFn = async () => {
+      const orderData: TradingOrderData = {
+        symbol: params.symbol,
+        side: params.side.toUpperCase() as "BUY" | "SELL",
+        type: params.type === "MARKET" || params.type === "LIMIT" ? params.type : "MARKET",
+        quantity: params.quantity?.toString() || "0",
+        price: params.price?.toString(),
+        timeInForce: params.timeInForce,
+        quoteOrderQty: params.quoteOrderQty?.toString(),
+      };
 
-        const orderData: TradingOrderData = {
-          symbol: params.symbol,
-          side: params.side.toUpperCase() as "BUY" | "SELL",
-          type: params.type === "MARKET" || params.type === "LIMIT" ? params.type : "MARKET",
-          quantity: params.quantity?.toString() || "0",
-          price: params.price?.toString(),
-          timeInForce: params.timeInForce,
-          quoteOrderQty: params.quoteOrderQty?.toString(),
+      const orderResult = await this.context.mexcService.placeOrder(orderData);
+
+      if (orderResult.success && orderResult.data) {
+        return {
+          success: true,
+          data: orderResult.data,
+          timestamp: Date.now(),
+          executionTimeMs: orderResult.executionTimeMs || 0,
+          source: orderResult.source || "mexc-service",
         };
-
-        const orderResult = await this.context.mexcService.placeOrder(orderData);
-
-        if (orderResult.success && orderResult.data) {
-          return {
-            success: true,
-            data: {
-              orderId: orderResult.data.orderId || "",
-              symbol: params.symbol,
-              side: params.side,
-              type: orderResult.data.type || params.type || "MARKET",
-              quantity: orderResult.data.quantity || params.quantity?.toString() || "0",
-              price: orderResult.data.price || params.price?.toString() || "0",
-              status: orderResult.data.status || "FILLED",
-              executedQty: orderResult.data.executedQty || params.quantity?.toString() || "0",
-              timestamp: new Date().toISOString(),
-            },
-            timestamp: new Date().toISOString(),
-          };
-        } else {
-          throw new Error(orderResult.error || "Order execution failed");
-        }
-      } catch (error) {
-        const safeError = toSafeError(error);
-
-        if (attempt === maxRetries) {
-          this.context.logger.error("Order execution failed after all retries", {
-            params,
-            attempt,
-            error: safeError,
-          });
-          throw error;
-        }
-
-        this.context.logger.warn(`Order execution attempt ${attempt} failed, retrying...`, {
-          params,
-          error: safeError,
-          nextAttemptIn: retryDelay,
-        });
-
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
-    }
 
-    throw new Error("Order execution failed after all retries");
+      // Return error in MexcServiceResponse format
+      return {
+        success: false,
+        error: orderResult.error || "Order execution failed",
+        timestamp: Date.now(),
+        source: orderResult.source || "mexc-service",
+      };
+    };
+
+    try {
+      // Use advanced retry logic with Error 10007 detection
+      const result = await executeOrderWithRetry(orderFn, retryConfig);
+
+      if (result.success && result.data) {
+        const orderData = result.data;
+        return {
+          success: true,
+          data: {
+            orderId: orderData.orderId || "",
+            symbol: params.symbol,
+            side: params.side,
+            type: (orderData.type as any) || params.type || "MARKET",
+            quantity: orderData.quantity || params.quantity?.toString() || "0",
+            price: orderData.price || params.price?.toString() || "0",
+            status: orderData.status || "FILLED",
+            executedQty: orderData.executedQty || params.quantity?.toString() || "0",
+            timestamp: new Date().toISOString(),
+          },
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      throw new Error(result.error || "Order execution failed");
+    } catch (error) {
+      const safeError = toSafeError(error);
+      this.context.logger.error("Order execution failed after all retries", {
+        params,
+        error: safeError,
+      });
+      throw error;
+    }
   }
 
   /**

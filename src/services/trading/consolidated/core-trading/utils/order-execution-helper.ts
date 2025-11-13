@@ -6,6 +6,7 @@
  */
 
 import { toSafeError } from "@/src/lib/error-type-utils";
+import { executeOrderWithRetry } from "@/src/services/trading/advanced-sniper-utils";
 import type { ServiceResponse, TradeParameters, TradeResult } from "../types";
 import { ServiceResponseUtils } from "./service-response-utils";
 
@@ -196,42 +197,61 @@ export class OrderExecutionHelper {
   }
 
   /**
-   * Execute order with retry logic and exponential backoff
+   * Execute order with advanced retry logic (handles Error 10007 with exponential backoff)
    */
   private async executeOrderWithRetry(orderParams: any): Promise<ServiceResponse<any>> {
-    let lastError: Error | null = null;
+    // Retry configuration with exponential backoff
+    const retryConfig = {
+      maxRetries: this.config.maxRetries || 3,
+      initialDelayMs: this.config.retryDelay || 1000,
+      maxDelayMs: 5000,
+      backoffMultiplier: 1.5,
+    };
 
-    for (let attempt = 1; attempt <= this.config.maxRetries!; attempt++) {
+    // Create order execution function
+    const orderFn = async () => {
       try {
         const result = await this.config.mexcService.placeOrder(orderParams);
 
         if (result.success) {
-          return ServiceResponseUtils.success(result.data);
+          return {
+            success: true,
+            data: result.data,
+            timestamp: Date.now(),
+            source: result.source || "mexc-service",
+          };
         } else {
-          throw new Error(result.error || "Order execution failed");
+          // Return error for retry detection
+          return {
+            success: false,
+            error: result.error || "Order execution failed",
+            timestamp: Date.now(),
+            source: result.source || "mexc-service",
+          };
         }
       } catch (error) {
-        lastError = toSafeError(error);
-
-        this.config.logger.warn(`Order attempt ${attempt}/${this.config.maxRetries} failed`, {
-          symbol: orderParams.symbol,
-          error: lastError.message,
-        });
-
-        // Don't retry on certain errors
-        if (this.isNonRetryableError(lastError)) {
-          throw lastError;
-        }
-
-        // Wait before retry (exponential backoff)
-        if (attempt < this.config.maxRetries!) {
-          const delay = Math.min(this.config.retryDelay! * 2 ** (attempt - 1), 5000);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        const safeError = toSafeError(error);
+        return {
+          success: false,
+          error: safeError.message,
+          timestamp: Date.now(),
+          source: "order-execution",
+        };
       }
-    }
+    };
 
-    throw lastError || new Error("Order execution failed after all retries");
+    // Use advanced retry logic with Error 10007 detection
+    try {
+      const result = await executeOrderWithRetry(orderFn, retryConfig);
+
+      if (result.success) {
+        return ServiceResponseUtils.success(result.data);
+      }
+
+      throw new Error(result.error || "Order execution failed");
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**

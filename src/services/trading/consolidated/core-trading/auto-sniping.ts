@@ -15,6 +15,7 @@ import { createPosition, updatePositionOnSell } from "@/src/db/position-helpers"
 import { userPreferences as userPreferencesTable } from "@/src/db/schemas/auth";
 import { executionHistory, positions, snipeTargets } from "@/src/db/schemas/trading";
 import { toSafeError } from "@/src/lib/error-type-utils";
+import { executeOrderWithRetry } from "@/src/services/trading/advanced-sniper-utils";
 import { tradingStrategyManager } from "@/src/services/trading/trading-strategy-manager";
 import { serviceConflictDetector } from "../../service-conflict-detector";
 import { OrderExecutor } from "./modules/order-executor";
@@ -1395,7 +1396,7 @@ export class AutoSnipingModule {
 
     // Check price availability - critical decision point
     const priceCheck = await this.checkPriceAvailability(target, executionStartTime);
-    if (priceCheck.result) {
+    if (priceCheck.result && !priceCheck.result.success) {
       this.context.logger.warn("⏭️ BUY DECISION: Skipping target due to price unavailability", {
         decision: "BUY",
         action: "SKIPPED",
@@ -2607,6 +2608,13 @@ export class AutoSnipingModule {
     try {
       let price: number | null = null;
 
+      this.context.logger.debug("tryFetchCurrentPriceOnce called", {
+        symbol,
+        mexcServiceAvailable: !!this.context.mexcService,
+        hasGetTicker: !!(this.context.mexcService && typeof this.context.mexcService.getTicker === "function"),
+        hasGetCurrentPrice: !!(this.context.mexcService && typeof this.context.mexcService.getCurrentPrice === "function"),
+      });
+
       if (this.context.mexcService && typeof this.context.mexcService.getTicker === "function") {
         try {
           const ticker = await this.context.mexcService.getTicker(symbol);
@@ -2615,6 +2623,12 @@ export class AutoSnipingModule {
             success: ticker.success,
             dataPreview: ticker.data,
           });
+          
+          if (!ticker.success) {
+            this.context.logger.warn("Ticker fetch failed", { symbol, error: ticker.error });
+            return null;
+          }
+          
           if (ticker.success && ticker.data) {
             const priceFields = ["price", "lastPrice", "close", "last"];
             for (const field of priceFields) {
@@ -2633,8 +2647,10 @@ export class AutoSnipingModule {
               }
             }
             if (!price) {
-              this.context.logger.debug("Ticker present but no usable price", {
+              this.context.logger.warn("Ticker present but no usable price", {
                 symbol,
+                data: ticker.data,
+                fieldsChecked: ["price", "lastPrice", "close", "last"],
                 hasPrice: Boolean((ticker.data as any).price),
                 hasLastPrice: Boolean((ticker.data as any).lastPrice),
               });
@@ -2661,8 +2677,9 @@ export class AutoSnipingModule {
         typeof this.context.mexcService.getCurrentPrice === "function"
       ) {
         try {
+          this.context.logger.debug("Trying getCurrentPrice fallback", { symbol });
           const priceResult = await this.context.mexcService.getCurrentPrice(symbol);
-          this.context.logger.debug("getCurrentPrice returned", { symbol, value: priceResult });
+          this.context.logger.debug("getCurrentPrice returned", { symbol, value: priceResult, type: typeof priceResult });
           if (typeof priceResult === "number" && priceResult > 0) {
             price = priceResult;
           }
@@ -3171,15 +3188,22 @@ export class AutoSnipingModule {
   }
 
   /**
-   * Execute order with retry logic
+   * Execute order with advanced retry logic (handles Error 10007 with exponential backoff)
    */
   private async executeOrderWithRetry(
     orderParams: TradeParameters,
     maxRetries: number = 3,
   ): Promise<ServiceResponse<any>> {
-    let lastError: Error | null = null;
+    // Retry configuration with exponential backoff
+    const retryConfig = {
+      maxRetries,
+      initialDelayMs: 1000,
+      maxDelayMs: 5000,
+      backoffMultiplier: 1.5,
+    };
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Create order execution function that preserves existing logic
+    const orderFn = async () => {
       try {
         // Convert TradeParameters to the format expected by MEXC service
         const mexcOrderData: any = {
@@ -3196,6 +3220,7 @@ export class AutoSnipingModule {
           const adjusted = this.adjustQuantity(orderParams.quantity, tradeRules);
           mexcOrderData.quantity = this.formatQuantity(adjusted, tradeRules);
         }
+
         // Price handling: never include price for MARKET orders
         if (orderParams.type === "MARKET") {
           if (mexcOrderData.price) delete mexcOrderData.price;
@@ -3203,6 +3228,7 @@ export class AutoSnipingModule {
           const adjustedPrice = this.adjustPrice(orderParams.price, tradeRules);
           mexcOrderData.price = this.formatPrice(adjustedPrice, tradeRules);
         }
+
         if (orderParams.timeInForce) {
           mexcOrderData.timeInForce = orderParams.timeInForce;
         }
@@ -3288,6 +3314,7 @@ export class AutoSnipingModule {
               orderParams.symbol,
               orderData.orderId,
             );
+
             if (statusResult.success && statusResult.data) {
               // Merge the verified status data
               result.data = { ...orderData, ...statusResult.data };
@@ -3312,35 +3339,47 @@ export class AutoSnipingModule {
             timestamp: new Date().toISOString(),
           };
         } else {
-          throw new Error(result.error || "Order execution failed");
+          // Return error in MexcServiceResponse format for retry detection
+          return {
+            success: false,
+            error: result.error || "Order execution failed",
+            timestamp: Date.now(),
+            source: "order-execution",
+          };
         }
       } catch (error) {
-        lastError = toSafeError(error);
-
-        this.context.logger.warn(`Order attempt ${attempt}/${maxRetries} failed`, {
-          symbol: orderParams.symbol,
-          error: lastError.message,
-        });
-
-        // Don't retry on certain errors
-        if (isNonRetryableError(lastError)) {
-          this.context.logger.error("Non-retryable error encountered", {
-            symbol: orderParams.symbol,
-            error: lastError.message,
-            errorType: "price_limit_violation",
-          });
-          throw lastError;
-        }
-
-        // Wait before retry (exponential backoff)
-        if (attempt < maxRetries) {
-          const delay = calculateRetryDelay(attempt);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        // Return error for retry detection
+        const safeError = toSafeError(error);
+        return {
+          success: false,
+          error: safeError.message,
+          timestamp: Date.now(),
+          source: "order-execution",
+        };
       }
-    }
+    };
 
-    throw lastError || new Error("Order execution failed after all retries");
+    // Use advanced retry logic with Error 10007 detection
+    try {
+      const result = await executeOrderWithRetry(orderFn, retryConfig);
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      throw new Error(result.error || "Order execution failed");
+    } catch (error) {
+      const safeError = toSafeError(error);
+      this.context.logger.error("Order execution failed after all retries", {
+        symbol: orderParams.symbol,
+        error: safeError,
+      });
+      throw error;
+    }
   }
 
   /**
