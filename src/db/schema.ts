@@ -61,6 +61,7 @@ import {
   transactionQueue,
   transactions,
 } from "./schemas/trading";
+import { mexcSymbols } from "./schemas/mexc-symbols";
 import { workflowActivity, workflowSystemStatus } from "./schemas/workflows";
 
 // Export all tables individually for backward compatibility
@@ -81,6 +82,8 @@ export {
   transactionQueue,
   balanceSnapshots,
   portfolioSummary,
+  // MEXC tables
+  mexcSymbols,
   // Safety tables
   simulationSessions,
   simulationTrades,
@@ -137,6 +140,7 @@ export type * from "./schemas/performance";
 export type * from "./schemas/safety";
 export type * from "./schemas/strategies";
 export type * from "./schemas/trading";
+export type * from "./schemas/mexc-symbols";
 export type * from "./schemas/workflows";
 
 // Create a consolidated schema object for drizzle (required for proper table relationships)
@@ -158,6 +162,8 @@ const allTables = {
   transactionQueue,
   balanceSnapshots,
   portfolioSummary,
+  // MEXC tables
+  mexcSymbols,
 
   // Safety tables
   simulationSessions,

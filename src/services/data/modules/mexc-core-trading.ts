@@ -20,6 +20,7 @@ export interface OrderData {
   price?: string;
   timeInForce?: "GTC" | "IOC" | "FOK";
   quoteOrderQty?: string;
+  recvWindow?: number; // SLICE 3.1: Timing optimization
 }
 
 export interface OrderResult {
@@ -57,11 +58,16 @@ export class MexcCoreTradingClient {
       const isMarketBuyWithQuoteQty =
         orderData.side === "BUY" && orderData.type === "MARKET" && orderData.quoteOrderQty;
 
+      // SLICE 3.1: Add recvWindow (default 1000ms for HFT safety)
+      // This prevents stale orders from being executed at bad prices
+      const recvWindow = orderData.recvWindow || 1000;
+
       const params = new URLSearchParams({
         symbol: orderData.symbol,
         side: orderData.side,
         type: orderData.type,
         timestamp: Date.now().toString(),
+        recvWindow: recvWindow.toString(),
       });
 
       // For MARKET BUY with quoteOrderQty, use quoteOrderQty instead of quantity

@@ -118,8 +118,8 @@ export class MexcCoreHttpClient {
    * Make an authenticated HTTP request
    */
   async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<MexcApiResponse> {
-    // Add authentication to URL and headers
-    const { authenticatedUrl, authHeaders } = this.generateAuthUrlAndHeaders(url, options);
+    // Add authentication to URL and headers (and body for POST)
+    const { authenticatedUrl, authHeaders, body } = this.generateAuthUrlAndHeaders(url, options);
 
     return this.makeRequest(authenticatedUrl, {
       ...options,
@@ -127,6 +127,8 @@ export class MexcCoreHttpClient {
         ...options.headers,
         ...authHeaders,
       },
+      // Use body for POST requests (SLICE 3.2)
+      body: body || options.body,
     });
   }
 
@@ -190,38 +192,72 @@ export class MexcCoreHttpClient {
   // Private Authentication Methods
   // ============================================================================
 
+  /**
+   * Generate authentication URL and headers
+   *
+   * SLICE 3.2 FIX: Proper HMAC-SHA256 signature for POST with body
+   *
+   * For POST requests, MEXC requires:
+   * - All parameters in the body (application/x-www-form-urlencoded)
+   * - totalParams = all parameters (including timestamp, recvWindow)
+   * - Signature calculated from totalParams
+   * - Signature appended to totalParams
+   */
   private generateAuthUrlAndHeaders(
     url: string,
     options: RequestInit = {},
   ): {
     authenticatedUrl: string;
     authHeaders: Record<string, string>;
+    body?: string;
   } {
-    // Parse URL to get query string (timestamp should already be included)
+    const method = options.method?.toUpperCase() || "GET";
+
+    // For GET requests, use query string
+    if (method === "GET" || method === "DELETE") {
+      const urlObj = new URL(url);
+      const queryString = urlObj.search ? urlObj.search.substring(1) : "";
+
+      // Sign the query string
+      const signature = this.createSignature(queryString);
+
+      // Add signature to URL
+      const separator = urlObj.search ? "&" : "?";
+      const authenticatedUrl = `${url}${separator}signature=${signature}`;
+
+      const authHeaders = {
+        "X-MEXC-APIKEY": this.config.apiKey,
+        "Content-Type": "application/json",
+      };
+
+      return { authenticatedUrl, authHeaders };
+    }
+
+    // For POST requests, use body-based signing (SLICE 3.2)
+    // This is the correct approach per MEXC API documentation
     const urlObj = new URL(url);
     const queryString = urlObj.search ? urlObj.search.substring(1) : "";
 
-    // MEXC signature is based on the query string for GET requests
-    const stringToSign = queryString;
+    // Build totalParams string (all parameters without signature)
+    const totalParams = queryString;
 
-    // Generate HMAC-SHA256 signature
-    const signature = this.createSignature(stringToSign);
+    // Generate signature
+    const signature = this.createSignature(totalParams);
 
-    // Add signature to the URL as a query parameter (MEXC API requirement)
-    const separator = urlObj.search ? "&" : "?";
-    const authenticatedUrl = `${url}${separator}signature=${signature}`;
-
-    // For GET requests, use JSON content type; for POST use form data
-    const method = options.method?.toUpperCase() || "GET";
-    // For MEXC Spot v3, set JSON content-type for signed POSTs when sending params in URL (no body)
-    const contentType = method === "POST" ? "application/json" : "application/json";
+    // Build final body payload with signature
+    const bodyPayload = `${totalParams}&signature=${signature}`;
 
     const authHeaders = {
       "X-MEXC-APIKEY": this.config.apiKey,
-      "Content-Type": contentType,
+      "Content-Type": "application/x-www-form-urlencoded",
     };
 
-    return { authenticatedUrl, authHeaders };
+    // Return base URL (without query string) and body
+    return {
+      authenticatedUrl: `${urlObj.origin}${urlObj.pathname}`,
+      authHeaders,
+      body: bodyPayload,
+    };
   }
 
   private createSignature(data: string): string {

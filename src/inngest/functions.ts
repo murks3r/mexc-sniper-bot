@@ -1,5 +1,7 @@
 // Build-safe imports - avoid structured logger to prevent webpack bundling issues
 import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+import { qualifyAndCacheSymbol, type QualificationResult } from "@/src/services/symbol-qualification.service";
+import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 import { inngest } from "./client";
 
 // Inngest step interface
@@ -94,10 +96,157 @@ export const pollMexcCalendar = USE_INNGEST_FALLBACK
 // Removed agent-based workflows: watchMexcSymbol, analyzeMexcPatterns, createMexcTradingStrategy
 // These are no longer needed - calendar sync creates targets directly
 
+// Symbol Qualification Function - Slice 1.2: Assessment Zone Blocking
+// This is THE MOST CRITICAL FIX - prevents trading Assessment Zone tokens
+interface MexcSymbolQualifyData {
+  symbol: string;
+  vcoinId?: string;
+  reason?: string; // Why qualification was triggered
+}
+
+function isQualificationResult(value: unknown): value is QualificationResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as any).symbol === "string" &&
+    typeof (value as any).isApiTradable === "boolean"
+  );
+}
+
+export const qualifyMexcSymbol = USE_INNGEST_FALLBACK
+  ? inngest.createFunction(
+      { id: "qualify-mexc-symbol", retries: 2 },
+      { event: "mexc/symbol.qualify" },
+      async ({
+        event,
+        step,
+      }: {
+        event: { data: MexcSymbolQualifyData };
+        step: InngestStep;
+      }) => {
+        const { symbol, vcoinId, reason = "calendar-sync" } = event.data;
+
+        // Step 1: Qualify and cache the symbol
+        const qualificationResult = await step.run("qualify-and-cache", async () => {
+          return await qualifyAndCacheSymbol(symbol);
+        });
+
+        // Type guard
+        if (!isQualificationResult(qualificationResult)) {
+          throw new Error("Invalid qualification result format");
+        }
+
+        if (!qualificationResult.isApiTradable) {
+          // Return failure result - caller should not proceed with trading
+          return {
+            status: "not_tradable",
+            symbol,
+            vcoinId,
+            reason: qualificationResult.reason || "Unknown reason",
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        // Success - symbol is tradable
+        return {
+          status: "tradable",
+          symbol,
+          vcoinId,
+          isApiTradable: true,
+          tradingRules: qualificationResult.tradingRules,
+          timestamp: new Date().toISOString(),
+        };
+      },
+    )
+  : (null as any);
+
+// Order Monitoring Function - Slice 4.2: Post-Trade Monitoring
+// Monitors order status after placement and triggers TP/SL setup when filled
+interface MexcOrderMonitorData {
+  orderId: string;
+  symbol: string;
+  side: "BUY" | "SELL";
+  userId?: string;
+}
+
+export const monitorMexcOrder = USE_INNGEST_FALLBACK
+  ? inngest.createFunction(
+      { id: "monitor-mexc-order", retries: 3 },
+      { event: "mexc/order.placed" },
+      async ({
+        event,
+        step,
+      }: {
+        event: { data: MexcOrderMonitorData };
+        step: InngestStep;
+      }) => {
+        const { orderId, symbol, side } = event.data;
+
+        // Poll order status until filled or timeout
+        const MAX_POLLS = 30; // 30 attempts
+        const POLL_INTERVAL_MS = 2000; // 2 seconds
+
+        for (let i = 0; i < MAX_POLLS; i++) {
+          const orderStatus = await step.run(`check-order-status-${i}`, async () => {
+            const mexcService = getRecommendedMexcService();
+            // Get order status
+            const statusResponse = await mexcService.getOrderStatus(symbol, orderId);
+
+            return statusResponse;
+          });
+
+          // Check if order is filled
+          if (orderStatus.success && orderStatus.data) {
+            const status = orderStatus.data.status;
+
+            if (status === "FILLED") {
+              // Order is filled - return success
+              return {
+                status: "filled",
+                orderId,
+                symbol,
+                side,
+                fillTime: new Date().toISOString(),
+                metadata: orderStatus.data,
+              };
+            }
+
+            if (status === "CANCELED" || status === "REJECTED" || status === "EXPIRED") {
+              // Order failed
+              return {
+                status: "failed",
+                orderId,
+                symbol,
+                orderStatus: status,
+                timestamp: new Date().toISOString(),
+              };
+            }
+          }
+
+          // Wait before next poll (unless last attempt)
+          if (i < MAX_POLLS - 1) {
+            await step.sleep("wait-before-next-poll", POLL_INTERVAL_MS);
+          }
+        }
+
+        // Timeout - order status unknown
+        return {
+          status: "timeout",
+          orderId,
+          symbol,
+          message: "Order monitoring timed out after 60 seconds",
+          timestamp: new Date().toISOString(),
+        };
+      },
+    )
+  : (null as any);
+
 // Export all functions for Inngest registration
 export const functions = [
   // Core trading workflows (simplified - no agents)
   pollMexcCalendar,
+  qualifyMexcSymbol, // Slice 1.2: Assessment Zone blocking
+  monitorMexcOrder, // Slice 4.2: Order monitoring
   // Removed: watchMexcSymbol, analyzeMexcPatterns, createMexcTradingStrategy (agent-based)
   // Removed: safetyFunctions (agent-based)
 ];

@@ -10,6 +10,7 @@ import { db } from "@/src/db";
 import { snipeTargets, user } from "@/src/db/schema";
 import { resolveRiskParams } from "@/src/lib/risk-defaults";
 import { createSimpleLogger } from "@/src/lib/unified-logger";
+import { qualifyAndCacheSymbol, isSymbolApiTradable } from "@/src/services/symbol-qualification.service";
 
 interface CalendarEntry {
   vcoinId: string;
@@ -255,6 +256,9 @@ export class CalendarToDatabaseSyncService {
 
   /**
    * Process individual launch entry
+   *
+   * SLICE 1.2 INTEGRATION: Qualification Step Added
+   * Before creating/updating a target, we now verify the symbol is API-tradable.
    */
   private async processLaunch(
     launch: CalendarEntry,
@@ -263,6 +267,28 @@ export class CalendarToDatabaseSyncService {
     result: SyncResult,
   ): Promise<void> {
     const symbolName = launch.symbol || `${launch.vcoinNameFull}USDT`;
+
+    // SLICE 1.2: Qualify the symbol FIRST (Assessment Zone Blocking)
+    // This is THE CRITICAL FIX - prevents error 10007
+    this.logger.debug(`🔍 Qualifying symbol ${symbolName} before processing`, {
+      vcoinId: launch.vcoinId,
+    });
+
+    const qualificationResult = await qualifyAndCacheSymbol(symbolName);
+
+    if (!qualificationResult.isApiTradable) {
+      // Symbol is in Assessment Zone or not API-tradable
+      this.logger.warn(`⛔ Symbol ${symbolName} is NOT API-tradable - skipping`, {
+        vcoinId: launch.vcoinId,
+        reason: qualificationResult.reason,
+      });
+      result.skipped++;
+      return; // DO NOT create a snipe target for this symbol
+    }
+
+    this.logger.info(`✅ Symbol ${symbolName} is API-tradable - proceeding`, {
+      vcoinId: launch.vcoinId,
+    });
 
     // Check if target already exists
     const existingTarget = await db
