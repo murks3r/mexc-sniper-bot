@@ -49,7 +49,7 @@ export function parseMexcError(error: any): {
     if ("code" in error && "msg" in error) {
       return {
         httpCode: null,
-        mexcCode: parseInt(error.code) || null,
+        mexcCode: parseInt(error.code, 10) || null,
         message: error.msg || "Unknown error",
       };
     }
@@ -58,7 +58,7 @@ export function parseMexcError(error: any): {
     if ("status" in error && "data" in error && typeof error.data === "object") {
       return {
         httpCode: error.status,
-        mexcCode: parseInt(error.data?.code) || null,
+        mexcCode: parseInt(error.data?.code, 10) || null,
         message: error.data?.msg || error.data?.message || "Unknown error",
       };
     }
@@ -68,14 +68,14 @@ export function parseMexcError(error: any): {
       // Try to parse "HTTP 400: {...}" format
       const match = error.message.match(/HTTP (\d+):/);
       if (match) {
-        const httpCode = parseInt(match[1]);
+        const httpCode = parseInt(match[1], 10);
         try {
           const jsonMatch = error.message.match(/:\s*(\{.*\})/);
           if (jsonMatch) {
             const errorData = JSON.parse(jsonMatch[1]);
             return {
               httpCode,
-              mexcCode: parseInt(errorData.code) || null,
+              mexcCode: parseInt(errorData.code, 10) || null,
               message: errorData.msg || errorData.message || error.message,
             };
           }

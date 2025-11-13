@@ -9,11 +9,8 @@
  * 5. Paper trading vs live trading modes
  */
 
-import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { db } from "@/src/db";
 import { saveExecutionHistory } from "@/src/db/execution-history-helpers";
-import { executionHistory, positions } from "@/src/db/schemas/trading";
 import { OrderExecutor } from "../consolidated/core-trading/modules/order-executor";
 import type { TradeParameters, TradeResult } from "../consolidated/core-trading/types";
 

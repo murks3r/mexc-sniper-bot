@@ -37,23 +37,7 @@ async function executeVfarm() {
     // Get core trading and execute
     console.log("⚡ Executing...\n");
     const coreTrading = getCoreTrading();
-
-    // Convert to AutoSnipeTarget format
-    const autoSnipeTarget = {
-      ...target,
-      symbol: target.symbolName,
-      side: "buy" as const,
-      orderType: "market" as const,
-      quantity: target.positionSizeUsdt,
-      amount: target.positionSizeUsdt,
-      price: undefined,
-      confidence: target.confidenceScore,
-      // @ts-expect-error - targetExecutionTime from database is string but interface expects Date
-      scheduledAt: target.targetExecutionTime,
-      executedAt: null,
-    };
-
-    const result = await coreTrading.executeSnipeTarget(autoSnipeTarget);
+    const result = await coreTrading.executeSnipeTarget(target.id);
 
     console.log("📊 Result:");
     console.log(JSON.stringify(result, null, 2));

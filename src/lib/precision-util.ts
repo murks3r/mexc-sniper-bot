@@ -54,7 +54,7 @@ export function toFixed(value: number, decimals: number): string {
 export function parseDecimal(value: string | number): number {
   if (typeof value === "number") return value;
   const parsed = parseFloat(value);
-  if (isNaN(parsed)) {
+  if (Number.isNaN(parsed)) {
     throw new Error(`Invalid decimal value: ${value}`);
   }
   return parsed;

@@ -2,12 +2,10 @@
  * Tests for Advanced Sniper Utilities
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { SymbolFilter } from "../../api/mexc-client-types";
 import type { MexcServiceResponse } from "../../data/modules/mexc-api-types";
 import {
-  DEFAULT_RETRY_CONFIG,
-  DEFAULT_TIMING_CONFIG,
   executeOrderWithRetry,
   isWithinExecutionWindow,
   MEXC_ERROR_CODES,

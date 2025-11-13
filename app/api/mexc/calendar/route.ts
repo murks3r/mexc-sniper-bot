@@ -1,4 +1,9 @@
-import { apiResponse, createSuccessResponse } from "@/src/lib/api-response";
+import {
+  apiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  HTTP_STATUS,
+} from "@/src/lib/api-response";
 import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 
 export async function GET() {
@@ -24,16 +29,16 @@ export async function GET() {
       }),
     );
   } catch (error) {
-    // MEXC calendar fetch failed - error logging handled by error handler middleware
+    // MEXC calendar fetch failed - propagate error properly instead of masking
+    const errorMessage = error instanceof Error ? error.message : "Service temporarily unavailable";
 
-    // Always return empty array with success status to prevent 404/500 errors
     return apiResponse(
-      createSuccessResponse([], {
-        error: error instanceof Error ? error.message : "Service temporarily unavailable",
+      createErrorResponse(errorMessage, {
         count: 0,
         serviceLayer: true,
         fallback: true,
       }),
+      HTTP_STATUS.SERVICE_UNAVAILABLE,
     );
   }
 }

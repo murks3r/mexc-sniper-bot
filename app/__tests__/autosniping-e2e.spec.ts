@@ -97,7 +97,7 @@ vi.mock("@/src/services/trading/unified-auto-sniping-orchestrator", () => {
     updateConfig: vi.fn().mockResolvedValue(undefined),
     startAutoSniping: vi.fn().mockResolvedValue({ success: true }),
   };
-  
+
   return {
     getUnifiedAutoSnipingOrchestrator: vi.fn(() => mockOrchestratorInstance),
     // Export mock for use in tests

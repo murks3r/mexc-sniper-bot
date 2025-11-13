@@ -29,17 +29,17 @@ vi.mock("@/src/db", () => {
   const mockDb = {
     select: mockSelect,
   };
-  return { 
+  return {
     db: mockDb,
     __mockDb: mockDb,
     __mockSelect: mockSelect,
   };
 });
 
+import { db } from "@/src/db";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 // Import after mocking
 import { GET } from "../api/snipe-targets/upcoming-hour/route";
-import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
-import { db } from "@/src/db";
 
 describe("Upcoming Hour Targets API", () => {
   let mockRequireAuth: ReturnType<typeof vi.fn>;
@@ -50,14 +50,15 @@ describe("Upcoming Hour Targets API", () => {
     vi.clearAllMocks();
     // Get mocks from mocked modules
     const authModule = await import("@/src/lib/clerk-auth-server");
-    mockRequireAuth = (authModule as any).__mockRequireAuth || requireClerkAuth as ReturnType<typeof vi.fn>;
-    
+    mockRequireAuth =
+      (authModule as any).__mockRequireAuth || (requireClerkAuth as ReturnType<typeof vi.fn>);
+
     const dbModule = await import("@/src/db");
     mockDb = (dbModule as any).__mockDb || db;
-    mockSelect = (dbModule as any).__mockSelect || db.select as ReturnType<typeof vi.fn>;
-    
+    mockSelect = (dbModule as any).__mockSelect || (db.select as ReturnType<typeof vi.fn>);
+
     // Ensure authentication mock is always properly set up
-    if (mockRequireAuth && typeof mockRequireAuth.mockResolvedValue === 'function') {
+    if (mockRequireAuth && typeof mockRequireAuth.mockResolvedValue === "function") {
       mockRequireAuth.mockResolvedValue({
         id: "test-user-id",
         email: "test@example.com",

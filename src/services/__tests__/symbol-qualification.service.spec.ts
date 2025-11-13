@@ -8,7 +8,7 @@ vi.mock("@/src/db", () => {
   const mockUpdate = vi.fn();
   const mockSet = vi.fn().mockReturnThis();
   const mockWhere = vi.fn().mockReturnThis();
-  
+
   return {
     db: {
       insert: mockInsert,
@@ -39,15 +39,15 @@ describe("SymbolQualificationService", () => {
     vi.resetAllMocks();
     // Get mocks from mocked module
     const dbModule = await import("@/src/db");
-    mockInsert = (dbModule as any).__mockInsert || db.insert as ReturnType<typeof vi.fn>;
-    mockUpdate = (dbModule as any).__mockUpdate || db.update as ReturnType<typeof vi.fn>;
+    mockInsert = (dbModule as any).__mockInsert || (db.insert as ReturnType<typeof vi.fn>);
+    mockUpdate = (dbModule as any).__mockUpdate || (db.update as ReturnType<typeof vi.fn>);
     mockSet = (dbModule as any).__mockSet || vi.fn().mockReturnThis();
     mockWhere = (dbModule as any).__mockWhere || vi.fn().mockReturnThis();
     mockOnConflictDoUpdate = vi.fn().mockImplementation((config: unknown) => ({
       set: config,
     }));
-    
-    if (mockUpdate && typeof mockUpdate.mockReturnValue === 'function') {
+
+    if (mockUpdate && typeof mockUpdate.mockReturnValue === "function") {
       mockUpdate.mockReturnValue({
         set: mockSet,
         where: mockWhere,
@@ -87,14 +87,14 @@ describe("SymbolQualificationService", () => {
         code: string;
       };
       uniqueConstraintError.code = "23505";
-      
+
       // Set up mock chain: insert().values() throws error
       const mockValuesFn = vi.fn().mockRejectedValueOnce(uniqueConstraintError);
       mockInsert.mockReturnValueOnce({
         values: mockValuesFn,
         onConflictDoUpdate: mockOnConflictDoUpdate,
       });
-      
+
       // Set up update chain: update().set().where()
       const mockWhereFn = vi.fn().mockReturnThis();
       const mockSetFn = vi.fn().mockReturnValue({ where: mockWhereFn });

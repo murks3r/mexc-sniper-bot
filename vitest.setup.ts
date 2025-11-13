@@ -32,8 +32,11 @@ const useRealSupabase = process.env.USE_REAL_SUPABASE === "true";
 const testMode = detectTestMode();
 
 // Provide safe defaults so Vitest can run in isolation without real Supabase/Postgres
-// Only set defaults if not using real Supabase
-if (!useRealSupabase && testMode === "mock") {
+// Only set defaults if not using real Supabase OR if using real Supabase but missing service role key
+if (
+  (!useRealSupabase && testMode === "mock") ||
+  (useRealSupabase && !process.env.SUPABASE_SERVICE_ROLE_KEY)
+) {
   process.env.NEXT_PUBLIC_SUPABASE_URL ??= "https://example.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= "test-anon-key";
   process.env.SUPABASE_URL ??= process.env.NEXT_PUBLIC_SUPABASE_URL;

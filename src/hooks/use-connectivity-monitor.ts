@@ -7,6 +7,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getLogger } from "@/src/lib/unified-logger";
 import { type MexcConnectivityResult, useMexcConnectivity } from "./use-mexc-data";
 
 interface ConnectivityHealthMetrics {
@@ -39,6 +40,7 @@ export function useConnectivityMonitor(options: ConnectivityMonitorOptions = {})
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const _queryClient = useQueryClient();
   const { data: connectivity, refetch, isLoading, error } = useMexcConnectivity();
+  const logger = getLogger("use-connectivity-monitor");
 
   const [healthMetrics, setHealthMetrics] = useState<ConnectivityHealthMetrics>({
     isOnline: navigator.onLine,
@@ -134,7 +136,7 @@ export function useConnectivityMonitor(options: ConnectivityMonitorOptions = {})
         updateHealthMetrics(result.data);
       }
     } catch (error) {
-      console.warn("Health check failed:", error);
+      logger.warn("Health check failed:", {}, error as Error);
       setHealthMetrics((prev) => ({
         ...prev,
         consecutiveFailures: prev.consecutiveFailures + 1,
@@ -149,8 +151,8 @@ export function useConnectivityMonitor(options: ConnectivityMonitorOptions = {})
 
     isMonitoringRef.current = true;
     intervalRef.current = setInterval(performHealthCheck, opts.pingInterval);
-    console.info("Connectivity monitoring started");
-  }, [performHealthCheck, opts.enableContinuousMonitoring, opts.pingInterval]);
+    logger.info("Connectivity monitoring started");
+  }, [performHealthCheck, opts.enableContinuousMonitoring, opts.pingInterval, logger]);
 
   // Stop continuous monitoring
   const stopMonitoring = useCallback(() => {
@@ -159,8 +161,8 @@ export function useConnectivityMonitor(options: ConnectivityMonitorOptions = {})
       intervalRef.current = null;
     }
     isMonitoringRef.current = false;
-    console.info("Connectivity monitoring stopped");
-  }, []);
+    logger.info("Connectivity monitoring stopped");
+  }, [logger]);
 
   // Manual refresh with health update
   const refreshWithHealthCheck = useCallback(async () => {

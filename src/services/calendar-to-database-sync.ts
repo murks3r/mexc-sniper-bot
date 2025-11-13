@@ -6,16 +6,16 @@
  */
 
 import { and, eq, lt, sql } from "drizzle-orm";
-import { db } from "@/src/db";
-import { snipeTargets, user } from "@/src/db/schema";
-import { resolveRiskParams } from "@/src/lib/risk-defaults";
-import { createSimpleLogger } from "@/src/lib/unified-logger";
-import {
-  isSymbolApiTradable,
-  qualifyAndCacheSymbol,
-} from "@/src/services/symbol-qualification.service";
+import { db } from "../db";
+import { snipeTargets, user } from "../db/schema";
+import { resolveRiskParams } from "../lib/risk-defaults";
+import { createSimpleLogger } from "../lib/unified-logger";
+import type { CalendarEntry } from "../schemas/unified/mexc-api-schemas";
+import { transformCalendarEntryForSync } from "../utils/calendar-entry-transformers";
+import { getRecommendedMexcService } from "./api/mexc-unified-exports";
+import { qualifyAndCacheSymbol } from "./symbol-qualification.service";
 
-interface CalendarEntry {
+interface CalendarEntryForSync {
   vcoinId: string;
   vcoinNameFull: string;
   firstOpenTime: number; // Timestamp number
@@ -189,20 +189,28 @@ export class CalendarToDatabaseSyncService {
 
   /**
    * Fetch calendar data from MEXC API
+   * Uses environment variable for base URL or constructs from NEXT_PUBLIC_APP_URL
    */
-  private async fetchCalendarData(): Promise<CalendarEntry[]> {
+  private async fetchCalendarData(): Promise<CalendarEntryForSync[]> {
     try {
-      const response = await fetch("http://localhost:3008/api/mexc/calendar");
-      if (!response.ok) {
-        throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
+      const mexcService = getRecommendedMexcService();
+      const response = await mexcService.getCalendarListings();
+
+      if (!response.success || !Array.isArray(response.data)) {
+        throw new Error(response.error || "Calendar API returned an unexpected response format");
       }
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(`Calendar API failed: ${result.error}`);
-      }
+      // Use shared transformation utility
+      const calendarData: CalendarEntryForSync[] = response.data.map((entry) =>
+        transformCalendarEntryForSync(entry as CalendarEntry),
+      );
 
-      return result.data || [];
+      this.logger.debug("Fetched calendar data directly from MEXC", {
+        count: calendarData.length,
+        source: response.source ?? "mexc-core-market",
+      });
+
+      return calendarData;
     } catch (error) {
       this.logger.error(
         "Failed to fetch calendar data",
@@ -218,9 +226,9 @@ export class CalendarToDatabaseSyncService {
    * Ensures tomorrow's listings are always included (minimum 48 hour window)
    */
   private filterQualifyingLaunches(
-    entries: CalendarEntry[],
+    entries: CalendarEntryForSync[],
     timeWindowHours: number,
-  ): CalendarEntry[] {
+  ): CalendarEntryForSync[] {
     const now = Date.now();
     // Ensure at least 48 hours to cover tomorrow's listings
     const minWindowHours = Math.max(timeWindowHours, 48);
@@ -264,7 +272,7 @@ export class CalendarToDatabaseSyncService {
    * Before creating/updating a target, we now verify the symbol is API-tradable.
    */
   private async processLaunch(
-    launch: CalendarEntry,
+    launch: CalendarEntryForSync,
     userId: string,
     dryRun: boolean,
     result: SyncResult,

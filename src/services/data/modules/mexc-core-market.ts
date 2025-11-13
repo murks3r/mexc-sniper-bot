@@ -5,7 +5,9 @@
  * Extracted from core client for better separation of concerns.
  */
 
-import type { CalendarEntry, MexcServiceResponse, SymbolEntry } from "./mexc-api-types";
+import type { CalendarEntry } from "../../../schemas/unified/mexc-api-schemas";
+import { transformMexcCalendarEntries } from "../../../utils/calendar-entry-transformers";
+import type { MexcServiceResponse, SymbolEntry } from "./mexc-api-types";
 import type { MexcCoreHttpClient } from "./mexc-core-http";
 
 // ============================================================================
@@ -43,15 +45,8 @@ export class MexcCoreMarketClient {
 
       // Handle MEXC's specific response structure
       if (response.data?.newCoins && Array.isArray(response.data.newCoins)) {
-        const calendarData = response.data.newCoins.map((coin: any) => ({
-          vcoinId: coin.vcoinId || coin.id || "",
-          symbol: coin.vcoinName || coin.symbol || coin.vcoinId || "",
-          projectName: coin.vcoinNameFull || coin.vcoinName || coin.projectName || "",
-          firstOpenTime: this.httpClient.parseTimestamp(coin.firstOpenTime || coin.first_open_time),
-          vcoinName: coin.vcoinName,
-          vcoinNameFull: coin.vcoinNameFull,
-          zone: coin.zone,
-        }));
+        // Use shared transformation utility
+        const calendarData = transformMexcCalendarEntries(response.data.newCoins);
 
         return {
           success: true,

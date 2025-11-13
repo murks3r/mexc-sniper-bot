@@ -14,8 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { memo, useCallback } from "react";
-import { useMexcCalendar } from "../../hooks/use-mexc-data";
-import { usePatternSniper } from "../../hooks/use-pattern-sniper";
+import { useCoinListingsData } from "../../hooks/use-coin-listings-data";
 import type { TradingTargetDisplay } from "../../types/trading-display-types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -262,97 +261,10 @@ function limitDisplayedListings(listings: CalendarEntry[], maxCount = 50): Calen
 }
 
 // Hook to handle data processing logic
+// Data processing logic moved to useCoinListingsData hook
+// This function is now just an alias for better readability
 function useProcessedCoinData() {
-  const {
-    isMonitoring,
-    isLoading,
-    readyTargets,
-    pendingDetection,
-    executedTargets,
-    stats,
-    errors,
-    startMonitoring,
-    stopMonitoring,
-    removeTarget,
-    executeSnipe,
-    forceRefresh,
-  } = usePatternSniper();
-
-  const { data: calendarData } = useMexcCalendar();
-
-  // Fetch active targets count from database
-  const { data: activeTargetsData } = useQuery({
-    queryKey: ["snipe-targets", "active-count"],
-    queryFn: async () => {
-      const response = await fetch("/api/snipe-targets?status=active&includeSystem=true");
-      if (!response.ok) throw new Error("Failed to fetch active targets");
-      return response.json() as Promise<{ success: boolean; data: unknown[]; count: number }>;
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 25000,
-  });
-
-  // Process calendar data with filtering and limiting
-  const upcomingCoins = Array.isArray(calendarData)
-    ? limitDisplayedListings(filterUpcomingCoins(calendarData), 50)
-    : [];
-  const enrichedCalendarData = enrichCalendarData(
-    upcomingCoins,
-    pendingDetection,
-    readyTargets.map((target) => ({
-      ...target,
-      vcoinId: target.vcoinId?.toString(),
-    })),
-    executedTargets,
-  );
-
-  const calendarTargets = enrichedCalendarData.filter((c) => c.status === "calendar");
-  const monitoringTargets = enrichedCalendarData.filter((c) => c.status === "monitoring");
-  const readyTargetsEnriched = readyTargets.map((target, _index) => {
-    const enriched: TradingTargetDisplay = {
-      id: (target as { id?: number }).id,
-      vcoinId: target.vcoinId?.toString() || "",
-      symbol: (target as { symbol?: string }).symbol || "",
-      projectName: (target as { projectName?: string }).projectName || "",
-      launchTime: (target as { launchTime?: Date }).launchTime || new Date(),
-      discoveredAt: (target as { discoveredAt?: Date }).discoveredAt || new Date(),
-      confidence: (target as { confidence?: number }).confidence || 0,
-      hoursAdvanceNotice: (target as { hoursAdvanceNotice?: number }).hoursAdvanceNotice || 0,
-      priceDecimalPlaces: (target as { priceDecimalPlaces?: number }).priceDecimalPlaces || 8,
-      quantityDecimalPlaces:
-        (target as { quantityDecimalPlaces?: number }).quantityDecimalPlaces || 8,
-      status: "ready" as const,
-      targetTime: (target as { targetTime?: string }).targetTime,
-    };
-    return enriched;
-  });
-  const executedTargetsEnriched = processExecutedTargets(executedTargets, enrichedCalendarData);
-
-  // Transform stats to match expected interface
-  const transformedStats = {
-    totalListings: stats?.totalListings || enrichedCalendarData.length,
-    pendingDetection: stats?.pendingDetection || monitoringTargets.length,
-    readyToSnipe: activeTargetsData?.count || 0, // Use database active targets count
-    successRate: stats?.successRate,
-  };
-
-  return {
-    isMonitoring,
-    isLoading,
-    stats: transformedStats,
-    errors,
-    startMonitoring,
-    stopMonitoring,
-    removeTarget,
-    executeSnipe,
-    forceRefresh,
-    enrichedCalendarData,
-    calendarTargets,
-    monitoringTargets,
-    readyTargetsEnriched,
-    executedTargetsEnriched,
-    readyTargets,
-  };
+  return useCoinListingsData();
 }
 
 // Stats Overview Component
@@ -488,8 +400,8 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
 
   // Memoized event handlers
   const _handleExecuteFromAll = useCallback(
-    (coin: any) => {
-      const target = readyTargets.find((t) => t.vcoinId === coin.vcoinId);
+    (coin: { vcoinId: string }) => {
+      const target = readyTargets.find((t) => t.vcoinId?.toString() === coin.vcoinId);
       if (target) executeSnipe(target);
     },
     [readyTargets, executeSnipe],
@@ -503,7 +415,7 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
   );
 
   const _handleExecuteSnipe = useCallback(
-    (target: any) => {
+    (target: TradingTargetDisplay) => {
       executeSnipe(target);
     },
     [executeSnipe],
@@ -524,21 +436,34 @@ const CoinListingsBoard = memo(function CoinListingsBoard() {
       <StatsOverview stats={stats} />
 
       {/* Errors Display */}
-      {(errors.calendar || errors.symbols) && (
+      {(errors.calendar || errors.symbols || isLoading) && (
         <Card className="border-red-500/20 bg-red-500/10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-400">
               <AlertTriangle className="h-5 w-5" />
-              System Errors
+              System Status
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {isLoading && <p className="text-sm text-yellow-300">Loading calendar data...</p>}
             {errors.calendar && (
-              <p className="text-sm text-red-300">Calendar API: {errors.calendar.message}</p>
+              <p className="text-sm text-red-300">
+                Calendar API Error: {errors.calendar.message || "Failed to fetch calendar data"}
+              </p>
             )}
             {errors.symbols && (
-              <p className="text-sm text-red-300">Symbols API: {errors.symbols.message}</p>
+              <p className="text-sm text-red-300">
+                Symbols API Error: {errors.symbols.message || "Failed to fetch symbols data"}
+              </p>
             )}
+            {!errors.calendar &&
+              !errors.symbols &&
+              !isLoading &&
+              enrichedCalendarData.length === 0 && (
+                <p className="text-sm text-yellow-300">
+                  No calendar listings found. This may be normal if there are no upcoming launches.
+                </p>
+              )}
           </CardContent>
         </Card>
       )}

@@ -197,6 +197,7 @@ export class LoggingMiddleware implements CommandMiddleware {
  */
 export class AuthorizationMiddleware implements CommandMiddleware {
   private permissions: Map<string, string[]> = new Map();
+  private logger = createSimpleLogger("AuthorizationMiddleware");
 
   addPermission(commandType: string, requiredRoles: string[]): void {
     this.permissions.set(commandType, requiredRoles);
@@ -214,7 +215,7 @@ export class AuthorizationMiddleware implements CommandMiddleware {
 
       const hasPermission = requiredRoles.some((role) => userRoles.includes(role));
       if (!hasPermission) {
-        console.warn(`[AUTH] Access denied for command: ${command.type}`, {
+        this.logger.warn(`[AUTH] Access denied for command: ${command.type}`, {
           userId: command.metadata.userId,
           requiredRoles,
           userRoles,

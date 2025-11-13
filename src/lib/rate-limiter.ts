@@ -47,7 +47,7 @@ const RATE_LIMITS = {
 };
 
 // Security event logging - using unified logger
-function getSecurityLogger() {
+function _getSecurityLogger() {
   return logger;
 }
 

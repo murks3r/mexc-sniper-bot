@@ -12,7 +12,7 @@ import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
 import { toSafeError } from "../src/lib/error-type-utils";
 import { getLogger } from "../src/lib/unified-logger";
-import { getUnifiedAutoSnipingOrchestrator } from "../src/services/trading/unified-auto-sniping-orchestrator";
+import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
 
 const logger = getLogger("direct-execution");
 
@@ -42,10 +42,10 @@ async function executeReadyTargets() {
       return;
     }
 
-    // Get auto-sniping module directly
-    console.log("🔧 Initializing auto-sniping module...");
-    const autoSniping = getUnifiedAutoSnipingOrchestrator();
-    const status = await autoSniping.getServiceStatus();
+    // Get core trading service
+    console.log("🔧 Initializing core trading service...");
+    const coreTrading = getCoreTrading();
+    const status = await coreTrading.getServiceStatus();
 
     console.log(`✅ Service status: ${status.isHealthy ? "HEALTHY" : "UNHEALTHY"}`);
     console.log(`   Auto-sniping enabled: ${status.autoSnipingEnabled}`);
@@ -68,21 +68,8 @@ async function executeReadyTargets() {
       console.log(`   Confidence: ${target.confidenceScore}%`);
 
       try {
-        // Use the auto-sniping module to execute this target
-        const autoSnipeTarget = {
-          ...target,
-          symbol: target.symbolName,
-          side: "buy" as const,
-          orderType: "market" as const,
-          quantity: target.positionSizeUsdt,
-          amount: target.positionSizeUsdt,
-          price: undefined,
-          confidence: target.confidenceScore,
-          scheduledAt: target.targetExecutionTime?.toISOString() || null,
-          executedAt: null,
-        };
-
-        const result = await autoSniping.executeSnipeTarget(autoSnipeTarget);
+        // Execute via core trading service
+        const result = await coreTrading.executeSnipeTarget(target.id);
 
         if (result.success) {
           console.log(`✅ SUCCESS: Order ${result.data?.orderId} executed`);

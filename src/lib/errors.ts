@@ -560,7 +560,7 @@ export class ErrorCollector {
     if (!this.errors.has(key)) {
       this.errors.set(key, []);
     }
-    this.errors.get(key)!.push(error);
+    this.errors.get(key)?.push(error);
   }
 
   /**

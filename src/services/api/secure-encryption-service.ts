@@ -11,7 +11,6 @@
  */
 
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
-import type { LogContext } from "../../lib/unified-logger";
 import { getLogger } from "../../lib/unified-logger";
 
 // Constants for cryptographic operations
@@ -238,12 +237,13 @@ export function getEncryptionService(): SecureEncryptionService {
  * Utility function to generate a new master key
  */
 export function generateMasterKey(): void {
+  const logger = getLogger("secure-encryption-keygen");
   const key = SecureEncryptionService.generateSecureKey();
-  console.info("\n🔐 Generated new master encryption key:");
-  console.info(`ENCRYPTION_MASTER_KEY="${key}"`);
-  console.info("\n⚠️  Add this to your .env.local file and keep it secure!");
-  console.info("⚠️  Never commit this key to version control!");
-  console.info("⚠️  Loss of this key means loss of all encrypted data!\n");
+  logger.info("\n🔐 Generated new master encryption key:");
+  logger.info(`ENCRYPTION_MASTER_KEY="${key}"`);
+  logger.info("\n⚠️  Add this to your .env.local file and keep it secure!");
+  logger.info("⚠️  Never commit this key to version control!");
+  logger.info("⚠️  Loss of this key means loss of all encrypted data!\n");
 }
 
 // For testing and key generation

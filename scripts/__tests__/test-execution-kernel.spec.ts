@@ -46,6 +46,17 @@ vi.mock("@/src/services/data/modules/mexc-core-client", () => {
   };
 });
 
+// Mock DB helpers
+vi.mock("@/src/db", () => ({
+  db: {
+    select: vi.fn(),
+  },
+}));
+
+vi.mock("@/src/db/execution-history-helpers", () => ({
+  saveExecutionHistory: vi.fn(),
+}));
+
 describe("Execution Kernel Vertical Slice", () => {
   const MEXC_BASE_URL = process.env.MEXC_BASE_URL || "https://api.mexc.com";
   const TEST_USER_ID = "system";
@@ -53,6 +64,10 @@ describe("Execution Kernel Vertical Slice", () => {
   const TEST_QUOTE_AMOUNT = "10"; // 10 USDT;
   const requiredApiKey = "test-api-key";
   const requiredSecretKey = "test-secret-key";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should initialize MEXC client with environment credentials", () => {
     const client = createMexcCoreClient({
@@ -89,6 +104,24 @@ describe("Execution Kernel Vertical Slice", () => {
   });
 
   it("should place a market buy order and save to execution_history", async () => {
+    // Setup mocks
+    const mockExecutionId = 12345;
+    (saveExecutionHistory as any).mockResolvedValue(mockExecutionId);
+    (db.select as any).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: mockExecutionId,
+              symbolName: TEST_SYMBOL,
+              exchangeOrderId: "12345",
+              status: "success",
+            },
+          ]),
+        }),
+      }),
+    });
+
     const client = createMexcCoreClient({
       apiKey: requiredApiKey,
       secretKey: requiredSecretKey,

@@ -34,6 +34,7 @@ describe("RLS Policy Tests", () => {
   let user2Id: string;
   let user1SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
   let _user2SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
+  let shouldRunTests = false;
 
   // Helper to check if we actually have valid Supabase config
   async function canConnectToSupabase(): Promise<boolean> {
@@ -51,9 +52,9 @@ describe("RLS Policy Tests", () => {
   }
 
   beforeAll(async () => {
-    const canConnect = await canConnectToSupabase();
+    shouldRunTests = await canConnectToSupabase();
 
-    if (canConnect) {
+    if (shouldRunTests) {
       try {
         // Create two Clerk test users
         const user1Result = await createClerkTestUser({
@@ -588,10 +589,9 @@ describe("RLS Policy Tests", () => {
 
   describe("Service Role Bypass", () => {
     it("should allow service role to bypass RLS", async () => {
-      if (!hasRealSupabase) {
-        // Mock test - verify admin client structure
-        const adminSupabase = getTestSupabaseAdminClient();
-        expect(adminSupabase).toBeDefined();
+      if (!shouldRunTests) {
+        // Skip test if no real Supabase available
+        console.log("[RLS Test] Skipping service role tests - no Supabase connection");
         return;
       }
 
@@ -604,10 +604,9 @@ describe("RLS Policy Tests", () => {
     });
 
     it("should allow service role to view all snipe targets", async () => {
-      if (!hasRealSupabase) {
-        // Mock test - verify admin client structure
-        const adminSupabase = getTestSupabaseAdminClient();
-        expect(adminSupabase).toBeDefined();
+      if (!shouldRunTests) {
+        // Skip test if no real Supabase available
+        console.log("[RLS Test] Skipping service role tests - no Supabase connection");
         return;
       }
 

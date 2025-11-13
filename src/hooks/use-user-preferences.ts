@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import type { ApiResponse } from "@/src/lib/api-response";
 import { queryKeys } from "@/src/lib/query-client";
+import { getLogger } from "@/src/lib/unified-logger";
 import type { ExitStrategy } from "../types/exit-strategies";
 
 export interface TakeProfitLevels {
@@ -66,6 +67,7 @@ export interface UserTradingPreferences {
 // Hook to get user preferences
 export function useUserPreferences(userId?: string) {
   const { user, isAuthenticated } = useAuth();
+  const logger = getLogger("use-user-preferences");
 
   return useQuery({
     queryKey: queryKeys.userPreferences(userId || "anonymous"),
@@ -91,7 +93,7 @@ export function useUserPreferences(userId?: string) {
 
         return apiResponse.data || null;
       } catch (error) {
-        console.error("[useUserPreferences] Failed to fetch preferences:", error);
+        logger.error("[useUserPreferences] Failed to fetch preferences:", {}, error as Error);
         throw error;
       }
     },
@@ -104,6 +106,7 @@ export function useUserPreferences(userId?: string) {
 // Hook to update user preferences
 export function useUpdateUserPreferences() {
   const queryClient = useQueryClient();
+  const logger = getLogger("use-update-user-preferences");
 
   return useMutation({
     mutationFn: async (data: Partial<UserTradingPreferences> & { userId: string }) => {
@@ -144,7 +147,11 @@ export function useUpdateUserPreferences() {
 
         return apiResponse.data || data;
       } catch (error) {
-        console.error("[useUpdateUserPreferences] Failed to update preferences:", error);
+        logger.error(
+          "[useUpdateUserPreferences] Failed to update preferences:",
+          {},
+          error as Error,
+        );
         throw error;
       }
     },

@@ -14,7 +14,7 @@ vi.mock("@/src/services/api/user-credentials-service", () => {
 
 describe("GET /api/health/environment", () => {
   let mockedGetUserCredentials: ReturnType<typeof vi.fn>;
-  
+
   const originalEnv = {
     MEXC_API_KEY: process.env.MEXC_API_KEY,
     MEXC_SECRET_KEY: process.env.MEXC_SECRET_KEY,
@@ -25,8 +25,10 @@ describe("GET /api/health/environment", () => {
     vi.clearAllMocks();
     // Get mock from mocked module
     const credModule = await import("@/src/services/api/user-credentials-service");
-    mockedGetUserCredentials = (credModule as any).__mockGetUserCredentials || credModule.getUserCredentials as ReturnType<typeof vi.fn>;
-    
+    mockedGetUserCredentials =
+      (credModule as any).__mockGetUserCredentials ||
+      (credModule.getUserCredentials as ReturnType<typeof vi.fn>);
+
     delete process.env.MEXC_API_KEY;
     delete process.env.MEXC_SECRET_KEY;
     process.env.AUTO_SNIPING_HEALTH_USER_ID = "system";
@@ -50,7 +52,10 @@ describe("GET /api/health/environment", () => {
       isActive: true,
     };
 
-    if (mockedGetUserCredentials && typeof mockedGetUserCredentials.mockResolvedValue === 'function') {
+    if (
+      mockedGetUserCredentials &&
+      typeof mockedGetUserCredentials.mockResolvedValue === "function"
+    ) {
       mockedGetUserCredentials.mockResolvedValue(mockCredentials);
     }
 
@@ -58,7 +63,10 @@ describe("GET /api/health/environment", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    if (mockedGetUserCredentials && typeof mockedGetUserCredentials.toHaveBeenCalledWith === 'function') {
+    if (
+      mockedGetUserCredentials &&
+      typeof mockedGetUserCredentials.toHaveBeenCalledWith === "function"
+    ) {
       expect(mockedGetUserCredentials).toHaveBeenCalledWith("system", "mexc");
     }
     expect(body.success).toBe(true);

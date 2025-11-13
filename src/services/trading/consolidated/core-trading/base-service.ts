@@ -602,6 +602,10 @@ export class CoreTradingService extends EventEmitter<CoreTradingEvents> {
       uptime: Date.now() - this.startTime.getTime(),
       lastHealthCheck: new Date(),
       version: "2.0.0",
+
+      // Initialization State
+      isInitialized: this.isInitialized,
+      isActive: autoSnipingStatus.isActive,
     };
 
     return status;

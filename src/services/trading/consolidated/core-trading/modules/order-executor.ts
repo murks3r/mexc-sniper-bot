@@ -376,7 +376,7 @@ export class OrderExecutor {
    */
   private async getCurrentMarketPrice(
     symbol: string,
-    signal?: AbortSignal,
+    _signal?: AbortSignal,
   ): Promise<number | null> {
     try {
       // Normalize to MEXC spot symbol (append USDT if no known quote present)

@@ -53,9 +53,9 @@ vi.mock("@/src/lib/enhanced-validation-middleware", () => ({
   validateExternalApiResponse: vi.fn(() => ({ success: true })),
 }));
 
+import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 // Import after mocking
 import { GET } from "../api/account/balance/route";
-import { getUnifiedMexcService } from "@/src/services/api/unified-mexc-service-factory";
 
 describe("Account Balance API Completeness", () => {
   let mockGetAccountBalances: ReturnType<typeof vi.fn>;

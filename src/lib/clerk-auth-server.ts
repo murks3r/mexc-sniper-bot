@@ -96,7 +96,7 @@ export async function getClerkToken(): Promise<string | null> {
 
   try {
     return await getToken({ template: "supabase" });
-  } catch (error) {
+  } catch (_error) {
     // Logger not available in this context, silent fail
     return null;
   }
@@ -120,7 +120,7 @@ export async function verifyUserInDatabase(clerkUserId: string): Promise<boolean
     }
 
     return !!data;
-  } catch (error) {
+  } catch (_error) {
     // Logger not available in this context, silent fail
     return false;
   }

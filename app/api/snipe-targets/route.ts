@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { snipeTargets } from "@/src/db/schemas/trading";
 import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+import { isActiveStatus } from "@/src/utils/status-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -76,11 +77,16 @@ export async function GET(request: NextRequest) {
       const ownerCond = includeSystem
         ? or(eq(snipeTargets.userId, user.id), eq(snipeTargets.userId, "system"))
         : eq(snipeTargets.userId, user.id);
-      // Support "active" status which includes both "active" and "executing"
+      // Support "active" status which includes "active", "executing", and "ready" (ready means ready for execution)
       if (status === "active") {
+        // Use utility function to determine active statuses
         whereCond = and(
           ownerCond,
-          or(eq(snipeTargets.status, "active"), eq(snipeTargets.status, "executing")),
+          or(
+            eq(snipeTargets.status, "active"),
+            eq(snipeTargets.status, "executing"),
+            eq(snipeTargets.status, "ready"),
+          ),
         );
       } else {
         whereCond = status ? and(ownerCond, eq(snipeTargets.status, status)) : ownerCond;

@@ -23,8 +23,13 @@ export interface SimpleBalanceEntry {
 export interface SimpleCalendarEntry {
   vcoinId: string;
   projectName: string;
-  launchTime: string;
-  status: string;
+  firstOpenTime: number;
+  symbol?: string;
+  vcoinName?: string;
+  vcoinNameFull?: string;
+  status?: string;
+  launchTime?: number | string;
+  zone?: string;
 }
 
 export interface SimpleExchangeInfo {
