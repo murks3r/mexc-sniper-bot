@@ -7,7 +7,7 @@
  * - /api/health/queues - Queue health monitoring
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "vitest";
 import { db, jobs } from "../src/db";
 import { sql } from "drizzle-orm";
 import { enqueueJob } from "../src/services/jobs/enqueue";

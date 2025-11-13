@@ -5,8 +5,8 @@
  * Demonstrates how to use test helpers for auth testing.
  */
 
+import type { User } from "@clerk/nextjs/server";
 import { describe, expect, it, vi } from "vitest";
-import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import {
   createAuthenticatedRequest,
   createTestSession,
@@ -77,7 +77,7 @@ describe("Authentication Debug", () => {
           hasImage: false,
           profileImageUrl: "",
           externalId: null,
-        } as any,
+        } as unknown as User,
         sessionToken: "mock-token-123",
       });
 

@@ -359,18 +359,18 @@ async function main() {
 
   console.log("🔍 Sniping Diagnostic Tool\n");
   console.log(`User ID: ${userId || "Not provided (checking system-wide)"}\n`);
-  console.log("=".repeat(60) + "\n");
+  console.log(`${"=".repeat(60)}\n`);
 
   // Run all checks
   const serviceStatus = await checkServiceStatus();
   const targets = await checkSnipeTargets();
   const prefs = await checkUserPreferences(userId);
   const creds = await checkMexcCredentials(userId);
-  const config = await checkServiceConfiguration();
-  const positions = await checkActivePositions();
+  const _config = await checkServiceConfiguration();
+  const _positions = await checkActivePositions();
 
   // Summary
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   console.log("📊 SUMMARY\n");
 
   const criticalChecks = results.filter(
@@ -430,7 +430,7 @@ async function main() {
     console.log("6. Configure user preferences: POST /api/user-preferences");
   }
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
 
   process.exit(failedCritical.length > 0 ? 1 : 0);
 }

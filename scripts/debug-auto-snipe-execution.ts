@@ -59,7 +59,7 @@ async function debugAutoSnipe() {
     );
     console.log("3️⃣ Price check:", JSON.stringify(priceCheck, null, 2));
 
-    console.log("\n" + "=".repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
 
     if (priceCheck.result && !priceCheck.result.success) {
       console.log("\n❌ Price check FAILED - this is the bug!");

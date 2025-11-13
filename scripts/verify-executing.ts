@@ -11,7 +11,7 @@ import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
 import { getLogger } from "../src/lib/unified-logger";
 
-const logger = getLogger("verify-executing");
+const _logger = getLogger("verify-executing");
 
 async function checkExecutionStatus() {
   console.log("🔍 Checking Target Execution Status\n");
@@ -86,7 +86,7 @@ async function checkExecutionStatus() {
       console.log("💡 Run this script again to see updated status.");
     }
 
-    console.log("\n" + "=".repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
 
     process.exit(0);
   } catch (error) {
@@ -101,7 +101,7 @@ console.log("🔄 Auto-refreshing every 10 seconds (Ctrl+C to stop)\n");
 checkExecutionStatus();
 
 const interval = setInterval(() => {
-  console.log("\n\n" + "=".repeat(60));
+  console.log(`\n\n${"=".repeat(60)}`);
   console.log("🔄 Refreshed at:", new Date().toISOString());
   console.log("=".repeat(60));
   checkExecutionStatus();

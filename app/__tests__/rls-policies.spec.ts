@@ -33,7 +33,7 @@ describe("RLS Policy Tests", () => {
   let user1Id: string;
   let user2Id: string;
   let user1SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
-  let user2SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
+  let _user2SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
 
   beforeAll(async () => {
     if (hasRealClerk && hasRealSupabase) {
@@ -60,20 +60,20 @@ describe("RLS Policy Tests", () => {
         await ensureClerkUserInDatabase(user2Result.user);
 
         user1SupabaseClient = await createSupabaseClientWithClerkToken(user1Id);
-        user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
-      } catch (error: any) {
+        _user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
+      } catch (_error: unknown) {
         // Fall back to mock setup
         user1Id = "mock-user-1";
         user2Id = "mock-user-2";
         user1SupabaseClient = await createSupabaseClientWithClerkToken(user1Id);
-        user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
+        _user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
       }
     } else {
       // Mock setup
       user1Id = "mock-user-1";
       user2Id = "mock-user-2";
       user1SupabaseClient = await createSupabaseClientWithClerkToken(user1Id);
-      user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
+      _user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
     }
   }, 60000);
 
@@ -81,7 +81,7 @@ describe("RLS Policy Tests", () => {
     if (hasRealClerk && user1Id && !user1Id.startsWith("mock-")) {
       try {
         await Promise.all([cleanupClerkTestUser(user1Id), cleanupClerkTestUser(user2Id)]);
-      } catch (error) {
+      } catch (_error) {
         // Cleanup errors are non-fatal
       }
     }
@@ -121,7 +121,7 @@ describe("RLS Policy Tests", () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("user")
         .select("*")
         .eq("id", user2Id)
@@ -145,7 +145,7 @@ describe("RLS Policy Tests", () => {
       const supabase = getTestSupabaseAnonClient();
       await supabase.auth.signOut();
 
-      const { data, error } = await supabase.from("user").select("*").limit(1);
+      const { data, error: _error } = await supabase.from("user").select("*").limit(1);
 
       // RLS should block unauthenticated access
       if (data !== null && Array.isArray(data) && data.length > 0) {
@@ -241,7 +241,7 @@ describe("RLS Policy Tests", () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("snipe_targets")
         .select("*")
         .eq("user_id", user2Id);
@@ -342,7 +342,7 @@ describe("RLS Policy Tests", () => {
           .single();
 
         credential = insertResult.data || null;
-      } catch (err) {
+      } catch (_err) {
         // Admin insert may fail if Supabase isn't configured
         if (!hasRealSupabase) {
           return;
@@ -406,7 +406,7 @@ describe("RLS Policy Tests", () => {
       // Try to view as user1
       const supabase = await user1SupabaseClient;
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("api_credentials")
         .select("*")
         .eq("user_id", user2Id);
@@ -451,14 +451,14 @@ describe("RLS Policy Tests", () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("user_preferences")
         .select("*")
         .eq("user_id", user1Id)
         .single();
 
       if (data) {
-        expect(error).toBeNull();
+        expect(_error).toBeNull();
         expect(data.user_id).toBe(user1Id);
       }
     });
@@ -472,7 +472,7 @@ describe("RLS Policy Tests", () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("user_preferences")
         .select("*")
         .eq("user_id", user2Id)
@@ -511,7 +511,7 @@ describe("RLS Policy Tests", () => {
           .single();
 
         history = insertResult.data || null;
-      } catch (err) {
+      } catch (_err) {
         // Admin insert may fail if Supabase isn't configured
         if (!hasRealSupabase) {
           return;
@@ -560,7 +560,7 @@ describe("RLS Policy Tests", () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("execution_history")
         .select("*")
         .eq("user_id", user2Id);
@@ -620,7 +620,7 @@ describe("RLS Policy Tests", () => {
       const tables = ["snipe_targets", "api_credentials", "user_preferences", "execution_history"];
 
       for (const table of tables) {
-        const { data, error } = await supabase.from(table).select("*").limit(1);
+        const { data, error: _error } = await supabase.from(table).select("*").limit(1);
 
         // Supabase RLS behavior:
         // - If RLS policy blocks: returns empty array [] or null with error

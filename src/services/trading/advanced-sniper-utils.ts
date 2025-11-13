@@ -13,7 +13,7 @@
 
 import type { SymbolFilter } from "../api/mexc-client-types";
 import type { MexcServiceResponse } from "../data/modules/mexc-api-types";
-import type { OrderData, OrderResult } from "../data/modules/mexc-core-trading";
+import type { OrderResult } from "../data/modules/mexc-core-trading";
 
 // ============================================================================
 // Configuration Types
@@ -191,7 +191,7 @@ export function validateAndAdjustQuantity(
 
   // Find LOT_SIZE filter
   const lotSizeFilter = filters.find((f) => f.filterType === "LOT_SIZE");
-  const priceFilter = filters.find((f) => f.filterType === "PRICE_FILTER");
+  const _priceFilter = filters.find((f) => f.filterType === "PRICE_FILTER");
   const minNotionalFilter = filters.find((f) => f.filterType === "MIN_NOTIONAL");
 
   if (!lotSizeFilter) {
@@ -276,7 +276,7 @@ function getDecimalPlaces(stepSize: number): number {
 /**
  * Round quantity to valid step size
  */
-function roundToStepSize(quantity: number, stepSize: number, precision: number): number {
+function roundToStepSize(quantity: number, stepSize: number, _precision: number): number {
   const factor = 1 / stepSize;
   return Math.floor(quantity * factor) / factor;
 }

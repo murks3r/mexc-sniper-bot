@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Get Clerk client for test operations
  */
-function getClerkClient() {
+function _getClerkClient() {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) {
     throw new Error("Clerk test environment variables not configured. Required: CLERK_SECRET_KEY");

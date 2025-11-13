@@ -29,7 +29,6 @@ import type {
   TradeParameters,
   TradeResult,
 } from "./types";
-import { calculateRetryDelay, isNonRetryableError } from "./utils/error-utils";
 import { savePositionCloseHistory } from "./utils/execution-history-helpers";
 import { calculateRealizedPnL, shouldTriggerPriceLevel } from "./utils/position-monitoring-utils";
 

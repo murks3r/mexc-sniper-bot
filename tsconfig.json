@@ -49,8 +49,7 @@
     "types": [
       "node",
       "react",
-      "react-dom",
-      "bun-types"
+      "react-dom"
     ],
     "plugins": [
       {

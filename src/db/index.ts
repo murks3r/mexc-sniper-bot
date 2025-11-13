@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { RetryManager } from "../lib/resilience/retry-manager";
@@ -34,6 +35,28 @@ export const supabaseAdmin: SupabaseClient | null =
       })
     : null;
 
-export async function getUserPreferences(_userId: string) {
-  throw new Error("getUserPreferences not implemented in db index; use dedicated service instead.");
+export async function getUserPreferences(userId: string) {
+  try {
+    const prefs = await db
+      .select({
+        defaultBuyAmountUsdt: schema.userPreferences.defaultBuyAmountUsdt,
+        stopLossPercent: schema.userPreferences.stopLossPercent,
+        takeProfitLevel1: schema.userPreferences.takeProfitLevel1,
+        takeProfitLevel2: schema.userPreferences.takeProfitLevel2,
+        takeProfitLevel3: schema.userPreferences.takeProfitLevel3,
+        takeProfitLevel4: schema.userPreferences.takeProfitLevel4,
+        takeProfitCustom: schema.userPreferences.takeProfitCustom,
+        defaultTakeProfitLevel: schema.userPreferences.defaultTakeProfitLevel,
+        maxPositionSizeUsdt: schema.userPreferences.maxPositionSizeUsdt,
+        riskTolerance: schema.userPreferences.riskTolerance,
+      })
+      .from(schema.userPreferences)
+      .where(eq(schema.userPreferences.userId, userId))
+      .limit(1);
+
+    return prefs.length > 0 ? prefs[0] : null;
+  } catch (_error) {
+    // Return null to allow defaults to be used
+    return null;
+  }
 }

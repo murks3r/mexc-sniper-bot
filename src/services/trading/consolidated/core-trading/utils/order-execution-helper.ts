@@ -239,36 +239,13 @@ export class OrderExecutionHelper {
         };
       }
     };
+    const result = await executeOrderWithRetry(orderFn, retryConfig);
 
-    // Use advanced retry logic with Error 10007 detection
-    try {
-      const result = await executeOrderWithRetry(orderFn, retryConfig);
-
-      if (result.success) {
-        return ServiceResponseUtils.success(result.data);
-      }
-
-      throw new Error(result.error || "Order execution failed");
-    } catch (error) {
-      throw error;
+    if (result.success) {
+      return ServiceResponseUtils.success(result.data);
     }
-  }
 
-  /**
-   * Check if error should not be retried
-   */
-  private isNonRetryableError(error: Error): boolean {
-    const nonRetryableMessages = [
-      "insufficient balance",
-      "invalid symbol",
-      "trading disabled",
-      "MARKET_LOT_SIZE",
-      "MIN_NOTIONAL",
-    ];
-
-    return nonRetryableMessages.some((message) =>
-      error.message.toLowerCase().includes(message.toLowerCase()),
-    );
+    throw new Error(result.error || "Order execution failed");
   }
 
   /**

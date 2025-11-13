@@ -43,7 +43,7 @@ async function debugPriceFetch() {
   // @ts-expect-error - accessing private member
   const autoSniping = coreTrading.autoSniping;
 
-  if (autoSniping && autoSniping.context?.mexcService) {
+  if (autoSniping?.context?.mexcService) {
     console.log("✅ MEXC service available in context");
     try {
       const price = await autoSniping.context.mexcService.getCurrentPrice("FASTERUSDT");
@@ -66,7 +66,7 @@ async function debugPriceFetch() {
 
   // Test normalizeSymbol
   console.log("\n4️⃣ Testing normalizeSymbol:");
-  if (autoSniping && autoSniping.normalizeSymbol) {
+  if (autoSniping?.normalizeSymbol) {
     const normalized = autoSniping.normalizeSymbol("FASTER");
     console.log(`✅ 'FASTER' -> '${normalized}'`);
   } else {
@@ -75,7 +75,7 @@ async function debugPriceFetch() {
 
   // Test getCurrentMarketPrice
   console.log("\n5️⃣ Testing getCurrentMarketPrice:");
-  if (autoSniping && autoSniping.getCurrentMarketPrice) {
+  if (autoSniping?.getCurrentMarketPrice) {
     try {
       const price = await autoSniping.getCurrentMarketPrice("FASTER");
       console.log(`✅ Price: $${price}`);
@@ -93,7 +93,7 @@ async function debugPriceFetch() {
     console.log("❌ getCurrentMarketPrice not available");
   }
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   console.log("\n📊 Debug complete");
   process.exit(0);
 }

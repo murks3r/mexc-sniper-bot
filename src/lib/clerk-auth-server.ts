@@ -98,7 +98,7 @@ export async function getClerkToken(): Promise<string | null> {
   try {
     return await getToken({ template: "supabase" });
   } catch (error) {
-    console.error("Error getting Clerk token:", error);
+    // Logger not available in this context, silent fail
     return null;
   }
 }
@@ -116,13 +116,13 @@ export async function verifyUserInDatabase(clerkUserId: string): Promise<boolean
       .single();
 
     if (error) {
-      console.error("Error verifying user in database:", error);
+      // Logger not available in this context, silent fail
       return false;
     }
 
     return !!data;
   } catch (error) {
-    console.error("Error verifying user in database:", error);
+    // Logger not available in this context, silent fail
     return false;
   }
 }

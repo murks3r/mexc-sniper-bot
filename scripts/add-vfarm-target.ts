@@ -139,7 +139,7 @@ async function main() {
   let executionTime: Date | undefined;
   if (executionTimeStr) {
     executionTime = new Date(executionTimeStr);
-    if (isNaN(executionTime.getTime())) {
+    if (Number.isNaN(executionTime.getTime())) {
       console.error(`❌ Invalid execution time format: ${executionTimeStr}`);
       console.error("   Use ISO format: 2024-01-15T10:00:00Z");
       process.exit(1);

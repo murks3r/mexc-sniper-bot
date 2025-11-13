@@ -8,7 +8,7 @@ import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
 export const dynamic = "force-dynamic";
 
 // Create snipe target endpoint
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Get authenticated user
     const _user = await requireClerkAuth();

@@ -7,10 +7,7 @@
 
 import { toSafeError } from "@/src/lib/error-type-utils";
 import type { TradingOrderData } from "@/src/services/api/unified-mexc-trading";
-import {
-  executeOrderWithRetry,
-  MEXC_ERROR_CODES,
-} from "@/src/services/trading/advanced-sniper-utils";
+import { executeOrderWithRetry } from "@/src/services/trading/advanced-sniper-utils";
 import type { ModuleContext, Position, TradeParameters, TradeResult } from "../types";
 
 export class OrderExecutor {
@@ -147,7 +144,10 @@ export class OrderExecutor {
   /**
    * Execute real trading order
    */
-  async executeRealSnipe(params: TradeParameters): Promise<TradeResult> {
+  async executeRealSnipe(
+    params: TradeParameters,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<TradeResult> {
     try {
       this.context.logger.info("Executing real snipe order", {
         symbol: params.symbol,
@@ -157,13 +157,13 @@ export class OrderExecutor {
       });
 
       // Perform pre-trade validation
-      await this.performPreTradeValidation(params);
+      await this.performPreTradeValidation(params, options.signal);
 
       // Validate order parameters
-      await this.validateOrderParameters(params);
+      await this.validateOrderParameters(params, options.signal);
 
       // Execute order with retry logic
-      const result = await this.executeOrderWithRetry(params);
+      const result = await this.executeOrderWithRetry(params, options.signal);
 
       this.context.logger.info("Real snipe execution completed", {
         success: result.success,
@@ -190,9 +190,13 @@ export class OrderExecutor {
   /**
    * Perform pre-trade validation
    */
-  private async performPreTradeValidation(params: TradeParameters): Promise<void> {
+  private async performPreTradeValidation(
+    params: TradeParameters,
+    signal?: AbortSignal,
+  ): Promise<void> {
     // Check account balance
-    const balance = await this.context.mexcService.getAccountBalance();
+    this.throwIfAborted(signal);
+    const balance = await this.context.mexcService.getAccountBalance(signal);
     if (!balance.success) {
       throw new Error("Failed to fetch account balance");
     }
@@ -213,13 +217,15 @@ export class OrderExecutor {
     }
 
     // Check symbol trading status
-    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol);
+    this.throwIfAborted(signal);
+    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol, signal);
     if (!symbolInfo.success) {
       throw new Error(`Failed to get symbol info for ${params.symbol}`);
     }
 
     // Check market data availability
-    const currentPrice = await this.getCurrentMarketPrice(params.symbol);
+    this.throwIfAborted(signal);
+    const currentPrice = await this.getCurrentMarketPrice(params.symbol, signal);
     if (!currentPrice) {
       throw new Error(`Unable to get current market price for ${params.symbol}`);
     }
@@ -241,9 +247,13 @@ export class OrderExecutor {
   /**
    * Validate order parameters
    */
-  private async validateOrderParameters(params: TradeParameters): Promise<void> {
+  private async validateOrderParameters(
+    params: TradeParameters,
+    signal?: AbortSignal,
+  ): Promise<void> {
     // Get symbol trading rules
-    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol);
+    this.throwIfAborted(signal);
+    const symbolInfo = await this.context.mexcService.getSymbolInfoBasic(params.symbol, signal);
     if (!symbolInfo.success || !symbolInfo.data) {
       throw new Error(`Failed to get symbol info for ${params.symbol}`);
     }
@@ -272,7 +282,10 @@ export class OrderExecutor {
   /**
    * Execute order with advanced retry logic (handles Error 10007)
    */
-  private async executeOrderWithRetry(params: TradeParameters): Promise<TradeResult> {
+  private async executeOrderWithRetry(
+    params: TradeParameters,
+    signal?: AbortSignal,
+  ): Promise<TradeResult> {
     // Get retry configuration from context with defaults
     const retryConfig = {
       maxRetries: this.context.config.maxRetries || 3,
@@ -283,6 +296,7 @@ export class OrderExecutor {
 
     // Create order execution function
     const orderFn = async () => {
+      this.throwIfAborted(signal);
       const orderData: TradingOrderData = {
         symbol: params.symbol,
         side: params.side.toUpperCase() as "BUY" | "SELL",
@@ -293,7 +307,7 @@ export class OrderExecutor {
         quoteOrderQty: params.quoteOrderQty?.toString(),
       };
 
-      const orderResult = await this.context.mexcService.placeOrder(orderData);
+      const orderResult = await this.context.mexcService.placeOrder(orderData, signal);
 
       if (orderResult.success && orderResult.data) {
         return {
@@ -316,7 +330,14 @@ export class OrderExecutor {
 
     try {
       // Use advanced retry logic with Error 10007 detection
-      const result = await executeOrderWithRetry(orderFn, retryConfig);
+      // Wrap orderFn to check signal before each attempt
+      const wrappedOrderFn = () => {
+        if (signal?.aborted) {
+          throw new Error("Order execution cancelled");
+        }
+        return orderFn();
+      };
+      const result = await executeOrderWithRetry(wrappedOrderFn, retryConfig);
 
       if (result.success && result.data) {
         const orderData = result.data;
@@ -351,7 +372,10 @@ export class OrderExecutor {
   /**
    * Get current market price for a symbol
    */
-  private async getCurrentMarketPrice(symbol: string): Promise<number | null> {
+  private async getCurrentMarketPrice(
+    symbol: string,
+    signal?: AbortSignal,
+  ): Promise<number | null> {
     try {
       // Normalize to MEXC spot symbol (append USDT if no known quote present)
       const normalized = (() => {
@@ -477,5 +501,11 @@ export class OrderExecutor {
     });
 
     return position;
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      throw new Error("Operation aborted");
+    }
   }
 }

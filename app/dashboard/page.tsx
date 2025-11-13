@@ -2,6 +2,10 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { AsyncSniperStatusPanel } from "@/src/components/async-sniper/async-sniper-status-panel";
+import { BalanceGuardPanel } from "@/src/components/async-sniper/balance-guard-panel";
+import { EventAuditLogPanel } from "@/src/components/async-sniper/event-audit-log-panel";
+import { TakeProfitMonitorPanel } from "@/src/components/async-sniper/take-profit-monitor-panel";
 import { useAuth } from "@/src/components/auth/supabase-auth-provider";
 import { AutoSnipingControlPanel } from "@/src/components/auto-sniping-control-panel";
 // Removed: AIEnhancedPatternDisplay - pattern detection simplified
@@ -535,6 +539,7 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="auto-sniping">Auto-Sniping Control</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="async-sniper">Async Sniper</TabsTrigger>
             {/* Removed: Pattern Detection tab - simplified to trading focus */}
             <TabsTrigger value="trades">Trading History</TabsTrigger>
             <TabsTrigger value="listings">
@@ -547,6 +552,17 @@ export default function DashboardPage() {
 
           <TabsContent value="auto-sniping" className="space-y-4">
             <AutoSnipingControlPanel />
+          </TabsContent>
+
+          <TabsContent value="async-sniper" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AsyncSniperStatusPanel />
+              <BalanceGuardPanel />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TakeProfitMonitorPanel />
+              <EventAuditLogPanel />
+            </div>
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-4">

@@ -1,3 +1,4 @@
+import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db, userPreferences } from "@/src/db";
@@ -10,6 +11,7 @@ import {
   createValidationErrorResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 
 export const dynamic = "force-dynamic";
 
@@ -270,7 +272,7 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
     const { createdAt, ...updateDataWithoutDates } = updateData;
     return await db
       .update(userPreferences)
-      .set(updateDataWithoutDates as Partial<typeof userPreferences.$inferInsert>)
+      .set(updateDataWithoutDates as unknown as Partial<typeof userPreferences.$inferInsert>)
       .where(eq(userPreferences.userId, validatedUserId))
       .returning();
   }, "update user preferences");
@@ -305,7 +307,7 @@ export const POST = withApiErrorHandling(async (request: NextRequest) => {
         }, "create test user");
       } else {
         // Production environment - auto-create real authenticated user from Clerk
-        const { user } = await auth();
+        const user = await currentUser();
 
         if (!user) {
           // User not found - error logging handled by error handler middleware

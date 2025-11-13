@@ -56,7 +56,7 @@ export async function GET() {
         sdkAccessible: true,
         sessionId: session.sessionId ?? null,
         userId: session.userId ?? null,
-        sessionClaims: session.session?.claims ?? null,
+        sessionClaims: null, // session.claims not available in SessionAuthWithRedirect
       };
     } catch (clerkError) {
       clerkStatus = {

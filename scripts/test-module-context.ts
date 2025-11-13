@@ -63,7 +63,7 @@ async function testModuleContext() {
     console.log(`   Base service price: $${price}`);
   }
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   process.exit(0);
 }
 

@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       try {
         await db
           .update(apiCredentials)
-          .set({ credentialsValid: validated, lastValidated: new Date() })
+          .set({ lastUsed: new Date() })
           .where(and(eq(apiCredentials.userId, userId), eq(apiCredentials.provider, provider)));
       } catch (_e) {
         // Failed to persist validation flag - error logging handled by error handler middleware

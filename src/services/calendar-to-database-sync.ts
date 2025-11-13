@@ -5,7 +5,7 @@
  * This creates a single source of truth and solves rate limiting issues.
  */
 
-import { and, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { snipeTargets, user } from "@/src/db/schema";
 import { resolveRiskParams } from "@/src/lib/risk-defaults";

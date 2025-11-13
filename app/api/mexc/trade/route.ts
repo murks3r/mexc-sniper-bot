@@ -9,6 +9,12 @@ import {
   createSuccessResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+import { getCachedCredentials } from "@/src/lib/credential-cache";
+import { getLogger } from "@/src/lib/unified-logger";
+import type { OrderParameters } from "@/src/services/api/mexc-client-types";
+import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
+import { transactionLockService } from "@/src/services/data/transaction-lock-service";
 
 export const dynamic = "force-dynamic";
 // Risk management service removed in minimization - manual trade risk assessment disabled

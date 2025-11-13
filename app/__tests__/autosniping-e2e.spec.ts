@@ -125,14 +125,13 @@ describe("Autosniping E2E Tests", () => {
       const credentials = await getUserCredentials(TEST_USER_ID);
 
       expect(credentials).toBeDefined();
-      expect(credentials?.exchange).toBe("mexc");
+      expect(credentials?.provider).toBe("mexc");
       expect(credentials?.isActive).toBe(true);
     });
 
     it("should verify user preferences exist", async () => {
       // Mock user preferences check
       const mockPreferences = {
-        userId: TEST_USER_ID,
         defaultPositionSizeUsdt: TEST_POSITION_SIZE,
         autoSnipingEnabled: true,
         riskLevel: "medium",
@@ -151,8 +150,8 @@ describe("Autosniping E2E Tests", () => {
         id: "test-target-id",
         symbolName: TEST_SYMBOL,
         status: "ready",
-        userId: TEST_USER_ID,
         targetExecutionTime: new Date(),
+        userId: TEST_USER_ID,
       };
 
       expect(mockTarget).toBeDefined();
@@ -175,7 +174,6 @@ describe("Autosniping E2E Tests", () => {
         id: "test-target-id-2",
         symbolName: `${TEST_SYMBOL}_2`,
         status: "active",
-        userId: TEST_USER_ID,
         targetExecutionTime: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
       };
 
@@ -197,14 +195,13 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID,
       });
 
       // Execute a paper trade
-      const result = await coreTrading.paperTrade({
+      const result = await coreTrading.executeTrade({
         symbol: TEST_SYMBOL,
         side: "buy",
-        type: "market",
+        type: "MARKET",
         quoteOrderQty: TEST_POSITION_SIZE,
       });
 
@@ -222,10 +219,9 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID,
       });
 
-      const autoSniping = (coreTrading as any).autoSniping;
+      const autoSniping = (coreTrading as unknown as { autoSniping?: unknown }).autoSniping;
 
       if (!autoSniping) {
         throw new Error("Auto-sniping module not found");
@@ -235,7 +231,9 @@ describe("Autosniping E2E Tests", () => {
       const testSymbol = "NEWTOKENUSDT";
 
       try {
-        const price = await (autoSniping as any).getCurrentMarketPrice(testSymbol);
+        const price = await (
+          autoSniping as { getCurrentMarketPrice?: (symbol: string) => Promise<number> }
+        ).getCurrentMarketPrice?.(testSymbol);
         expect(typeof price).toBe("number");
         expect(price).toBeGreaterThan(0);
       } catch (error) {
@@ -250,16 +248,21 @@ describe("Autosniping E2E Tests", () => {
         secretKey: "test-secret-key",
         enablePaperTrading: true,
         paperTradingMode: true,
-        userId: TEST_USER_ID,
       });
 
-      const autoSniping = (coreTrading as any).autoSniping;
+      const autoSniping = (coreTrading as unknown as { autoSniping?: unknown }).autoSniping;
 
       if (!autoSniping) {
         throw new Error("Auto-sniping module not found");
       }
 
-      const normalizeSymbol = autoSniping.normalizeSymbol.binance;
+      const normalizeSymbol = (
+        autoSniping as { normalizeSymbol?: { binance?: (symbol: string) => string } }
+      ).normalizeSymbol?.binance;
+
+      if (!normalizeSymbol) {
+        throw new Error("normalizeSymbol.binance not found");
+      }
 
       expect(normalizeSymbol("BTC")).toBe("BTCUSDT");
       expect(normalizeSymbol("ETHUSDT")).toBe("ETHUSDT");

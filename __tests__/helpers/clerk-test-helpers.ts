@@ -188,7 +188,6 @@ export function setupMockClerkEnvironment() {
     mountOrganizationList: vi.fn(),
     mountCreateOrganization: vi.fn(),
     getOrganizationMemberships: vi.fn(),
-    getOrganizationInvitations: vi.fn(),
   } as any
 }
 

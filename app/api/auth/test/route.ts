@@ -1,3 +1,7 @@
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -51,14 +55,15 @@ export async function GET(request: NextRequest) {
     };
 
     const clerkAuth = await auth();
+    const clerkUser = await currentUser();
     const hasSession = Boolean(clerkAuth.userId);
-    const userInfo = clerkAuth.user
+    const userInfo = clerkUser
       ? {
-          id: clerkAuth.user.id,
-          email: clerkAuth.user.primaryEmailAddress?.emailAddress ?? "",
-          name: `${clerkAuth.user.firstName ?? ""} ${clerkAuth.user.lastName ?? ""}`.trim(),
-          username: clerkAuth.user.username,
-          verified: (clerkAuth.user.emailAddresses ?? []).some(
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+          name: `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim(),
+          username: clerkUser.username,
+          verified: (clerkUser.emailAddresses ?? []).some(
             (email) => email.verification?.status === "verified",
           ),
         }
@@ -71,7 +76,7 @@ export async function GET(request: NextRequest) {
         hasSession,
         userId: clerkAuth.userId,
         sessionId: clerkAuth.sessionId,
-        sessionClaims: clerkAuth.session?.claims,
+        sessionClaims: null, // session.claims not available in SessionAuthWithRedirect
         user: userInfo,
       },
       environment: {

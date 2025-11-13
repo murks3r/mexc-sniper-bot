@@ -45,7 +45,7 @@ describe("API Route Authentication", () => {
           expect(clerkUserId).toBe(user.id);
 
           await cleanupClerkTestUser(clerkUserId);
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // If real Clerk fails, fall back to mock test
           const testSession = createTestSession();
           expect(testSession.sessionToken).toBeTruthy();
@@ -138,7 +138,7 @@ describe("API Route Integration Tests", () => {
 
         expect(request.headers.get("Authorization")).toBe(`Bearer ${sessionToken}`);
         await cleanupClerkTestUser(clerkUserId);
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Fall back to mock test if real Clerk fails
         const testSession = createTestSession();
         const request = createAuthenticatedRequest(

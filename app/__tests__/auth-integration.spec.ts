@@ -16,7 +16,6 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/src/db";
 import { user as userSchema } from "@/src/db/schemas/auth";
-import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 import {
   cleanupClerkTestUser,
   createAndSignInClerkUser,
@@ -57,9 +56,9 @@ describe("Clerk Auth Integration Tests", () => {
           testUserId = user.id;
           await cleanupClerkTestUser(user.id);
           testUserId = null;
-        } catch (error) {
+        } catch (_error) {
           // Fall back to mock test
-          const { createClerkTestUser: mockCreate } = await import(
+          const { createClerkTestUser: _mockCreate } = await import(
             "@/src/lib/test-helpers/clerk-auth-test-helpers"
           );
           const mockUser = {
@@ -93,7 +92,7 @@ describe("Clerk Auth Integration Tests", () => {
           expect(user.publicMetadata).toBeDefined();
           expect(user.id).toBeTruthy();
           await cleanupClerkTestUser(user.id);
-        } catch (error) {
+        } catch (_error) {
           // Fall back to mock test
           const testSession = createTestSession();
           expect(testSession.user).toBeDefined();
@@ -125,7 +124,7 @@ describe("Clerk Auth Integration Tests", () => {
           expect(clerkUserId).toBe(user.id);
 
           await cleanupClerkTestUser(clerkUserId);
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession = createTestSession();
           expect(testSession.sessionToken).toBeTruthy();
@@ -163,7 +162,7 @@ describe("Clerk Auth Integration Tests", () => {
           );
           expect(request.headers.get("Authorization")).toBe(`Bearer ${sessionToken}`);
           await cleanupClerkTestUser(clerkUserId);
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession = createTestSession();
           const request = createAuthenticatedRequest(
@@ -207,7 +206,7 @@ describe("Clerk Auth Integration Tests", () => {
           );
           expect(request.headers.get("Authorization")).toBe(`Bearer ${sessionToken}`);
           await cleanupClerkTestUser(clerkUserId);
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession = createTestSession();
           const request = createAuthenticatedRequest(
@@ -254,7 +253,7 @@ describe("Clerk Auth Integration Tests", () => {
 
           expect(dbUser.length).toBeGreaterThanOrEqual(0); // May or may not be synced yet
           await cleanupClerkTestUser(clerkUserId);
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession = createTestSession();
           expect(testSession.user).toBeDefined();
@@ -277,7 +276,7 @@ describe("Clerk Auth Integration Tests", () => {
             expect(session.sessionToken).toBeTruthy();
             expect(session.user.id).toBeTruthy();
           });
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession = createTestSession();
           expect(testSession.user).toBeDefined();
@@ -317,7 +316,7 @@ describe("Clerk Auth Integration Tests", () => {
 
           await cleanupClerkTestUser(userId1);
           await cleanupClerkTestUser(userId2);
-        } catch (error: any) {
+        } catch (_error: unknown) {
           // Fall back to mock test
           const testSession1 = createTestSession();
           const testSession2 = createTestSession();

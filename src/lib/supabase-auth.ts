@@ -1,4 +1,4 @@
-import { type CookieOptions, createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { db } from "../db";

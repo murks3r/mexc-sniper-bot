@@ -11,11 +11,12 @@ import {
   executeOrderWithRetry,
   isWithinExecutionWindow,
   MEXC_ERROR_CODES,
-  type QuantityValidationResult,
   sleep,
   validateAndAdjustQuantity,
   waitForExecutionWindow,
 } from "../advanced-sniper-utils";
+
+type OrderResponse = { orderId: number };
 
 describe("Advanced Sniper Utilities", () => {
   describe("executeOrderWithRetry", () => {
@@ -28,23 +29,23 @@ describe("Advanced Sniper Utilities", () => {
     });
 
     it("should succeed on first attempt", async () => {
-      const mockFn = vi.fn().mockResolvedValue({
+      const mockFn = vi.fn<[], Promise<MexcServiceResponse<OrderResponse>>>().mockResolvedValue({
         success: true,
         data: { orderId: 123 },
       });
 
-      const promise = executeOrderWithRetry(mockFn);
-      vi.runAllTimers();
+      const promise = executeOrderWithRetry<OrderResponse>(mockFn);
+      await vi.runAllTimersAsync();
       const result = await promise;
 
       expect(result.success).toBe(true);
-      expect((result.data as any)?.orderId).toBe(123);
+      expect(result.data?.orderId).toBe(123);
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
     it("should retry on Error 10007 and succeed", async () => {
       const mockFn = vi
-        .fn()
+        .fn<[], Promise<MexcServiceResponse<OrderResponse>>>()
         .mockResolvedValueOnce({
           success: false,
           data: { code: MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE },
@@ -52,13 +53,15 @@ describe("Advanced Sniper Utilities", () => {
         .mockResolvedValueOnce({
           success: true,
           data: { orderId: 123 },
-        });
+        } as MexcServiceResponse<OrderResponse>);
 
-      const promise = executeOrderWithRetry(mockFn, { maxRetries: 3, initialDelayMs: 100 });
+      const promise = executeOrderWithRetry<OrderResponse>(mockFn, {
+        maxRetries: 3,
+        initialDelayMs: 100,
+      });
 
       // Fast-forward through first retry delay
-      vi.advanceTimersByTime(100);
-      await Promise.resolve(); // Let promises resolve
+      await vi.advanceTimersByTimeAsync(100);
 
       const result = await promise;
 
@@ -67,31 +70,31 @@ describe("Advanced Sniper Utilities", () => {
     });
 
     it("should fail after max retries", async () => {
-      const mockFn = vi.fn().mockResolvedValue({
+      const mockFn = vi.fn<[], Promise<MexcServiceResponse<OrderResponse>>>().mockResolvedValue({
         success: false,
         data: { code: MEXC_ERROR_CODES.SYMBOL_NOT_TRADEABLE },
       });
 
-      const promise = executeOrderWithRetry(mockFn, {
+      const promise = executeOrderWithRetry<OrderResponse>(mockFn, {
         maxRetries: 2,
         initialDelayMs: 100,
         maxDelayMs: 200,
       });
 
       // Fast-forward through all retry delays
-      vi.advanceTimersByTime(100); // First retry
-      await Promise.resolve();
-      vi.advanceTimersByTime(150); // Second retry (capped at 200ms)
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(100); // First retry
+      await vi.advanceTimersByTimeAsync(150); // Second retry (capped at 200ms)
 
       await expect(promise).rejects.toThrow("Max retries");
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
 
     it("should not retry on non-retryable errors", async () => {
-      const mockFn = vi.fn().mockRejectedValue(new Error("Invalid symbol"));
+      const mockFn = vi
+        .fn<[], Promise<MexcServiceResponse<OrderResponse>>>()
+        .mockRejectedValue(new Error("Invalid symbol"));
 
-      const promise = executeOrderWithRetry(mockFn);
+      const promise = executeOrderWithRetry<OrderResponse>(mockFn);
 
       await expect(promise).rejects.toThrow("Invalid symbol");
       expect(mockFn).toHaveBeenCalledTimes(1);

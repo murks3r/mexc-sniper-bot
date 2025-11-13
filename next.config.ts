@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
     // Allow builds for deployment while fixing remaining type issues
     ignoreBuildErrors: true,
   },
+
+  // Environment variables for build
+  env: {
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_placeholder",
+  },
   
   // Note: eslint config removed in Next.js 16 - use Biome or ESLint directly
 

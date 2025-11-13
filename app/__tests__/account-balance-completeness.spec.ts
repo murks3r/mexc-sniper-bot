@@ -10,14 +10,6 @@ import type { z } from "zod";
 import type { BalanceItemSchema } from "@/src/schemas/mexc-api-validation-schemas";
 
 type BalanceItem = z.infer<typeof BalanceItemSchema>;
-type BalanceResponse = {
-  success: boolean;
-  data: {
-    balances: BalanceItem[];
-    totalUsdtValue: number;
-    lastUpdated: string;
-  };
-};
 
 // Mock environment variables
 (() => {

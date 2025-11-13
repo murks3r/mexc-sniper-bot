@@ -196,7 +196,7 @@ export class TakeProfitMonitor {
         // Cancel any pending orders
         if (position.orderId) {
           try {
-            await this.client.cancelOrder?.(position.orderId);
+            await this.client.cancelOrder(position.orderId, position.symbolName);
             this.logger.info("Cancelled pending order on TP", {
               positionId: position.id,
               orderId: position.orderId,
@@ -239,7 +239,7 @@ export class TakeProfitMonitor {
         // Cancel any pending orders
         if (position.orderId) {
           try {
-            await this.client.cancelOrder?.(position.orderId);
+            await this.client.cancelOrder(position.orderId, position.symbolName);
             this.logger.info("Cancelled pending order on SL", {
               positionId: position.id,
               orderId: position.orderId,

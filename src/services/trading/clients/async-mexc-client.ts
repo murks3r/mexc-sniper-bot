@@ -141,6 +141,17 @@ export class AsyncMexcClient {
   }
 
   /**
+   * Cancel an order
+   */
+  async cancelOrder(
+    orderId: string,
+    symbol?: string,
+  ): Promise<{ orderId: string; status: string }> {
+    const requestId = `cancel-${orderId}-${Date.now()}`;
+    return this.executeRequest(() => this.service.cancelOrder(orderId, symbol), requestId);
+  }
+
+  /**
    * Get current concurrency metrics
    */
   getMetrics(): {

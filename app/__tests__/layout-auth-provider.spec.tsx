@@ -39,7 +39,7 @@ function findInTree(
     return node;
   }
 
-  const { children } = node.props ?? {};
+  const { children } = (node.props as { children?: unknown }) ?? {};
   if (!children) {
     return null;
   }
@@ -61,7 +61,8 @@ describe("RootLayout auth provider integration", () => {
           typeof element.type === "function" && element.type.name === "ClerkAuthProvider",
       ) ??
       findInTree(
-        (layoutTree as ReactElement)?.props?.children as ReactElement | ReactElement[],
+        ((layoutTree as ReactElement)?.props as { children?: ReactElement | ReactElement[] })
+          ?.children as ReactElement | ReactElement[],
         (element) =>
           typeof element.type === "function" && element.type.name === "ClerkAuthProvider",
       );

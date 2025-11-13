@@ -133,7 +133,7 @@ async function checkSystemHealth() {
       dbConnected: true,
       queueProcessing: true,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       dbConnected: false,
       queueProcessing: false,
@@ -216,7 +216,9 @@ async function monitor() {
 
 // Main execution
 if (import.meta.main) {
-  const interval = process.env.MONITOR_INTERVAL ? parseInt(process.env.MONITOR_INTERVAL) : 300000; // 5 minutes default
+  const interval = process.env.MONITOR_INTERVAL
+    ? parseInt(process.env.MONITOR_INTERVAL, 10)
+    : 300000; // 5 minutes default
 
   if (process.argv.includes("--once")) {
     // Run once and exit

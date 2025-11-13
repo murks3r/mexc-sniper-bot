@@ -91,7 +91,7 @@ async function executeReadyTargets() {
     console.log("\n📊 Execution Summary:");
     console.log("=".repeat(60));
 
-    const completedTargets = await db
+    const _completedTargets = await db
       .select({
         id: snipeTargets.id,
         symbol: snipeTargets.symbolName,
@@ -104,7 +104,7 @@ async function executeReadyTargets() {
       );
 
     // Get positions created
-    const positions = await db.execute(sql`
+    const _positions = await db.execute(sql`
       SELECT symbol_name, status, entry_price, quantity, created_at 
       FROM positions 
       WHERE created_at > now() - interval '5 minutes'

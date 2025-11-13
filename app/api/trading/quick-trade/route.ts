@@ -7,6 +7,8 @@ import {
   createSuccessResponse,
   HTTP_STATUS,
 } from "@/src/lib/api-response";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+import { getRecommendedMexcService } from "@/src/services/api/mexc-unified-exports";
 
 export const dynamic = "force-dynamic";
 

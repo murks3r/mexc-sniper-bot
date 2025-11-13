@@ -35,7 +35,7 @@ async function testPrices() {
     }
   }
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   console.log("\n📊 Test Complete");
   process.exit(0);
 }

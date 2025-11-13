@@ -1,3 +1,16 @@
+import type { NextRequest } from "next/server";
+import { getUserCredentials } from "@/src/services/api/user-credentials-service";
+import { getUnifiedAutoSnipingOrchestrator } from "@/src/services/trading/unified-auto-sniping-orchestrator";
+
+type UnifiedAutoSnipingOrchestrator = ReturnType<typeof getUnifiedAutoSnipingOrchestrator>;
+
+import { requireApiAuth } from "@/src/lib/api-auth";
+import { handleApiRouteError } from "@/src/lib/api-error-handler";
+import { createErrorResponse, createSuccessResponse } from "@/src/lib/api-response";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+import { calendarSyncService } from "@/src/services/calendar-to-database-sync";
+import { getCoreTrading } from "@/src/services/trading/consolidated/core-trading/base-service";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -336,7 +349,7 @@ export const POST = async (request: NextRequest) => {
  * GET /api/auto-sniping/control
  * Get current auto-sniping status (convenience endpoint)
  */
-export const GET = async (request: NextRequest) => {
+export const GET = async (_request: NextRequest) => {
   try {
     // Use new request-aware authentication
     const _user = await requireClerkAuth();

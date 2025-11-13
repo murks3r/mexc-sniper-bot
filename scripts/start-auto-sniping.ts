@@ -11,7 +11,7 @@ import { getLogger } from "../src/lib/unified-logger";
 import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
 import { getUnifiedAutoSnipingOrchestrator } from "../src/services/trading/unified-auto-sniping-orchestrator";
 
-const logger = getLogger("start-auto-sniping");
+const _logger = getLogger("start-auto-sniping");
 
 async function startAutoSniping() {
   console.log("🚀 Starting Auto-Sniping Service...\n");

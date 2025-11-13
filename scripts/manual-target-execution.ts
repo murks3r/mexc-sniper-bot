@@ -2,7 +2,7 @@
 
 /**
  * Manual Target Execution Script
- * 
+ *
  * Directly executes a specific snipe target by ID.
  * Usage: bun run scripts/manual-target-execution.ts <target-id>
  * Example: bun run scripts/manual-target-execution.ts 191
@@ -19,7 +19,7 @@ const logger = getLogger("manual-execution");
 
 async function executeTargetById(targetId: number) {
   console.log(`🎯 Manual Execution of Target ID: ${targetId}\n`);
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
 
   try {
     // Get the target from database
@@ -35,7 +35,7 @@ async function executeTargetById(targetId: number) {
     }
 
     const target = targetResult[0];
-    
+
     console.log(`📋 Target Details:`);
     console.log(`   Symbol: ${target.symbolName}`);
     console.log(`   Status: ${target.status}`);
@@ -48,19 +48,19 @@ async function executeTargetById(targetId: number) {
     if (target.status !== "ready") {
       console.warn(`⚠️  Target status is "${target.status}", not "ready"`);
       console.log(`   Updating status to "ready"...`);
-      
+
       await db
         .update(snipeTargets)
         .set({ status: "ready", updatedAt: new Date() })
         .where(eq(snipeTargets.id, targetId));
-      
+
       console.log("✅ Status updated to 'ready'\n");
     }
 
     // Get core trading service
     console.log("🔧 Initializing core trading service...");
     const coreTrading = getCoreTrading();
-    
+
     // Initialize if needed
     const status = await coreTrading.getStatus();
     if (!status.isInitialized) {
@@ -68,7 +68,7 @@ async function executeTargetById(targetId: number) {
       await coreTrading.initialize();
       console.log("   ✅ Service initialized");
     }
-    
+
     // Enable auto-sniping if needed
     const serviceStatus = await coreTrading.getServiceStatus();
     if (!serviceStatus.autoSnipingEnabled) {
@@ -76,28 +76,33 @@ async function executeTargetById(targetId: number) {
       await coreTrading.updateConfig({ autoSnipingEnabled: true });
       console.log("   ✅ Auto-sniping enabled");
     }
-    
+
     console.log("   ✅ Service ready\n");
 
     // Execute the target using the auto-sniping module
     console.log("⚡ Executing target...\n");
-    
+
     // Access the auto-sniping module directly via the private member
     const autoSnipingModule = (coreTrading as any).autoSniping;
-    
+
     if (!autoSnipingModule) {
       console.error("❌ Could not access auto-sniping module");
-      console.error("Available methods:", Object.getOwnPropertyNames(coreTrading).filter(name => name.includes('nipe') || name.includes('uto')));
+      console.error(
+        "Available methods:",
+        Object.getOwnPropertyNames(coreTrading).filter(
+          (name) => name.includes("nipe") || name.includes("uto"),
+        ),
+      );
       process.exit(1);
     }
-    
+
     // Direct execution
     const result = await autoSnipingModule.executeSnipeTarget(target, undefined);
-    
+
     console.log(`\n${"=".repeat(60)}`);
     console.log("📊 Execution Result:");
     console.log("=".repeat(60));
-    
+
     if (result.success) {
       console.log("✅ EXECUTION SUCCESSFUL");
       console.log(`   Order ID: ${result.data?.orderId}`);
@@ -110,80 +115,85 @@ async function executeTargetById(targetId: number) {
       console.log("❌ EXECUTION FAILED");
       console.log(`   Error: ${result.error}`);
     }
-    
+
     console.log("\n⏱️  Checking final status...");
-      
-      // Check final target status
-      const finalResult = await db
-        .select({
-          status: snipeTargets.status,
-          actualExecutionTime: snipeTargets.actualExecutionTime,
-          executionPrice: snipeTargets.executionPrice,
-          executionStatus: snipeTargets.executionStatus,
-          errorMessage: snipeTargets.errorMessage,
-        })
-        .from(snipeTargets)
-        .where(eq(snipeTargets.id, targetId))
-        .limit(1);
-      
-      if (finalResult.length > 0) {
-        const final = finalResult[0];
-        console.log(`   Final status: ${final.status}`);
-        if (final.actualExecutionTime) {
-          console.log(`   Executed at: ${final.actualExecutionTime}`);
-        }
-        if (final.executionPrice) {
-          console.log(`   Execution price: $${final.executionPrice}`);
-        }
-        if (final.errorMessage) {
-          console.log(`   Error: ${final.errorMessage}`);
-        }
+
+    // Check final target status
+    const finalResult = await db
+      .select({
+        status: snipeTargets.status,
+        actualExecutionTime: snipeTargets.actualExecutionTime,
+        executionPrice: snipeTargets.executionPrice,
+        executionStatus: snipeTargets.executionStatus,
+        errorMessage: snipeTargets.errorMessage,
+      })
+      .from(snipeTargets)
+      .where(eq(snipeTargets.id, targetId))
+      .limit(1);
+
+    if (finalResult.length > 0) {
+      const final = finalResult[0];
+      console.log(`   Final status: ${final.status}`);
+      if (final.actualExecutionTime) {
+        console.log(`   Executed at: ${final.actualExecutionTime}`);
       }
-      
-      // Check if position was created
-      const positions = await db.execute(sql`
+      if (final.executionPrice) {
+        console.log(`   Execution price: $${final.executionPrice}`);
+      }
+      if (final.errorMessage) {
+        console.log(`   Error: ${final.errorMessage}`);
+      }
+    }
+
+    // Check if position was created
+    const positions = await db.execute(sql`
         SELECT id, symbol_name, status, entry_price, quantity 
         FROM positions 
         WHERE snipe_target_id = ${targetId}
         ORDER BY created_at DESC
         LIMIT 1
       `);
-      
-      if (Array.isArray(positions) && positions.length > 0) {
-        const position = positions[0] as { id: number; symbol_name: string; status: string; entry_price: string; quantity: string };
-        console.log(`\n📍 Position created: ID ${position.id}`);
-        console.log(`   Symbol: ${position.symbol_name}`);
-        console.log(`   Status: ${position.status}`);
-        console.log(`   Entry price: $${position.entry_price}`);
-        console.log(`   Quantity: ${position.quantity}`);
-      } else {
-        console.log(`\n  No position created yet (may be delayed)`);
-      }
-    
+
+    if (Array.isArray(positions) && positions.length > 0) {
+      const position = positions[0] as {
+        id: number;
+        symbol_name: string;
+        status: string;
+        entry_price: string;
+        quantity: string;
+      };
+      console.log(`\n📍 Position created: ID ${position.id}`);
+      console.log(`   Symbol: ${position.symbol_name}`);
+      console.log(`   Status: ${position.status}`);
+      console.log(`   Entry price: $${position.entry_price}`);
+      console.log(`   Quantity: ${position.quantity}`);
+    } else {
+      console.log(`\n  No position created yet (may be delayed)`);
+    }
+
     console.log(`\n${"=".repeat(60)}`);
     console.log("✅ Execution attempt completed");
     console.log("\n💡 Verify trade in:");
     console.log("   - snipe_targets table (status should be 'completed')");
     console.log("   - positions table (new position should exist)");
     console.log("   - execution_history table (execution record should exist)");
-    
+
     process.exit(0);
-    
   } catch (error) {
     const safeError = toSafeError(error);
-    console.error("\n" + "=".repeat(60));
+    console.error(`\n${"=".repeat(60)}`);
     console.error("❌ Fatal error during execution:");
     console.error(safeError.message);
     console.error("\nStack trace:");
     console.error(safeError.stack);
-    
+
     logger.error("Manual execution failed", { error: safeError });
     process.exit(1);
   }
 }
 
 // Main execution
-const targetId = process.argv[2] ? parseInt(process.argv[2]) : null;
+const targetId = process.argv[2] ? parseInt(process.argv[2], 10) : null;
 
 if (!targetId) {
   console.error("❌ Usage: bun run scripts/manual-target-execution.ts <target-id>");

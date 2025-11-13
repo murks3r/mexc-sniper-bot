@@ -10,6 +10,7 @@
 
 // Removed non-existent interface import - interfaces are defined inline
 import type { ActivityQueryOptionsType } from "@/src/schemas/unified/mexc-api-schemas";
+import { createSimpleLogger } from "../../lib/unified-logger";
 // Build-safe imports - modular architecture
 import type {
   BalanceEntry,
@@ -37,17 +38,8 @@ import {
 // ============================================================================
 
 export class UnifiedMexcServiceV2 {
-  // Simple console logger to avoid webpack bundling issues
-  private logger = {
-    info: (message: string, context?: any) =>
-      console.info("[unified-mexc-service-v2]", message, context || ""),
-    warn: (message: string, context?: any) =>
-      console.warn("[unified-mexc-service-v2]", message, context || ""),
-    error: (message: string, context?: any) =>
-      console.error("[unified-mexc-service-v2]", message, context || ""),
-    debug: (message: string, context?: any) =>
-      console.debug("[unified-mexc-service-v2]", message, context || ""),
-  };
+  // Use unified logger
+  private logger = createSimpleLogger("unified-mexc-service-v2");
 
   private config: Required<UnifiedMexcConfigV2>;
   private coreClient: MexcCoreClient;

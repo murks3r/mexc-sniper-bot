@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
 
 // Create snipe targets from pattern detection results
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Disallow manual target creation via this debug endpoint
     await requireClerkAuth();

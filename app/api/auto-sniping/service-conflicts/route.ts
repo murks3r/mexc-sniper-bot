@@ -14,7 +14,7 @@ import { serviceConflictDetector } from "@/src/services/trading/service-conflict
  * GET /api/auto-sniping/service-conflicts
  * Get current service conflict status
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Require authentication
     const _user = await requireClerkAuth();

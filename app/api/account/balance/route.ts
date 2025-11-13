@@ -377,13 +377,26 @@ async function balanceHandler(request: NextRequest): Promise<NextResponse> {
     }
 
     // Handle balance response
-    if (!balanceResponse.success) {
+    if (!balanceResponse.success || !balanceResponse.data) {
       return createBalanceErrorResponse(balanceResponse, hasUserCredentials, credentialsType);
     }
 
-    // Success case
+    // Success case - ensure required fields exist
+    const balanceData = balanceResponse.data;
+    if (
+      !balanceData.balances ||
+      balanceData.totalUsdtValue === undefined ||
+      !balanceData.lastUpdated
+    ) {
+      return createBalanceErrorResponse(balanceResponse, hasUserCredentials, credentialsType);
+    }
+
     return createSuccessResponse(
-      balanceResponse.data,
+      {
+        balances: balanceData.balances,
+        totalUsdtValue: balanceData.totalUsdtValue,
+        lastUpdated: balanceData.lastUpdated,
+      },
       hasUserCredentials,
       credentialsType,
       startTime,

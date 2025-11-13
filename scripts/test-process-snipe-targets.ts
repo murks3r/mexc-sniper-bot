@@ -24,7 +24,7 @@ async function testProcessSnipeTargets() {
     console.error("\n❌ Error:", error);
   }
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   process.exit(0);
 }
 
