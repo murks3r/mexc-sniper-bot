@@ -76,29 +76,34 @@ vi.mock("@/src/services/trading/consolidated/core-trading/base-service", () => (
   })),
 }));
 
-// Mock orchestrator
-const mockOrchestratorInstance = vi.hoisted(() => ({
-  setCurrentUser: vi.fn(),
-  getStatus: vi.fn().mockResolvedValue({
-    isInitialized: true,
-    isActive: true,
-    isHealthy: true,
-    autoSnipingEnabled: true,
-    activePositions: 0,
-    processedTargets: 0,
-    metrics: {
-      totalTrades: 0,
-      successfulTrades: 0,
-      failedTrades: 0,
-    },
-  }),
-  updateConfig: vi.fn().mockResolvedValue(undefined),
-  startAutoSniping: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-vi.mock("@/src/services/trading/unified-auto-sniping-orchestrator", () => ({
-  getUnifiedAutoSnipingOrchestrator: vi.fn(() => mockOrchestratorInstance),
-}));
+// Mock orchestrator - use factory function to avoid hoisting issues
+vi.mock("@/src/services/trading/unified-auto-sniping-orchestrator", () => {
+  // Create mock instance inside factory function
+  const mockOrchestratorInstance = {
+    setCurrentUser: vi.fn(),
+    getStatus: vi.fn().mockResolvedValue({
+      isInitialized: true,
+      isActive: true,
+      isHealthy: true,
+      autoSnipingEnabled: true,
+      activePositions: 0,
+      processedTargets: 0,
+      metrics: {
+        totalTrades: 0,
+        successfulTrades: 0,
+        failedTrades: 0,
+      },
+    }),
+    updateConfig: vi.fn().mockResolvedValue(undefined),
+    startAutoSniping: vi.fn().mockResolvedValue({ success: true }),
+  };
+  
+  return {
+    getUnifiedAutoSnipingOrchestrator: vi.fn(() => mockOrchestratorInstance),
+    // Export mock for use in tests
+    __mockOrchestratorInstance: mockOrchestratorInstance,
+  };
+});
 
 // Mock user credentials service
 vi.mock("@/src/services/api/user-credentials-service", () => ({
