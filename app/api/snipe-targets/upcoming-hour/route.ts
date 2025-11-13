@@ -1,3 +1,9 @@
+import { and, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db } from "@/src/db";
+import { snipeTargets } from "@/src/db/schemas/trading";
+import { requireClerkAuth } from "@/src/lib/clerk-auth-server";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -7,7 +13,7 @@ export const dynamic = "force-dynamic";
  * Used for production readiness verification.
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get authenticated user
     const user = await requireClerkAuth();

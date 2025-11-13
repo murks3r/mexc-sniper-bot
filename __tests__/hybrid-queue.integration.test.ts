@@ -87,7 +87,7 @@ describe("Hybrid Queue Integration", () => {
         const [dbJob] = await db
           .select()
           .from(jobs)
-          .where(eq(jobs.id, job.id as number));
+          .where(eq(jobs.id, job.id as string));
         expect(dbJob).toBeDefined();
       }
     });

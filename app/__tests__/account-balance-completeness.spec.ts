@@ -4,7 +4,20 @@
  * Verifies that all assets are returned with USDT valuations, including zero balances.
  */
 
+import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
+import type { BalanceItemSchema } from "@/src/schemas/mexc-api-validation-schemas";
+
+type BalanceItem = z.infer<typeof BalanceItemSchema>;
+type BalanceResponse = {
+  success: boolean;
+  data: {
+    balances: BalanceItem[];
+    totalUsdtValue: number;
+    lastUpdated: string;
+  };
+};
 
 // Mock environment variables
 (() => {
@@ -102,7 +115,7 @@ describe("Account Balance API Completeness", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -111,14 +124,14 @@ describe("Account Balance API Completeness", () => {
     expect(Array.isArray(data.data.balances)).toBe(true);
 
     // Should include all assets, even with zero balances
-    const assetNames = data.data.balances.map((b: any) => b.asset);
+    const assetNames = data.data.balances.map((b) => b.asset);
     expect(assetNames).toContain("USDT");
     expect(assetNames).toContain("BTC");
     expect(assetNames).toContain("ETH"); // Zero balance should still be included
     expect(assetNames).toContain("BNB");
 
     // All balances should have usdtValue property
-    data.data.balances.forEach((balance: any) => {
+    data.data.balances.forEach((balance) => {
       expect(balance).toHaveProperty("usdtValue");
       expect(typeof balance.usdtValue).toBe("number");
       expect(balance.usdtValue).toBeGreaterThanOrEqual(0);
@@ -157,18 +170,18 @@ describe("Account Balance API Completeness", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
 
     // Verify USDT values are calculated
-    const usdtBalance = data.data.balances.find((b: any) => b.asset === "USDT");
+    const usdtBalance = data.data.balances.find((b) => b.asset === "USDT");
     expect(usdtBalance).toBeDefined();
     expect(usdtBalance.usdtValue).toBe(100);
 
-    const btcBalance = data.data.balances.find((b: any) => b.asset === "BTC");
+    const btcBalance = data.data.balances.find((b) => b.asset === "BTC");
     expect(btcBalance).toBeDefined();
     expect(btcBalance.usdtValue).toBeGreaterThan(0);
   });
@@ -205,7 +218,7 @@ describe("Account Balance API Completeness", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -244,7 +257,7 @@ describe("Account Balance API Completeness", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
     const data = await response.json();
 
     expect(response.status).toBe(200);

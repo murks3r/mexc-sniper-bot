@@ -4,11 +4,11 @@
  * Verifies that targets scheduled within the next 60 minutes are correctly identified.
  */
 
+import { type NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock authentication - use hoisted to ensure it's available before route import
-const mockRequireAuth = vi.fn().mockImplementation(async (_request) => {
-  console.log("Mock requireAuthFromRequest called");
+const mockRequireAuth = vi.fn().mockImplementation(async () => {
   return {
     id: "test-user-id",
     email: "test@example.com",
@@ -16,8 +16,8 @@ const mockRequireAuth = vi.fn().mockImplementation(async (_request) => {
     emailVerified: true,
   };
 });
-vi.mock("@/src/lib/supabase-auth-server", () => ({
-  requireAuthFromRequest: mockRequireAuth,
+vi.mock("@/src/lib/clerk-auth-server", () => ({
+  requireClerkAuth: mockRequireAuth,
 }));
 
 // Mock database
@@ -91,16 +91,12 @@ describe("Upcoming Hour Targets API", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
+    expect(response).toBeInstanceOf(NextResponse);
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error(
-        "Test failed with status",
-        response.status,
-        "data:",
-        JSON.stringify(data, null, 2),
-      );
+      // Test failure - response status not 200
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -136,16 +132,12 @@ describe("Upcoming Hour Targets API", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
+    expect(response).toBeInstanceOf(NextResponse);
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error(
-        "Test failed with status",
-        response.status,
-        "data:",
-        JSON.stringify(data, null, 2),
-      );
+      // Test failure - response status not 200
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -199,16 +191,12 @@ describe("Upcoming Hour Targets API", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
+    expect(response).toBeInstanceOf(NextResponse);
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error(
-        "Test failed with status",
-        response.status,
-        "data:",
-        JSON.stringify(data, null, 2),
-      );
+      // Test failure - response status not 200
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -267,16 +255,12 @@ describe("Upcoming Hour Targets API", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
+    expect(response).toBeInstanceOf(NextResponse);
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error(
-        "Test failed with status",
-        response.status,
-        "data:",
-        JSON.stringify(data, null, 2),
-      );
+      // Test failure - response status not 200
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
@@ -330,16 +314,12 @@ describe("Upcoming Hour Targets API", () => {
       method: "GET",
     });
 
-    const response = await GET(request as any);
+    const response = await GET(request as NextRequest);
+    expect(response).toBeInstanceOf(NextResponse);
     const data = await response.json();
 
     if (response.status !== 200) {
-      console.error(
-        "Test failed with status",
-        response.status,
-        "data:",
-        JSON.stringify(data, null, 2),
-      );
+      // Test failure - response status not 200
     }
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);

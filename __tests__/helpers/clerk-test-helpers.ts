@@ -1,6 +1,6 @@
-import type { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 import type { User } from '@clerk/nextjs/server'
-import type { NextFetchRequestConfig } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
+import { vi } from 'vitest'
 
 /**
  * Mock Clerk user for testing
@@ -41,8 +41,8 @@ export function createMockClerkUser(overrides: Partial<User> = {}): User {
     privateMetadata: {},
     createdAt: new Date().getTime(),
     updatedAt: new Date().getTime(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   } as unknown as User
 
   return { ...defaultUser, ...overrides } as User
@@ -53,7 +53,7 @@ export function createMockClerkUser(overrides: Partial<User> = {}): User {
  */
 export function createAuthenticatedClerkRequest(
   user: User,
-  options: NextFetchRequestConfig = {},
+  options: { headers?: HeadersInit } = {},
 ): NextRequest {
   const headers = new Headers(options.headers || {})
   
@@ -81,9 +81,9 @@ export function mockClerkAuth(userId?: string) {
     orgId: null,
     orgRole: null,
     orgSlug: null,
-    has: jest.fn(() => true),
-    getToken: jest.fn(() => Promise.resolve('mock-clerk-token')),
-    debug: jest.fn(),
+    has: vi.fn(() => true),
+    getToken: vi.fn(() => Promise.resolve('mock-clerk-token')),
+    debug: vi.fn(),
   }
 
   return { user: mockUser, auth: mockAuth }
@@ -148,47 +148,47 @@ export async function isUserAuthenticated(page: any): Promise<boolean> {
 export function setupMockClerkEnvironment() {
   // Mock Clerk environment
   global.Clerk = {
-    clerk: jest.fn(),
+    clerk: vi.fn(),
     loaded: true,
     user: null,
     session: null,
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-    openSignIn: jest.fn(),
-    openSignUp: jest.fn(),
-    openUserProfile: jest.fn(),
-    openOrganizationProfile: jest.fn(),
-    redirectWithAuth: jest.fn(),
-    handleRedirectCallback: jest.fn(),
-    handleEmailLinkVerification: jest.fn(),
-    authenticateWithMetamask: jest.fn(),
-    createOrganization: jest.fn(),
-    getOrganization: jest.fn(),
-    joinOrganization: jest.fn(),
-    leaveOrganization: jest.fn(),
-    updateOrganization: jest.fn(),
-    addUserToOrganization: jest.fn(),
-    updateUserInOrganization: jest.fn(),
-    removeUserFromOrganization: jest.fn(),
-    getOrganizationRoles: jest.fn(),
-    getOrganizationInvitations: jest.fn(),
-    getOrganizationMembers: jest.fn(),
-    inviteUserToOrganization: jest.fn(),
-    revokeOrganizationInvitation: jest.fn(),
-    resendOrganizationInvitation: jest.fn(),
-    acceptOrganizationInvitation: jest.fn(),
-    rejectOrganizationInvitation: jest.fn(),
-    createOrganizationInvitation: jest.fn(),
-    updateOrganizationInvitation: jest.fn(),
-    deleteOrganizationInvitation: jest.fn(),
-    mountUserButton: jest.fn(),
-    mountUserProfile: jest.fn(),
-    mountOrganizationSwitcher: jest.fn(),
-    mountOrganizationProfile: jest.fn(),
-    mountOrganizationList: jest.fn(),
-    mountCreateOrganization: jest.fn(),
-    getOrganizationMemberships: jest.fn(),
-    getOrganizationInvitations: jest.fn(),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    openSignIn: vi.fn(),
+    openSignUp: vi.fn(),
+    openUserProfile: vi.fn(),
+    openOrganizationProfile: vi.fn(),
+    redirectWithAuth: vi.fn(),
+    handleRedirectCallback: vi.fn(),
+    handleEmailLinkVerification: vi.fn(),
+    authenticateWithMetamask: vi.fn(),
+    createOrganization: vi.fn(),
+    getOrganization: vi.fn(),
+    joinOrganization: vi.fn(),
+    leaveOrganization: vi.fn(),
+    updateOrganization: vi.fn(),
+    addUserToOrganization: vi.fn(),
+    updateUserInOrganization: vi.fn(),
+    removeUserFromOrganization: vi.fn(),
+    getOrganizationRoles: vi.fn(),
+    getOrganizationInvitations: vi.fn(),
+    getOrganizationMembers: vi.fn(),
+    inviteUserToOrganization: vi.fn(),
+    revokeOrganizationInvitation: vi.fn(),
+    resendOrganizationInvitation: vi.fn(),
+    acceptOrganizationInvitation: vi.fn(),
+    rejectOrganizationInvitation: vi.fn(),
+    createOrganizationInvitation: vi.fn(),
+    updateOrganizationInvitation: vi.fn(),
+    deleteOrganizationInvitation: vi.fn(),
+    mountUserButton: vi.fn(),
+    mountUserProfile: vi.fn(),
+    mountOrganizationSwitcher: vi.fn(),
+    mountOrganizationProfile: vi.fn(),
+    mountOrganizationList: vi.fn(),
+    mountCreateOrganization: vi.fn(),
+    getOrganizationMemberships: vi.fn(),
+    getOrganizationInvitations: vi.fn(),
   } as any
 }
 

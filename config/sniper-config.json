@@ -1,0 +1,15 @@
+{
+  "maxConcurrentRequests": 5,
+  "requestTimeout": 5000,
+  "enabled": true,
+  "retryConfig": {
+    "maxRetries": 3,
+    "baseDelay": 1000,
+    "maxDelay": 30000
+  },
+  "executionWindow": {
+    "preWindowBufferMs": 1000,
+    "postWindowBufferMs": 2000
+  }
+}
+
