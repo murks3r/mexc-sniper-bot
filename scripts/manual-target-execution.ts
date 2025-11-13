@@ -94,9 +94,9 @@ async function executeTargetById(targetId: number) {
     // Direct execution
     const result = await autoSnipingModule.executeSnipeTarget(target, undefined);
     
-    console.log("\n" + "=" .repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
     console.log("📊 Execution Result:");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     
     if (result.success) {
       console.log("✅ EXECUTION SUCCESSFUL");
@@ -149,8 +149,8 @@ async function executeTargetById(targetId: number) {
         LIMIT 1
       `);
       
-      if (positions.rows.length > 0) {
-        const position = positions.rows[0];
+      if (Array.isArray(positions) && positions.length > 0) {
+        const position = positions[0] as { id: number; symbol_name: string; status: string; entry_price: string; quantity: string };
         console.log(`\n📍 Position created: ID ${position.id}`);
         console.log(`   Symbol: ${position.symbol_name}`);
         console.log(`   Status: ${position.status}`);
@@ -159,9 +159,8 @@ async function executeTargetById(targetId: number) {
       } else {
         console.log(`\n  No position created yet (may be delayed)`);
       }
-    }
     
-    console.log("\n" + "=" .repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
     console.log("✅ Execution attempt completed");
     console.log("\n💡 Verify trade in:");
     console.log("   - snipe_targets table (status should be 'completed')");
