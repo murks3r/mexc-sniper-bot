@@ -8,7 +8,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
 import { snipeTargets } from "../src/db/schemas/trading";
-import { getUnifiedAutoSnipingOrchestrator } from "../src/services/trading/unified-auto-sniping-orchestrator";
+import { getCoreTrading } from "../src/services/trading/consolidated/core-trading/base-service";
 
 async function executeFaster() {
   console.log("🎯 Executing FASTER (ID: 179)\n");
@@ -34,25 +34,10 @@ async function executeFaster() {
       console.log("✅ Status updated to 'ready'\n");
     }
 
-    // Get auto-sniping module and execute
+    // Get core trading service and execute
     console.log("⚡ Executing...\n");
-    const autoSniping = getUnifiedAutoSnipingOrchestrator();
-
-    // Convert to AutoSnipeTarget format
-    const autoSnipeTarget = {
-      ...target,
-      symbol: target.symbolName,
-      side: "buy" as const,
-      orderType: "market" as const,
-      quantity: target.positionSizeUsdt,
-      amount: target.positionSizeUsdt,
-      price: undefined,
-      confidence: target.confidenceScore,
-      scheduledAt: target.targetExecutionTime?.toISOString() || null,
-      executedAt: null,
-    };
-
-    const result = await autoSniping.executeSnipeTarget(autoSnipeTarget);
+    const coreTrading = getCoreTrading();
+    const result = await coreTrading.executeSnipeTarget(target.id);
 
     console.log("📊 Result:");
     console.log(JSON.stringify(result, null, 2));

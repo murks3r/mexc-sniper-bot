@@ -35,8 +35,25 @@ describe("RLS Policy Tests", () => {
   let user1SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
   let _user2SupabaseClient: Awaited<ReturnType<typeof createSupabaseClientWithClerkToken>>;
 
+  // Helper to check if we actually have valid Supabase config
+  async function canConnectToSupabase(): Promise<boolean> {
+    if (!hasRealClerk || !hasRealSupabase) {
+      return false;
+    }
+    try {
+      const adminClient = getTestSupabaseAdminClient();
+      // Try a simple query to verify connection works
+      const { error } = await adminClient.from("user").select("*").limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
   beforeAll(async () => {
-    if (hasRealClerk && hasRealSupabase) {
+    const canConnect = await canConnectToSupabase();
+
+    if (canConnect) {
       try {
         // Create two Clerk test users
         const user1Result = await createClerkTestUser({
@@ -61,7 +78,7 @@ describe("RLS Policy Tests", () => {
 
         user1SupabaseClient = await createSupabaseClientWithClerkToken(user1Id);
         _user2SupabaseClient = await createSupabaseClientWithClerkToken(user2Id);
-      } catch (_error: unknown) {
+      } catch (_error) {
         // Fall back to mock setup
         user1Id = "mock-user-1";
         user2Id = "mock-user-2";
