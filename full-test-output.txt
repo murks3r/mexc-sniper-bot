@@ -1,0 +1,22 @@
+bun test v1.3.2 (b131639c)
+[2025-11-13T21:19:08.347Z] [INFO] [jobs-process-api] Hybrid job processing triggered via API
+[2025-11-13T21:19:08.378Z] [INFO] [jobs-process-api] Pending work detected {"dbQueue":0,"pgmqQueues":{"autosniping":0,"alerts":0,"metrics":0},"total":0}
+[2025-11-13T21:19:08.429Z] [INFO] [jobs-process-api] Hybrid job processing triggered via API
+[2025-11-13T21:19:08.458Z] [INFO] [jobs-process-api] Pending work detected {"dbQueue":1,"pgmqQueues":{"autosniping":0,"alerts":0,"metrics":0},"total":1}
+[2025-11-13T21:19:09.187Z] [INFO] [jobs-process-api] Hybrid job processing completed {"output":"[INFO] Starting hybrid job processor {\n  processPgmq: true,\n  batchSize: 25,\n}\n[INFO] Processing DB queue...\n[INFO] Found 1 pending DB job(s)\n[INFO] Processing DB job: calendar_sync (ID: 3b80a8cc-af32-4b14-8a28-fe51a81a9c58)\n[2025-11-13T21:19:08.790Z] [INFO] [CalendarSync] 🔄 Starting calendar-to-database sync {\"userId\":\"test\",\"timeWindowHours\":72,\"dryRun\":false}\n[2025-11-13T21:19:08.910Z] [INFO] [CalendarSync] Snipe targets summary after sync {\"userId\":\"test\",\"totalTargetsForUser\":0}\n[INFO] DB ","pendingBefore":1}
+[2025-11-13T21:19:12.878Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:12.879Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:12.880Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":10,"requestTimeout":10000,"enabled":false}
+[2025-11-13T21:19:12.880Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":20,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:12.880Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:12.983Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":15,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:12.984Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:13.091Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:13.199Z] [INFO] [SymbolQualification] 💾 Cached trading rules for TESTUSDT {"isApiTradable":true}
+[2025-11-13T21:19:13.888Z] [INFO] [sniper-config-loader] Config file changed, reloading... {"path":"/Users/cortex-air/Developer/ex/mexc-sniper-bot/test-config/sniper-config.json"}
+[2025-11-13T21:19:13.888Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:13.889Z] [INFO] [sniper-config-loader] Config reloaded successfully
+[2025-11-13T21:19:13.889Z] [INFO] [sniper-config-loader] Config file changed, reloading... {"path":"/Users/cortex-air/Developer/ex/mexc-sniper-bot/test-config/sniper-config.json"}
+[2025-11-13T21:19:13.889Z] [INFO] [sniper-config-loader] Config validated successfully {"maxConcurrentRequests":5,"requestTimeout":5000,"enabled":true}
+[2025-11-13T21:19:13.889Z] [INFO] [sniper-config-loader] Config reloaded successfully
+[2025-11-13T21:19:24.745Z] [INFO] [advanced-sniper-utils] Execution window opened {"startTime":"2025-11-13T21:19:24.745Z","endTime":"2025-11-13T21:19:25.455Z"}
