@@ -87,8 +87,10 @@ jobs:
 
       - name: Run pre-deployment checks
         run: |
-          bun run ci:quality
-          bun run test:smoke
+          bun run format:check
+          bun run lint
+          bun run type-check
+          bun run test
 
       - name: Install Vercel CLI
         run: bun add -g vercel@latest
