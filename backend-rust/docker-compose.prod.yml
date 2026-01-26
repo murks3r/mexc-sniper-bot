@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  mexc-sniper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mexc-sniper-rust
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=debug
+      - RUST_API_PORT=8080
+      - AWS_REGION=ap-southeast-1
+      - DYNAMODB_TABLE=mexc_trading_data
+      - MEXC_API_KEY=${MEXC_API_KEY}
+      - MEXC_SECRET_KEY=${MEXC_SECRET_KEY}
+      - MEXC_BASE_URL=https://api.mexc.com
+      - JWT_SECRET=${JWT_SECRET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    restart: unless-stopped
+    networks:
+      - trading-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  trading-network:
+    driver: bridge

@@ -16,7 +16,7 @@
     "lint": "bunx biome check --write",
     "lint:fix": "bunx biome check --fix --unsafe",
     "format": "npx biome format --write .",
-    "format:check": "npx biome format --check .",
+    "format:check": "biome check .",
     "organize-imports": "npx biome check --fix --unsafe --only=organizeImports",
     "sync-format": "bun run format && bun run organize-imports",
     "type-check": "tsc --noEmit",

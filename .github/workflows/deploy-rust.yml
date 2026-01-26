@@ -1,0 +1,266 @@
+name: Deploy Rust Backend to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+      - deploy/rust
+    paths:
+      - 'backend-rust/**'
+      - '.github/workflows/deploy-rust.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com
+  DOCKER_IMAGE_NAME: mexc-sniper-rust
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: Build Rust Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend-rust
+
+      - name: Build Rust backend (Release)
+        working-directory: backend-rust
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl
+          ls -lh target/x86_64-unknown-linux-musl/release/mexc-sniper
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mexc-sniper-binary
+          path: backend-rust/target/x86_64-unknown-linux-musl/release/mexc-sniper
+          retention-days: 1
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: mexc-sniper-binary
+          path: backend-rust/target/x86_64-unknown-linux-musl/release/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names $DOCKER_IMAGE_NAME || \
+          aws ecr create-repository --repository-name $DOCKER_IMAGE_NAME --region $AWS_REGION
+
+      - name: Build Docker image
+        working-directory: backend-rust
+        run: |
+          docker build -t $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA .
+          docker tag $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA $ECR_REGISTRY/$DOCKER_IMAGE_NAME:latest
+
+      - name: Push to ECR
+        run: |
+          docker push $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA
+          docker push $ECR_REGISTRY/$DOCKER_IMAGE_NAME:latest
+
+      - name: Save image URI
+        run: |
+          echo "IMAGE_URI=$ECR_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA" >> $GITHUB_ENV
+
+  deploy:
+    name: Blue-Green Deployment to EC2
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get EC2 instance details
+        id: ec2
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=mexc-sniper-bot" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --region $AWS_REGION \
+            --output text)
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "Instance ID: $INSTANCE_ID"
+
+      - name: Create deployment script
+        run: |
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          export AWS_REGION=${{ env.AWS_REGION }}
+          export ECR_REGISTRY=${{ env.ECR_REGISTRY }}
+          export DOCKER_IMAGE_NAME=${{ env.DOCKER_IMAGE_NAME }}
+          export IMAGE_TAG=${{ github.sha }}
+          
+          # Log in to ECR
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $ECR_REGISTRY
+          
+          # Blue-Green Deployment
+          echo "Pulling new image..."
+          docker pull $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$IMAGE_TAG
+          
+          # Stop old container (green)
+          echo "Stopping current container..."
+          docker stop mexc-sniper-green 2>/dev/null || true
+          docker rm mexc-sniper-green 2>/dev/null || true
+          
+          # Rename blue to green
+          if docker ps -a --format '{{.Names}}' | grep -q '^mexc-sniper-blue$'; then
+            docker rename mexc-sniper-blue mexc-sniper-green
+          fi
+          
+          # Start new container as blue
+          echo "Starting new container..."
+          docker run -d \
+            --name mexc-sniper-blue \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            -e AWS_REGION=$AWS_REGION \
+            -e MEXC_API_KEY=${{ secrets.MEXC_API_KEY }} \
+            -e MEXC_SECRET_KEY=${{ secrets.MEXC_SECRET_KEY }} \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$IMAGE_TAG
+          
+          # Wait for health check
+          echo "Waiting for health check..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health >/dev/null 2>&1; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i/30 - Waiting for container..."
+            sleep 2
+          done
+          
+          echo "Health check failed after 60 seconds!"
+          # Rollback
+          docker stop mexc-sniper-blue
+          docker rename mexc-sniper-green mexc-sniper-blue 2>/dev/null || true
+          docker start mexc-sniper-blue
+          exit 1
+          EOF
+          
+          chmod +x deploy.sh
+
+      - name: Copy deployment script to EC2
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AWS_EC2_IP }} >> ~/.ssh/known_hosts
+          scp -i ~/.ssh/id_rsa deploy.sh ec2-user@${{ secrets.AWS_EC2_IP }}:/tmp/deploy.sh
+
+      - name: Execute deployment on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} 'bash /tmp/deploy.sh'
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          for i in {1..10}; do
+            if curl -f http://${{ secrets.AWS_EC2_IP }}:8080/ready; then
+              echo "Deployment successful!"
+              exit 0
+            fi
+            echo "Attempt $i/10 - Waiting for API..."
+            sleep 3
+          done
+          exit 1
+
+      - name: Post-deployment health check
+        if: success()
+        run: |
+          echo "Deployment completed successfully!"
+          curl -s http://${{ secrets.AWS_EC2_IP }}:8080/health | jq .
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment to EC2 (${{ secrets.AWS_EC2_IP }}) successful"
+          else
+            echo "❌ Deployment to EC2 failed"
+            exit 1
+          fi
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [build, docker-build, deploy]
+
+    steps:
+      - name: Rollback deployment
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AWS_EC2_IP }} >> ~/.ssh/known_hosts
+          
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} << 'EOF'
+            docker stop mexc-sniper-blue 2>/dev/null || true
+            docker rm mexc-sniper-blue 2>/dev/null || true
+            
+            if docker ps -a --format '{{.Names}}' | grep -q '^mexc-sniper-green$'; then
+              docker rename mexc-sniper-green mexc-sniper-blue
+              docker start mexc-sniper-blue
+              echo "Rollback to previous version completed"
+            fi
+          EOF
+
+      - name: Alert on rollback
+        run: |
+          echo "⚠️ Deployment failed and rolled back to previous version"

@@ -1,0 +1,28 @@
+# Rust Target Directory
+/target/
+Cargo.lock
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Debug Files
+*.pdb
