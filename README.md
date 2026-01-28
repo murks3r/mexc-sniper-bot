@@ -215,7 +215,27 @@ The system uses Drizzle ORM with the following key tables:
 
 ## 🚀 Deployment
 
-### Primary: Deploy to Vercel
+### Complete Production Deployment (Frontend + Rust Backend)
+
+For full production deployment with both **Next.js Frontend (Vercel)** and **Rust Backend (AWS EC2)**:
+
+📖 **[Complete Deployment Guide](DEPLOYMENT_COMPLETE_GUIDE.md)** - Comprehensive step-by-step instructions
+
+**Quick Overview:**
+1. **Configure GitHub Secrets** (8 secrets for AWS, MEXC, JWT)
+2. **Set Vercel Environment Variables** (`NEXT_PUBLIC_API_URL`)
+3. **Push to main branch** - CI/CD automatically deploys both frontend and backend
+4. **Verify deployment** - Health checks and end-to-end testing
+
+The deployment guide includes:
+- AWS EC2 setup for Rust backend
+- DynamoDB configuration
+- ECR (Docker registry) setup
+- GitHub Actions CI/CD configuration
+- Vercel frontend deployment
+- Complete troubleshooting guide
+
+### Frontend-Only: Deploy to Vercel
 
 1. Push your code to GitHub
 2. Import project in Vercel Dashboard
