@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The deployment to AWS EC2 failed due to the use of **deprecated GitHub Actions versions**. Specifically, the workflow uses `actions/upload-artifact@v3` and `actions/download-artifact@v3`, which were officially deprecated and are no longer functional as of April 2024.
+The deployment to AWS EC2 failed due to the use of **deprecated GitHub Actions versions**. Specifically, the workflow uses `actions/upload-artifact@v3` and `actions/download-artifact@v3`, which were officially deprecated in April 2024 and have since stopped working.
 
 ---
 
@@ -17,7 +17,7 @@ The deployment to AWS EC2 failed due to the use of **deprecated GitHub Actions v
 
 ### Primary Issue: Deprecated GitHub Actions
 
-**Error Details:**
+**Error Details (from workflow logs):**
 ```
 ##[error]This request has been automatically failed because it uses a deprecated version of `actions/upload-artifact: v3`. 
 Learn more: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/

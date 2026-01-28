@@ -74,8 +74,12 @@ aws ec2 describe-security-groups \
 - Port 443 (HTTPS) - If using SSL/TLS
 
 ### Add Missing Rules (if needed)
+
+**⚠️ SECURITY WARNING:** Opening SSH (port 22) to 0.0.0.0/0 is a security risk. Only use for temporary troubleshooting, then immediately restrict to specific IP addresses.
+
 ```bash
-# Allow SSH from anywhere (use specific IP for production)
+# ⚠️ TEMPORARY ONLY - Allow SSH from anywhere for troubleshooting
+# Replace 0.0.0.0/0 with your specific IP address for production
 aws ec2 authorize-security-group-ingress \
   --group-id $SECURITY_GROUP_ID \
   --protocol tcp \
@@ -289,6 +293,8 @@ ssh -i ~/.ssh/mexc-sniper-key.pem ec2-user@<EC2_IP> << 'EOF'
   docker rm mexc-sniper-blue || true
   
   # Run new container
+  # ⚠️ SECURITY: Replace placeholders with actual secrets
+  # Never store credentials in shell history - use environment files
   docker run -d \
     --name mexc-sniper-blue \
     --restart unless-stopped \
@@ -373,15 +379,7 @@ aws ecr describe-repositories --region ap-southeast-1
 
 ## 10. GitHub Secrets Validation
 
-Ensure these secrets are properly set in GitHub repository settings:
-
-```bash
-# Check locally (for testing only - never commit!)
-echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:4}..."
-echo "AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:0:4}..."
-echo "AWS_ACCOUNT_ID: $AWS_ACCOUNT_ID"
-echo "AWS_EC2_IP: $AWS_EC2_IP"
-```
+Ensure these secrets are properly set in GitHub repository settings → Settings → Secrets and variables → Actions.
 
 **Required Secrets:**
 - `AWS_ACCESS_KEY_ID` - AWS access key with EC2, ECR permissions
@@ -392,6 +390,8 @@ echo "AWS_EC2_IP: $AWS_EC2_IP"
 - `MEXC_API_KEY` - MEXC exchange API key
 - `MEXC_SECRET_KEY` - MEXC exchange secret key
 - `JWT_SECRET` - Secret for JWT token generation
+
+**⚠️ NEVER** print, log, or commit these secrets to version control.
 
 ---
 
