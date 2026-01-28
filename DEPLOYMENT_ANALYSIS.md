@@ -13,7 +13,8 @@ The deployment of the MEXC Sniper Bot Rust backend to AWS EC2 failed due to the 
 **Issue**: Deployment workflow failed at the "Build Rust Backend" job  
 **Error**: `This request has been automatically failed because it uses a deprecated version of actions/upload-artifact: v3`  
 **Date of Sunset**: April 16, 2024  
-**Impact**: Complete deployment failure - prevented build artifacts from being uploaded to GitHub Actions
+**Impact**: Complete deployment failure - prevented build artifacts from being uploaded to GitHub Actions  
+**Security Note**: Version 4.0.0-4.1.2 of download-artifact also had an arbitrary file write vulnerability (CVE), patched in 4.1.3
 
 ### Timeline of Failure
 
@@ -40,13 +41,15 @@ The deployment of the MEXC Sniper Bot Rust backend to AWS EC2 failed due to the 
 
 ### Changes Made
 
-1. **Updated actions/upload-artifact**: v3 → v4
+1. **Updated actions/upload-artifact**: v3 → v4.4.3
    - File: `.github/workflows/deploy-rust.yml`, line 54
    - Artifact: `mexc-sniper-binary`
+   - Uses latest stable version with security patches
 
-2. **Updated actions/download-artifact**: v3 → v4
+2. **Updated actions/download-artifact**: v3 → v4.1.8
    - File: `.github/workflows/deploy-rust.yml`, line 71
    - Downloads build artifact for Docker image creation
+   - **Security Fix**: Patched arbitrary file write vulnerability (CVE in versions 4.0.0-4.1.2)
 
 ### Why This Fix Works
 
@@ -56,6 +59,8 @@ GitHub Actions v4 artifact actions include:
 - Immutable artifacts (prevents overwriting)
 - Enhanced security with artifact attestation
 - Continued long-term support
+
+**Security**: Using v4.1.8+ for download-artifact ensures protection against the arbitrary file write vulnerability (CVE) discovered in versions 4.0.0-4.1.2, where malicious artifacts could write files outside the intended directory during extraction.
 
 ### Testing Performed
 
@@ -132,6 +137,11 @@ validate:
         fi
         if grep -rq "actions/download-artifact@v3" .github/workflows/; then
           echo "ERROR: Deprecated download-artifact action found"
+          exit 1
+        fi
+        # Check for vulnerable versions
+        if grep -rq "actions/download-artifact@v4\." .github/workflows/ | grep -E "@v4\.(0\.|1\.[0-2])"; then
+          echo "ERROR: Vulnerable download-artifact version found (CVE: arbitrary file write)"
           exit 1
         fi
 ```
