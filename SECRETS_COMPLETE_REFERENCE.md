@@ -159,9 +159,10 @@ aBcDeFgHiJkLmNoPqRsTuVwXyZ...
 
 ### JWT_SECRET
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+dGhpc0lzQVJhbmRvbUJhc2U2NFNlY3JldEtleUZvckpXVA==
 ```
-**Format:** Base64 string, minimum 32 characters
+**Format:** Base64-encoded random string, minimum 32 characters
+**Generate with:** `openssl rand -base64 32`
 
 ## Security Best Practices
 

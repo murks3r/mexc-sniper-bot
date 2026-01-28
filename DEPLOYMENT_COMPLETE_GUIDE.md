@@ -94,10 +94,11 @@ aws dynamodb create-table \
 #### 1.3 Create ECR Repository
 
 ```bash
+# Check if repository exists, create if not
 aws ecr describe-repositories \
   --repository-names mexc-sniper-rust \
-  --region ap-southeast-1 \
-  || aws ecr create-repository \
+  --region ap-southeast-1 2>/dev/null || \
+  aws ecr create-repository \
     --repository-name mexc-sniper-rust \
     --region ap-southeast-1
 ```
@@ -170,7 +171,7 @@ Click **"New repository secret"** and add each of the following:
 
 | Secret Name | Description | How to Get | Example |
 |-------------|-------------|------------|---------|
-| `JWT_SECRET` | JWT Token Secret | `openssl rand -base64 32` | `eyJhbGciOiJIUzI1NiIs...` |
+| `JWT_SECRET` | JWT Token Secret | `openssl rand -base64 32` | `dGhpc0lzQVJhbmRvbUJhc2U2NFNlY3JldA==` |
 
 **Generate JWT_SECRET:**
 ```bash
@@ -179,7 +180,7 @@ openssl rand -base64 32
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-**Requirement**: Minimum 32 characters
+**Requirement**: Minimum 32 characters, should be randomly generated base64 string
 
 ### Phase 4: Vercel Configuration (Frontend)
 
