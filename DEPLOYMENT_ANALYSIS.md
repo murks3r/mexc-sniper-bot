@@ -178,15 +178,14 @@ rollback:
     # 1. Container health
     ssh ... "docker inspect mexc-sniper-blue --format='{{.State.Health.Status}}'"
     
-    # 2. API endpoints
+    # 2. Basic health endpoint (already exists in workflow)
     curl -f http://${{ secrets.AWS_EC2_IP }}:8080/health
+    
+    # 3. Ready endpoint (already exists in workflow)
     curl -f http://${{ secrets.AWS_EC2_IP }}:8080/ready
     
-    # 3. Database connectivity
-    curl -f http://${{ secrets.AWS_EC2_IP }}:8080/api/health/db
-    
-    # 4. MEXC API connectivity
-    curl -f http://${{ secrets.AWS_EC2_IP }}:8080/api/health/mexc
+    # Note: Additional endpoints like /api/health/db and /api/health/mexc
+    # should be implemented in the Rust backend for comprehensive monitoring
 ```
 
 ### 4. **Medium-term: Implement Deployment Notifications** 📢
@@ -224,19 +223,18 @@ rollback:
 ```yaml
 - name: Run smoke tests
   run: |
-    # Test critical functionality
-    response=$(curl -s http://${{ secrets.AWS_EC2_IP }}:8080/api/market/balance)
+    # Test that health endpoints are responsive
+    response=$(curl -s http://${{ secrets.AWS_EC2_IP }}:8080/health)
     if [ -z "$response" ]; then
-      echo "Smoke test failed: No response from balance endpoint"
+      echo "Smoke test failed: No response from health endpoint"
       exit 1
     fi
     
-    # Verify trading engine is responsive
-    response=$(curl -s http://${{ secrets.AWS_EC2_IP }}:8080/api/market/orders)
-    if [ -z "$response" ]; then
-      echo "Smoke test failed: No response from orders endpoint"
-      exit 1
-    fi
+    # Verify container is running and logs show no critical errors
+    ssh ... "docker logs --tail 50 mexc-sniper-blue | grep -i 'error\|panic\|fatal' && exit 1 || exit 0"
+    
+    # Note: Add tests for specific API endpoints like /api/market/balance
+    # and /api/market/orders once they are implemented and stable
 ```
 
 ### 6. **Long-term: Implement Staging Environment** 🎯
@@ -274,18 +272,23 @@ deploy-production:
     # Wait 5 minutes for metrics
     sleep 300
     
-    # Check CloudWatch metrics
+    # Check CloudWatch metrics (Note: Requires CloudWatch metrics to be implemented)
+    # Calculate start time (5 minutes ago) - portable across systems
+    START_TIME=$(date -u -d '-5 minutes' '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date -u -v-5M '+%Y-%m-%dT%H:%M:%S')
+    END_TIME=$(date -u '+%Y-%m-%dT%H:%M:%S')
+    
     error_rate=$(aws cloudwatch get-metric-statistics \
       --namespace MexcSniper \
       --metric-name ErrorRate \
-      --start-time $(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%S) \
-      --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+      --start-time "$START_TIME" \
+      --end-time "$END_TIME" \
       --period 300 \
       --statistics Average \
       --query 'Datapoints[0].Average' \
       --output text)
     
-    if (( $(echo "$error_rate > 5.0" | bc -l) )); then
+    # Portable floating-point comparison using awk
+    if echo "$error_rate 5.0" | awk '{exit !($1 > $2)}'; then
       echo "ERROR: Error rate above threshold (${error_rate}%), triggering rollback"
       exit 1
     fi
@@ -299,8 +302,20 @@ deploy-production:
 
 ```hcl
 # terraform/main.tf
+
+# Fetch latest Amazon Linux 2 AMI dynamically
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+  owners      = ["amazon"]
+  
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
 resource "aws_instance" "mexc_sniper" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Amazon Linux 2
+  ami           = data.aws_ami.amazon_linux_2.id
   instance_type = "t3.medium"
   
   tags = {
