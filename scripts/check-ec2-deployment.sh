@@ -1,8 +1,8 @@
 #!/bin/bash
 # EC2 Deployment Verification Script
-# Prüft den Status der Deployment auf EC2-Instanz
+# Prüft den Status des Deployments auf EC2-Instanz
 
-set -e
+# Note: Not using 'set -e' as the script handles errors gracefully with conditional checks
 
 # Farben für Output
 RED='\033[0;31m'
@@ -86,21 +86,22 @@ check_port() {
     local description=$2
     
     if command -v ss &> /dev/null; then
-        if ss -tuln | grep -q ":$port "; then
+        if ss -tuln | grep -q ":$port[[:space:]]"; then
             print_success "Port $port ($description) ist aktiv"
-            ss -tuln | grep ":$port "
+            ss -tuln | grep ":$port[[:space:]]"
         else
             print_warning "Port $port ($description) ist NICHT aktiv"
         fi
     elif command -v netstat &> /dev/null; then
-        if netstat -tuln | grep -q ":$port "; then
+        if netstat -tuln | grep -q ":$port[[:space:]]"; then
             print_success "Port $port ($description) ist aktiv"
-            netstat -tuln | grep ":$port "
+            netstat -tuln | grep ":$port[[:space:]]"
         else
             print_warning "Port $port ($description) ist NICHT aktiv"
         fi
     else
-        # Fallback: Versuche direkt zu verbinden
+        # Fallback: Versuche direkt zu verbinden (requires bash compiled with network support)
+        # Note: /dev/tcp is not available in all bash builds
         if timeout 2 bash -c "</dev/tcp/localhost/$port" 2>/dev/null; then
             print_success "Port $port ($description) ist aktiv"
         else
@@ -122,10 +123,7 @@ if command -v docker &> /dev/null; then
     
     echo -e "\nLaufende Container:"
     if docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null; then
-        docker_running=$?
-        if [ $docker_running -eq 0 ]; then
-            print_success "Docker Container erfolgreich abgefragt"
-        fi
+        print_success "Docker Container erfolgreich abgefragt"
     else
         print_warning "Keine Docker-Rechte oder Docker Daemon läuft nicht"
         print_info "Versuche: sudo docker ps"
@@ -142,7 +140,10 @@ if command -v docker &> /dev/null; then
         
         # Zeige Logs der letzten 20 Zeilen
         echo -e "\nLetzte Log-Einträge:"
-        docker logs --tail 20 $(docker ps --filter "name=mexc-sniper" --format "{{.Names}}" | head -1) 2>/dev/null || print_warning "Konnte Logs nicht abrufen"
+        container_name=$(docker ps --filter "name=mexc-sniper" --format "{{.Names}}" | head -1)
+        if [ -n "$container_name" ]; then
+            docker logs --tail 20 "$container_name" 2>/dev/null || print_warning "Konnte Logs nicht abrufen"
+        fi
     else
         print_warning "Kein MEXC Sniper Container läuft"
     fi
