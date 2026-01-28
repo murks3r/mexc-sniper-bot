@@ -126,12 +126,12 @@ validate:
     - name: Validate GitHub Actions versions
       run: |
         # Check for deprecated actions
-        if grep -r "actions/upload-artifact@v3" .github/workflows/; then
-          echo "ERROR: Deprecated artifact action found"
+        if grep -rq "actions/upload-artifact@v3" .github/workflows/; then
+          echo "ERROR: Deprecated upload-artifact action found"
           exit 1
         fi
-        if grep -r "actions/download-artifact@v3" .github/workflows/; then
-          echo "ERROR: Deprecated artifact action found"
+        if grep -rq "actions/download-artifact@v3" .github/workflows/; then
+          echo "ERROR: Deprecated download-artifact action found"
           exit 1
         fi
 ```
