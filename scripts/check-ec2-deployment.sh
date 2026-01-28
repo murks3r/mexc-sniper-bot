@@ -86,26 +86,29 @@ check_port() {
     local description=$2
     
     if command -v ss &> /dev/null; then
-        if ss -tuln | grep -q ":$port[[:space:]]"; then
+        if ss -tuln | grep -q ":$port\b"; then
             print_success "Port $port ($description) ist aktiv"
-            ss -tuln | grep ":$port[[:space:]]"
+            ss -tuln | grep ":$port\b"
         else
             print_warning "Port $port ($description) ist NICHT aktiv"
         fi
     elif command -v netstat &> /dev/null; then
-        if netstat -tuln | grep -q ":$port[[:space:]]"; then
+        if netstat -tuln | grep -q ":$port\b"; then
             print_success "Port $port ($description) ist aktiv"
-            netstat -tuln | grep ":$port[[:space:]]"
+            netstat -tuln | grep ":$port\b"
         else
             print_warning "Port $port ($description) ist NICHT aktiv"
         fi
     else
-        # Fallback: Versuche direkt zu verbinden (requires bash compiled with network support)
-        # Note: /dev/tcp is not available in all bash builds
-        if timeout 2 bash -c "</dev/tcp/localhost/$port" 2>/dev/null; then
-            print_success "Port $port ($description) ist aktiv"
+        # Fallback: Check if nc (netcat) is available
+        if command -v nc &> /dev/null; then
+            if timeout 2 nc -z localhost "$port" 2>/dev/null; then
+                print_success "Port $port ($description) ist aktiv"
+            else
+                print_warning "Port $port ($description) ist NICHT aktiv"
+            fi
         else
-            print_warning "Port $port ($description) ist NICHT aktiv"
+            print_warning "Keine Port-Check Tools verfügbar (ss, netstat, nc). Port $port Status unbekannt."
         fi
     fi
 }
@@ -142,7 +145,7 @@ if command -v docker &> /dev/null; then
         echo -e "\nLetzte Log-Einträge:"
         container_name=$(docker ps --filter "name=mexc-sniper" --format "{{.Names}}" | head -1)
         if [ -n "$container_name" ]; then
-            docker logs --tail 20 "$container_name" 2>/dev/null || print_warning "Konnte Logs nicht abrufen"
+            docker logs --tail 20 "${container_name}" 2>/dev/null || print_warning "Konnte Logs nicht abrufen"
         fi
     else
         print_warning "Kein MEXC Sniper Container läuft"
@@ -216,21 +219,21 @@ print_info "Teste API-Endpunkte..."
 # Backend Health Check
 if command -v curl &> /dev/null; then
     echo -e "\nBackend Health (Port 8080):"
-    if curl -f -s -m 5 http://localhost:8080/health 2>/dev/null; then
+    if curl -f -s -m 5 http://localhost:8080/health 2>&1 | grep -q "healthy\|ok\|success\|{"; then
         print_success "Backend /health endpoint ist erreichbar"
     else
         print_warning "Backend /health endpoint nicht erreichbar"
     fi
     
     echo -e "\nBackend Ready (Port 8080):"
-    if curl -f -s -m 5 http://localhost:8080/api/admin/ready 2>/dev/null; then
+    if curl -f -s -m 5 http://localhost:8080/api/admin/ready 2>&1 | grep -q "ready\|true\|{"; then
         print_success "Backend /api/admin/ready endpoint ist erreichbar"
     else
         print_warning "Backend /api/admin/ready endpoint nicht erreichbar"
     fi
     
     echo -e "\nFrontend (Port 3000):"
-    if curl -f -s -m 5 http://localhost:3000 > /dev/null 2>&1; then
+    if curl -f -s -m 5 -I http://localhost:3000 2>&1 | head -1 | grep -q "200\|301\|302"; then
         print_success "Frontend ist erreichbar"
     else
         print_warning "Frontend ist nicht erreichbar"
