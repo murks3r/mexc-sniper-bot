@@ -16,12 +16,14 @@ The blue-green deployment strategy has been successfully implemented for the Rus
 
 ### Key Achievements
 
-✅ **Zero-Downtime Deployment**: Implemented blue-green strategy ensures no service interruption  
+✅ **Minimal Downtime Deployment**: Implemented blue-green strategy with 8-14 second cutover time  
 ✅ **Automatic Rollback**: Failed deployments automatically revert to previous version  
 ✅ **Comprehensive Logging**: Detailed logs and metrics tracked for every deployment step  
 ✅ **Security Hardened**: Secrets managed securely, no hardcoded credentials  
 ✅ **Production Ready**: All 44 validation tests passed successfully  
 ✅ **Well Documented**: Complete documentation with troubleshooting guides  
+
+**Note**: Brief service interruption (8-14 seconds) occurs during cutover as both containers cannot bind to port 8080 simultaneously. True zero-downtime would require a load balancer or reverse proxy.  
 
 ---
 
@@ -345,21 +347,24 @@ All validation tests passed successfully. The deployment infrastructure is ready
 
 ### Expected Cutover Performance
 
-The critical cutover time (time from stopping old container to new container serving traffic) is optimized for < 10 seconds:
+The cutover time (time from stopping old container to new container serving traffic) is optimized for minimal downtime:
 
 **Cutover Steps**:
-1. Rename blue → green (instant, < 1s)
+1. Stop and rename blue → green (1-2s)
 2. Start new blue container (5-8s)
 3. Container initialization (2-3s)
 4. Health endpoint ready (1-2s)
 
 **Total Expected Cutover**: 8-14 seconds
 
+**Important**: This represents actual service downtime as both containers cannot bind to port 8080 simultaneously. The cutover metric in deployment logs tracks the total time from starting the new container to health check pass, which may be slightly different from actual user-facing downtime.
+
 **Optimization Strategies**:
 - Container pre-pull before cutover
 - Health check begins immediately on start
 - Parallel health check retries
 - Fast application startup (Rust binary)
+- Alpine Linux for minimal overhead
 
 ---
 

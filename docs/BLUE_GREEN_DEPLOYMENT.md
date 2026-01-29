@@ -11,6 +11,20 @@ Blue-green deployment is a release management strategy that reduces downtime and
 - **Blue Environment**: The current production version serving live traffic
 - **Green Environment**: The previous version kept as backup for instant rollback
 
+### Downtime Characteristics
+
+**Important Note**: While blue-green deployment significantly reduces downtime compared to traditional deployments, this implementation has a brief service interruption during cutover:
+
+- **Expected Downtime**: 8-14 seconds (time to stop old container and start new one)
+- **Reason**: Both containers cannot bind to port 8080 simultaneously
+- **For True Zero-Downtime**: Would require a load balancer or reverse proxy to switch traffic between containers on different ports
+
+The deployment is optimized to minimize this downtime through:
+- Fast container startup (Rust binary, Alpine Linux)
+- Health checks beginning immediately
+- Parallel operations where possible
+- Quick container rename operations
+
 ### Deployment Flow
 
 ```

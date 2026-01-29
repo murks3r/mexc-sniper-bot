@@ -338,6 +338,9 @@ main() {
     # Step 5: Start new blue container
     log_section "Step 5: Starting New Blue Environment"
     step_start=$(date +%s)
+    # Cutover time: Measures from starting new container to health check pass
+    # Note: Actual user-facing downtime starts when old container stops (Step 4)
+    # and ends when new container passes health checks
     local cutover_start=$(date +%s)
     
     log_info "Starting new container: $BLUE_CONTAINER"
