@@ -133,106 +133,143 @@ jobs:
           echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
           echo "Instance ID: $INSTANCE_ID"
 
-      - name: Create deployment script
-        run: |
-          cat > deploy.sh << 'EOF'
-          #!/bin/bash
-          set -e
-          
-          export AWS_REGION=${{ env.AWS_REGION }}
-          export ECR_REGISTRY=${{ env.ECR_REGISTRY }}
-          export DOCKER_IMAGE_NAME=${{ env.DOCKER_IMAGE_NAME }}
-          export IMAGE_TAG=${{ github.sha }}
-          
-          # Log in to ECR
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS --password-stdin $ECR_REGISTRY
-          
-          # Blue-Green Deployment
-          echo "Pulling new image..."
-          docker pull $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$IMAGE_TAG
-          
-          # Stop old container (green)
-          echo "Stopping current container..."
-          docker stop mexc-sniper-green 2>/dev/null || true
-          docker rm mexc-sniper-green 2>/dev/null || true
-          
-          # Rename blue to green
-          if docker ps -a --format '{{.Names}}' | grep -q '^mexc-sniper-blue$'; then
-            docker rename mexc-sniper-blue mexc-sniper-green
-          fi
-          
-          # Start new container as blue
-          echo "Starting new container..."
-          docker run -d \
-            --name mexc-sniper-blue \
-            --restart unless-stopped \
-            -p 8080:8080 \
-            -e AWS_REGION=$AWS_REGION \
-            -e MEXC_API_KEY=${{ secrets.MEXC_API_KEY }} \
-            -e MEXC_SECRET_KEY=${{ secrets.MEXC_SECRET_KEY }} \
-            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            $ECR_REGISTRY/$DOCKER_IMAGE_NAME:$IMAGE_TAG
-          
-          # Wait for health check
-          echo "Waiting for health check..."
-          for i in {1..30}; do
-            if curl -f http://localhost:8080/health >/dev/null 2>&1; then
-              echo "Health check passed!"
-              exit 0
-            fi
-            echo "Attempt $i/30 - Waiting for container..."
-            sleep 2
-          done
-          
-          echo "Health check failed after 60 seconds!"
-          # Rollback
-          docker stop mexc-sniper-blue
-          docker rename mexc-sniper-green mexc-sniper-blue 2>/dev/null || true
-          docker start mexc-sniper-blue
-          exit 1
-          EOF
-          
-          chmod +x deploy.sh
-
-      - name: Copy deployment script to EC2
+      - name: Copy deployment scripts to EC2
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.AWS_EC2_IP }} >> ~/.ssh/known_hosts
-          scp -i ~/.ssh/id_rsa deploy.sh ec2-user@${{ secrets.AWS_EC2_IP }}:/tmp/deploy.sh
-
-      - name: Execute deployment on EC2
+          scp -i ~/.ssh/id_rsa scripts/deploy-blue-green.sh ec2-user@${{ secrets.AWS_EC2_IP }}:/tmp/deploy-blue-green.sh
+          scp -i ~/.ssh/id_rsa scripts/deployment-status.sh ec2-user@${{ secrets.AWS_EC2_IP }}:/tmp/deployment-status.sh
+          
+      - name: Execute blue-green deployment on EC2
+        id: deploy
         run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} 'bash /tmp/deploy.sh'
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} << 'DEPLOY_SCRIPT'
+            export AWS_REGION=${{ env.AWS_REGION }}
+            export ECR_REGISTRY=${{ env.ECR_REGISTRY }}
+            export DOCKER_IMAGE_NAME=${{ env.DOCKER_IMAGE_NAME }}
+            export IMAGE_TAG=${{ github.sha }}
+            export MEXC_API_KEY="${{ secrets.MEXC_API_KEY }}"
+            export MEXC_SECRET_KEY="${{ secrets.MEXC_SECRET_KEY }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export RUST_LOG=info
+            
+            chmod +x /tmp/deploy-blue-green.sh
+            bash /tmp/deploy-blue-green.sh
+          DEPLOY_SCRIPT
 
-      - name: Verify deployment
-        run: |
-          sleep 5
-          for i in {1..10}; do
-            if curl -f http://${{ secrets.AWS_EC2_IP }}:8080/ready; then
-              echo "Deployment successful!"
-              exit 0
-            fi
-            echo "Attempt $i/10 - Waiting for API..."
-            sleep 3
-          done
-          exit 1
-
-      - name: Post-deployment health check
-        if: success()
-        run: |
-          echo "Deployment completed successfully!"
-          curl -s http://${{ secrets.AWS_EC2_IP }}:8080/health | jq .
-
-      - name: Notify deployment status
+      - name: Retrieve deployment logs and metrics
         if: always()
         run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ Deployment to EC2 (${{ secrets.AWS_EC2_IP }}) successful"
+          echo "========================================"
+          echo "Retrieving deployment artifacts..."
+          echo "========================================"
+          
+          # Get the latest deployment log
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} \
+            'ls -t /tmp/deployment-*.log 2>/dev/null | head -1' > /tmp/latest-log-path.txt || true
+          
+          if [ -s /tmp/latest-log-path.txt ]; then
+            LATEST_LOG=$(cat /tmp/latest-log-path.txt)
+            echo "Latest deployment log: $LATEST_LOG"
+            
+            scp -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }}:$LATEST_LOG ./deployment.log || true
+            
+            if [ -f ./deployment.log ]; then
+              echo ""
+              echo "========================================"
+              echo "DEPLOYMENT LOG"
+              echo "========================================"
+              cat ./deployment.log
+            fi
+          fi
+          
+          # Get the latest metrics file
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} \
+            'ls -t /tmp/deployment-metrics-*.json 2>/dev/null | head -1' > /tmp/latest-metrics-path.txt || true
+          
+          if [ -s /tmp/latest-metrics-path.txt ]; then
+            LATEST_METRICS=$(cat /tmp/latest-metrics-path.txt)
+            echo "Latest deployment metrics: $LATEST_METRICS"
+            
+            scp -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }}:$LATEST_METRICS ./deployment-metrics.json || true
+            
+            if [ -f ./deployment-metrics.json ]; then
+              echo ""
+              echo "========================================"
+              echo "DEPLOYMENT METRICS"
+              echo "========================================"
+              cat ./deployment-metrics.json | jq '.' || cat ./deployment-metrics.json
+            fi
+          fi
+
+      - name: Generate deployment status report
+        if: always()
+        run: |
+          echo "========================================"
+          echo "DEPLOYMENT STATUS REPORT"
+          echo "========================================"
+          
+          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.AWS_EC2_IP }} << 'STATUS_SCRIPT'
+            chmod +x /tmp/deployment-status.sh
+            bash /tmp/deployment-status.sh
+          STATUS_SCRIPT
+
+      - name: Verify deployment health
+        if: success()
+        run: |
+          echo "========================================"
+          echo "FINAL HEALTH VERIFICATION"
+          echo "========================================"
+          
+          sleep 5
+          
+          # Check /health endpoint
+          echo "Testing /health endpoint..."
+          if curl -f -s http://${{ secrets.AWS_EC2_IP }}:8080/health; then
+            echo "✅ /health endpoint is responding"
           else
-            echo "❌ Deployment to EC2 failed"
+            echo "❌ /health endpoint failed"
+            exit 1
+          fi
+          
+          echo ""
+          
+          # Test actual API response
+          echo "Full health response:"
+          curl -s http://${{ secrets.AWS_EC2_IP }}:8080/health | jq '.' || curl -s http://${{ secrets.AWS_EC2_IP }}:8080/health
+
+      - name: Upload deployment artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-artifacts-${{ github.sha }}
+          path: |
+            deployment.log
+            deployment-metrics.json
+          retention-days: 30
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo ""
+          echo "========================================"
+          echo "DEPLOYMENT SUMMARY"
+          echo "========================================"
+          echo "Deployment ID: ${{ github.sha }}"
+          echo "Deployment Status: ${{ job.status }}"
+          echo "Target: EC2 (${{ secrets.AWS_EC2_IP }})"
+          echo "Image: ${{ env.ECR_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}"
+          echo "Strategy: Blue-Green Deployment"
+          echo "Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "========================================"
+          
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment completed successfully with zero downtime"
+            echo "📊 Deployment artifacts available in workflow artifacts"
+          else
+            echo "❌ Deployment failed - check logs above for details"
             exit 1
           fi
 
