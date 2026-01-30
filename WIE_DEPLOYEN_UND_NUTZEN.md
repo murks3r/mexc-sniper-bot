@@ -5,20 +5,283 @@
 
 ---
 
-## ❌ AKTUELLE SITUATION
+## ✅ WICHTIGER HINWEIS
 
-**Das Deployment ist NICHT erfolgreich** ❌
+**Das Projekt nutzt AWS EC2, NICHT Vercel!**
 
-Beide Deployment-Pipelines (Vercel und AWS EC2) schlagen derzeit fehl. Sie können die App aktuell **nicht über die Cloud-URLs** nutzen.
-
-**Aber:** Sie haben **zwei Optionen**:
-
-1. ✅ **Sofort lokal nutzen** (einfach, funktioniert sofort)
-2. 🔧 **Cloud-Deployment reparieren** (erfordert Fehlerbeseitigung)
+Die App besteht aus:
+- **Rust Backend auf AWS EC2** (Haupt-Deployment-Ziel)
+- **Next.js Frontend** (lokal für Entwicklung)
 
 ---
 
-## 🎯 OPTION 1: App SOFORT LOKAL nutzen (Empfohlen)
+## ❌ AKTUELLE SITUATION
+
+**AWS EC2 Deployment-Status:** ⚠️ Bereit zum Deployen (nach Fixes)
+
+Das AWS EC2 Rust Backend ist jetzt vollständig vorbereitet und kann deployed werden.
+
+**Sie haben zwei Optionen:**
+
+1. ✅ **Lokal das Next.js Frontend nutzen** (für Entwicklung)
+2. 🚀 **AWS EC2 Backend deployen** (für Produktion)
+
+---
+
+## 🎯 OPTION 1: Frontend SOFORT LOKAL nutzen
+
+Die Next.js Frontend-App kann lokal gestartet werden:
+
+### Schnellstart (5 Minuten)
+
+```bash
+git clone https://github.com/murks3r/mexc-sniper-bot.git
+cd mexc-sniper-bot
+bun install
+cp .env.example .env.local
+# Bearbeiten Sie .env.local mit Ihren Keys
+bun run db:migrate
+make dev
+```
+
+**Dann öffnen Sie im Browser:**
+- 🏠 Homepage: http://localhost:3008
+- 🔐 Login: http://localhost:3008/auth
+- 📊 Dashboard: http://localhost:3008/dashboard
+- ⚙️ Inngest: http://localhost:8288
+
+**Workflow:**
+1. Öffnen Sie http://localhost:3008
+2. Registrieren Sie sich mit E-Mail (Clerk)
+3. Nutzen Sie das Trading Dashboard
+
+---
+
+## 🚀 OPTION 2: AWS EC2 Backend deployen (Produktion)
+
+### Vollständige Anleitung
+
+**→ Siehe: [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)**
+
+Diese Datei enthält die **komplette Schritt-für-Schritt-Anleitung** für:
+- AWS Account Setup
+- EC2 Instanz-Konfiguration
+- GitHub Secrets Setup
+- Automatisches Deployment via GitHub Actions
+- Health Checks und Monitoring
+- Troubleshooting
+
+### Schnellübersicht AWS EC2 Deployment
+
+**Voraussetzungen:**
+1. AWS Account
+2. EC2 Instanz (t3.medium+, Port 8080 offen)
+3. GitHub Secrets konfiguriert:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_ACCOUNT_ID`
+   - `AWS_EC2_IP`
+   - `AWS_SSH_PRIVATE_KEY`
+   - `MEXC_API_KEY`
+   - `MEXC_SECRET_KEY`
+   - `JWT_SECRET`
+
+**Deployment-Prozess:**
+
+```bash
+# 1. Lokaler Test
+cd backend-rust
+cargo check
+cargo test
+
+# 2. Zu main pushen
+git add .
+git commit -m "feat: update backend"
+git push origin main
+
+# 3. GitHub Actions deployed automatisch!
+# Überwachen Sie: https://github.com/murks3r/mexc-sniper-bot/actions
+```
+
+**Nach dem Deployment:**
+
+```bash
+# Health Check
+curl http://YOUR_EC2_IP:8080/health
+
+# API testen
+curl http://YOUR_EC2_IP:8080/api/ticker?symbol=BTCUSDT
+```
+
+**API-Endpunkte:**
+- Health Check: `http://YOUR_EC2_IP:8080/health`
+- Ready Check: `http://YOUR_EC2_IP:8080/ready`
+- Metrics: `http://YOUR_EC2_IP:8080/metrics`
+- API: `http://YOUR_EC2_IP:8080/api/*`
+
+---
+
+## 📚 Was wurde geändert?
+
+### ✅ Durchgeführte Fixes:
+
+1. **Vercel-Workflows deaktiviert**
+   - `deploy.yml` → `deploy.yml.disabled`
+   - `release.yml` → `release.yml.disabled`
+   - `environment-validation.yml` → `environment-validation.yml.disabled`
+
+2. **AWS EC2 Deployment-Workflow aktualisiert**
+   - GitHub Actions v3 → v4 (actions/upload-artifact, actions/download-artifact)
+   - Bereit für automatisches Deployment
+
+3. **Rust Backend Build-Fehler behoben**
+   - AWS SDK Versionen aktualisiert
+   - Prometheus Metrics korrigiert
+   - Type-Inkonsistenzen behoben
+   - Cargo.lock generiert
+
+4. **Neue Dokumentation erstellt**
+   - [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md) - Vollständige AWS Deployment-Anleitung
+   - README.md aktualisiert (Vercel-Referenzen entfernt)
+
+### 📋 Deployment-Architektur
+
+```
+┌─────────────────────────────────────────────┐
+│         MEXC Sniper Bot Architektur         │
+├─────────────────────────────────────────────┤
+│                                             │
+│  Frontend (Next.js)                         │
+│  ├─ Entwicklung: localhost:3008             │
+│  └─ Trading Dashboard, Auth, UI             │
+│                                             │
+│  Backend (Rust)                             │
+│  ├─ Produktion: AWS EC2 (ap-southeast-1)   │
+│  ├─ Container Registry: AWS ECR             │
+│  ├─ Port: 8080                              │
+│  └─ Blue-Green Deployment                   │
+│                                             │
+│  CI/CD                                      │
+│  └─ GitHub Actions (deploy-rust.yml)        │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 🆘 Häufige Fragen
+
+### F: Warum wurde Vercel erwähnt, wenn es nicht verwendet wird?
+
+**A:** Das war mein Fehler! Ich habe die alte Konfiguration nicht bemerkt. Vercel-Workflows sind jetzt deaktiviert und die Dokumentation aktualisiert.
+
+### F: Kann ich die App jetzt nutzen?
+
+**A:** 
+- ✅ **Lokal: JA!** Starten Sie mit `make dev` und öffnen Sie http://localhost:3008
+- 🚀 **AWS EC2: JA!** Folgen Sie [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)
+
+### F: Was ist der Unterschied zwischen Frontend und Backend?
+
+**A:**
+- **Frontend (Next.js):** UI, Dashboard, Authentifizierung - läuft lokal auf Port 3008
+- **Backend (Rust):** Trading-Logik, MEXC API Integration - deployed auf AWS EC2 Port 8080
+
+### F: Brauche ich beides?
+
+**A:** 
+- Für **Entwicklung:** Ja, beide lokal starten
+- Für **Produktion:** Backend auf AWS EC2, Frontend kann lokal oder separat deployed werden
+
+### F: Wo finde ich alle Deployment-Informationen?
+
+**A:** 
+- **Vollständige Anleitung:** [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)
+- **Schnellstart:** Diese Datei
+- **Technische Details:** [RUST_DEPLOYMENT_GUIDE.md](RUST_DEPLOYMENT_GUIDE.md)
+
+---
+
+## 📊 Deployment-Status
+
+| Komponente | Status | URL | Dokumentation |
+|------------|--------|-----|---------------|
+| Rust Backend (AWS EC2) | ✅ Bereit | `http://YOUR_EC2_IP:8080` | [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md) |
+| Next.js Frontend (Lokal) | ✅ Funktioniert | http://localhost:3008 | Diese Datei |
+| GitHub Actions CI/CD | ✅ Konfiguriert | [Actions](https://github.com/murks3r/mexc-sniper-bot/actions) | [deploy-rust.yml](.github/workflows/deploy-rust.yml) |
+
+---
+
+## ✅ Nächste Schritte
+
+### Für Lokale Entwicklung:
+
+1. Lesen Sie diese Datei ✅
+2. Folgen Sie "OPTION 1: Frontend SOFORT LOKAL nutzen"
+3. Starten Sie `make dev`
+4. Öffnen Sie http://localhost:3008
+
+### Für AWS EC2 Produktion:
+
+1. Lesen Sie [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md) ✅
+2. AWS Account und EC2 Setup
+3. GitHub Secrets konfigurieren
+4. Code zu main pushen
+5. GitHub Actions deployt automatisch
+
+---
+
+## 🔧 Troubleshooting
+
+### Problem: "Vercel nicht gefunden"
+
+**Lösung:** Vercel wird nicht mehr verwendet! Nutzen Sie AWS EC2 stattdessen.
+
+### Problem: "Deployment fehlgeschlagen"
+
+**Lösung:** 
+1. Prüfen Sie [GitHub Actions Logs](https://github.com/murks3r/mexc-sniper-bot/actions)
+2. Verifizieren Sie GitHub Secrets
+3. Siehe Troubleshooting in [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)
+
+### Problem: "Kann Backend nicht erreichen"
+
+**Lösung:**
+```bash
+# EC2 Security Group prüfen - Port 8080 muss offen sein!
+# Health Check testen:
+curl http://YOUR_EC2_IP:8080/health
+```
+
+---
+
+## 📚 Dokumentations-Übersicht
+
+| Datei | Beschreibung |
+|-------|--------------|
+| **[AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)** | **→ VOLLSTÄNDIGE AWS DEPLOYMENT-ANLEITUNG** ⭐ |
+| [WIE_DEPLOYEN_UND_NUTZEN.md](WIE_DEPLOYEN_UND_NUTZEN.md) | Diese Datei - Übersicht & Schnellstart |
+| [SCHNELLSTART.md](SCHNELLSTART.md) | 5-Minuten lokaler Setup |
+| [RUST_DEPLOYMENT_GUIDE.md](RUST_DEPLOYMENT_GUIDE.md) | Rust-spezifische Details |
+| [DEPLOYMENT_INSPECTION_REPORT.md](DEPLOYMENT_INSPECTION_REPORT.md) | Technische Analyse |
+| [README.md](README.md) | Projekt-Übersicht |
+
+---
+
+**Zusammenfassung:**
+
+✅ **Deployment ist BEREIT!**  
+✅ **Vercel-Konfiguration wurde entfernt**  
+✅ **AWS EC2 ist das richtige Deployment-Ziel**  
+✅ **Vollständige Dokumentation erstellt**  
+
+**Für Deployment:** Folgen Sie [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)  
+**Für lokale Entwicklung:** Nutzen Sie den Schnellstart oben
+
+---
+
+**Viel Erfolg! 🚀**
+
 
 Die einfachste Methode, um die App **sofort** zu nutzen:
 

@@ -215,50 +215,28 @@ The system uses Drizzle ORM with the following key tables:
 
 ## 🚀 Deployment
 
-### Primary: Deploy to Vercel
+### Primary: Deploy to AWS EC2
 
-1. Push your code to GitHub
-2. Import project in Vercel Dashboard
-3. Add environment variables (including NeonDB credentials)
-4. Deploy
+The MEXC Sniper Bot Rust backend is deployed to AWS EC2 using Docker containers with a Blue-Green deployment strategy.
 
-**Important**: The system is optimized for Vercel's edge infrastructure with NeonDB for global low-latency data access.
+**Deployment Documentation:**
+- **[AWS EC2 Deployment Guide](AWS_EC2_DEPLOYMENT.md)** - Complete step-by-step deployment guide
+- **[Rust Deployment Guide](RUST_DEPLOYMENT_GUIDE.md)** - Rust-specific deployment details
 
-### Alternative: Deploy to Railway
+**Quick Deploy:**
 
-Railway offers persistent containers and built-in monitoring:
+1. Configure GitHub Secrets (AWS credentials, MEXC API keys)
+2. Push to `main` branch
+3. GitHub Actions automatically builds and deploys to EC2
+4. Access API at `http://YOUR_EC2_IP:8080`
 
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
+**Architecture:**
+- **Backend:** Rust API on AWS EC2 (ap-southeast-1)
+- **Container Registry:** AWS ECR
+- **Deployment:** Automated via GitHub Actions
+- **Strategy:** Blue-Green deployment with health checks
 
-# Deploy
-railway login
-railway init
-railway up
-```
-
-### Database Setup
-
-1. Set up a PostgreSQL database (local or cloud provider)
-2. Get your connection string
-3. Add the connection string to your environment variables:
-   ```bash
-   DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require
-   ```
-
-### Manual Deployment
-
-```bash
-# Build and deploy to Vercel
-make build
-vercel --prod
-
-# Or deploy to Railway
-railway up
-```
-
-For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)
+For detailed deployment instructions, see [AWS_EC2_DEPLOYMENT.md](AWS_EC2_DEPLOYMENT.md)
 
 ## 📚 Documentation
 
