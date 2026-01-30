@@ -1,2 +1,2 @@
-pub mod models;
-pub use models::{MexcClient, OrderRequest, OrderResponse, TickerResponse};
+// MexcClient ist in models.rs definiert, nicht hier
+pub use super::models::{MexcClient, OrderRequest, OrderResponse, TickerResponse};

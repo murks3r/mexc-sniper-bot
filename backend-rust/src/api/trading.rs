@@ -38,8 +38,17 @@ pub async fn create_order(
         payload.price,
     );
 
+    // Konvertiere zu MEXC OrderRequest
+    let mexc_order = crate::mexc::models::OrderRequest {
+        symbol: payload.symbol.clone(),
+        side: payload.side.clone(),
+        order_type: payload.order_type.clone(),
+        quantity: payload.quantity,
+        price: payload.price,
+    };
+
     // Sende zu MEXC
-    match state.mexc_client.create_order(&payload).await {
+    match state.mexc_client.create_order(&mexc_order).await {
         Ok(mexc_response) => {
             order.mexc_order_id = Some(mexc_response.order_id.clone());
             order.status = mexc_response.status.clone();
