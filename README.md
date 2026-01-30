@@ -276,6 +276,8 @@ For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/d
 
 ### Deployment & Operations
 - [Deployment Guide](docs/deployment/DEPLOYMENT.md) - Production deployment
+- [Deployment Status Report](DEPLOYMENT_STATUS_REPORT.md) - Latest deployment analysis and troubleshooting
+- [Deployment Quick Reference](DEPLOYMENT_QUICK_REFERENCE.md) - Quick status overview and fixes
 
 ### Development
 - [Contributing Guide](docs/development/CONTRIBUTING.md) - Development guidelines
