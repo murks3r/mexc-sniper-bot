@@ -38,7 +38,7 @@ GEHEIMNIS #2: AWS_ACCESS_KEY_ID
 ├─ ⚠️  NUR EINMAL sichtbar! Sofort kopieren!
 └─ Status: [ ]
 
-GEHEIMNIS #3: AWS_SECRET_ACCESS_KEY
+GEHEIMNIS #3: AWS_SECRET_ACCESS
 ├─ Format: Lange Base64-Zeichenkette
 ├─ Beispiel: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ├─ Funktion: AWS API Secret Key
@@ -149,7 +149,7 @@ Wenn Secret X nicht gesetzt ist → GitHub Action Y feilt
 │ BENÖTIGT:                            │
 │ • AWS_ACCOUNT_ID                     │
 │ • AWS_ACCESS_KEY_ID                  │
-│ • AWS_SECRET_ACCESS_KEY              │
+│ • AWS_SECRET_ACCESS              │
 ├──────────────────────────────────────┤
 │ Job: deploy                          │
 │ BENÖTIGT:                            │
@@ -193,7 +193,7 @@ SECRETS SAMMELN:
 GITHUB EINTRAGEN:
 [ ] AWS_ACCOUNT_ID eingegeben
 [ ] AWS_ACCESS_KEY_ID eingegeben
-[ ] AWS_SECRET_ACCESS_KEY eingegeben
+[ ] AWS_SECRET_ACCESS eingegeben
 [ ] AWS_SSH_PRIVATE_KEY eingegeben
 [ ] AWS_EC2_IP eingegeben
 [ ] MEXC_API_KEY eingegeben

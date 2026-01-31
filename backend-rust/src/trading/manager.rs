@@ -40,7 +40,7 @@ impl PositionManager {
     /// Update Position mit aktuellem Preis
     pub async fn update_position_price(
         &self,
-        user_id: &str,
+        _user_id: &str,
         position_id: &str,
         current_price: f64,
     ) -> Result<()> {
@@ -60,15 +60,15 @@ impl PositionManager {
     /// Schließe Position
     pub async fn close_position(
         &self,
-        user_id: &str,
+        _user_id: &str,
         position_id: &str,
-        close_price: f64,
+        _close_price: f64,
     ) -> Result<f64> {
         // TODO: Query position
         // TODO: Calculate final PnL
         // TODO: Mark as closed
 
-        tracing::info!("Position closed: {} for user: {}", position_id, user_id);
+        tracing::info!("Position closed: {}", position_id);
 
         Ok(0.0) // PnL
     }

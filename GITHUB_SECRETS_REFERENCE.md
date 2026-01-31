@@ -16,7 +16,7 @@ AWS_ACCESS_KEY_ID
 Value: AKIA... (ca. 20 Zeichen)
 ⟶ Findest unter: AWS IAM > Users > [Dein User] > Access keys
 
-AWS_SECRET_ACCESS_KEY
+AWS_SECRET_ACCESS
 Value: wJalrXUtnFEMI... (lange Zeichenkette)
 ⟶ ACHTUNG: Wird nur EINMAL angezeigt! Falls weg: neuen Key erstellen
 
@@ -55,7 +55,7 @@ Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ################################
 [ ] AWS_ACCOUNT_ID → 12-stellige Nummer
 [ ] AWS_ACCESS_KEY_ID → Beginnt mit AKIA
-[ ] AWS_SECRET_ACCESS_KEY → Lange Zeichenkette
+[ ] AWS_SECRET_ACCESS → Lange Zeichenkette
 [ ] AWS_SSH_PRIVATE_KEY → BEGIN/END RSA PRIVATE KEY
 [ ] AWS_EC2_IP → IP Adresse wie 54.179.x.x
 [ ] MEXC_API_KEY → Von MEXC Website
@@ -98,7 +98,7 @@ Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     │ - docker build     │
     │ - ECR login        │ ← Benötigt: AWS_ACCOUNT_ID
     │ - ECR push         │ ← Benötigt: AWS_ACCESS_KEY_ID
-    │                    │ ← Benötigt: AWS_SECRET_ACCESS_KEY
+    │                    │ ← Benötigt: AWS_SECRET_ACCESS
     └────────┬───────────┘
              │
              ▼
@@ -137,9 +137,9 @@ name: Rust Backend CI/CD
   with:
     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
 
-- AWS_SECRET_ACCESS_KEY → AWS Authentication:
+- AWS_SECRET_ACCESS → AWS Authentication:
   with:
-    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS }}
 
 - AWS_SSH_PRIVATE_KEY → SSH Verbindung zu EC2:
   echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa

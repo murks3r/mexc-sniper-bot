@@ -75,9 +75,9 @@ impl MexcClient {
     pub async fn get_ticker(&self, symbol: &str) -> Result<TickerResponse> {
         let url = format!("{}/api/v3/ticker/24hr", self.base_url);
         let mut params = BTreeMap::new();
-        params.insert("symbol", symbol.to_string());
+        params.insert("symbol".to_string(), symbol.to_string());
 
-        let query_string = Self::build_query_string(&params);
+        let _query_string = Self::build_query_string(&params);
 
         let response = self
             .client
@@ -241,7 +241,7 @@ impl MexcClient {
     }
 
     /// Hilfsfunktion: Erstelle Query String aus BTreeMap (sortiert für Signing)
-    fn build_query_string(params: &BTreeMap<&str, String>) -> String {
+    fn build_query_string(params: &BTreeMap<String, String>) -> String {
         params
             .iter()
             .map(|(k, v)| format!("{}={}", k, v))

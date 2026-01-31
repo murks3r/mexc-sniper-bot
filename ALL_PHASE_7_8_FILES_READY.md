@@ -124,7 +124,7 @@ Vercel: NEXT_PUBLIC_API_URL = http://54.179.x.x:8080
 ```
 AWS_ACCOUNT_ID                (12 Ziffern)
 AWS_ACCESS_KEY_ID             (AKIA...)
-AWS_SECRET_ACCESS_KEY         (lange Zeichenkette)
+AWS_SECRET_ACCESS         (lange Zeichenkette)
 AWS_SSH_PRIVATE_KEY           (SSH Key .pem)
 AWS_EC2_IP                    (54.179.x.x)
 MEXC_API_KEY                  (von MEXC)
@@ -228,7 +228,7 @@ TOTAL:                      45-65 Minuten
 |---|--------|-----|-----|
 | 1 | AWS_ACCOUNT_ID | Deine AWS Konto-Nr | AWS Console |
 | 2 | AWS_ACCESS_KEY_ID | AWS API User | AWS IAM |
-| 3 | AWS_SECRET_ACCESS_KEY | AWS API Pass | AWS IAM |
+| 3 | AWS_SECRET_ACCESS | AWS API Pass | AWS IAM |
 | 4 | AWS_SSH_PRIVATE_KEY | SSH Key | EC2 Key Pair |
 | 5 | AWS_EC2_IP | EC2 Public IP | AWS Console |
 | 6 | MEXC_API_KEY | MEXC Key | mexc.com |

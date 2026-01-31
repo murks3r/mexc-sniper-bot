@@ -139,7 +139,7 @@ GitHub → Settings → Secrets and variables → Actions
 Erstelle 8x "New repository secret" mit:
 ☐ AWS_ACCOUNT_ID
 ☐ AWS_ACCESS_KEY_ID
-☐ AWS_SECRET_ACCESS_KEY
+☐ AWS_SECRET_ACCESS
 ☐ AWS_SSH_PRIVATE_KEY
 ☐ AWS_EC2_IP
 ☐ MEXC_API_KEY
@@ -155,7 +155,7 @@ Erstelle 8x "New repository secret" mit:
 |---|--------|-------------|-----------|
 | 1 | AWS_ACCOUNT_ID | Deine AWS Konto-Nummer | `aws sts get-caller-identity` |
 | 2 | AWS_ACCESS_KEY_ID | AWS API Username | AWS IAM (AKIA...) |
-| 3 | AWS_SECRET_ACCESS_KEY | AWS API Password | AWS IAM (lange Zeichenkette) |
+| 3 | AWS_SECRET_ACCESS | AWS API Password | AWS IAM (lange Zeichenkette) |
 | 4 | AWS_SSH_PRIVATE_KEY | SSH Schlüssel für EC2 | ~/.ssh/mexc-sniper-key.pem |
 | 5 | AWS_EC2_IP | EC2 öffentliche IP | AWS Console (54.179.x.x) |
 | 6 | MEXC_API_KEY | MEXC Login Schlüssel | mexc.com Account Settings |
@@ -168,7 +168,7 @@ Erstelle 8x "New repository secret" mit:
 
 ```
 🚨 NUR EINMAL SICHTBAR (sofort kopieren!):
-  • AWS_SECRET_ACCESS_KEY (erstelle neue falls weg)
+  • AWS_SECRET_ACCESS (erstelle neue falls weg)
   • MEXC_SECRET_KEY (erstelle neuen falls weg)
 
 🚨 NIEMALS in Code committen:
@@ -266,7 +266,7 @@ bash scripts/setup-phase7-8.sh
 ### Phase 8: 8 Secrets in GitHub
 1. AWS_ACCOUNT_ID
 2. AWS_ACCESS_KEY_ID
-3. AWS_SECRET_ACCESS_KEY
+3. AWS_SECRET_ACCESS
 4. AWS_SSH_PRIVATE_KEY
 5. AWS_EC2_IP
 6. MEXC_API_KEY

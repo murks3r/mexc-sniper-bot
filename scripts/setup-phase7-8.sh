@@ -107,7 +107,7 @@ declare -A secrets_map=(
     ["AWS_EC2_IP"]="EC2 öffentliche IP-Adresse"
     ["MEXC_API_KEY"]="MEXC API Key"
     ["MEXC_SECRET_KEY"]="MEXC Secret Key"
-    ["JWT_SECRET"]="JWT Secret (min. 32 Zeichen)"
+    # JWT_SECRET wird nicht mehr benötigt - entfernt="JWT Secret (min. 32 Zeichen)"
 )
 
 echo "🔐 Secrets sammeln (Drücke Enter für interaktive Eingabe):"

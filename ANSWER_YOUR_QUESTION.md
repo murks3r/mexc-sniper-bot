@@ -13,7 +13,7 @@
 ### Phase 8: 8 Secrets in GitHub (25 Minuten)
 1. `AWS_ACCOUNT_ID` – Deine AWS Konto-Nummer (12 Ziffern)
 2. `AWS_ACCESS_KEY_ID` – AWS API Schlüssel (AKIA...)
-3. `AWS_SECRET_ACCESS_KEY` – AWS API Geheimnis (lange Zeichenkette)
+3. `AWS_SECRET_ACCESS` – AWS API Geheimnis (lange Zeichenkette)
 4. `AWS_SSH_PRIVATE_KEY` – SSH Schlüssel (.pem Datei)
 5. `AWS_EC2_IP` – EC2 öffentliche IP (54.179.x.x)
 6. `MEXC_API_KEY` – MEXC API Schlüssel
@@ -118,7 +118,7 @@ Beispiel: AKIAZX23EXAMPLE45BK
 Status: ☐ Sammeln
 ```
 
-**#3: AWS_SECRET_ACCESS_KEY**
+**#3: AWS_SECRET_ACCESS**
 ```
 Was: AWS API Passwort
 Wie: AWS Console → IAM → Users → Create access key
@@ -229,7 +229,7 @@ GitHub → Settings → Secrets and variables → Actions
 
 ☐ AWS_ACCOUNT_ID = 123456789012
 ☐ AWS_ACCESS_KEY_ID = AKIA...
-☐ AWS_SECRET_ACCESS_KEY = wJalrX...
+☐ AWS_SECRET_ACCESS = wJalrX...
 ☐ AWS_SSH_PRIVATE_KEY = (komplette .pem)
 ☐ AWS_EC2_IP = 54.179.x.x
 ☐ MEXC_API_KEY = mx...
@@ -285,7 +285,7 @@ TOTAL GESAMT:              40 Minuten
       │
       ├─ docker-build
       │  ✓ Docker image bauen
-      │  ✓ Zu ECR pushen (benötigt: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+      │  ✓ Zu ECR pushen (benötigt: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS)
       │
       └─ deploy
          ✓ SSH zu EC2 (benötigt: AWS_SSH_PRIVATE_KEY, AWS_EC2_IP)

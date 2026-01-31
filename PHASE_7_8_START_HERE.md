@@ -18,7 +18,7 @@ Vercel: NEXT_PUBLIC_API_URL = http://54.179.123.45:8080
 GitHub Secrets:
 1. AWS_ACCOUNT_ID
 2. AWS_ACCESS_KEY_ID
-3. AWS_SECRET_ACCESS_KEY
+3. AWS_SECRET_ACCESS
 4. AWS_SSH_PRIVATE_KEY
 5. AWS_EC2_IP
 6. MEXC_API_KEY
@@ -87,7 +87,7 @@ bash scripts/setup-phase7-8.sh
 AWS Authentication (3):
   AWS_ACCOUNT_ID          ← Deine AWS Konto-Nummer
   AWS_ACCESS_KEY_ID       ← AWS API Username
-  AWS_SECRET_ACCESS_KEY   ← AWS API Passwort
+  AWS_SECRET_ACCESS   ← AWS API Passwort
 
 SSH Deployment (2):
   AWS_SSH_PRIVATE_KEY     ← SSH Schlüssel (.pem)

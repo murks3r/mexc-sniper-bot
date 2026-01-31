@@ -145,7 +145,7 @@ aws secretsmanager create-secret \
 # Erstelle folgende Secrets:
 AWS_ACCOUNT_ID = "123456789012"
 AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
-AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+AWS_SECRET_ACCESS = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_EC2_IP = "54.179.xxx.xxx"  # Deine Elastic IP
 AWS_SSH_PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----\n..."
 MEXC_API_KEY = "your_mexc_api_key"

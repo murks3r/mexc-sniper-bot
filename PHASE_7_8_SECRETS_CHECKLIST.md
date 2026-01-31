@@ -90,7 +90,7 @@ const response = await fetch(`${apiUrl}/api/trade/order`, { ... });
 |---|---|---|---|
 | `AWS_ACCOUNT_ID` | `123456789012` | AWS Console → Account ID (rechts oben) | ECR Push |
 | `AWS_ACCESS_KEY_ID` | `AKIA2EXAMP...` | AWS IAM → New Access Key | AWS Auth |
-| `AWS_SECRET_ACCESS_KEY` | `wJalrXUtnFEMI/K7MD...` | AWS IAM → Access Key (nur 1x sichtbar!) | AWS Auth |
+| `AWS_SECRET_ACCESS` | `wJalrXUtnFEMI/K7MD...` | AWS IAM → Access Key (nur 1x sichtbar!) | AWS Auth |
 | `AWS_SSH_PRIVATE_KEY` | `-----BEGIN RSA PRIVATE KEY-----...` | EC2 Key Pair `.pem` Datei | SSH Deploy |
 | `AWS_EC2_IP` | `54.179.123.45` | AWS Console → EC2 Public IPv4 | SSH Target |
 | `MEXC_API_KEY` | `mx...` | MEXC Website → Account → API Management | Runtime Config |
@@ -151,7 +151,7 @@ Value: 123456789012
 Secret #2: AWS_ACCESS_KEY_ID
 Value: AKIA2EXAMP...
 
-Secret #3: AWS_SECRET_ACCESS_KEY
+Secret #3: AWS_SECRET_ACCESS
 Value: wJalrXUtnFEMI/K7MD...
 (ACHTUNG: Kopiere die komplette lange Zeichenkette!)
 
@@ -259,7 +259,7 @@ Wenn Du commits zu `main` machst und `backend-rust/` ändert:
 **8 Secrets in GitHub erstellt:**
 - [ ] AWS_ACCOUNT_ID
 - [ ] AWS_ACCESS_KEY_ID
-- [ ] AWS_SECRET_ACCESS_KEY
+- [ ] AWS_SECRET_ACCESS
 - [ ] AWS_SSH_PRIVATE_KEY
 - [ ] AWS_EC2_IP
 - [ ] MEXC_API_KEY
