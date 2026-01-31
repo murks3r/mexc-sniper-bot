@@ -331,6 +331,20 @@ npm run test
 npm run test:fast
 ```
 
+#### **Test Reporting**
+```bash
+# Run tests with JUnit XML reporter (for CI/CD)
+bunx vitest --run --reporter=junit --reporter-outfile=test-results.xml
+
+# Or with npm/npx
+npx vitest --run --reporter=junit --reporter-outfile=test-results.xml
+
+# Multiple reporters (console + XML)
+bunx vitest --run --reporter=default --reporter=junit --reporter-outfile=test-results.xml
+```
+
+> **Note**: When using `--reporter=junit`, you must also specify `--reporter-outfile` to define where the XML report should be saved.
+
 ### Code Quality
 
 ```bash

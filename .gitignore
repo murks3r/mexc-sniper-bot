@@ -143,6 +143,8 @@ pgdata/
 playwright-report/
 test-results/
 test-results.json
+test-results.xml
+full-test-output.txt
 
 # Temp workspace
 tmp/
