@@ -56,13 +56,14 @@ Fügen Sie folgende Secrets hinzu:
 | Secret Name | Beschreibung | Wo finden? |
 |------------|--------------|------------|
 | `AWS_ACCESS_KEY_ID` | AWS IAM Access Key ID | AWS IAM Console → Users → Security Credentials |
-| `AWS_SECRET_ACCESS_KEY` | AWS IAM Secret Access Key | AWS IAM Console (beim Erstellen angezeigt) |
+| `AWS_SECRET_ACCESS` | AWS IAM Secret Access Key | AWS IAM Console (beim Erstellen angezeigt) |
 | `AWS_ACCOUNT_ID` | Ihre AWS Account Nummer | AWS Console → Rechts oben Profil Dropdown |
 | `AWS_EC2_IP` | Public IP der EC2 Instanz | AWS EC2 Console → Instances |
+| `AWS_REGION` | AWS Region | z.B. `ap-southeast-1` |
+| `AWS_ROLE_ARN` | AWS IAM Role ARN (optional) | AWS IAM Console → Roles |
 | `AWS_SSH_PRIVATE_KEY` | SSH Private Key für EC2 | Lokale Datei `~/.ssh/id_rsa` |
 | `MEXC_API_KEY` | MEXC Exchange API Key | MEXC → API Management |
 | `MEXC_SECRET_KEY` | MEXC Exchange Secret Key | MEXC → API Management |
-| `JWT_SECRET` | JWT Signing Secret (32+ Zeichen) | Generieren: `openssl rand -hex 32` |
 
 ---
 

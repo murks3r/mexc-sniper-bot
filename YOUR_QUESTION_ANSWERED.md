@@ -37,7 +37,7 @@ Trage folgende 8 Secrets ein:
 |---|---|---|---|
 | 1 | `AWS_ACCOUNT_ID` | AWS Konto-Nummer | `123456789012` |
 | 2 | `AWS_ACCESS_KEY_ID` | AWS API Key | `AKIAZX23...` |
-| 3 | `AWS_SECRET_ACCESS_KEY` | AWS API Secret | `wJalrXUtnFEMI...` |
+| 3 | `AWS_SECRET_ACCESS` | AWS API Secret | `wJalrXUtnFEMI...` |
 | 4 | `AWS_SSH_PRIVATE_KEY` | SSH Key (.pem) | `-----BEGIN RSA...` |
 | 5 | `AWS_EC2_IP` | EC2 Public IP | `54.179.123.45` |
 | 6 | `MEXC_API_KEY` | MEXC API Key | `mx1234567...` |
@@ -60,7 +60,7 @@ aws sts get-caller-identity
 # Access Key & Secret erstellen:
 # AWS Console → IAM → Users → [Dein User] → Create access key
 # → AKIA... ist AWS_ACCESS_KEY_ID
-# → wJalr... ist AWS_SECRET_ACCESS_KEY
+# → wJalr... ist AWS_SECRET_ACCESS
 ```
 
 **⚠️ WICHTIG:** AWS Secret Key wird nur EINMAL angezeigt!
@@ -177,7 +177,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 Secrets zum Eintragen (in Reihenfolge):
 ☐ AWS_ACCOUNT_ID = 123456789012
 ☐ AWS_ACCESS_KEY_ID = AKIAZX23...
-☐ AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI...
+☐ AWS_SECRET_ACCESS = wJalrXUtnFEMI...
 ☐ AWS_SSH_PRIVATE_KEY = -----BEGIN RSA PRIVATE KEY-----
                         ...
                         -----END RSA PRIVATE KEY-----

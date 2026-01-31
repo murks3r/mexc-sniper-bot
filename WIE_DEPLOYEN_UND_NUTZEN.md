@@ -78,13 +78,14 @@ Diese Datei enthält die **komplette Schritt-für-Schritt-Anleitung** für:
 2. EC2 Instanz (t3.medium+, Port 8080 offen)
 3. GitHub Secrets konfiguriert:
    - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_SECRET_ACCESS`
    - `AWS_ACCOUNT_ID`
    - `AWS_EC2_IP`
+   - `AWS_REGION`
+   - `AWS_ROLE_ARN`
    - `AWS_SSH_PRIVATE_KEY`
    - `MEXC_API_KEY`
    - `MEXC_SECRET_KEY`
-   - `JWT_SECRET`
 
 **Deployment-Prozess:**
 
@@ -541,15 +542,16 @@ Stellen Sie sicher, dass diese Secrets in GitHub konfiguriert sind:
 
 **Für AWS EC2 (Rust Backend):**
 - `AWS_ACCESS_KEY_ID` - AWS Access Key
-- `AWS_SECRET_ACCESS_KEY` - AWS Secret Key
+- `AWS_SECRET_ACCESS` - AWS Secret Access Key
 - `AWS_ACCOUNT_ID` - AWS Account Nummer
 - `AWS_EC2_IP` - EC2 Instanz IP-Adresse
+- `AWS_REGION` - AWS Region
+- `AWS_ROLE_ARN` - AWS IAM Role ARN (optional)
 - `AWS_SSH_PRIVATE_KEY` - SSH Private Key für EC2
 
 **Für die App:**
 - `MEXC_API_KEY` - MEXC API Key
 - `MEXC_SECRET_KEY` - MEXC Secret Key
-- `JWT_SECRET` - JWT Signing Secret
 
 #### D. Fixes committen und pushen
 

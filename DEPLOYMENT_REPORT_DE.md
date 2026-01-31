@@ -208,15 +208,16 @@ Stelle sicher, dass folgende Secrets konfiguriert sind:
 
 **AWS:**
 - `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SECRET_ACCESS`
 - `AWS_ACCOUNT_ID`
 - `AWS_EC2_IP`
+- `AWS_REGION`
+- `AWS_ROLE_ARN`
 - `AWS_SSH_PRIVATE_KEY`
 
 **Application:**
 - `MEXC_API_KEY`
 - `MEXC_SECRET_KEY`
-- `JWT_SECRET`
 
 ---
 

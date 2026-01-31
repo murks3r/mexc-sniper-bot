@@ -264,7 +264,7 @@ Ensure the following GitHub Secrets are configured in repository settings:
 
 **Required Secrets:**
 - `AWS_ACCESS_KEY_ID` - AWS IAM access key
-- `AWS_SECRET_ACCESS_KEY` - AWS IAM secret key
+- `AWS_SECRET_ACCESS` - AWS IAM secret key
 - `AWS_ACCOUNT_ID` - AWS account number
 - `AWS_EC2_IP` - Public IP of EC2 instance
 - `AWS_SSH_PRIVATE_KEY` - SSH private key for EC2 access

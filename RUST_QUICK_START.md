@@ -229,7 +229,7 @@ curl http://localhost:8080/health
 # Erstelle:
 AWS_ACCOUNT_ID = "123456789012"
 AWS_ACCESS_KEY_ID = "AKIA..."
-AWS_SECRET_ACCESS_KEY = "wJalr..."
+AWS_SECRET_ACCESS = "wJalr..."
 AWS_EC2_IP = "54.179.xxx.xxx"
 AWS_SSH_PRIVATE_KEY = "-----BEGIN RSA..."
 MEXC_API_KEY = "your_api_key"

@@ -113,7 +113,7 @@ Für jeden Secret:
 |---|---|---|---|
 | 1 | `AWS_ACCOUNT_ID` | `aws sts get-caller-identity --query Account` | ☐ |
 | 2 | `AWS_ACCESS_KEY_ID` | AWS IAM > Access keys (beginnt mit AKIA) | ☐ |
-| 3 | `AWS_SECRET_ACCESS_KEY` | AWS IAM > Access keys (lange Zeichenkette) | ☐ |
+| 3 | `AWS_SECRET_ACCESS` | AWS IAM > Access keys (lange Zeichenkette) | ☐ |
 | 4 | `AWS_SSH_PRIVATE_KEY` | `cat ~/.ssh/mexc-sniper-key.pem` | ☐ |
 | 5 | `AWS_EC2_IP` | Aus Phase 7 (54.179.x.x) | ☐ |
 | 6 | `MEXC_API_KEY` | mexc.com > Account > API Management | ☐ |
@@ -122,7 +122,7 @@ Für jeden Secret:
 
 **⚠️ WICHTIG:**
 - **AWS_SSH_PRIVATE_KEY:** Kompletter Inhalt mit BEGIN/END lines
-- **AWS_SECRET_ACCESS_KEY:** Wird nur EINMAL angezeigt!
+- **AWS_SECRET_ACCESS:** Wird nur EINMAL angezeigt!
 - **JWT_SECRET:** Min. 32 Zeichen
 
 ---

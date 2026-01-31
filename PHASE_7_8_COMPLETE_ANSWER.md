@@ -105,7 +105,7 @@ AWS_ACCESS_KEY_ID
 ├─ Status: ☐ Required
 └─ ⚠️  Create new one if old lost (can't regenerate!)
 
-AWS_SECRET_ACCESS_KEY
+AWS_SECRET_ACCESS
 ├─ What: AWS API password (long string)
 ├─ Why: Signs AWS requests securely
 ├─ How to get: AWS IAM → Create access key (shown ONCE)
@@ -172,7 +172,7 @@ JWT_SECRET
 │ AWS (3)                                 │
 │ ├─ AWS_ACCOUNT_ID                       │
 │ ├─ AWS_ACCESS_KEY_ID                    │
-│ └─ AWS_SECRET_ACCESS_KEY                │
+│ └─ AWS_SECRET_ACCESS                │
 │                                         │
 │ SSH Deployment (2)                      │
 │ ├─ AWS_SSH_PRIVATE_KEY                  │
@@ -219,7 +219,7 @@ GitHub → Settings → Secrets and variables → Actions
 For each of these 8 secrets:
 ☐ AWS_ACCOUNT_ID = [from AWS]
 ☐ AWS_ACCESS_KEY_ID = [from AWS]
-☐ AWS_SECRET_ACCESS_KEY = [from AWS]
+☐ AWS_SECRET_ACCESS = [from AWS]
 ☐ AWS_SSH_PRIVATE_KEY = [from .pem file]
 ☐ AWS_EC2_IP = [from EC2 console]
 ☐ MEXC_API_KEY = [from mexc.com]
@@ -247,7 +247,7 @@ WHAT HAPPENS AUTOMATICALLY:
 4. deploy-rust.yml starts (uses 8 secrets)
    ├─ build → compile Rust
    ├─ docker-build → build Docker image
-   │  Uses: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+   │  Uses: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS
    ├─ deploy → send to EC2
    │  Uses: AWS_SSH_PRIVATE_KEY, AWS_EC2_IP, MEXC_API_KEY, MEXC_SECRET_KEY, JWT_SECRET
    └─ rollback → if deploy fails (restores old version)
