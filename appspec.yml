@@ -1,0 +1,27 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/mexc-sniper-bot
+hooks:
+  BeforeInstall:
+    - location: scripts/deployment/before_install.sh
+      timeout: 300
+      runas: ec2-user
+  AfterInstall:
+    - location: scripts/deployment/after_install.sh
+      timeout: 300
+      runas: ec2-user
+  ApplicationStart:
+    - location: scripts/deployment/application_start.sh
+      timeout: 300
+      runas: ec2-user
+  ApplicationStop:
+    - location: scripts/deployment/application_stop.sh
+      timeout: 300
+      runas: ec2-user
+  ValidateService:
+    - location: scripts/deployment/validate_service.sh
+      timeout: 300
+      runas: ec2-user
+file_exists_behavior: OVERWRITE

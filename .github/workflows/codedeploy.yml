@@ -1,0 +1,238 @@
+name: AWS CodeDeploy Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend-rust/**'
+      - 'scripts/deployment/**'
+      - 'appspec.yml'
+      - '.github/workflows/codedeploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  # IMPORTANT: Configure these values for your AWS setup
+  # The S3 bucket MUST be in ap-northeast-3 (Osaka) region as specified
+  AWS_REGION: ap-northeast-3
+  # TODO: Replace with your actual values or use GitHub secrets
+  # Set these in GitHub: Settings > Secrets and variables > Actions
+  # - CODEDEPLOY_S3_BUCKET
+  # - CODEDEPLOY_APPLICATION_NAME
+  # - CODEDEPLOY_DEPLOYMENT_GROUP
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy via CodeDeploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend-rust
+
+      - name: Build Rust backend (Release)
+        working-directory: backend-rust
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl
+          ls -lh target/x86_64-unknown-linux-musl/release/mexc-sniper
+
+      - name: Create deployment package
+        run: |
+          echo "Creating deployment package..."
+          # Create a clean deployment package with all necessary files
+          mkdir -p deployment-package
+          
+          # Copy application files
+          cp -r backend-rust deployment-package/
+          cp -r scripts deployment-package/
+          cp appspec.yml deployment-package/
+          
+          # Create the deployment archive
+          cd deployment-package
+          zip -r ../deploy-${{ github.sha }}.zip .
+          cd ..
+          
+          echo "Deployment package created: deploy-${{ github.sha }}.zip"
+          ls -lh deploy-${{ github.sha }}.zip
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload deployment package to S3
+        run: |
+          # Upload to S3 bucket in Osaka (ap-northeast-3) region
+          # IMPORTANT: Set CODEDEPLOY_S3_BUCKET in GitHub Secrets
+          S3_BUCKET="${{ secrets.CODEDEPLOY_S3_BUCKET }}"
+          
+          if [ -z "$S3_BUCKET" ]; then
+            echo "ERROR: CODEDEPLOY_S3_BUCKET secret is not set!"
+            echo "Please set this in GitHub repository settings:"
+            echo "Settings > Secrets and variables > Actions > New repository secret"
+            echo "Name: CODEDEPLOY_S3_BUCKET"
+            echo "Value: your-codedeploy-bucket-name"
+            exit 1
+          fi
+          
+          echo "Uploading to S3 bucket: ${S3_BUCKET} in region ${AWS_REGION}"
+          aws s3 cp deploy-${{ github.sha }}.zip \
+            s3://${S3_BUCKET}/mexc-sniper-bot/deploy-${{ github.sha }}.zip \
+            --region ${AWS_REGION}
+          
+          echo "✓ Deployment package uploaded successfully"
+
+      - name: Create CodeDeploy deployment
+        id: deploy
+        run: |
+          # IMPORTANT: Set these in GitHub Secrets:
+          # - CODEDEPLOY_APPLICATION_NAME (e.g., mexc-sniper-bot)
+          # - CODEDEPLOY_DEPLOYMENT_GROUP (e.g., mexc-sniper-production)
+          
+          APP_NAME="${{ secrets.CODEDEPLOY_APPLICATION_NAME }}"
+          DEPLOYMENT_GROUP="${{ secrets.CODEDEPLOY_DEPLOYMENT_GROUP }}"
+          S3_BUCKET="${{ secrets.CODEDEPLOY_S3_BUCKET }}"
+          
+          if [ -z "$APP_NAME" ]; then
+            echo "ERROR: CODEDEPLOY_APPLICATION_NAME secret is not set!"
+            exit 1
+          fi
+          
+          if [ -z "$DEPLOYMENT_GROUP" ]; then
+            echo "ERROR: CODEDEPLOY_DEPLOYMENT_GROUP secret is not set!"
+            exit 1
+          fi
+          
+          echo "Creating deployment..."
+          echo "  Application: ${APP_NAME}"
+          echo "  Deployment Group: ${DEPLOYMENT_GROUP}"
+          echo "  S3 Location: s3://${S3_BUCKET}/mexc-sniper-bot/deploy-${{ github.sha }}.zip"
+          
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name ${APP_NAME} \
+            --deployment-group-name ${DEPLOYMENT_GROUP} \
+            --s3-location bucket=${S3_BUCKET},key=mexc-sniper-bot/deploy-${{ github.sha }}.zip,bundleType=zip \
+            --region ${AWS_REGION} \
+            --description "Deployment from commit ${{ github.sha }}" \
+            --query 'deploymentId' \
+            --output text)
+          
+          echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "✓ Deployment created: ${DEPLOYMENT_ID}"
+
+      - name: Wait for deployment to complete
+        run: |
+          DEPLOYMENT_ID="${{ steps.deploy.outputs.deployment_id }}"
+          
+          echo "Waiting for deployment ${DEPLOYMENT_ID} to complete..."
+          aws deploy wait deployment-successful \
+            --deployment-id ${DEPLOYMENT_ID} \
+            --region ${AWS_REGION}
+          
+          echo "✓ Deployment completed successfully!"
+
+      - name: Get deployment status
+        if: always()
+        run: |
+          DEPLOYMENT_ID="${{ steps.deploy.outputs.deployment_id }}"
+          
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            echo "Fetching deployment status..."
+            aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --region ${AWS_REGION} \
+              --query 'deploymentInfo.status' \
+              --output text
+          fi
+
+      - name: Create deployment success notification
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date().toISOString();
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `✅ CodeDeploy Deployment Success - ${now}`,
+              body: `🚀 **AWS CodeDeploy Deployment Completed Successfully**
+              
+              **Deployment Details:**
+              - **Deployment ID:** ${{ steps.deploy.outputs.deployment_id }}
+              - **Commit:** ${context.sha.substring(0, 7)}
+              - **Branch:** ${context.ref.replace('refs/heads/', '')}
+              - **Triggered by:** ${context.actor}
+              - **Timestamp:** ${now}
+              - **Region:** ${{ env.AWS_REGION }} (Osaka)
+              
+              **Validation Status:**
+              - ✅ Build successful
+              - ✅ Deployment package uploaded to S3
+              - ✅ CodeDeploy deployment completed
+              - ✅ Health checks passed
+              
+              **Next Steps:**
+              - Monitor application health on EC2
+              - Check CloudWatch logs for any issues
+              - Verify API endpoints are responding
+              
+              This issue was automatically created by the CodeDeploy pipeline.`,
+              labels: ['deployment', 'codedeploy', 'production', 'success']
+            })
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date().toISOString();
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `❌ CodeDeploy Deployment Failed - ${now}`,
+              body: `🚨 **AWS CodeDeploy Deployment Failed**
+              
+              **Deployment Details:**
+              - **Deployment ID:** ${{ steps.deploy.outputs.deployment_id }}
+              - **Commit:** ${context.sha.substring(0, 7)}
+              - **Branch:** ${context.ref.replace('refs/heads/', '')}
+              - **Triggered by:** ${context.actor}
+              - **Timestamp:** ${now}
+              - **Region:** ${{ env.AWS_REGION }} (Osaka)
+              
+              **Failure Information:**
+              Check the following for detailed error information:
+              - [GitHub Actions logs](${context.payload.repository.html_url}/actions/runs/${context.runId})
+              - AWS CodeDeploy Console
+              - EC2 instance logs in /var/log/aws/codedeploy-agent/
+              
+              **Action Required:**
+              - Review deployment logs
+              - Check CodeDeploy deployment events
+              - Fix identified issues
+              - Re-run deployment once resolved
+              
+              This issue was automatically created by the CodeDeploy pipeline.`,
+              labels: ['deployment', 'codedeploy', 'failed', 'urgent']
+            })
