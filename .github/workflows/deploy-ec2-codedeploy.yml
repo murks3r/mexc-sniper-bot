@@ -15,7 +15,7 @@ jobs:
   deploy:
     name: Deploy to EC2 via CodeDeploy
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,19 +41,19 @@ jobs:
             -x "*.cache*" \
             -x "*coverage*" \
             -x "*.turbo*"
-          
+
           echo "Deployment package created: $(du -h deployment.zip)"
 
       - name: Upload to S3
         run: |
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           S3_KEY="deployments/${GITHUB_SHA:0:7}_${TIMESTAMP}.zip"
-          
+
           echo "Uploading deployment package to S3..."
           aws s3 cp deployment.zip \
             s3://${{ secrets.AWS_S3_BUCKET }}/$S3_KEY \
             --region ${{ env.AWS_REGION }}
-          
+
           echo "S3_KEY=$S3_KEY" >> $GITHUB_ENV
           echo "✅ Upload complete: s3://${{ secrets.AWS_S3_BUCKET }}/$S3_KEY"
 
@@ -61,7 +61,7 @@ jobs:
         id: deploy
         run: |
           echo "Creating CodeDeploy deployment..."
-          
+
           DEPLOYMENT_ID=$(aws deploy create-deployment \
             --application-name ${{ env.APPLICATION_NAME }} \
             --deployment-group-name ${{ env.DEPLOYMENT_GROUP_NAME }} \
@@ -71,7 +71,7 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --query 'deploymentId' \
             --output text)
-          
+
           echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> $GITHUB_ENV
           echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
           echo "✅ Deployment created: $DEPLOYMENT_ID"
@@ -79,18 +79,18 @@ jobs:
       - name: Wait for deployment
         run: |
           echo "Waiting for deployment ${{ env.DEPLOYMENT_ID }} to complete..."
-          
+
           aws deploy wait deployment-successful \
             --deployment-id ${{ env.DEPLOYMENT_ID }} \
             --region ${{ env.AWS_REGION }}
-          
+
           echo "✅ Deployment completed successfully!"
 
       - name: Get deployment status
         if: always()
         run: |
           echo "Fetching deployment status..."
-          
+
           aws deploy get-deployment \
             --deployment-id ${{ env.DEPLOYMENT_ID }} \
             --region ${{ env.AWS_REGION }} \
@@ -108,7 +108,7 @@ jobs:
               repo: context.repo.repo,
               title: `✅ EC2 Deployment Success (Osaka) - ${now}`,
               body: `🚀 **EC2 Deployment Completed Successfully**
-              
+
               **Deployment Details:**
               - **Region:** ap-northeast-3 (Osaka)
               - **Deployment ID:** ${{ env.DEPLOYMENT_ID }}
@@ -116,18 +116,18 @@ jobs:
               - **Branch:** ${context.ref.replace('refs/heads/', '')}
               - **Triggered by:** ${context.actor}
               - **Timestamp:** ${now}
-              
+
               **AWS Resources:**
               - **Application:** ${{ env.APPLICATION_NAME }}
               - **Deployment Group:** ${{ env.DEPLOYMENT_GROUP_NAME }}
               - **S3 Bucket:** ${{ secrets.AWS_S3_BUCKET }}
               - **S3 Key:** ${{ env.S3_KEY }}
-              
+
               **Next Steps:**
               - Monitor application health via AWS Console
               - Check CloudWatch logs for any errors
               - Verify application is running: Check EC2 instance
-              
+
               This issue was automatically created by the deployment pipeline.`,
               labels: ['deployment', 'ec2', 'success', 'osaka']
             })
@@ -143,7 +143,7 @@ jobs:
               repo: context.repo.repo,
               title: `❌ EC2 Deployment Failed (Osaka) - ${now}`,
               body: `🚨 **EC2 Deployment Failed**
-              
+
               **Deployment Details:**
               - **Region:** ap-northeast-3 (Osaka)
               - **Deployment ID:** ${{ env.DEPLOYMENT_ID || 'Not created' }}
@@ -151,22 +151,22 @@ jobs:
               - **Branch:** ${context.ref.replace('refs/heads/', '')}
               - **Triggered by:** ${context.actor}
               - **Timestamp:** ${now}
-              
+
               **Failure Information:**
               Check the [deployment logs](${context.payload.repository.html_url}/actions/runs/${context.runId}) for detailed error information.
-              
+
               **Troubleshooting Steps:**
               1. Check CodeDeploy console for deployment errors
               2. Review EC2 instance logs at /var/log/aws/codedeploy-agent/
               3. Verify IAM permissions for deployment
               4. Check S3 bucket accessibility
               5. Verify deployment scripts are working correctly
-              
+
               **Action Required:**
               - Review deployment logs
               - Fix identified issues
               - Re-run deployment once resolved
-              
+
               This issue was automatically created by the deployment pipeline.`,
               labels: ['deployment', 'ec2', 'failed', 'urgent', 'osaka']
             })
