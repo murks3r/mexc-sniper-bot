@@ -67,7 +67,8 @@ sudo usermod -aG docker $USER
 ### 2. Clone Repository
 
 ```bash
-git clone https://github.com/murks3r/mexc-sniper-bot.git
+# Replace with your repository URL
+git clone https://github.com/YOUR_USERNAME/mexc-sniper-bot.git
 cd mexc-sniper-bot
 ```
 

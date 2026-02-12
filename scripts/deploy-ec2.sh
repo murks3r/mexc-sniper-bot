@@ -15,7 +15,18 @@ docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml up -d
 
 # 4. Health check
-sleep 10
-curl -f http://localhost/api/health || exit 1
+echo "Waiting for services to be ready..."
+MAX_ATTEMPTS=30
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  if curl -f http://localhost/api/health 2>/dev/null; then
+    echo "✅ Deployment successful!"
+    exit 0
+  fi
+  ATTEMPT=$((ATTEMPT + 1))
+  echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Services not ready yet..."
+  sleep 2
+done
 
-echo "✅ Deployment successful!"
+echo "❌ Deployment failed: Services did not become healthy in time"
+exit 1

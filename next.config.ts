@@ -7,6 +7,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker optimization
+  // This creates a minimal server.js with only necessary files for containerization
   output: 'standalone',
 
   // Disable powered by header
