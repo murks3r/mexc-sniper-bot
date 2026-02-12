@@ -143,6 +143,8 @@ pgdata/
 playwright-report/
 test-results/
 test-results.json
+full-test-output.txt
+test-results.xml
 
 # Temp workspace
 tmp/
@@ -160,6 +162,16 @@ safety-report.json
 # SQLite temporary files
 *.db-shm
 *.db-wal
+
+# AI tool configs
+.claude/
+.codex/
+.daddy/
+.factory/
+.opencode/
+.qlty/
+.serena/
+.roomodes
 .clinerules/byterover-rules.md
 .kilocode/rules/byterover-rules.md
 .roo/rules/byterover-rules.md

@@ -1,0 +1,35 @@
+# Rust build artifacts
+target/
+
+# Testing
+*.profraw
+*.profdata
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+tmp
+temp
+*.log

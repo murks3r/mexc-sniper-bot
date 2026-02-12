@@ -6,8 +6,23 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker optimization
+  // This creates a minimal server.js with only necessary files for containerization
+  output: 'standalone',
+
+  // Disable powered by header
+  poweredByHeader: false,
+
+  // Enable compression
+  compress: true,
+
   // Silence workspace root inference warning
   outputFileTracingRoot: require('path').join(__dirname),
+
+  // Experimental features for better optimization
+  experimental: {
+    outputFileTracingRoot: process.cwd(),
+    optimizePackageImports: [
 
   // Exclude server-only packages from client-side bundles
   serverExternalPackages: [
@@ -45,10 +60,6 @@ const nextConfig: NextConfig = {
   // Disable Cache Components - incompatible with dynamic routes that use cookies/headers
   // See: https://nextjs.org/docs/messages/route-segment-config-with-cache-components
   cacheComponents: false,
-
-  // Experimental features for better optimization
-  experimental: {
-    optimizePackageImports: [
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-select',
