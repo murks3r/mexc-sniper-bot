@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
   // Silence workspace root inference warning
   outputFileTracingRoot: require('path').join(__dirname),
 
+  // Experimental features for better optimization
+  experimental: {
+    outputFileTracingRoot: process.cwd(),
+    optimizePackageImports: [
+
   // Exclude server-only packages from client-side bundles
   serverExternalPackages: [
     "better-sqlite3",
@@ -55,10 +60,6 @@ const nextConfig: NextConfig = {
   // Disable Cache Components - incompatible with dynamic routes that use cookies/headers
   // See: https://nextjs.org/docs/messages/route-segment-config-with-cache-components
   cacheComponents: false,
-
-  // Experimental features for better optimization
-  experimental: {
-    optimizePackageImports: [
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-select',
