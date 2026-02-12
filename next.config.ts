@@ -6,6 +6,15 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker optimization
+  output: 'standalone',
+
+  // Disable powered by header
+  poweredByHeader: false,
+
+  // Enable compression
+  compress: true,
+
   // Silence workspace root inference warning
   outputFileTracingRoot: require('path').join(__dirname),
 
