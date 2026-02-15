@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  mexc-sniper:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+    network_mode: "host"
+    restart: always
+    environment:
+      - MEXC_API_KEY=${MEXC_API_KEY}
+      - MEXC_API_SECRET=${MEXC_API_SECRET}
+      - DYNAMODB_TABLE=MexcSniperOrders
+      - RUST_LOG=info
