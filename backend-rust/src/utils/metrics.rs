@@ -1,6 +1,4 @@
-use prometheus::{
-    Counter, CounterVec, Histogram, HistogramVec, IntGauge, Registry,
-};
+use prometheus::{Counter, CounterVec, Histogram, HistogramVec, IntGauge, Registry};
 use std::sync::Arc;
 
 /// Prometheus Metrics für Order Latency, Error Rates, etc.
@@ -28,13 +26,13 @@ impl Metrics {
         .expect("Failed to create order_latency metric");
 
         let api_request_count = CounterVec::new(
-            prometheus::CounterOpts::new("api_requests_total", "Total API requests"),
+            prometheus::Opts::new("api_requests_total", "Total API requests"),
             &["endpoint", "status"],
         )
         .expect("Failed to create api_request_count metric");
 
         let api_error_count = CounterVec::new(
-            prometheus::CounterOpts::new("api_errors_total", "Total API errors"),
+            prometheus::Opts::new("api_errors_total", "Total API errors"),
             &["endpoint", "error_type"],
         )
         .expect("Failed to create api_error_count metric");
