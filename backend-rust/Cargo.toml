@@ -21,7 +21,7 @@ hex = "0.4"
 hmac = "0.12"
 sha2 = "0.10"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-prometheus = "0.13"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+prometheus = { version = "0.13", features = ["process"] }
 time = "0.3"
 getrandom = "0.2"

@@ -7,6 +7,7 @@ use axum::{
 use serde_json::json;
 use std::sync::Arc;
 
+use crate::mexc::models::OrderRequest as MexcOrderRequest;
 use crate::mexc::MexcClient;
 use crate::storage::{DynamoDBStore, OrderItem};
 
@@ -19,7 +20,7 @@ pub struct TradingState {
 pub async fn create_order(
     State(state): State<Arc<TradingState>>,
     Path(user_id): Path<String>,
-    Json(payload): Json<OrderRequest>,
+    Json(payload): Json<ApiOrderRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     tracing::info!("Creating order for user: {}", user_id);
 
@@ -39,7 +40,15 @@ pub async fn create_order(
     );
 
     // Sende zu MEXC
-    match state.mexc_client.create_order(&payload).await {
+    let mexc_order = MexcOrderRequest {
+        symbol: payload.symbol.clone(),
+        side: payload.side.clone(),
+        order_type: payload.order_type.clone(),
+        quantity: payload.quantity,
+        price: payload.price,
+    };
+
+    match state.mexc_client.create_order(&mexc_order).await {
         Ok(mexc_response) => {
             order.mexc_order_id = Some(mexc_response.order_id.clone());
             order.status = mexc_response.status.clone();
@@ -131,7 +140,7 @@ pub async fn cancel_order(
 }
 
 #[derive(serde::Deserialize)]
-pub struct OrderRequest {
+pub struct ApiOrderRequest {
     pub symbol: String,
     pub side: String,
     pub order_type: String,

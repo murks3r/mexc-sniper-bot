@@ -1,2 +1,1 @@
-pub mod models;
-pub use models::{MexcClient, OrderRequest, OrderResponse, TickerResponse};
+use crate::mexc::models::{MexcClient, OrderRequest, OrderResponse, TickerResponse};
