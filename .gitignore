@@ -121,6 +121,15 @@ session-*.json
 agent-conversation-*.json
 .ai-assistant-cache/
 .remote-coding-session/
+.claude/
+.codex/
+.daddy/
+.factory/
+.opencode/
+.qlty/
+.roo/
+.serena/
+.roomodes/
 
 # Database files
 *.db
@@ -143,6 +152,8 @@ pgdata/
 playwright-report/
 test-results/
 test-results.json
+test-results.xml
+full-test-output.txt
 
 # Temp workspace
 tmp/

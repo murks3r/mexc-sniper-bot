@@ -1,88 +1,27 @@
 [package]
-name = "mexc-sniper-bot"
-version = "2.0.0"
+name = "mexc-sniper"
+version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
 
 [dependencies]
-# Web Framework
 axum = "0.7"
-tokio = { version = "1", features = ["full"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace", "timeout"] }
-
-# Async Runtime & Utilities
-futures = "0.3"
-async-trait = "0.1"
-
-# HTTP Client
-reqwest = { version = "0.12", features = ["json", "cookies"] }
-http = "1.0"
-
-# Serialization
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# Cryptography & Security
+reqwest = { version = "0.12", features = ["json"] }
+aws-config = "1"
+aws-sdk-dynamodb = "1"
+anyhow = "1.0"
+dotenvy = "0.15"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+hex = "0.4"
 hmac = "0.12"
 sha2 = "0.10"
-hex = "0.4"
-jsonwebtoken = "9.2"
-uuid = { version = "1.6", features = ["v4", "serde"] }
-
-# AWS SDK
-aws-sdk-dynamodb = "1.1"
-aws-config = "1.1"
-aws-smithy-runtime = "1.1"
-aws-credential-types = "1.1"
-
-# Database
-rusoto_dynamodb = "0.48"
-
-# Environment Configuration
-dotenvy = "0.15"
-config = { version = "0.13", features = ["toml"] }
-
-# Logging & Observability
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
-tracing-appender = "0.2"
-opentelemetry = { version = "0.20", features = ["rt-tokio"] }
-opentelemetry-aws = "0.8"
-tracing-opentelemetry = "0.21"
-
-# Metrics
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 prometheus = "0.13"
-
-# Error Handling
-anyhow = "1.0"
-thiserror = "1.0"
-
-# Time Handling
-chrono = { version = "0.4", features = ["serde"] }
 time = "0.3"
-
-# CLI & Runtime
-clap = { version = "4.4", features = ["derive"] }
-
-# Testing
-mockall = "0.12"
-
-[dev-dependencies]
-tokio-test = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
-tempfile = "3.8"
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
-panic = "abort"
-
-[profile.dev]
-opt-level = 0
-
-[[bin]]
-name = "mexc-sniper"
-path = "src/main.rs"
+getrandom = "0.2"

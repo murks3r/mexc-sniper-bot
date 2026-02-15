@@ -8,6 +8,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig: NextConfig = {
   // Silence workspace root inference warning
   outputFileTracingRoot: require('path').join(__dirname),
+  output: "standalone",
 
   // Exclude server-only packages from client-side bundles
   serverExternalPackages: [

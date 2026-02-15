@@ -27,6 +27,16 @@
         "logs:PutLogEvents"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "AllowSSMParameterStoreRead",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParametersByPath",
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:eu-central-1:*:parameter/app/mexc-sniper-bot/*"
     }
   ]
 }
