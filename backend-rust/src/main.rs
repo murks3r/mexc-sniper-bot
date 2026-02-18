@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize logging
     utils::init_logging();
 
-    let config = utils::Config::from_env();
+    let config = utils::Config::load().await;
 
     tracing::info!(
         "Starting MEXC Sniper Bot (Rust) on port {}",

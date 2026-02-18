@@ -9,7 +9,13 @@
         "ssm:GetParameter",
         "ssm:GetParameters"
       ],
-      "Resource": "arn:aws:ssm:eu-central-1:*:parameter/app/mexc-sniper-bot/*"
+      "Resource": "arn:aws:ssm:*:*:parameter/app/mexc-sniper-bot/*"
+    },
+    {
+      "Sid": "AllowDescribeParameters",
+      "Effect": "Allow",
+      "Action": ["ssm:DescribeParameters"],
+      "Resource": "*"
     }
   ]
 }
