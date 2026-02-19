@@ -1,0 +1,68 @@
+{
+  "name": "MEXC Sniper Bot",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+
+  // ── Port-Forwarding ────────────────────────────────────────────────────────
+  "forwardPorts": [3008, 3009],
+  "portsAttributes": {
+    "3008": {
+      "label": "Next.js Frontend",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    },
+    "3009": {
+      "label": "Rust Backend API",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
+
+  // ── Lifecycle-Hooks ────────────────────────────────────────────────────────
+  // postCreateCommand: läuft einmalig nach dem ersten Aufbau des Containers
+  "postCreateCommand": "chmod +x /workspaces/mexc-sniper-bot/.devcontainer/startup.sh && bun install --cwd /workspaces/mexc-sniper-bot",
+
+  // postStartCommand: läuft bei jedem Container-Start (je eigenes Terminal)
+  "postStartCommand": {
+    "frontend": "bash /workspaces/mexc-sniper-bot/.devcontainer/startup.sh"
+  },
+
+  // ── Umgebungsvariablen im Container ───────────────────────────────────────
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+
+  // ── Remote-User ───────────────────────────────────────────────────────────
+  "remoteUser": "node",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "biomejs.biome",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next",
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "biomejs.biome",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "quickfix.biome": "explicit",
+          "source.organizeImports.biome": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.preferences.importModuleSpecifier": "shortest",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+        "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" }
+      }
+    }
+  }
+}

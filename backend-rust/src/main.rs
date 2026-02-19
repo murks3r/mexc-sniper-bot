@@ -47,6 +47,8 @@ async fn main() -> anyhow::Result<()> {
         mexc_client: mexc_client.clone(),
     });
 
+    let status_state = Arc::new(api::StatusState::new(mexc_client.clone()));
+
     // Build routers
     let app = Router::new()
         // Health & Admin Routes
@@ -55,6 +57,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/trade", api::trading_router(trading_state))
         // Market Data Routes
         .nest("/api/market", api::market_router(market_state))
+        // V1 Status & Settings Routes
+        .nest("/api/v1", api::status_router(status_state))
         // Root health check
         .route("/health", get(health_check))
         // Global middleware
