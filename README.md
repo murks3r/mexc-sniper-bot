@@ -224,7 +224,35 @@ The system uses Drizzle ORM with the following key tables:
 
 **Important**: The system is optimized for Vercel's edge infrastructure with NeonDB for global low-latency data access.
 
-### Alternative: Deploy to Railway
+### Alternative 1: Deploy to AWS EC2 with CodeDeploy (Osaka Region)
+
+**Continuous Deployment Setup** - Automatically deploy to EC2 in Osaka (ap-northeast-3) on every push to main:
+
+1. Follow the complete setup guide: [AWS CodeDeploy Setup Guide](docs/AWS_CODEDEPLOY_SETUP.md)
+2. Quick reference: [AWS CodeDeploy Quick Reference](docs/AWS_CODEDEPLOY_QUICK_REFERENCE.md)
+
+**Key Features:**
+- ✅ Automated deployments via GitHub Actions
+- ✅ Zero-downtime deployments with PM2
+- ✅ Deployment to Osaka region (ap-northeast-3)
+- ✅ Automatic rollback on failure
+- ✅ GitHub issue notifications
+
+**Required GitHub Secrets:**
+```bash
+AWS_ACCESS_KEY_ID           # IAM user access key
+AWS_SECRET_ACCESS_KEY       # IAM user secret key
+AWS_S3_BUCKET              # S3 bucket for deployments (Osaka region)
+```
+
+**Deployment Process:**
+```
+GitHub Push → GitHub Actions → S3 (Osaka) → AWS CodeDeploy → EC2 Instance
+```
+
+See [AWS_CODEDEPLOY_SETUP.md](docs/AWS_CODEDEPLOY_SETUP.md) for complete AWS infrastructure setup instructions.
+
+### Alternative 2: Deploy to Railway
 
 Railway offers persistent containers and built-in monitoring:
 
@@ -258,7 +286,9 @@ vercel --prod
 railway up
 ```
 
-For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)
+For detailed deployment instructions, see:
+- **AWS EC2/CodeDeploy**: [docs/AWS_CODEDEPLOY_SETUP.md](docs/AWS_CODEDEPLOY_SETUP.md)
+- **Other platforms**: [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)
 
 ## 📚 Documentation
 

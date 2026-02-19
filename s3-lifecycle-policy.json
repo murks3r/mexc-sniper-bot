@@ -1,0 +1,11 @@
+{
+  "Rules": [
+    {
+      "Id": "DeleteOldDeployments",
+      "Status": "Enabled",
+      "Prefix": "deployments/",
+      "ExpirationInDays": 30,
+      "NoncurrentVersionExpirationInDays": 7
+    }
+  ]
+}
