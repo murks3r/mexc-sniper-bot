@@ -258,7 +258,24 @@ vercel --prod
 railway up
 ```
 
-For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)
+### AWS EC2 Deployment with CodeDeploy
+
+For continuous deployment to AWS EC2 using CodeDeploy:
+
+1. Follow the comprehensive [AWS CodeDeploy Setup Guide](docs/deployment/AWS_CODEDEPLOY_SETUP.md)
+2. Configure GitHub Secrets for AWS credentials
+3. Push to main branch to trigger automatic deployment
+
+**Key Features:**
+- ✅ Automatic deployment on push to main
+- ✅ S3 artifact storage in Osaka region (ap-northeast-3)
+- ✅ CodeDeploy lifecycle management
+- ✅ Health checks and validation
+- ✅ Automatic rollback on failure
+
+For detailed deployment instructions, see:
+- [AWS CodeDeploy Setup](docs/deployment/AWS_CODEDEPLOY_SETUP.md) - CodeDeploy continuous deployment
+- [General Deployment Guide](docs/deployment/DEPLOYMENT.md) - Other deployment options
 
 ## 📚 Documentation
 
