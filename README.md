@@ -258,7 +258,23 @@ vercel --prod
 railway up
 ```
 
-For detailed deployment instructions, see [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)
+### EC2 Deployment Verification
+
+For EC2 deployments, use the verification script to check deployment status:
+
+```bash
+# SSH into your EC2 instance
+ssh -i your-key.pem ec2-user@<EC2_IP>
+
+# Run the verification script
+cd /path/to/mexc-sniper-bot
+./scripts/check-ec2-deployment.sh
+```
+
+For detailed deployment instructions, see:
+- [Deployment Guide](docs/deployment/DEPLOYMENT.md) - General deployment
+- [EC2 Deployment Status](docs/deployment/EC2_DEPLOYMENT_STATUS.md) - EC2 verification and troubleshooting
+- [Rust Deployment Guide](RUST_DEPLOYMENT_GUIDE.md) - Rust backend on EC2
 
 ## 📚 Documentation
 
