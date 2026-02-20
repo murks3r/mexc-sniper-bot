@@ -60,7 +60,7 @@ Focused sniping system with core components:
 - **Logging**: Console-based logging for simplicity
 - **Testing**: Vitest (unit), Playwright (E2E)
 - **Code Quality**: Biome.js for formatting and linting, TypeScript for type safety
-- **Deployment**: Vercel with automatic scaling and edge optimization
+
 
 ## 📋 Prerequisites
 
@@ -215,14 +215,6 @@ The system uses Drizzle ORM with the following key tables:
 
 ## 🚀 Deployment
 
-### Primary: Deploy to Vercel
-
-1. Push your code to GitHub
-2. Import project in Vercel Dashboard
-3. Add environment variables (including NeonDB credentials)
-4. Deploy
-
-**Important**: The system is optimized for Vercel's edge infrastructure with NeonDB for global low-latency data access.
 
 ### Alternative: Deploy to Railway
 
@@ -378,30 +370,4 @@ make deps-check
 make deps-update
 ```
 
-## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Ensure all tests pass and linting is clean
-5. Submit a pull request
-
-### Development Guidelines
-
-- **TypeScript First**: All new code must be in TypeScript with strict type checking
-- **Testing Required**: Write unit tests (Vitest) and E2E tests (Playwright) for new features
-- **Code Quality**: Use Biome.js for formatting and linting, maintain high test pass rate
-- **Focus**: Keep code focused on sniping functionality - avoid adding non-essential features
-- **Database**: Use Drizzle ORM for all database operations with safe migrations
-- **Authentication**: All protected routes must pass through Clerk (with Supabase RLS where applicable)
-- **Error Handling**: Implement comprehensive error handling with proper logging
-- **Documentation**: Add JSDoc comments and update relevant documentation
-- **Performance**: Optimize for Vercel serverless deployment and global edge performance
-
-## ⚠️ Disclaimer
-
-This bot is for educational purposes. Cryptocurrency trading carries significant risk. Never invest more than you can afford to lose. The authors are not responsible for any financial losses.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
